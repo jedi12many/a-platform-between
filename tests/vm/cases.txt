@@ -19,3 +19,13 @@ fare-tick       content/s1/00-the-fare/the-fare.qs              1     @tick,1,1,
 fare-lumen      content/s1/00-the-fare/the-fare.qs              23    @lumen,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
 # Rewards pay once: the bell is rung three times, but pays 10 XP and one stub.
 loop            tests/vm/loop.qs                                5     1,1,2
+# Boarding Passes (seed '-': the desk asks for one, and it seeds the dice). Passes come
+# from tools/passport/boarding.py; the typo is that tool's pass for Kestrel with one
+# symbol changed (20W5QD0ECKC26800EW -> ...FW).
+pass-board      tests/vm/tiny.qs                                -     @kestrel,@pass:kestrel:901:3141592653:7,1,1
+pass-typo       tests/vm/tiny.qs                                -     @kestrel,:20W5QD0ECKC26800FW,@pass:kestrel:901:3141592653:7,1,1
+pass-other      tests/vm/tiny.qs                                -     @kestrel,@pass:ada:901:42:7,@pass:kestrel:901:3141592653:7,1,1
+pass-elsewhere  tests/vm/tiny.qs                                -     @kestrel,@pass:kestrel:0:42:7,@pass:kestrel:901:3141592653:7,1,1
+pass-none       tests/vm/tiny.qs                                -     @kestrel,:,2,:,1,1,1
+# The same trip as fare-fern, boarded with a pass whose seed is 1: same story, plus a ticket.
+fare-pass       content/s1/00-the-fare/the-fare.qs              -     @fern,@pass:fern:0:7777:1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1

@@ -298,6 +298,7 @@ typedef struct {
 
 typedef struct {
     uint16_t departure;
+    uint32_t ticket;                        /* from the Boarding Pass; 0: none  */
     uint8_t  outcome;                       /* APB_OUTCOME_*                    */
     uint16_t xp;                            /* awarded, after the level band    */
     uint16_t debt_paid;                     /* one of these two is 0            */
@@ -344,7 +345,31 @@ enum {
 };
 
 uint8_t apb_passport_encode(const apb_character *ch, char *out);
+/* The Passport's own CRC-16: a check of everything about the character, carried in
+ * Boarding Passes to say which version of the character boarded. 0 if it can't be
+ * encoded. */
+uint16_t apb_passport_check(const apb_character *ch);
 /* bad_line receives the 1-based line number on APB_PP_LINE_CHECK; may be NULL. */
 uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line);
+
+/* ------------------------------------------------------- Boarding Pass */
+
+/* Issued by the Waystation for one trip (docs/boarding.md). One line of 18 symbols in
+ * the Passport alphabet. The ticket is a random number the server draws and remembers:
+ * a receipt only counts if it quotes a ticket issued to that character, once. */
+#define APB_PASS_VERSION 1
+#define APB_PASS_LEN     18
+#define APB_PASS_BUF     (APB_PASS_LEN + 1)
+
+typedef struct {
+    uint16_t departure;
+    uint32_t ticket;
+    uint16_t check;      /* apb_passport_check of the character as boarded */
+    uint16_t seed;       /* the dice for this trip                          */
+} apb_pass;
+
+uint8_t apb_pass_encode(const apb_pass *pass, char *out);
+/* Returns APB_PP_OK, _SYMBOL, _LENGTH, _LINE_CHECK, _VERSION or _CHECKSUM. */
+uint8_t apb_pass_decode(const char *in, apb_pass *pass);
 
 #endif

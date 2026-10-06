@@ -1,5 +1,7 @@
 # Test travelers for tests/vm/cases.txt: '@name' boards that traveler at the desk.
 # Every Passport here was made by tools/passport/passport.py with the arguments shown.
+# new Kestrel SALVAGED WARDEN 70,40,60,45,35,50 ATHLETICS PULSE_RIFLE
+kestrel 4PB794AR0A0105AM7HDT 8V4000000000K60M2A4A 50200810HJB
 # new Ada HUMAN MEDIC 45,40,50,55,40,70 PERSUADE
 ada 4282000000G102TM69W8 A5000000000N06MMEA97 50000FQRGD
 # new Bolt HOLLOWBORN ROGUE 55,65,70,35,45,30 ATHLETICS

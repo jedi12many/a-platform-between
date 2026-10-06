@@ -63,7 +63,8 @@ def new_character():
     }
 
 
-def encode(ch):
+def _payload(ch):
+    """The Passport's fields as bytes, before the CRC (docs/passport-spec.md)."""
     bits = []
 
     def put(value, n):
@@ -108,17 +109,36 @@ def encode(ch):
 
     while len(bits) % 8:
         bits.append(0)
-    payload = bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, len(bits), 8))
-    put(crc16(payload), 16)
+    return bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, len(bits), 8))
+
+
+def check(ch):
+    """The Passport's CRC-16: what a Boarding Pass carries to name the character as boarded."""
+    return crc16(_payload(ch))
+
+
+def symbols(bits):
+    """Bits to password text: lines of 19 data symbols, each followed by its check."""
     while len(bits) % 5:
         bits.append(0)
-
     values = [int("".join(map(str, bits[i:i + 5])), 2) for i in range(0, len(bits), 5)]
     out = ""
     for start in range(0, len(values), LINE_DATA):
         line = values[start:start + LINE_DATA]
         out += "".join(SYMBOLS[v] for v in line) + SYMBOLS[line_check(line)]
     return out
+
+
+def to_bits(value, n):
+    if value < 0 or value >= (1 << n):
+        raise PassportError(f"value {value} doesn't fit in {n} bits")
+    return [(value >> (n - 1 - i)) & 1 for i in range(n)]
+
+
+def encode(ch):
+    payload = _payload(ch)
+    bits = [(b >> (7 - i)) & 1 for b in payload for i in range(8)] + to_bits(crc16(payload), 16)
+    return symbols(bits)
 
 
 def lines(password):

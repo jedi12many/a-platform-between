@@ -17,4 +17,9 @@
 /* Run the desk until the player boards. Fills `out` and returns 1. */
 uint8_t apb_desk_run(apb_character *out);
 
+/* Ask for the Boarding Pass for `departure`, issued to `ch` as they are now. Returns 1
+ * with `out` filled, or 0 if the player chose to travel without one (and was told
+ * nothing they earn can be stamped). */
+uint8_t apb_desk_pass(const apb_character *ch, uint16_t departure, apb_pass *out);
+
 #endif

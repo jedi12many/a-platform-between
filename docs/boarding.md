@@ -66,13 +66,37 @@ that true live on the server, never in a client: anyone can read a C64 disk, and
 player holds is a key a player can share.
 
 1. **Board at the Waystation website.** Pick the character and the Departure; the server
-   issues a **Boarding Pass**: a short code (about 16-20 characters) holding the
-   character, the Departure, a one-time ticket number and a hash of the character as
-   boarded, signed with a key only the server has.
+   issues a **Boarding Pass**: one line of 18 symbols holding the Departure, a one-time
+   ticket number, a check of the character as boarded, and the dice seed for the trip.
 2. **Give the client your Passport and the Boarding Pass.** On a C64 you type both (from
-   your phone screen); a modern client fetches them when you sign in.
+   your phone screen); a modern client fetches them when you sign in. The client checks
+   the pass is for this Departure and this character as they are now; a pass from before
+   their last trip is refused, and the website issues a new one.
 3. **The receipt carries the ticket number.** The server accepts it only for the character
    the ticket was issued to, only once, and only within that Departure's possible rewards.
+
+The server's secret is the ticket itself: a random 32-bit number it draws and remembers,
+with the character and Departure it was issued for. A forged or borrowed receipt would
+have to guess a live ticket issued to that very character. That protects receipts the way
+a signature would, with nothing secret in the client and a pass short enough to type.
+
+### Boarding Pass format
+
+Version 1. The Passport alphabet and line check ([passport-spec.md](passport-spec.md)),
+one line: 17 data symbols and a check symbol.
+
+| Field | Bits | Notes |
+|---|---|---|
+| version | 4 | 1 |
+| Departure | 16 | the image's id |
+| ticket | 32 | random, drawn by the server |
+| character check | 16 | the Passport's own CRC-16 (`apb_passport_check`): any change to the character changes it |
+| seed | 16 | the dice for this trip, so the server can replay an online trip and a player can't re-roll by boarding again |
+| padding | 1 | zero |
+
+`apb_pass_encode` / `apb_pass_decode` in the rules core; `tools/passport/boarding.py` is
+the reference and issues passes for testing until the website exists. A player can travel
+without a pass (the desk warns that nothing earned can be stamped); tests use that too.
 
 ### Reward manifests
 

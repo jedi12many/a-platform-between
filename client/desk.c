@@ -15,6 +15,11 @@ static const char label_board[] = { 66, 111, 97, 114, 100, 0 };
 static const char label_again[] = { 83, 116, 97, 114, 116, 32, 111, 118, 101, 114, 0 };
 static const char *const labels[2] = { label_board, label_again };
 
+/* "Travel without a pass", "Type a pass" */
+static const char label_nopass[] = { 84, 114, 97, 118, 101, 108, 32, 119, 105, 116, 104, 111, 117, 116, 32, 97, 32, 112, 97, 115, 115, 0 };
+static const char label_retype[] = { 84, 121, 112, 101, 32, 97, 32, 112, 97, 115, 115, 0 };
+static const char *const pass_labels[2] = { label_nopass, label_retype };
+
 static void numbered(const char *before, uint8_t n, const char *after)
 {
     uint8_t i = 0;
@@ -169,6 +174,40 @@ uint8_t apb_desk_run(apb_character *out)
             hal_prompt("Every line checks out, but the Passport doesn't. Check them all.");
         } else {
             hal_prompt("That isn't a whole Passport. Let's start again.");
+        }
+    }
+}
+
+uint8_t apb_desk_pass(const apb_character *ch, uint16_t departure, apb_pass *out)
+{
+    uint8_t result;
+
+    for (;;) {
+        hal_prompt("Your Boarding Pass, please, or a blank line to travel without one:");
+        hal_ask_line(lines[0], APB_DESK_TYPED);
+        if (lines[0][0] == '\0') {
+            hal_prompt("Without a pass, nothing you earn on this trip can be stamped.");
+            if (hal_menu(pass_labels, 2) == 0) {
+                return 0;
+            }
+            continue;
+        }
+        result = apb_pass_decode(lines[0], out);
+        if (result == APB_PP_OK) {
+            if (out->departure != departure) {
+                hal_prompt("That Boarding Pass is for a different Departure.");
+            } else if (out->check != apb_passport_check(ch)) {
+                hal_prompt("That pass is for another character, or for this one before "
+                           "their last trip. The Waystation will issue a new one.");
+            } else {
+                return 1;
+            }
+        } else if (result == APB_PP_SYMBOL) {
+            hal_prompt("Something there isn't a Boarding Pass letter. Type it again.");
+        } else if (result == APB_PP_VERSION) {
+            hal_prompt("That pass is from a different version of the game.");
+        } else {
+            hal_prompt("That pass has a typo: it's 18 letters. Type it again.");
         }
     }
 }

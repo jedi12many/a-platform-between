@@ -30,8 +30,8 @@ written in Quest Script and played by the same VM in the browser.
 
 ## Receipts the server can trust
 
-Every trip starts with a **Boarding Pass** from the website, signed with a key only the
-server holds, and every receipt has to match one: right character, used once, within the
+Every trip starts with a **Boarding Pass** from the website, carrying a random ticket
+number only the server knows it issued, and every receipt has to match one: right character, used once, within the
 Departure's possible rewards. Online clients also send the choices and dice seed, and the
 server replays the Departure with the same VM to confirm the result. See *Boarding
 passes* in [boarding.md](boarding.md).
@@ -56,7 +56,7 @@ waits until it can reach the Waystation.
 
 | Step | What | Needs a server? |
 |---|---|---|
-| **W1** | A static site: the character creator, Passport decoding and editing (spending points), the tabletop sheet printer. The rules core runs in the browser as WebAssembly. (Travel Stamps are applied without a server only on trust; signed Boarding Passes need W2.) | No |
+| **W1** | A static site: the character creator, Passport decoding and editing (spending points), the tabletop sheet printer. The rules core runs in the browser as WebAssembly. (Travel Stamps are applied without a server only on trust; Boarding Passes need W2, which remembers the tickets it issued.) | No |
 | **W2** | Accounts, Boarding Passes, a store for seasons and Departures, downloads and disk images, receipts from modern clients and Travel Stamps from retro ones, replay verification | Yes |
 | **W3** | Trading, the lost-and-found, meeting travelers, parties and co-op lobbies | Yes |
 

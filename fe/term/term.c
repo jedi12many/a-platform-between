@@ -307,10 +307,16 @@ static void show_receipt(const apb_receipt *r)
     if (r->echo_count) printf("  %u Echo%s will follow you.\n", r->echo_count,
                               r->echo_count == 1 ? "" : "es");
     putchar('\n');
-    wrapped("Take it to the Waystation to have it stamped into your Passport.", "");
+    if (r->ticket) {
+        printf("Ticket %lu.\n", (unsigned long)r->ticket);
+        wrapped("Take it to the Waystation to have it stamped into your Passport.", "");
+    } else {
+        wrapped("You travelled without a Boarding Pass, so this trip can't be stamped.", "");
+    }
 }
 
 static apb_character traveler;
+static apb_pass pass;
 
 int main(int argc, char **argv)
 {
@@ -335,7 +341,8 @@ int main(int argc, char **argv)
     }
     if (!source || i < argc) {
         fprintf(stderr, "usage: apb [--width N] [--seed N] [--choices FILE] DEPARTURE\n"
-                        "  DEPARTURE is an .apd image or a directory of DEPOT/CARnn files\n");
+                        "  DEPARTURE is an .apd image or a directory of DEPOT/CARnn files\n"
+                        "  --seed sets the dice when travelling without a Boarding Pass\n");
         return 2;
     }
     n = strlen(source);
@@ -353,8 +360,14 @@ int main(int argc, char **argv)
     hal_init();
     printf("A PLATFORM BETWEEN\n\n");
     apb_desk_run(&traveler);
+    if (apb_vm_open() != 0) {
+        printf("This Departure can't be boarded: %s\n", apb_vm_error());
+        return 1;
+    }
     putchar('\n');
-    if (apb_vm_board(&traveler, (uint16_t)seed) != 0) {
+    if ((apb_desk_pass(&traveler, apb_vm_departure(), &pass)
+         ? apb_vm_board_pass(&traveler, &pass)
+         : apb_vm_board(&traveler, (uint16_t)seed)) != 0) {
         printf("This Departure can't be boarded: %s\n", apb_vm_error());
         return 1;
     }

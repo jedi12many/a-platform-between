@@ -28,6 +28,8 @@ static apb_character back;
 static char pw[APB_PASSWORD_BUF];
 static char spaced[APB_PASSWORD_BUF + 16];
 static char typo[APB_PASSWORD_BUF];
+static apb_character traveler;
+static apb_pass pass;
 
 static void test_dice(void)
 {
@@ -469,6 +471,37 @@ static void test_passport(void)
     CHECK(apb_passport_encode(&ch, pw) == APB_PP_RANGE);
 }
 
+/* Golden values from tools/passport/boarding.py, the Python reference:
+ *   issue "<Kestrel's Passport>" 901 3141592653 7  ->  20W5QD0ECKC26800EW
+ * and from the same fields with version 2, or with the trailing zero bit set. */
+static void test_boarding_pass(void)
+{
+    make_kestrel(&traveler);
+    traveler.equipped[0] = APB_ITEM_PULSE_RIFLE;
+    CHECK(apb_passport_check(&traveler) == 33330u);
+
+    pass.departure = 901;
+    pass.ticket = 3141592653UL;
+    pass.check = 33330u;
+    pass.seed = 7;
+    CHECK(apb_pass_encode(&pass, pw) == APB_PP_OK && strcmp(pw, "20W5QD0ECKC26800EW") == 0);
+
+    memset(&pass, 0, sizeof(pass));
+    CHECK(apb_pass_decode("20w5-qd0e-ckc2-68oo-ew", &pass) == APB_PP_OK);
+    CHECK(pass.departure == 901 && pass.ticket == 3141592653UL && pass.check == 33330u
+          && pass.seed == 7);
+    CHECK(apb_pass_decode("20W5QD0ECKC26800FW", &pass) == APB_PP_LINE_CHECK);
+    CHECK(apb_pass_decode("20W5QD0ECKC26800E", &pass) == APB_PP_LENGTH);
+    CHECK(apb_pass_decode("20W5QD0ECKC26800EWW", &pass) == APB_PP_LENGTH);
+    CHECK(apb_pass_decode("20W5QD0ECKC26800E!", &pass) == APB_PP_SYMBOL);
+    CHECK(apb_pass_decode("40W5QD0ECKC26800EY", &pass) == APB_PP_VERSION);
+    CHECK(apb_pass_decode("20W5QD0ECKC26800FX", &pass) == APB_PP_CHECKSUM);
+
+    /* Anything about the character changing changes the check. */
+    traveler.debt = 1;
+    CHECK(apb_passport_check(&traveler) != 33330u);
+}
+
 int main(void)
 {
     test_dice();
@@ -480,6 +513,7 @@ int main(void)
     test_translate();
     test_echoes();
     test_passport();
+    test_boarding_pass();
 
     printf("%u checks, %u failed\n", checks, failures);
     return failures ? 1 : 0;

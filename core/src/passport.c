@@ -182,100 +182,18 @@ static void get_items(bitio *b, uint16_t *slots, uint8_t count)
     }
 }
 
-uint8_t apb_passport_encode(const apb_character *ch, char *out)
+/* Bits out to symbols: lines of 19 data symbols, each followed by its check. */
+static void write_symbols(bitio *b, char *o)
 {
-    bitio b;
-    uint8_t i;
-    uint8_t n;
-    uint8_t name_done = 0;
     uint16_t data;
     uint16_t s;
-    uint8_t line_len;
-    char *o = out;
+    uint8_t line_len = 0;
 
-    out[0] = '\0';
-    if (!fields_fit(ch)) {
-        return APB_PP_RANGE;
-    }
-
-    memset(buf, 0, sizeof(buf));
-    b.buf = buf;
-    b.pos = 0;
-    b.limit = BUF_BYTES * 8;
-    b.bad = 0;
-
-    put_bits(&b, APB_PASSPORT_VERSION, 4);
-    for (i = 0; i < APB_NAME_LEN; ++i) {
-        if (ch->name[i] == '\0') {
-            name_done = 1;
-        }
-        put_bits(&b, name_done ? 0 : apb_name_index(ch->name[i]), 5);
-    }
-    put_bits(&b, ch->race, 5);
-    put_bits(&b, ch->cls, 4);
-    put_bits(&b, ch->level, 7);
-    put_bits(&b, ch->xp, 7);
-    for (i = 0; i < APB_STAT_COUNT; ++i) {
-        put_bits(&b, ch->stat[i], 7);
-    }
-    put_bits(&b, ch->stat_points, 8);
-    put_bits(&b, ch->skill_points, 8);
-    put_bits(&b, ch->debt, 16);
-    put_bits(&b, ch->flags, 7);
-    put_bits(&b, ch->tags, APB_SKILL_COUNT);
-
-    n = 0;
-    for (i = 0; i < APB_SKILL_COUNT; ++i) {
-        if (ch->training[i]) ++n;
-    }
-    put_bits(&b, n, 4);
-    for (i = 0; i < APB_SKILL_COUNT; ++i) {
-        if (ch->training[i]) {
-            put_bits(&b, i, 4);
-            put_bits(&b, ch->training[i], 7);
-        }
-    }
-
-    n = 0;
-    for (i = 0; i < APB_POWER_SLOTS; ++i) {
-        if (ch->power[i].id) ++n;
-    }
-    put_bits(&b, n, 4);
-    for (i = 0; i < APB_POWER_SLOTS; ++i) {
-        if (ch->power[i].id) {
-            put_bits(&b, ch->power[i].id, 8);
-            put_bits(&b, ch->power[i].rank, 7);
-        }
-    }
-
-    put_items(&b, ch->equipped, APB_EQUIP_SLOTS);
-    put_items(&b, ch->pack, APB_PACK_SLOTS);
-
-    n = 0;
-    for (i = 0; i < APB_ECHO_SLOTS; ++i) {
-        if (ch->echo[i].id) ++n;
-    }
-    put_bits(&b, n, 4);
-    for (i = 0; i < APB_ECHO_SLOTS; ++i) {
-        if (ch->echo[i].id) {
-            put_bits(&b, ch->echo[i].id, 10);
-            put_bits(&b, ch->echo[i].state, 2);
-        }
-    }
-
-    b.pos = (uint16_t)((b.pos + 7u) & ~7u);
-    put_bits(&b, crc16(buf, (uint8_t)(b.pos >> 3)), 16);
-    if (b.bad) {
-        return APB_PP_RANGE;
-    }
-
-    /* Out to symbols: lines of 19 data symbols, each followed by its check. */
-    data = (uint16_t)((b.pos + 4u) / 5u);
-    b.limit = (uint16_t)(data * 5u);
-    b.pos = 0;
-    line_len = 0;
+    data = (uint16_t)((b->pos + 4u) / 5u);
+    b->limit = (uint16_t)(data * 5u);
+    b->pos = 0;
     for (s = 0; s < data; ++s) {
-        symbols[line_len] = (uint8_t)get_bits(&b, 5);
+        symbols[line_len] = (uint8_t)get_bits(b, 5);
         *o++ = sym_upper[symbols[line_len]];
         ++line_len;
         if (line_len == LINE_DATA || s + 1 == data) {
@@ -284,7 +202,177 @@ uint8_t apb_passport_encode(const apb_character *ch, char *out)
         }
     }
     *o = '\0';
+}
+
+static void start_bits(bitio *b)
+{
+    memset(buf, 0, sizeof(buf));
+    b->buf = buf;
+    b->pos = 0;
+    b->limit = BUF_BYTES * 8;
+    b->bad = 0;
+}
+
+/* The character's fields as Passport bits, ending in the CRC-16 (also kept in
+ * packed_crc). */
+static uint16_t packed_crc;
+
+static uint8_t pack(const apb_character *ch, bitio *b)
+{
+    uint8_t i;
+    uint8_t n;
+    uint8_t name_done = 0;
+
+    if (!fields_fit(ch)) {
+        return APB_PP_RANGE;
+    }
+    start_bits(b);
+
+    put_bits(b, APB_PASSPORT_VERSION, 4);
+    for (i = 0; i < APB_NAME_LEN; ++i) {
+        if (ch->name[i] == '\0') {
+            name_done = 1;
+        }
+        put_bits(b, name_done ? 0 : apb_name_index(ch->name[i]), 5);
+    }
+    put_bits(b, ch->race, 5);
+    put_bits(b, ch->cls, 4);
+    put_bits(b, ch->level, 7);
+    put_bits(b, ch->xp, 7);
+    for (i = 0; i < APB_STAT_COUNT; ++i) {
+        put_bits(b, ch->stat[i], 7);
+    }
+    put_bits(b, ch->stat_points, 8);
+    put_bits(b, ch->skill_points, 8);
+    put_bits(b, ch->debt, 16);
+    put_bits(b, ch->flags, 7);
+    put_bits(b, ch->tags, APB_SKILL_COUNT);
+
+    n = 0;
+    for (i = 0; i < APB_SKILL_COUNT; ++i) {
+        if (ch->training[i]) ++n;
+    }
+    put_bits(b, n, 4);
+    for (i = 0; i < APB_SKILL_COUNT; ++i) {
+        if (ch->training[i]) {
+            put_bits(b, i, 4);
+            put_bits(b, ch->training[i], 7);
+        }
+    }
+
+    n = 0;
+    for (i = 0; i < APB_POWER_SLOTS; ++i) {
+        if (ch->power[i].id) ++n;
+    }
+    put_bits(b, n, 4);
+    for (i = 0; i < APB_POWER_SLOTS; ++i) {
+        if (ch->power[i].id) {
+            put_bits(b, ch->power[i].id, 8);
+            put_bits(b, ch->power[i].rank, 7);
+        }
+    }
+
+    put_items(b, ch->equipped, APB_EQUIP_SLOTS);
+    put_items(b, ch->pack, APB_PACK_SLOTS);
+
+    n = 0;
+    for (i = 0; i < APB_ECHO_SLOTS; ++i) {
+        if (ch->echo[i].id) ++n;
+    }
+    put_bits(b, n, 4);
+    for (i = 0; i < APB_ECHO_SLOTS; ++i) {
+        if (ch->echo[i].id) {
+            put_bits(b, ch->echo[i].id, 10);
+            put_bits(b, ch->echo[i].state, 2);
+        }
+    }
+
+    b->pos = (uint16_t)((b->pos + 7u) & ~7u);
+    packed_crc = crc16(buf, (uint8_t)(b->pos >> 3));
+    put_bits(b, packed_crc, 16);
+    return b->bad ? APB_PP_RANGE : APB_PP_OK;
+}
+
+uint8_t apb_passport_encode(const apb_character *ch, char *out)
+{
+    bitio b;
+
+    out[0] = '\0';
+    if (pack(ch, &b) != APB_PP_OK) {
+        return APB_PP_RANGE;
+    }
+    write_symbols(&b, out);
     return APB_PP_OK;
+}
+
+uint16_t apb_passport_check(const apb_character *ch)
+{
+    bitio b;
+
+    return pack(ch, &b) == APB_PP_OK ? packed_crc : 0;
+}
+
+/* ------------------------------------------------------- Boarding Pass */
+
+/* Version 4, Departure 16, ticket 32, character check 16, seed 16: 84 bits, one zero
+ * bit, 17 symbols and a check symbol. See docs/boarding.md. */
+#define PASS_SYMBOLS 17
+
+uint8_t apb_pass_encode(const apb_pass *pass, char *out)
+{
+    bitio b;
+
+    start_bits(&b);
+    put_bits(&b, APB_PASS_VERSION, 4);
+    put_bits(&b, pass->departure, 16);
+    put_bits(&b, (uint16_t)(pass->ticket >> 16), 16);
+    put_bits(&b, (uint16_t)(pass->ticket & 0xFFFFu), 16);
+    put_bits(&b, pass->check, 16);
+    put_bits(&b, pass->seed, 16);
+    put_bits(&b, 0, 1);
+    write_symbols(&b, out);
+    return APB_PP_OK;
+}
+
+uint8_t apb_pass_decode(const char *in, apb_pass *pass)
+{
+    uint8_t count = 0;
+    int8_t v;
+    bitio b;
+
+    for (; *in != '\0'; ++in) {
+        if (is_separator(*in)) {
+            continue;
+        }
+        v = symbol_value(*in);
+        if (v < 0) {
+            return APB_PP_SYMBOL;
+        }
+        if (count > PASS_SYMBOLS) {
+            return APB_PP_LENGTH;
+        }
+        symbols[count++] = (uint8_t)v;
+    }
+    if (count != PASS_SYMBOLS + 1) {
+        return APB_PP_LENGTH;
+    }
+    if (line_check(symbols, PASS_SYMBOLS) != symbols[PASS_SYMBOLS]) {
+        return APB_PP_LINE_CHECK;
+    }
+    start_bits(&b);
+    for (v = 0; v < PASS_SYMBOLS; ++v) {
+        put_bits(&b, symbols[(uint8_t)v], 5);
+    }
+    b.pos = 0;
+    if (get_bits(&b, 4) != APB_PASS_VERSION) {
+        return APB_PP_VERSION;
+    }
+    pass->departure = get_bits(&b, 16);
+    pass->ticket = (uint32_t)get_bits(&b, 16) << 16;
+    pass->ticket |= get_bits(&b, 16);
+    pass->check = get_bits(&b, 16);
+    pass->seed = get_bits(&b, 16);
+    return get_bits(&b, 1) ? APB_PP_CHECKSUM : APB_PP_OK;
 }
 
 uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line)

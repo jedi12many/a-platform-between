@@ -4,7 +4,9 @@
    picks and a fixed seed, and the transcript must match tests/vm/expected/NAME.txt
    (reviewed by hand against the script; dice checked against an independent
    xorshift16). The sim65 (6502) build must produce the same transcript. A pick of
-   '@name' boards a traveler from tests/vm/travelers.txt at the boarding desk.
+   '@name' boards a traveler from tests/vm/travelers.txt at the boarding desk;
+   '@pass:NAME:DEPARTURE:TICKET:SEED' types a Boarding Pass issued to that traveler by
+   tools/passport/boarding.py. A seed of '-' asks for a pass at the desk.
 2. Coverage: together, the playthroughs of each Departure in COVERED must run every
    instruction in it, so every route, check outcome and race or class passage has been
    played and reviewed. The only code exempt is the chapter-title preamble of a scene
@@ -35,6 +37,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools", "passport"))
 
 from codegen import crc16  # noqa: E402
 from image import decode, read_car, read_depot  # noqa: E402
+import boarding  # noqa: E402
 import passport  # noqa: E402
 import registry  # noqa: E402
 from manifest import fits, manifest  # noqa: E402
@@ -87,7 +90,11 @@ def cases(with_traveler=False):
         tokens = []
         who = None if picks.startswith(":") else "kestrel"
         for t in picks.split(","):
-            if t.startswith("@"):
+            if t.startswith("@pass:"):
+                _, who_for, dep, ticket, pass_seed = t.split(":")
+                tokens.append(":" + boarding.issue("".join(known[who_for]), int(dep),
+                                                   int(ticket), int(pass_seed)))
+            elif t.startswith("@"):
                 if t[1:] not in known:
                     fail(f"{name}: no traveler {t[1:]} in tests/vm/travelers.txt")
                     continue
@@ -135,6 +142,22 @@ def ratings(who):
     for e in reg["skills"].values():
         out[e["display"]] = ch["stats"][e["stat"]] // 2 + ch["training"].get(e["id"], 0)
     return out
+
+
+def pass_seed(picks, transcript):
+    """The seed of the Boarding Pass a playthrough boarded with (its ticket is on the
+    receipt), or 1 if it travelled without one."""
+    m = re.search(r", ticket (\d+),", transcript)
+    if not m:
+        return 1
+    for tok in reversed(picks.split(",")):
+        try:
+            p = boarding.decode(tok[1:])
+        except passport.PassportError:
+            continue
+        if p["ticket"] == int(m.group(1)):
+            return p["seed"]
+    raise AssertionError("no typed pass has the receipt's ticket")
 
 
 def dice(name, seed, transcript, who):
@@ -198,7 +221,8 @@ def playthroughs(update):
                 expected = f.read()
             if native != expected:
                 fail(f"{name}: transcript differs from tests/vm/expected/{name}.txt")
-        rerolled = dice(name, seed, native, who) if who else 0
+        rolled = pass_seed(picks, native) if seed == "-" else seed
+        rerolled = dice(name, rolled, native, who) if who else 0
         receipt_fits(name, src, native)
         code, sim, err = run(["sim65", "build/harness.sim", out, seed, picks], timeout=600)
         if sim != native:

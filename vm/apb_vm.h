@@ -29,8 +29,19 @@ enum {
 
 /* The receipt (apb_receipt, in apb.h) is what a Departure hands back. */
 
-/* Load and check the image, and board `snapshot` (copied). Returns 0, or
- * APB_VM_ERROR with apb_vm_error() set. `seed` seeds the dice. */
+/* Load and check the image's depot, so apb_vm_departure() can be asked before
+ * boarding (to check a Boarding Pass). Optional: boarding opens it if needed.
+ * Returns 0, or APB_VM_ERROR with apb_vm_error() set. */
+uint8_t  apb_vm_open(void);
+uint16_t apb_vm_departure(void);
+
+/* Board `snapshot` (copied) with a Boarding Pass: it must be for this Departure and
+ * this character as they are (apb_passport_check). The pass seeds the dice, and its
+ * ticket goes into the receipt. Returns 0, or APB_VM_ERROR with apb_vm_error() set. */
+uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass);
+
+/* Board without a pass (tests, and play that won't be stamped): `seed` seeds the
+ * dice and the receipt's ticket is 0. */
 uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed);
 
 /* Play until the Departure ends or the image turns out to be bad. */

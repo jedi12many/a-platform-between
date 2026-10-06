@@ -118,9 +118,11 @@ build/the-fare.apd: content/s1/00-the-fare/the-fare.qs | build
 play: build/apb build/the-fare.apd
 	./build/apb build/the-fare.apd
 
-# A recorded terminal playthrough must match its reviewed transcript.
+# A recorded terminal playthrough must match its reviewed transcript. It boards with a
+# Boarding Pass (seed 1985) from tools/passport/boarding.py issue "<Kestrel's Passport>"
+# 0 1985 1985, typed loosely the way a player might.
 test-term: build/apb build/the-fare.apd
-	./build/apb --seed 1985 --choices tests/term/fare-edge.choices build/the-fare.apd > build/term-fare-edge.txt
+	./build/apb --choices tests/term/fare-edge.choices build/the-fare.apd > build/term-fare-edge.txt
 	diff tests/term/fare-edge.expected build/term-fare-edge.txt
 	@awk 'length > 40 { print "line over 40 columns: " $$0; bad = 1 } END { exit bad }' build/term-fare-edge.txt
 	@echo "terminal: transcript matches, nothing over 40 columns"

@@ -5,6 +5,9 @@
  *
  *   harness DIR SEED SCRIPT       e.g. harness build/vm/tiny 1985 2,1
  *
+ * SEED '-' asks for a Boarding Pass at the desk (after the Passport, or for the built-in
+ * traveler), which then seeds the dice; travelling without one uses seed 1.
+ *
  * SCRIPT is a comma-separated list. A number picks from a menu (1-based); a token
  * starting with ':' is a typed line (':' alone is a blank line). If the script starts
  * with a typed line, the traveler boards at the boarding desk; otherwise the built-in
@@ -158,6 +161,7 @@ void apb_vm_trace(uint8_t car_no, uint16_t pc)
 
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static apb_character traveler;
+static apb_pass pass;
 
 static void print_receipt(const apb_receipt *r)
 {
@@ -166,6 +170,9 @@ static void print_receipt(const apb_receipt *r)
     printf("[receipt: departure %u, %s, xp %u, debt paid %u added %u",
            r->departure, r->outcome == APB_VM_COMPLETE ? "complete" : "failed",
            r->xp, r->debt_paid, r->debt_added);
+    if (r->ticket) {
+        printf(", ticket %lu", (unsigned long)r->ticket);
+    }
     printf(", gained");
     for (i = 0; i < r->gained_count; ++i) printf(" %u", r->gained[i]);
     printf(", lost");
@@ -197,7 +204,17 @@ int main(int argc, char **argv)
     if (picks[0] == ':') {
         apb_desk_run(&traveler);
     }
-    if (apb_vm_board(&traveler, (uint16_t)atoi(argv[2])) != 0) {
+    if (strcmp(argv[2], "-") == 0) {
+        if (apb_vm_open() != 0) {
+            printf("[refused: %s]\n", apb_vm_error());
+            return 0;
+        }
+        result = apb_desk_pass(&traveler, apb_vm_departure(), &pass)
+                 ? apb_vm_board_pass(&traveler, &pass) : apb_vm_board(&traveler, 1);
+    } else {
+        result = apb_vm_board(&traveler, (uint16_t)atoi(argv[2]));
+    }
+    if (result != 0) {
         printf("[refused: %s]\n", apb_vm_error());
         return 0;
     }

@@ -768,13 +768,14 @@ static uint8_t rating_value(uint8_t r)
     return r < APB_STAT_COUNT ? ch.stat[r] : apb_skill(&ch, (uint8_t)(r - SKILL_BASE));
 }
 
-uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed)
-{
-    uint8_t i;
+static uint8_t opened;
 
+uint8_t apb_vm_open(void)
+{
     failed = 0;
     error_buf[0] = '\0';
     car_index = 0xFF;
+    opened = 0;
     if (!load_depot()) {
         return APB_VM_ERROR;
     }
@@ -783,6 +784,43 @@ uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed)
         return APB_VM_ERROR;
     }
 #endif
+    opened = 1;
+    return 0;
+}
+
+uint16_t apb_vm_departure(void)
+{
+    return dep_id;
+}
+
+uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass)
+{
+    if (!opened && apb_vm_open() != 0) {
+        return APB_VM_ERROR;
+    }
+    if (pass->departure != dep_id) {
+        fail("pass is for another Departure", 0);
+        return APB_VM_ERROR;
+    }
+    if (pass->check != apb_passport_check(snapshot)) {
+        fail("pass is for another character", 0);
+        return APB_VM_ERROR;
+    }
+    if (apb_vm_board(snapshot, pass->seed) != 0) {
+        return APB_VM_ERROR;
+    }
+    receipt.ticket = pass->ticket;
+    return 0;
+}
+
+uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed)
+{
+    uint8_t i;
+
+    if (!opened && apb_vm_open() != 0) {
+        return APB_VM_ERROR;
+    }
+    opened = 0;                 /* the next board opens the image again */
     memcpy(&ch, snapshot, sizeof(ch));
     memset(flags, 0, sizeof(flags));
     for (i = 0; i < var_count; ++i) {
