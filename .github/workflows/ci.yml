@@ -13,6 +13,9 @@ jobs:
       - name: Install cc65
         run: sudo apt-get update && sudo apt-get install -y cc65
 
+      - name: Generated registry matches registry/*.txt
+        run: make check-registry
+
       - name: Tests (native)
         run: make test
 
@@ -22,8 +25,14 @@ jobs:
       - name: Native vs 6502 crosscheck
         run: make crosscheck
 
-      - name: Python Passport reference reads the C output
+      - name: Python tools (Passport reference, registry, Quest Script compiler)
         run: make test-python
+
+      - name: Every Departure compiles and verifies
+        run: make check-content
+
+      - name: Story VM (playthroughs on PC and 6502, damaged images under sanitizers)
+        run: make test-vm
 
       - name: Build C64 demo
         run: make c64

@@ -23,11 +23,22 @@ Party Departures are written for 2–4 characters with party roles in mind.
   - solo, controlling up to four of your own characters;
   - with friends, each bringing one or more;
   - mixed, filling empty slots from your roster.
-- Everyone who finishes gets XP, loot and their share of Debt reduction.
+- Everyone who finishes gets XP, loot and their share of Debt reduction, as a receipt
+  applied to their character as it is by then. A character in a weeks-long party game can
+  keep playing elsewhere meanwhile, and nothing is lost. See [boarding.md](boarding.md).
+
+### Playing together across machines
+
+Story choices are voted on; encounters are turn-based with everyone declaring at once.
+Neither depends on machine speed, so a C64 and a modern PC play as equals, and only votes
+and actions travel over the network. See *Two modes: story and encounters* in
+[engine-plan.md](engine-plan.md).
 
 ### Choices in a party
 
-- Group decisions are made by the party (a vote, or the leader decides; set per Departure).
+- **Story decisions are voted on.** Every player picks; majority wins; a tie goes to the
+  party leader, or to the Stationmaster's coin if the party prefers.
+- **Personal moments** let each player choose for their own character instead.
 - Party Echoes are written to **every participating Passport**.
 - Each character's own Echoes are in play: your spared bandit and my rescued wolf can turn
   up in the same fight.

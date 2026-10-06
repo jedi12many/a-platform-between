@@ -1,0 +1,30 @@
+=== The Gate
+An iron gate, and a moth-winged guard with a lantern for a head.
+  1) Pay the toll
+  2) Leave
+> 1
+The guard bows. Its light dims politely.
+  1) Pay the toll
+  2) Go through
+  3) Leave
+> 2
+Lanterns everywhere. One of them is looking at you. There are 0 now.
+  1) Wave
+  2) Go back
+> 1
+Lanterns everywhere. One of them is looking at you. There are 1 now.
+  1) Wave
+  2) Go back
+> 1
+Lanterns everywhere. One of them is looking at you. There are 2 now.
+  1) Wave
+  2) Go back
+> 2
+An iron gate, and a moth-winged guard with a lantern for a head.
+  1) Pay the toll
+  2) Go through
+  3) Leave
+> 3
+You walk away. Somewhere, a lantern goes out.
+[receipt: departure 900, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

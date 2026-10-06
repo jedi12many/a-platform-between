@@ -29,6 +29,10 @@
 
 ## Phase 4: the Waystation online
 
+The Waystation is a website: the station you visit between trains. See
+[waystation-web.md](waystation-web.md). A static first version (W1) can come much earlier.
+
+
 - Social hub: profiles, lobby, trading, rosters. Retro players join by uploading Passports.
 - Server-authoritative rules using the Phase 1 core.
 - Daily Deep Yards seeds and leaderboards.

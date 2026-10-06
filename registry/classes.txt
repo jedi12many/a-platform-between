@@ -1,0 +1,9 @@
+# Classes. Append only: an id, once shipped, never changes.
+# The Passport stores a class in 4 bits (at most 16).
+#
+# id  NAME        bonus     tags                  "Shown as"
+0     WARDEN      MIGHT     MELEE     ENDURANCE   "Warden"
+1     ROGUE       GRACE     STEALTH   RANGED      "Rogue"
+2     TINKER      WITS      TECH      LORE        "Tinker"
+3     CHANNELER   PRESENCE  CHANNEL   INTUITION   "Channeler"
+4     MEDIC       WITS      MEDICINE  SURVIVAL    "Medic"

@@ -4,7 +4,8 @@ Quest Script is the language Departures are written in, both ours and the commun
 Branch Lines. It is plain text, and it's meant to read like a story with a few marks in
 the margin.
 
-> **Status:** v0 draft (milestone E0). Nothing is final until the compiler exists (E1).
+> **Status:** v0. Check a script with `python3 tools/qsc/qsc.py check FILE.qs`; compile it
+> with `python3 tools/qsc/qsc.py build FILE.qs -o FILE.apd`.
 > Features marked *(official only)* are refused in Branch Lines.
 
 ## A whole Departure, small
@@ -48,8 +49,10 @@ A Departure is one or more `.qs` files (UTF-8 text). The **header** comes first,
 **declarations**, then **chapters** and **scenes**.
 
 - `//` starts a comment, to the end of the line.
-- Indentation is how blocks are grouped (choices, `if`, `check`). Use 4 spaces. Tabs are
-  an error, because they look the same as spaces but aren't.
+- Indentation is how blocks are grouped (choices, `if`, `check`): a block is everything
+  indented deeper than the line that opens it. 4 spaces is the habit; continuation lines
+  under a `check` result can line up with its text. Tabs are an error, because they look
+  the same as spaces but aren't.
 - Names (scenes, flags, variables) are `lower_case_with_underscores`. Game words (stats,
   races, items, Echoes) are `UPPER_CASE`.
 - Keywords (`if`, `else`, `check`, `flag`, `var`, ...) are lower case, so prose that
@@ -70,6 +73,7 @@ A Departure is one or more `.qs` files (UTF-8 text). The **header** comes first,
 | `realm` | yes | `tl N, ml N`: the realm's Tech and Magic Levels, 0–9. Drives Translation. |
 | `levels` | yes | The level band, for example `2-5`. |
 | `start` | yes | The scene the Departure begins in. |
+| `linear` | no | `yes` if the Departure is deliberately one road (a prologue, say): turns off the "only one road to victory" warning. |
 
 ## Declarations
 
@@ -106,8 +110,21 @@ Lines of plain text are what the player reads.
 - Text is ASCII. Curly quotes, apostrophes, `—` and `…` are converted for you
   (`"`, `'`, `--`, `...`). Other characters are an error, because the old machines can't
   show them.
-- A line can't *start* with `*`, `+`, `~`, `->`, `==`, `if`, `else`, `check` or a
+- **Fixed lines.** A line starting with `|` is printed on its own line, exactly as written
+  (spaces included), instead of joining the paragraph. Use it for signs, departure boards,
+  verse and lists. Keep `|` lines to 38 characters so they fit a 40-column screen.
+
+```
+The letters settle long enough to read:
+
+| KEPLER-NINE    PLAT 6  DELAYED 18 MIN
+| ASHMOUTH       PLAT 2  LAST TRAIN
+```
+
+- A line can't *start* with `*`, `+`, `~`, `->`, `==`, `|`, `if`, `else`, `check` or a
   `{`; those mean something. Start the line with `\` to print it as text anyway.
+- Any text line can end with commands or a jump: `You find a keycard. ~ give KEYCARD`, or
+  `You run. -> corridor`.
 
 ### Inserting values
 
@@ -129,8 +146,11 @@ Lines of plain text are what the player reads.
     ~ give KEYCARD
 ```
 
+- Choices come last in a scene, after its text: they're its menu. A choice can't go
+  inside an `if`; put the condition on the choice instead (`+ {met_fen} [...]`).
 - `+` is a choice that stays on the menu. `*` disappears once it has been picked.
-- The label goes in `[ ]`. Keep it under 37 characters so it fits a C64 line.
+- The label goes in `[ ]`. Keep it to 37 characters so it fits a C64 line. Labels are
+  plain text: `{name}` and friends aren't inserted there.
 - `-> scene` after the label goes straight there.
 - Otherwise, the indented lines under the choice run, and then **the scene's menu comes
   back** (without repeating the scene's text). End the block with `-> scene` to go
@@ -341,13 +361,15 @@ Rules for every roadblock:
 - **Leave it standing.** A roadblock the player skipped is still there on a Rewind or a
   later visit.
 
-### Compiler help (planned)
+### Compiler help
 
-The compiler maps every route from the start to each `~ end complete` and warns when:
+The compiler maps every route from the start to each `~ end complete` and warns when
+every route to an ending passes through the same scene ("only one road to victory"), or
+when no route reaches an ending at all. Mark a deliberately linear Departure with
+`linear: yes` in the header.
 
-- only one route reaches an ending;
-- every route runs through the same roadblock;
-- a roadblock scene has no way to leave without passing it.
+Planned with encounters (E3): a warning when a fight has no way to leave without
+passing it.
 
 ## Branch Lines: what's different
 
@@ -376,5 +398,17 @@ The compiler tells you when you hit one, and where.
 
 ## Not in v0
 
-Planned, not yet designed: fights (`fight`, milestone E3), random tables, reusable
+Planned, not yet designed: encounters (`fight`, milestone E3), which hand off to the battle
+map and come back with a result, for example:
+
+```
+== mountain_path
+The switchbacks narrow to a ledge. Snow, wind, and then the rocks start moving.
+fight ROCK_TROLLS ambush            // starting positions: the party strung out
+    won:  The last troll topples into the gorge. -> castle_gate
+    fled: You scramble back down to the treeline. -> forest_road
+    lost: -> waystation_return
+```
+
+Also planned: party voting options (vote, leader, personal choices), random tables, reusable
 "tunnel" scenes that return to where they were called from, and text styles.

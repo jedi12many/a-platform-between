@@ -1,0 +1,17 @@
+# Skills, each governed by a stat. Append only.
+# The Passport stores skill ids in 4 bits and tags as a 12-bit mask, so there can
+# be at most 12 skills without a new Passport format.
+#
+# id  NAME        stat      "Shown as"
+0     MELEE       MIGHT     "Melee"
+1     ATHLETICS   MIGHT     "Athletics"
+2     RANGED      GRACE     "Ranged"
+3     STEALTH     GRACE     "Stealth"
+4     ENDURANCE   GRIT      "Endurance"
+5     SURVIVAL    GRIT      "Survival"
+6     TECH        WITS      "Tech"
+7     MEDICINE    WITS      "Medicine"
+8     LORE        WITS      "Lore"
+9     PERSUADE    PRESENCE  "Persuade"
+10    CHANNEL     PRESENCE  "Channel"
+11    INTUITION   FATE      "Intuition"

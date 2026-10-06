@@ -28,6 +28,7 @@ make test        # build and run the tests natively
 make test-6502   # run the same tests on the sim65 6502 simulator (needs cc65)
 make crosscheck  # the demo's native and 6502 output must be byte-identical
 make c64         # build the C64 demo: build/demo.prg (needs cc65)
+make check-content  # compile-check every Departure in content/
 make demo        # build and run the native demo
 ```
 
@@ -42,6 +43,8 @@ make demo        # build and run the native demo
 | [Seasons](docs/seasons.md) | Seasons as DLC, carrying over, skipping a season, replaying (Rewind) |
 | [Sidings](docs/sidings.md) | Non-story content: procedural Deep Yards, mini-games |
 | [Parties](docs/parties.md) | Solo vs. party Departures, rosters, bringing four of your own |
+| [Boarding](docs/boarding.md) | One character in several games at once: snapshots, receipts, Travel Stamps |
+| [Waystation on the web](docs/waystation-web.md) | The station is a website: build, shop, trade, meet; the clients are the trains |
 | [Tabletop](docs/tabletop.md) | Platform 0: printed sheets, gamebooks, Conductor modules, coming home |
 | [Rules v0](docs/rules-v0.md) | d100, the 100 scale, skills, powers, creation, levels |
 | [Passport spec](docs/passport-spec.md) | The portable character record: password, file, hub account |

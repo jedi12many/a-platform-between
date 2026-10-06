@@ -43,8 +43,9 @@ Departures jump around in time, so payoffs can go any direction:
 
 ## Storage
 
-- A **global Echo registry**, append-only like the item registry. Each entry: an ID, a kind,
-  a realm, a short name, and its possible states (e.g. SPARED / KILLED / RECRUITED).
+- A **global Echo registry** (`registry/echoes.txt`), append-only like the item registry.
+  Each entry: an ID, a kind, the Departure that plants it, a short name, its possible
+  states (e.g. SPARED / KILLED / RECRUITED) and which one is the canon default.
 - The Passport holds **8 active Echoes**: ID + state, about 12 bits each.
 - When slots are full, the oldest Echo moves to your **Legend**. (Rules core v0 evicts
   the oldest; preferring resolved Echoes is a later refinement.) Modern builds

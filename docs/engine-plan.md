@@ -47,7 +47,7 @@ What a Departure is made of:
 | **Scene** | A location or moment: text, an optional picture, and a menu of choices. |
 | **Choice** | A menu line, optionally gated (by a flag, stat, item, Echo or check). |
 | **Check** | d100 + a stat or skill against a target number, branching on fail / cost / success / crit. |
-| **Encounter** | A fight: enemy group, zones, win/lose/flee branches. |
+| **Encounter** | A fight on a battle map: terrain, enemies, starting positions (set by how the party arrived), and win/lose/flee branches. |
 | **Flags and vars** | Story memory inside one Departure. |
 | **Echoes** | Story memory across Departures (plant, read with canon default, transform). |
 | **Rewards** | XP, items, Debt changes, written to the Passport at the end. |
@@ -139,6 +139,89 @@ which produce a transcript of everything the game printed. Transcripts are check
 - Writers get this for free: "play the whole Departure in two seconds, every way we've
   recorded."
 
+## Two modes: story and encounters
+
+A Departure plays like a session with a good game master. Most of it is **story mode**:
+the situation is described, the party talks it over and decides. When it comes to a
+fight, the map comes out: **encounter mode** is turn-based and tactical, like players
+putting their minis on a map the DM just drew.
+
+### Story mode: the party decides
+
+- The **Stationmaster presents the ticket**, and the party decides how to tackle it. At a
+  table, the Conductor can take any plan the players invent. On a computer we can't be that
+  flexible, so each decision offers **a few good options**, written to be genuinely
+  different (the many-roads pillar).
+- **The party votes.** Every player picks an option; the votes are shown as they come in.
+  Majority wins. A tie goes to the party leader (or, if the party prefers, to a coin the
+  Stationmaster flips).
+- **Solo, you are the vote.**
+- **Some moments are personal.** A scene can ask every player to choose for their own
+  character (what you say to the Stationmaster, what you take from the vault) instead of
+  voting.
+- **Then the story delivers.** The choice leads into the scenes it implies: the party
+  chose the mountain path to the castle, so the narration follows them up the switchbacks,
+  through the snow, until the rocks start moving. That's the ambush, and the encounter.
+- Story mode isn't turn-based, and isn't timed by default. Voting can have an optional
+  timer the party sets.
+
+### Encounter mode: the map comes out
+
+- **Turn-based, on a battle map**: a small grid with terrain, cover and the party's
+  positions, drawn on screen the way a DM sketches one on a mat. The C64 has done this
+  before (the Gold Box games), and at the table it's literally a map and minis.
+- **How you got here shapes the fight.** An ambush on the mountain path starts with the
+  party strung out on a ledge; sneaking in by the river starts with them unseen. The story
+  choice sets the starting positions and who acts first.
+- **Each round, everyone declares an action at once**, then the round resolves in
+  initiative order. Nobody waits through other players' turns, and clicking faster never
+  helps.
+- **Retreat is always an option**, and every encounter ends with a result the story picks
+  up: won, lost, fled, or something the Departure defines (parleyed, captured).
+
+### Every machine plays as equals
+
+Co-op will mix machines: a modern PC next to a C64 Ultimate on a network link. Neither
+mode depends on machine speed:
+
+- Story mode waits for people (reading and voting), not processors.
+- Encounters are turn-based with simultaneous declaration: thinking speed matters,
+  machine speed doesn't.
+- **Turn timers are optional and generous**, set by the party. With none, a game can even
+  be played slowly, a turn a day, like the old play-by-mail games.
+- **Animations never hold up the game.** Each machine animates results at its own pace (or
+  skips them).
+- **Real-time mini-games** (handcar racing, say) stay single-player, or compete through
+  ghosts and leaderboards, never live against each other.
+
+This also keeps tabletop and digital play identical: talk, vote, then put the minis on the
+map.
+
+### How the network works
+
+The whole game is **deterministic**: given the same image, the same starting characters,
+the same random seed and the same list of choices, every machine produces the same result.
+So co-op never sends game state, only choices:
+
+- Each client sends its player's votes and declared actions (a few bytes each) to the host.
+- The **host is authoritative**: it tallies votes, runs the same rules core, picks the
+  random seed, and sends every player the decided choice (or the round's actions) and seed.
+- Each client replays the round locally and shows it. Results match because the rules
+  core is identical everywhere, which the 6502 test runs already prove.
+- A few bytes a turn works over anything, including a C64's WiFi modem at 2400 baud.
+
+The same idea runs through the whole engine. **The only input to the VM is a stream of
+choices.** That one design gives us:
+
+| Feature | It's just… |
+|---|---|
+| Playthrough tests | a recorded list of choices, and the transcript it produces |
+| Co-op | votes and actions from several players, decided by the host into one choice stream |
+| Saves | (later) the starting state plus the choices so far, or a snapshot |
+| Bug reports | "here's my choice list" reproduces the bug exactly |
+
+E1 is single-player, but it's built this way from the start.
+
 ## Milestones
 
 Each one ends with something playable or testable.
@@ -147,15 +230,37 @@ Each one ends with something playable or testable.
 |---|---|---|
 | **E0** | **Specs**: Quest Script v0 (written as a public reference), bytecode and VM spec, HAL interface | Docs reviewed; one real scene written in Quest Script. *Drafted: [quest-script.md](quest-script.md), [vm-spec.md](vm-spec.md), `hal/apb_hal.h`, The Fare chapters 1–2. Awaiting review.* |
 | **E1** | **Text VM on the terminal**: compiler (scenes, text, choices, flags, gotos, checks, items, Echoes) with friendly errors and a route map that warns when a Departure has only one road to victory, VM in C with a load-time image verifier, the **character creator** (point-buy or roll, portable C on the HAL), terminal front end | a new character can be made and *Departure 00: The Fare* (the prologue at the Waystation) played in a terminal, and its transcripts match on sim65 |
-| **E2** | **Starting and ending a Departure**: Passport in, rewards and Echoes out, mid-Departure saves, Rewind | Play *The Fare*, get a Passport, carry it into a test Departure |
-| **E3** | **Combat**: zone-based, turn-based fights in the rules core, called from Quest Script | A fight in *The Fare*, covered by transcript tests |
+| **E2** | **Starting and ending a Departure**: boarding snapshots and receipts (see [boarding.md](boarding.md)), applying receipts in the rules core, Boarding Pass and Travel Stamp formats, reward manifests from the compiler, mid-Departure saves, Rewind | Play *The Fare*, apply its receipt to a Passport, carry it into a test Departure; two receipts from overlapping Departures both land |
+| **E3** | **Encounters**: turn-based fights on a battle map in the rules core, called from Quest Script; voting for co-op story choices is designed alongside | A fight in *The Fare*, covered by transcript tests |
 | **E4** | **C64 front end**: text window, menus, status bar, picture area, disk loading of cars, `.d64` disk images | *The Fare* playable on a C64 (VICE emulator) |
 | **E5** | **Vertical slice**: chapter 1 of *Eighteen Minutes* | Playable on terminal and C64 |
 | **E6** | **Modern front end**: SDL2 desktop and browser builds | *The Fare* and the slice playable in a browser |
+| **W1** | **The Waystation, static site**: creator, Passport editing and level-ups, tabletop sheets, with the rules core as WebAssembly. Can start any time after E1. See [waystation-web.md](waystation-web.md). | A character made in the browser boards *The Fare* in the terminal |
 | **E7** | **Deep Yards prototype**: seeded procedural floors | A 10-floor descent playable on terminal and C64 |
 
 After E7: the browser Workshop for community authors, Apple II, DOS, Amiga and SNES
 front ends, the full Departure 01, party support.
+
+### E1 in detail
+
+**Goal:** make a character and play *The Fare* start to finish in a terminal, with
+identical transcripts on the PC and the 6502.
+
+| Step | What | Done when |
+|---|---|---|
+| **E1.1 Registry as data** | Items, Echoes, skills, races and classes in one text file each, under `registry/`. A script generates `apb_registry.h` and the tables the compiler and Python tools use. | The header is generated and the build is unchanged. *Done.* |
+| **E1.2 Compiler front half** (`tools/qsc/`, Python) | Lexer and parser for Quest Script v0, name resolution, friendly errors with line numbers and "did you mean". | `the-fare.qs` parses; a test file of broken scripts gives the right messages. *Done.* |
+| **E1.3 Compiler back half** | Code generation per the VM spec, byte-pair text compression, the `.apd` writer, and the route map ("only one road to victory" warnings). | `the-fare.apd` builds under the size limits. *Done: 5.5 KB, text at 55%.* |
+| **E1.4 Story VM** (`vm/`, C) | Loader and verifier, the instruction loop, text decoding, menus. All input arrives as choices through the HAL. | A hand-made image runs; corrupt images are refused, not crashed. *Done: The Fare plays on PC and 6502 with identical transcripts; 300 damaged images, no crashes.* |
+| **E1.5 Boarding desk** (C, on the HAL) | How a client starts: enter a Passport password, check it, and board. Characters are made at the web Waystation ([waystation-web.md](waystation-web.md)); until W1 exists, `tools/passport` makes them for testing. Boarding Passes arrive with E2. | A Passport can be entered, by hand and by a choice list in tests, and a mistyped one is caught with its line number |
+| **E1.6 Terminal front end** (`fe/term/`) | The stdio HAL: wrapping, menus, status line. A `--choices file` mode that reads choices and writes a transcript. | *The Fare* is playable by hand |
+| **E1.7 Playthrough tests** | Choice lists covering every route through *The Fare*, golden transcripts, run natively and on sim65. | Transcripts match on both; CI runs them |
+
+Order: E1.1, then E1.2–E1.3 (compiler) and E1.4–E1.5 (C) can proceed side by side, then
+E1.6 and E1.7.
+
+Out of scope for E1: combat (E3), saves and Passport hand-off (E2), pictures, the C64
+screen (E4).
 
 ### Departure 00: The Fare
 
@@ -230,6 +335,13 @@ rewards, possibly becoming official.
   the Branch Line ledger), or only use the official registries.
 
 ## Risks
+
+- **C64 memory (measured at E1.4).** The VM is about 9.9 KB of 6502 code and needs about
+  21 KB of buffers (a 16 KB car, a 4 KB depot). A test program that also links the full
+  stdio library and the Passport code overflows the default C64 memory layout by about
+  1.3 KB. Plan for E4: bank out BASIC ROM for 8 KB more RAM, size the depot buffer to the
+  image, leave stdio and the Passport encoder out of the game itself, and look for code
+  size savings in the VM.
 
 - **cc65 optimizer bugs.** Already hit one. Mitigation: every test runs on sim65, so we
   find them.

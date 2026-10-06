@@ -237,6 +237,45 @@ static void test_progression(void)
     CHECK(apb_health_max(&ch) == 235);
 }
 
+static void test_registry(void)
+{
+    apb_realm bronze;
+    apb_translation t;
+
+    /* Generated from registry/: spot checks that the tables match the files. */
+    CHECK(APB_RACE_COUNT == 7 && APB_CLASS_COUNT == 5 && APB_SKILL_COUNT == 12);
+    CHECK(strcmp(apb_race_names[APB_SALVAGED], "Salvaged") == 0);
+    CHECK(strcmp(apb_race_names[APB_RAD_DRYAD], "Rad-Dryad") == 0);
+    CHECK(strcmp(apb_class_names[APB_CHANNELER], "Channeler") == 0);
+    CHECK(strcmp(apb_skill_names[APB_SK_INTUITION], "Intuition") == 0);
+    CHECK(apb_race_bonus[APB_SALVAGED] == APB_MIGHT);
+    CHECK(apb_class_bonus[APB_MEDIC] == APB_WITS);
+    CHECK(apb_class_tags[APB_WARDEN][0] == APB_SK_MELEE);
+    CHECK(apb_class_tags[APB_WARDEN][1] == APB_SK_ENDURANCE);
+    CHECK(apb_skill_stat[APB_SK_INTUITION] == APB_FATE);
+
+    CHECK(apb_items[APB_ITEM_PULSE_RIFLE].archetype == APB_ARCH_RANGED);
+    CHECK(apb_items[APB_ITEM_PULSE_RIFLE].tier == 4);
+    CHECK(apb_items[APB_ITEM_PULSE_RIFLE].damage == APB_DMG_ENERGY);
+    CHECK(apb_items[APB_ITEM_PULSE_RIFLE].native_tl == 8);
+    CHECK(apb_items[APB_ITEM_TICKET_STUB].native_ml == 5);
+    CHECK(apb_items[APB_ITEM_NONE].tier == 0);
+    CHECK(strcmp(apb_item_names[APB_ITEM_TICKET_STUB], "Blank ticket stub") == 0);
+    CHECK(apb_item_names[APB_ITEM_NONE][0] == '\0');
+
+    /* Registry items Translate directly. */
+    bronze.tl = 2; bronze.ml = 1;
+    apb_translate(&apb_items[APB_ITEM_PULSE_RIFLE], &bronze, APB_ALL_ARCHETYPES, 0, &t);
+    CHECK(t.form == APB_FORM_TECH && t.level == 2 && t.tier == 4);
+
+    /* Canon defaults answer for Echoes a character never earned. */
+    CHECK(apb_echo_defaults[APB_ECHO_WOLF_PUP] == APB_WOLF_PUP_LEFT);
+    CHECK(apb_echo_defaults[APB_ECHO_SEED_VAULT] == APB_SEED_VAULT_DELIVERED);
+    apb_character_init(&ch, "Zed", APB_HUMAN, APB_ROGUE);
+    CHECK(apb_echo_get_or(&ch, APB_ECHO_JACE_CUTTER,
+                          apb_echo_defaults[APB_ECHO_JACE_CUTTER]) == APB_JACE_CUTTER_KILLED);
+}
+
 static void test_translate(void)
 {
     /* The examples from docs/translation.md. */
@@ -431,6 +470,7 @@ int main(void)
     test_defense();
     test_creation();
     test_progression();
+    test_registry();
     test_translate();
     test_echoes();
     test_passport();

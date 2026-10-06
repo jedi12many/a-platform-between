@@ -10,9 +10,16 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make crosscheck`: the demo's native and 6502 output must be byte-identical.
 - `make c64`: build `build/demo.prg` for the Commodore 64.
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
-  C engine's password.
+  C engine's password; the registry and Quest Script parser tests must pass.
+- `make check-registry`: the generated C registry must match `registry/*.txt`.
+- `make check-content`: every `.qs` file in `content/` must compile to an image the
+  verifier accepts.
+- `make test-vm`: Story VM playthroughs (`tests/vm/cases.txt`) must match their expected
+  transcripts natively and on sim65, and damaged images must never crash the VM under
+  AddressSanitizer/UBSan. After a deliberate change, `python3 tests/vm/run_tests.py
+  --update` rewrites the expected transcripts: read the diff before committing it.
 
-Run all five before pushing; CI runs them too.
+Run all eight before pushing; CI runs them too.
 
 ## Rules-core house rules
 
@@ -33,5 +40,30 @@ The core must build with cc65 for the 6502 and give identical results everywhere
 
 ## Registries
 
-`core/include/apb_registry.h` is append-only. Never reuse or renumber an item or Echo ID;
+Races, classes, skills, items and Echoes live in `registry/*.txt`, the single source of
+truth (see `registry/README.md`). After editing them, run `make registry` to regenerate
+`core/include/apb_registry.h` and `core/src/registry.c`; never edit those two by hand.
+Python tools read the registry through `tools/registry/registry.py`.
+
+The registry is append-only. Never reuse, renumber or reorder an id or an Echo's states;
 Passports in the wild depend on them.
+
+## Quest Script compiler
+
+`tools/qsc/` (Python): `qsc.py check FILE.qs` parses and checks a Departure;
+`qsc.py build FILE.qs -o FILE.apd` compiles it (`--split DIR` for C64-style files);
+`qsc.py dump FILE.apd` verifies and disassembles an image. The language is defined in
+`docs/quest-script.md` and the image format in `docs/vm-spec.md`; keep code and docs in
+step. Opcodes live in `tools/qsc/opcodes.py`. Parser tests live in
+`tests/qsc/`: files in `ok/` must be clean, and files in `errors/` mark each expected
+message on its line with `// error: ...` or `// warning: ...`. `test_build.py` checks the
+code generator against bytecode assembled by hand from the spec, round-trips every
+string, and damages images to prove the verifier refuses them without crashing. Error messages are for
+authors, not programmers: say what's wrong in plain words, and suggest the fix.
+
+## Story VM
+
+`vm/` (C, same house rules as `core/`): loads an image through the HAL, verifies it,
+plays it, and fills in a receipt (`docs/boarding.md`). Game text is always ASCII; file
+names and error messages are C strings in the platform's own character set. Never trust
+the image: every operand is checked when it's used, not only at load.

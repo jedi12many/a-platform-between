@@ -1,0 +1,72 @@
+=== The Static
+[picture 0 static]
+Static.
+Not the sound. The feeling: every part of you tuned to the wrong channel at once.
+Then a hand. It reaches through the end of everything, takes hold of whatever is left of you, and pulls.
+  1) Let it
+  2) Fight it
+> 2
+You fight. It is like fighting the tide with your teeth. The hand doesn't mind; it has done this before.
+[picture 1 platform_bench]
+You are sitting on a wooden bench, and you are breathing, and both of those things are wrong.
+The bench stands on a railway platform under a roof of green iron and cracked glass. Beyond the glass there is no sky, only a slow grey shimmer, like rain that has forgotten which way is down. A sign hangs from the ironwork:
+PLATFORM 1 -- ALL DEPARTURES
+You remember dying. You remember it very clearly.
+  1) Remember it
+> 1
+It comes back in pieces. First, the body it happened to.
+Iron joints, old code, and a vow you took from a book you found in a scrapyard. You were a knight. You are still technically correct about that.
+Then what you were doing, when it happened.
+  1) Remember the rest
+> 1
+You were holding a door. Behind it, people you had promised to protect. In front of it, something that did not care about promises. You held it for a long time. Long enough.
+Somewhere in your memory banks, a log entry is still open: CAUSE OF DEATH, followed by nothing.
+That was the end. You are sure of it.
+The bench creaks. Somewhere down the platform, a train whistle sounds, mournful and far away.
+  1) Stand up
+> 1
+=== The Buffer Stop
+[picture 2 concourse]
+The platform opens into a great hall. Iron arches, a tiled floor worn into paths by more feet than you can imagine, and above it all a departure board, its letters flipping and clattering though no one is watching.
+Across the hall, warm light spills from a doorway under a painted sign: a rail track ending in a cheerful red barrier. THE BUFFER STOP.
+  1) Read the departure board
+  2) Walk back to the platform edge
+  3) Go into the Buffer Stop
+> 3
+[picture 3 buffer_stop]
+The Buffer Stop is warm, and crowded, and wrong in a dozen small ways that add up to cozy. A knight in rusted plate is arguing with a cloud of moths. Something made of glass is drinking something made of light.
+Behind the bar, a tree is wiping down glasses. Its bark glows faintly green, and the rag in its twig-hand keeps catching fire, and it keeps patting it out without looking.
+In the corner booth, alone, sits a tall figure in a velvet coat. A brass ledger lies closed on the table in front of it. It is watching you the way a stationmaster watches a clock.
+  1) Talk to the bartender
+  2) Ask Fen where you are
+  3) Go to the corner booth
+> 1
+"Fen," says the tree, before you can ask. "Bartender. Rad-Dryad, same as some of you, different as most. Drink?"
+"Oil, I suppose," says Fen. "No. Don't tell me. Something with a little rust in it, for courage."
+  1) Ask Fen where you are
+  2) Go to the corner booth
+> 2
+[picture 4 stationmaster]
+The figure in the velvet coat rises as you approach. It is very tall. Its face is a polite arrangement of shadow, and its voice is warm, and patient, and has never once been surprised.
+"Please, sit. You'll want to sit for this part."
+It opens the brass ledger and turns it toward you. On the page, in a careful hand, someone has begun to write your name, and stopped halfway.
+"We're a little behind on the paperwork," says the Stationmaster. "Would you mind?"
+  1) Say your name
+> 1
+"Kestrel," you say, and the ink finishes the word on its own.
+"Of course," says the Stationmaster. "Warden. Salvaged. Yes, that all matches."
+Below your name, a number writes itself into the ledger, digit by digit. It is a large number.
+"50000," says the Stationmaster, kindly. "Your fare."
+  1) Listen
+> 1
+"You were dead. Now you are not. That is a service, and services are billed." The Stationmaster folds its long hands. "Work off your fare, and I will put you back exactly where I found you, at exactly the moment I found you, with one small change."
+"You'll survive."
+  1) Ask who it is
+  2) Ask what happens if you refuse
+  3) Accept the terms
+> 3
+"Splendid." The Stationmaster closes the ledger. Somewhere far away, a whistle answers.
+"Your first ticket will be at the window in the morning. There is no morning here, of course, but you'll know it when it comes. Fen will find you a bed."
+"Welcome back to the living, Kestrel."
+[receipt: departure 0, complete, xp 5, debt paid 0 added 50000, gained, lost, echoes]
+[level 1, xp 5, debt 50000]

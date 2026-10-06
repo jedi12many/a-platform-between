@@ -254,7 +254,12 @@ Defenses, buffs and items that use them arrive with combat.
 
 ## Combat (milestone E3)
 
-Turn-based, zone-based, designed table-first so it plays the same on paper and on a C64.
+Encounters are turn-based fights on a **battle map**: a small grid with terrain and cover,
+drawn on screen the way a game master sketches one on a mat, and played with minis at the
+table. They're designed table-first so they play the same on paper and on a C64. Each
+round, everyone declares an action at once, then the round resolves in initiative order;
+that keeps co-op fair between fast and slow machines. Between encounters there are no
+turns: that's story mode (see [engine-plan.md](engine-plan.md)).
 Solo hero plus optional companions and Echo allies. Defenses work as above. At high
 levels, opposed rolls matter (both sides roll d100 + skill; the higher total wins), so a level-100
 traveler still meets equals.
