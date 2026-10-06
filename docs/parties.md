@@ -43,7 +43,8 @@ and actions travel over the network. See *Two modes: story and encounters* in
 ### Choices in a party
 
 - **Story decisions are voted on.** Every player picks; majority wins; a tie goes to the
-  party leader, or to the Stationmaster's coin if the party prefers.
+  party leader, or to the Stationmaster's coin if the party prefers. How votes, checks,
+  personal moments and fights work in detail: [party-play.md](party-play.md).
 - **Personal moments** let each player choose for their own character instead.
 - Party Echoes are written to **every participating Passport**.
 - Each character's own Echoes are in play: your spared bandit and my rescued wolf can turn

@@ -460,5 +460,6 @@ The compiler tells you when you hit one, and where.
 
 ## Not in v0
 
-Also planned: party voting options (vote, leader, personal choices), random tables, reusable
+Also planned: party play ([party-play.md](party-play.md): `== scene personal`,
+`check X everyone`, `check X pick`), random tables, reusable
 "tunnel" scenes that return to where they were called from, and text styles.

@@ -204,7 +204,7 @@ the same random seed and the same list of choices, every machine produces the sa
 So co-op never sends game state, only choices:
 
 - Each client sends its player's votes and declared actions (a few bytes each) to the host.
-- The **host is authoritative**: it tallies votes, runs the same rules core, picks the
+- The **host is authoritative** (the details: [party-play.md](party-play.md)): it tallies votes, runs the same rules core, picks the
   random seed, and sends every player the decided choice (or the round's actions) and seed.
 - Each client replays the round locally and shows it. Results match because the rules
   core is identical everywhere, which the 6502 test runs already prove.
@@ -292,7 +292,7 @@ a test Departure; two receipts from overlapping Departures both land.
 | **E3.4 VM and HAL** | The VM hands a fight to the battle engine; the HAL draws the map and asks for actions. Health carries over; `~ heal`. | A test image's fight plays through the harness on PC and 6502. *Done: `FIGHT` runs the battle engine through four HAL calls; health carries over, `~ heal` restores it, saves keep it; five fight playthroughs (won, lost, fled by exit and by roll, an ambush, a sneak) match on PC and 6502 with every roll re-checked, and resume from any story menu. The 6502 harness needs a 4 KB car and 2 KB depot buffer to fit.* |
 | **E3.5 Terminal battle map** | The map at 40 columns, the action menu, the round's results. | A fight is playable by hand. *Done: the map two characters to a square with a key to its squares, a roster (health, the TN to hit each foe), and two menus a turn, "Where to?" (stay, next to or toward a foe, the exit, cover, high ground) and "Then?" (attack with its TN, defend, flee with its TN or take the exit, wait, back), offering only what's possible; events as sentences with every roll. Images now carry foe names. A recorded skirmish in `make test-term`, nothing over 40 columns.* |
 | **E3.6 A fight in *The Fare*** | Something worth fighting, and a road around it. Transcript tests, coverage, saves around fights. | Every route still covered; transcripts match on both. *Done: the Lost Property office off the concourse, its own chapter, keeps every car under 4 KB. Ash rats guard a porter's hook (a new item, id 8). Fight them, creep past (Stealth: a success skips the fight, a cost starts it on your terms, a fail in an ambush) or leave them be; a loss heals 10. Six new playthroughs run every instruction, saved and resumed at every menu, on PC and 6502. The image fuzzer found a menu offset that wrapped past 65535 and got through the verifier; it's fixed, with a regression test.* |
-| **E3.7 Voting (design)** | How a party votes on story choices and declares actions at once. | A reviewed design in this document. |
+| **E3.7 Voting (design)** | How a party votes on story choices and declares actions at once. | A reviewed design. *Drafted for review: [party-play.md](party-play.md). One vote per seat, ties to the leader or the coin, personal moments, party checks, fights declared as intentions worked out at each turn, and the network messages. The VM never sees a vote, only the decision.* |
 
 ### Departure 00: The Fare
 

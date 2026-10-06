@@ -108,8 +108,9 @@ Sight is blocked only by walls, and by other combatants for ranged attacks.
    - **Defend**: +20 to your TN until your next turn.
    - **Help** an ally next to the same foe: +20 to their next attack on it.
    - **Flee** (see below).
-3. In co-op, everyone **declares at once**, then the round plays out in order
-   ([engine-plan.md](engine-plan.md)). Solo, you just choose.
+3. In co-op, everyone **declares at once**, then the round plays out in order: you declare
+   an intention ("next to the rust-guard, attack it"), worked out at your turn
+   ([party-play.md](party-play.md)). Solo, you just choose.
 
 Foes act by a short, printed rule (on the card at the table), so a fight plays the same
 at the table and on the screen:
