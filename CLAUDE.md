@@ -18,8 +18,10 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   transcripts natively and on sim65, and damaged images must never crash the VM under
   AddressSanitizer/UBSan. After a deliberate change, `python3 tests/vm/run_tests.py
   --update` rewrites the expected transcripts: read the diff before committing it.
+- `make test-term`: the terminal front end's recorded playthrough must match
+  `tests/term/fare-edge.expected`, with nothing over 40 columns.
 
-Run all eight before pushing; CI runs them too.
+Run all nine before pushing; CI runs them too. `make play` plays The Fare in a terminal.
 
 ## Rules-core house rules
 
@@ -71,6 +73,8 @@ the image: every operand is checked when it's used, not only at load.
 ## Clients
 
 `client/` holds client code shared by every front end, on the HAL: the boarding desk
-(`desk.c`), where a player types their Passport. Characters are never made in a client;
-they're made at the Waystation website (`docs/waystation-web.md`). For tests,
+(`desk.c`), where a player types their Passport. Front ends live in `fe/`: `fe/term/` is
+the terminal (`build/apb`), which plays an `.apd` or a directory of split files.
+Characters are never made in a client; they're made at the Waystation website
+(`docs/waystation-web.md`). For tests,
 `python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM]` makes one.

@@ -34,6 +34,9 @@ jobs:
       - name: Story VM (playthroughs on PC and 6502, damaged images under sanitizers)
         run: make test-vm
 
+      - name: Terminal front end (recorded playthrough, 40 columns)
+        run: make test-term
+
       - name: Build C64 demo
         run: make c64
 

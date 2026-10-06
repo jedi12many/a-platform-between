@@ -17,6 +17,18 @@ modern PC, on old machines (Commodore 64, Apple II, Amiga, SNES, DOS), and at th
 
 Pre-production. Everything here is a draft for discussion.
 
+## Play The Fare
+
+```sh
+make play
+```
+
+Board with a Passport. To make one for testing (until the Waystation website exists):
+
+```sh
+python3 tools/passport/passport.py new Kestrel SALVAGED WARDEN 70,40,60,45,35,50 ATHLETICS
+```
+
 ## Code
 
 The rules core lives in [`core/`](core/): portable C that builds both for modern machines
