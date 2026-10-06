@@ -785,6 +785,9 @@ uint8_t apb_vm_run(void)
             break;
         }
         op = code[pc];
+#ifdef APB_VM_TRACE
+        apb_vm_trace(car_index, pc);
+#endif
         if (op > OP_LAST || operands[op] == 0) {
             fail("bad opcode", pc);
             break;

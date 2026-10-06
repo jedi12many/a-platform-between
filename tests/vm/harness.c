@@ -148,6 +148,14 @@ void hal_error(const char *msg)
     printf("[error: %s]\n", msg);
 }
 
+#ifdef APB_VM_TRACE
+/* The coverage build lists every instruction it runs on stderr: "car offset". */
+void apb_vm_trace(uint8_t car_no, uint16_t pc)
+{
+    fprintf(stderr, "%u %u\n", car_no, pc);
+}
+#endif
+
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static apb_character traveler;
 

@@ -168,21 +168,17 @@ Nobody leaves the Waystation that way. You understand that now.
 
 == bar
 ~ picture buffer_stop
-if not visited bar
-    The Buffer Stop is warm, and crowded, and wrong in a dozen small ways
-    that add up to cozy. A knight in rusted plate is arguing with a cloud of
-    moths. Something made of glass is drinking something made of light.
+The Buffer Stop is warm, and crowded, and wrong in a dozen small ways
+that add up to cozy. A knight in rusted plate is arguing with a cloud of
+moths. Something made of glass is drinking something made of light.
 
-    Behind the bar, a tree is wiping down glasses. Its bark glows faintly
-    green, and the rag in its twig-hand keeps catching fire, and it keeps
-    patting it out without looking.
+Behind the bar, a tree is wiping down glasses. Its bark glows faintly
+green, and the rag in its twig-hand keeps catching fire, and it keeps
+patting it out without looking.
 
-    In the corner booth, alone, sits a tall figure in a velvet coat. A brass
-    ledger lies closed on the table in front of it. It is watching you the
-    way a stationmaster watches a clock.
-else
-    The Buffer Stop. Fen is wiping glasses. The figure in the velvet coat is
-    still watching.
+In the corner booth, alone, sits a tall figure in a velvet coat. A brass
+ledger lies closed on the table in front of it. It is watching you the
+way a stationmaster watches a clock.
 
 * [Talk to the bartender]
     "Fen," says the tree, before you can ask. "Bartender. Rad-Dryad, same as
@@ -242,15 +238,12 @@ is a large number.
 + [Listen] -> the_terms
 
 == the_terms
-if not visited the_terms
-    "You were dead. Now you are not. That is a service, and services are
-    billed." The Stationmaster folds its long hands. "Work off your fare, and
-    I will put you back exactly where I found you, at exactly the moment I
-    found you, with one small change."
+"You were dead. Now you are not. That is a service, and services are
+billed." The Stationmaster folds its long hands. "Work off your fare, and
+I will put you back exactly where I found you, at exactly the moment I
+found you, with one small change."
 
-    "You'll survive."
-else
-    The Stationmaster waits, patient as a timetable.
+"You'll survive."
 
 * [Ask who it is]
     ~ set asked_who

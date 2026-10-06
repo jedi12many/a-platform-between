@@ -18,6 +18,10 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   transcripts natively and on sim65, and damaged images must never crash the VM under
   AddressSanitizer/UBSan. After a deliberate change, `python3 tests/vm/run_tests.py
   --update` rewrites the expected transcripts: read the diff before committing it.
+  Together, the playthroughs of *The Fare* must run every instruction in it: a passage
+  no case reaches fails the test, so a new route needs a new case. `@name` in a case
+  boards a traveler from `tests/vm/travelers.txt`; every check is re-rolled from the
+  rules and that traveler's Passport.
 - `make test-term`: the terminal front end's recorded playthrough must match
   `tests/term/fare-edge.expected`, with nothing over 40 columns.
 

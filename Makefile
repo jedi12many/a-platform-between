@@ -97,8 +97,12 @@ build/harness.asan: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HD
 	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
 		-o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
 
-# Story VM: playthroughs (native == expected, 6502 == native) and damaged images.
-test-vm: build/harness build/harness.sim build/harness.asan
+# The same harness, listing every instruction it runs: which code the playthroughs cover.
+build/harness.cov: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) -DAPB_VM_TRACE $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
+
+# Story VM: playthroughs (native == expected, 6502 == native), coverage, damaged images.
+test-vm: build/harness build/harness.sim build/harness.asan build/harness.cov
 	python3 tests/vm/run_tests.py
 
 # The terminal front end: `make play` compiles The Fare and plays it.
