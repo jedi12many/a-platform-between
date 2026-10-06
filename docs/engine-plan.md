@@ -46,7 +46,7 @@ What a Departure is made of:
 | **Car** | A loadable chunk, about one chapter. Only one car is in memory on the C64. |
 | **Scene** | A location or moment: text, an optional picture, and a menu of choices. |
 | **Choice** | A menu line, optionally gated (by a flag, stat, item, Echo or check). |
-| **Check** | A d100 roll against a stat or skill, branching on fail / cost / success / crit. |
+| **Check** | d100 + a stat or skill against a target number, branching on fail / cost / success / crit. |
 | **Encounter** | A fight: enemy group, zones, win/lose/flee branches. |
 | **Flags and vars** | Story memory inside one Departure. |
 | **Echoes** | Story memory across Departures (plant, read with canon default, transform). |
@@ -73,7 +73,7 @@ The airlock cycles. Somewhere above you, a calm voice says:
 
 * [Head for the bridge]                 -> bridge
 * [Search the dead technician]
-    check WITS vs 1
+    check TECH tricky
       crit:    You find a keycard *and* the override code. ~ give KEYCARD ~ set knows_code
       success: You find a keycard. ~ give KEYCARD
       cost:    You find a keycard, but the alarm sees you. ~ give KEYCARD ~ set alarm

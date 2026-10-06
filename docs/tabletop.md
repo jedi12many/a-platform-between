@@ -12,12 +12,13 @@ table, then bring them home with everything they earned.
 The rules were built to run on a 1 MHz Commodore 64, so they're small enough to run in
 your head:
 
-- **One roll, d100.** Roll at or under the number on your sheet. No adding dice, no
-  bonus stacks.
-- **Every rating is a percentage.** "Stealth 47" means 47%. Players never need the rules to
+- **One roll, d100 + skill.** Roll, add the number on your sheet, beat the target
+  number. No other dice, no bonus stacks.
+- **On a normal task, every rating is a percentage.** "Stealth 47" means 47% against TN
+  100. Players never need the rules to
   know their chances.
 - **Whole numbers, simple math.** Halving and adding is the hardest arithmetic in the game.
-- **Short tables.** The result table, modifiers, Translation and Dissonance all fit on one
+- **Short tables.** The result table, target numbers, Translation and Dissonance all fit on one
   page.
 
 ## What a tabletop player gets
@@ -28,7 +29,7 @@ Type or paste a Passport password into the Passport Office (or the sheet tool) a
 
 - name, race, class, level, XP;
 - stats, and every **skill's rating already worked out** (half stat + training), with
-  tagged skills marked;
+  tagged skills marked, and each skill's chance at TN 100, 120 and 140;
 - powers and their ranks;
 - health;
 - gear, with how each item **Translates** at different Tech and Magic Levels;
@@ -44,7 +45,7 @@ The sheet tool will build on the Python Passport reference in `tools/passport/`.
   Translation, levelling up. The same rules as [rules-v0.md](rules-v0.md), written for
   reading at a table.
 - **The Conductor's Handbook** (the game master is the **Conductor**): running scenes,
-  setting modifiers, Dissonance, Echoes, awarding XP, and filling in the Passport afterwards.
+  setting target numbers, Dissonance, Echoes, awarding XP, and filling in the Passport afterwards.
 
 ### 3. Departures on paper
 

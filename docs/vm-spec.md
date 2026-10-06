@@ -175,7 +175,7 @@ re-running the scene's entry text or commands.
 | `EQ` `NE` `LT` `LE` `GT` `GE` | 30–35 | — | pop b, pop a, push a ⋄ b |
 | `AND` `OR` | 36–37 | — | pop b, pop a, push logical result |
 | `NOT` | 38 | — | pop a, push !a |
-| `CHECK` | 39 | u8 rating, s8 modifier | d100 against the rating (numbered as for `RATING`) plus the modifier: pushes 0 fail, 1 cost, 2 success, 3 crit (via `apb_check`) |
+| `CHECK` | 39 | u8 rating, u8 tn | d100 + the rating (numbered as for `RATING`) against the TN (50–250): pushes 0 fail, 1 cost, 2 success, 3 crit (via `apb_check`) |
 
 `visited` compiles to `FLAG` on the scene's compiler-allocated flag.
 

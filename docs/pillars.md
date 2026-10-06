@@ -37,7 +37,7 @@ See [echoes.md](echoes.md).
 
 ## 5. Rules that fit on a Commodore 64
 
-Whole numbers, one d100 roll, every rating a plain percentage, identical dice everywhere.
+Whole numbers, one roll (d100 + skill against a target number), identical dice everywhere.
 If the rules run on a 1 MHz 8-bit machine, they run on anything (including a kitchen table),
 and the same fight plays out the same way on every platform. See [rules-v0.md](rules-v0.md).
 

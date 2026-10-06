@@ -201,11 +201,11 @@ else
 
 ## Checks
 
-A check rolls d100 against a stat or skill using the game's rules, then runs the branch
-for the result:
+A check rolls d100 + a stat or skill against a target number (TN), using the game's rules,
+then runs the branch for the result:
 
 ```
-check TECH - 10
+check TECH tricky
     crit:    You find a keycard and the override code.
              ~ give KEYCARD ~ set knows_code
     success: You find a keycard. ~ give KEYCARD
@@ -217,24 +217,26 @@ check TECH - 10
 - Check any **stat** (`MIGHT` `GRACE` `GRIT` `WITS` `PRESENCE` `FATE`) or **skill**
   (`MELEE` `ATHLETICS` `RANGED` `STEALTH` `ENDURANCE` `SURVIVAL` `TECH` `MEDICINE` `LORE`
   `PERSUADE` `CHANNEL` `INTUITION`). Prefer skills; they're what players invest in.
-- Adjust the target with a number (`+ 20`, `- 10`) or a word:
+- Set the TN with a word, or a number after `vs`:
 
-| Word | Same as |
+| Write | TN |
 |---|---|
-| `easy` | `+ 20` |
-| `routine` | `+ 10` |
-| `tricky` | `- 10` |
-| `hard` | `- 20` |
-| `very_hard` | `- 30` |
+| `easy` | 80 |
+| `routine` | 90 |
+| *(nothing)* or `normal` | 100 |
+| `tricky` | 110 |
+| `hard` | 120 |
+| `very_hard` | 130 |
+| `vs 145` | 145 |
 
-  For example `check STEALTH hard`.
+  For example `check STEALTH hard`, or `check MIGHT vs 140` to force the golem's door.
 
 | Result | Roll |
 |---|---|
-| `crit` | 01, or doubles (11, 22 …) at or under the target |
-| `success` | at or under the target |
-| `cost` | up to 20 over: it works, but at a price |
-| `fail` | more than 20 over, or 100 |
+| `crit` | a natural 100, or doubles (11, 22 …) that beat the TN |
+| `success` | d100 + rating beats the TN |
+| `cost` | within 20 under the TN: it works, but at a price |
+| `fail` | lower than that, or a natural 01 |
 
 - A branch can be on the same line after the colon, or indented below it.
 - Leave a branch out and nothing happens for that result, except that a missing `crit`

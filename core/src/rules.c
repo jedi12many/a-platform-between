@@ -3,42 +3,46 @@
 #include "apb.h"
 #include "names.h"
 
-/* ------------------------------------------------- the core roll: d100 */
+/* ------------------------------------------- the core roll: d100 + skill */
 
-uint8_t apb_resolve(uint8_t roll, int16_t target)
+uint8_t apb_resolve(uint8_t roll, int16_t total, int16_t tn)
 {
-    if (target < 1) target = 1;
-    if (target > 100) target = 100;
-
-    if (roll >= 100) return APB_FAIL;
-    if (roll == 1) return APB_CRIT;
-    if (roll <= target) {
+    if (roll <= 1) return APB_FAIL;
+    if (roll >= 100) return APB_CRIT;
+    if (total > tn) {
         return (roll % 11 == 0) ? APB_CRIT : APB_SUCCESS;
     }
-    if (roll <= target + APB_COST_MARGIN) return APB_COST;
+    if (total > tn - APB_COST_MARGIN) return APB_COST;
     return APB_FAIL;
 }
 
-uint8_t apb_check(apb_rng *rng, uint8_t rating, int8_t modifier, apb_roll *out)
+uint8_t apb_check(apb_rng *rng, uint8_t rating, int16_t bonus, int16_t tn, apb_roll *out)
 {
-    int16_t target = (int16_t)(rating + modifier);
-
-    if (target < 1) target = 1;
-    if (target > 100) target = 100;
     out->roll = apb_d100(rng);
-    out->target = (uint8_t)target;
-    out->result = apb_resolve(out->roll, target);
+    out->total = (int16_t)(out->roll + rating + bonus);
+    out->tn = tn;
+    out->result = apb_resolve(out->roll, out->total, tn);
     return out->result;
 }
 
-int16_t apb_vs_defense(uint8_t attack, int16_t bonus, int16_t defense, uint8_t pierce)
+int16_t apb_defense_tn(int16_t defense, int16_t reduce)
 {
-    int16_t d = (int16_t)(defense - pierce);
+    int16_t d = (int16_t)(defense - reduce);
 
-    if (d < 0) {
-        d = 0;
+    return (int16_t)(APB_TN_BASE + (d < 0 ? 0 : d));
+}
+
+uint8_t apb_chance(int16_t rating_and_bonus, int16_t tn)
+{
+    uint8_t roll;
+    uint8_t wins = 0;
+
+    for (roll = 1; roll <= 100; ++roll) {
+        if (apb_resolve(roll, (int16_t)(roll + rating_and_bonus), tn) >= APB_SUCCESS) {
+            ++wins;
+        }
     }
-    return (int16_t)(attack + bonus - d / 2);
+    return wins;
 }
 
 /* -------------------------------------------------------- characters */

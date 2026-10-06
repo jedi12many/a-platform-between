@@ -73,54 +73,51 @@ static void test_resolve(void)
     apb_rng rng;
     apb_roll roll;
 
-    /* Target 50. */
-    CHECK(apb_resolve(1, 50) == APB_CRIT);      /* 01 always crits        */
-    CHECK(apb_resolve(11, 50) == APB_CRIT);     /* doubles under target   */
-    CHECK(apb_resolve(44, 50) == APB_CRIT);
-    CHECK(apb_resolve(2, 50) == APB_SUCCESS);
-    CHECK(apb_resolve(50, 50) == APB_SUCCESS);  /* at the target          */
-    CHECK(apb_resolve(51, 50) == APB_COST);
-    CHECK(apb_resolve(55, 50) == APB_COST);     /* doubles over: no crit  */
-    CHECK(apb_resolve(70, 50) == APB_COST);     /* 20 over                */
-    CHECK(apb_resolve(71, 50) == APB_FAIL);
-    CHECK(apb_resolve(100, 50) == APB_FAIL);
+    /* Beat the TN. Rating 62 against a normal task (TN 100). */
+    CHECK(apb_resolve(39, 39 + 62, 100) == APB_SUCCESS);   /* 101 beats 100      */
+    CHECK(apb_resolve(38, 38 + 62, 100) == APB_COST);      /* 100 only ties      */
+    CHECK(apb_resolve(19, 19 + 62, 100) == APB_COST);      /* 81: within 20      */
+    CHECK(apb_resolve(18, 18 + 62, 100) == APB_FAIL);      /* 80: 20 under       */
+    CHECK(apb_resolve(44, 44 + 62, 100) == APB_CRIT);      /* doubles, success   */
+    CHECK(apb_resolve(33, 33 + 62, 100) == APB_COST);      /* doubles, no success */
+    CHECK(apb_resolve(100, 100, 250) == APB_CRIT);         /* natural 100        */
+    CHECK(apb_resolve(1, 1 + 200, 100) == APB_FAIL);       /* natural 01         */
 
-    /* Targets are kept to 1..100; 100 always fails. */
-    CHECK(apb_resolve(99, 150) == APB_CRIT);
-    CHECK(apb_resolve(100, 150) == APB_FAIL);
-    CHECK(apb_resolve(1, -20) == APB_CRIT);
-    CHECK(apb_resolve(21, -20) == APB_COST);
-    CHECK(apb_resolve(22, -20) == APB_FAIL);
+    /* Exact chances. A rating is its chance on a normal task. */
+    CHECK(apb_chance(62, APB_TN_NORMAL) == 62);
+    CHECK(apb_chance(62, APB_TN_HARD) == 42);
+    CHECK(apb_chance(100, 150) == 50);                     /* 100 against 100    */
+    CHECK(apb_chance(100, APB_TN_NORMAL) == 99);           /* only 01 fails      */
+    CHECK(apb_chance(0, 150) == 1);                        /* only 100 succeeds  */
+    CHECK(apb_chance(-50, 250) == 1);
 
+    /* Golden rolls for seed 42 (27, 22, 5) from Python. */
     apb_rng_seed(&rng, 42);
-    apb_check(&rng, 40, -10, &roll);
-    CHECK(roll.roll == 27 && roll.target == 30 && roll.result == APB_SUCCESS);
-    apb_check(&rng, 90, 30, &roll);
-    CHECK(roll.target == 100);
-    apb_check(&rng, 5, -30, &roll);
-    CHECK(roll.roll == 5 && roll.target == 1 && roll.result == APB_COST);
+    apb_check(&rng, 90, 0, 110, &roll);
+    CHECK(roll.roll == 27 && roll.total == 117 && roll.result == APB_SUCCESS);
+    apb_check(&rng, 60, 20, 100, &roll);
+    CHECK(roll.roll == 22 && roll.total == 102 && roll.result == APB_CRIT);
+    apb_check(&rng, 50, 0, 70, &roll);
+    CHECK(roll.roll == 5 && roll.total == 55 && roll.result == APB_COST);
 }
 
-static void test_vs_defense(void)
+static void test_defense(void)
 {
-    /* The anchor: 100 against 100 is 50%. */
-    CHECK(apb_vs_defense(100, 0, 100, 0) == 50);
-    CHECK(apb_vs_defense(70, 0, 0, 0) == 70);
-    CHECK(apb_vs_defense(70, 0, 45, 0) == 48);     /* half of 45 rounds down */
-    CHECK(apb_vs_defense(40, 0, 100, 0) == -10);   /* checks clamp this to 1 */
+    /* TN = 50 + defense: 100 against 100 is a coin flip. */
+    CHECK(apb_defense_tn(100, 0) == 150);
+    CHECK(apb_defense_tn(0, 0) == 50);
+    CHECK(apb_defense_tn(20, 60) == 50);                   /* stops at 0         */
+    CHECK(apb_defense_tn(-30, 0) == 50);
 
-    /* The iron golem (Armor 90) from docs/rules-v0.md. */
-    CHECK(apb_vs_defense(70, 0, 90, 0) == 25);     /* the fighter, alone     */
-    CHECK(apb_vs_defense(70, 0, 90 - 40, 0) == 45);/* after Rust, -40 Armor  */
-    CHECK(apb_vs_defense(70, 20, 90, 0) == 45);    /* with Overclock, +20    */
-    CHECK(apb_vs_defense(70, 20, 90 - 40, 0) == 65);/* both                  */
-    CHECK(apb_vs_defense(70, 0, 90, 40) == 45);    /* adamant oil, Pierce 40 */
-    CHECK(apb_vs_defense(60, 0, 30, 0) == 45);     /* lightning: Armor 30    */
-    CHECK(apb_vs_defense(70, -20, 30, 0) == 35);   /* called shot at a seam  */
-
-    /* Armor stops at 0. */
-    CHECK(apb_vs_defense(50, 0, 20, 60) == 50);
-    CHECK(apb_vs_defense(50, 0, -30, 0) == 50);
+    /* The iron golem (Armor 90, 30 against lightning) from docs/rules-v0.md. */
+    CHECK(apb_defense_tn(90, 0) == 140);
+    CHECK(apb_chance(70, apb_defense_tn(90, 0)) == 30);        /* the fighter alone */
+    CHECK(apb_chance(70, apb_defense_tn(90, 20)) == 50);       /* after Rust        */
+    CHECK(apb_chance(70 + 20, apb_defense_tn(90, 0)) == 50);   /* with Overclock    */
+    CHECK(apb_chance(70 + 20, apb_defense_tn(90, 20)) == 70);  /* both              */
+    CHECK(apb_chance(70, apb_defense_tn(90, 20)) == 50);       /* adamant, Pierce 20 */
+    CHECK(apb_chance(60, apb_defense_tn(30, 0)) == 80);        /* lightning         */
+    CHECK(apb_chance(70 - 20, apb_defense_tn(40, 0)) == 60);   /* called shot, seam */
 }
 
 static void make_kestrel(apb_character *out)
@@ -431,7 +428,7 @@ int main(void)
 {
     test_dice();
     test_resolve();
-    test_vs_defense();
+    test_defense();
     test_creation();
     test_progression();
     test_translate();

@@ -61,15 +61,17 @@ int main(void)
 
     printf("A PLATFORM BETWEEN - RULES CORE\n\n");
     printf("%s, SALVAGED WARDEN, LVL %u\n", ch.name, ch.level);
-    printf("MIGHT %u  MELEE %u%%  TECH %u%%\n", ch.stat[APB_MIGHT],
+    printf("MIGHT %u  MELEE %u  TECH %u\n", ch.stat[APB_MIGHT],
            apb_skill(&ch, APB_SK_MELEE), apb_skill(&ch, APB_SK_TECH));
+    printf("MELEE VS IRON GOLEM (TN %d): %u%%\n", apb_defense_tn(90, 0),
+           apb_chance(apb_skill(&ch, APB_SK_MELEE), apb_defense_tn(90, 0)));
     printf("HEALTH %u  DEBT %u\n\n", apb_health_max(&ch), ch.debt);
 
     apb_rng_seed(&rng, 1985);
     for (i = 0; i < 3; ++i) {
-        apb_check(&rng, apb_skill(&ch, APB_SK_MELEE), -10, &roll);
-        printf("MELEE %u%%: ROLLED %u, %s\n", roll.target, roll.roll,
-               result_names[roll.result]);
+        apb_check(&rng, apb_skill(&ch, APB_SK_MELEE), 0, APB_TN_TRICKY, &roll);
+        printf("%u+%u=%d VS TN %d: %s\n", roll.roll, apb_skill(&ch, APB_SK_MELEE),
+               roll.total, roll.tn, result_names[roll.result]);
     }
 
     rifle.archetype = APB_ARCH_RANGED;
@@ -90,7 +92,7 @@ int main(void)
     while (apb_raise_stat(&ch, APB_GRIT)) {
     }
     printf("\nSAVED THE WOLF PUP. NOW LVL %u.\n", ch.level);
-    printf("MELEE %u%%  GRIT %u  HEALTH %u\n", apb_skill(&ch, APB_SK_MELEE),
+    printf("MELEE %u  GRIT %u  HEALTH %u\n", apb_skill(&ch, APB_SK_MELEE),
            ch.stat[APB_GRIT], apb_health_max(&ch));
 
     apb_passport_encode(&ch, pw);

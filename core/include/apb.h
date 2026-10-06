@@ -79,10 +79,11 @@ enum {
 
 extern const uint8_t apb_skill_stat[APB_SKILL_COUNT];  /* governing stat */
 
-/* ------------------------------------------------- the core roll: d100 */
+/* ------------------------------------------- the core roll: d100 + skill */
 
-/* Roll d100 at or under a rating. Doubles under it (11, 22 .. 99) or a 1 is a
- * crit; up to 20 over is success at a cost; 100 always fails. */
+/* Roll d100, add the rating (and any bonus), and beat the target number (TN).
+ * A natural 100, or doubles (11, 22 .. 99) on a success, is a crit; within 20
+ * under the TN is success at a cost; a natural 01 always fails. */
 enum {
     APB_FAIL = 0,
     APB_COST,
@@ -92,21 +93,35 @@ enum {
 
 #define APB_COST_MARGIN 20
 
+/* Task target numbers. On a normal task (TN 100), a rating is its chance. */
+#define APB_TN_EASY      80
+#define APB_TN_ROUTINE   90
+#define APB_TN_NORMAL    100
+#define APB_TN_TRICKY    110
+#define APB_TN_HARD      120
+#define APB_TN_VERY_HARD 130
+
+/* A defense (Armor, Ward, Resolve, or a task's difficulty) as a TN. */
+#define APB_TN_BASE      50
+
 typedef struct {
-    uint8_t roll;     /* 1..100                           */
-    uint8_t target;   /* rating + modifier, kept to 1..100 */
+    uint8_t roll;     /* the die, 1..100         */
+    int16_t total;    /* roll + rating + bonus   */
+    int16_t tn;
     uint8_t result;
 } apb_roll;
 
 uint8_t apb_d100(apb_rng *rng);
-uint8_t apb_resolve(uint8_t roll, int16_t target);
-uint8_t apb_check(apb_rng *rng, uint8_t rating, int8_t modifier, apb_roll *out);
+uint8_t apb_resolve(uint8_t roll, int16_t total, int16_t tn);
+uint8_t apb_check(apb_rng *rng, uint8_t rating, int16_t bonus, int16_t tn, apb_roll *out);
 
-/* The target for an attack (or power, or persuasion) against a defense
- * (Armor, Ward, Resolve): attack + bonus - (defense - pierce) / 2, rounding
- * down. `defense` is after any debuffs; with pierce taken off, it stops at 0.
- * The result is not clamped; apb_check and apb_resolve keep it to 1..100. */
-int16_t apb_vs_defense(uint8_t attack, int16_t bonus, int16_t defense, uint8_t pierce);
+/* TN for a defense of 0..100, after `reduce` (debuffs, pierce) is taken off;
+ * the defense stops at 0, so the TN never goes below APB_TN_BASE. */
+int16_t apb_defense_tn(int16_t defense, int16_t reduce);
+
+/* Percent chance (1..100) of at least a success with this rating + bonus
+ * against this TN. For sheets and screens; counts all 100 rolls exactly. */
+uint8_t apb_chance(int16_t rating_and_bonus, int16_t tn);
 
 /* -------------------------------------------------------- characters */
 

@@ -22,37 +22,37 @@ Characters are meant to live a long time: across Departures, seasons and years.
 | Skills | 0–100 |
 | Powers | 0–100 |
 
-Every rating *is* a percentage chance. A Melee of 62 hits on 62 or less. No conversion,
-no table: what you see is your chance.
+On a normal task, every rating *is* your chance: Melee 62 succeeds 62% of the time.
 
-## The core roll: d100
+## The core roll: d100 + skill
 
-Roll **d100** (two ten-sided dice, tens and ones; `00` is 100). Compare it to the
-**target**: the stat, skill or power being tested, plus or minus the situation.
+> **Roll d100, add your skill (or stat, or power). Beat the target number (TN).**
+
+| Task | TN |
+|---|---|
+| Easy | 80 |
+| Routine | 90 |
+| **Normal** | **100** |
+| Tricky | 110 |
+| Hard | 120 |
+| Very hard | 130 |
+
+On a normal task (TN 100), your rating is exactly your chance: d100 + 62 beats 100 on 39
+or more, 62 times in 100. Every 10 points of TN is 10% harder.
 
 | Roll | Result |
 |---|---|
-| **01**, or **doubles** (11, 22 … 99) at or under the target | **Crit**: success, with something extra |
-| At or under the target | **Success** |
-| Up to 20 over the target | **Success at a cost**: it works, but something goes wrong |
-| More than 20 over | **Fail**, and things move |
-| **100** | Always fails |
+| A natural **100**, or **doubles** (11, 22 … 99) that beat the TN | **Crit**: success, with something extra |
+| Total beats the TN | **Success** |
+| Total within 20 under the TN | **Success at a cost**: it works, but something goes wrong |
+| Lower than that | **Fail**, and things move |
+| A natural **01** | Always fails |
 
-**Modifiers:**
+**Bonuses add to your roll** (a buff, help from an ally, the right tool). **Anything
+working against you raises the TN** (armor, a difficult lock, a stubborn will).
 
-| Situation | Modifier |
-|---|---|
-| Easy | +20 |
-| Routine | +10 |
-| Normal | 0 |
-| Tricky | −10 |
-| Hard | −20 |
-| Very hard | −30 |
-
-Targets are kept between 1 and 100. A target of 100 still fails on a 100, and a target of
-1 still crits on a 01.
-
-Implemented: `apb_d100`, `apb_resolve`, `apb_check`.
+Implemented: `apb_d100`, `apb_resolve`, `apb_check`, `apb_chance` (the exact percentage
+for any rating and TN, for sheets and screens).
 
 ## Stats
 
@@ -65,7 +65,7 @@ Implemented: `apb_d100`, `apb_resolve`, `apb_check`.
 | **Presence** | Force of personality, talking, leading, channeling |
 | **Fate** | Luck, timing, how the multiverse treats you |
 
-A raw stat check uses the stat as the target ("roll under your Grit to keep going").
+A raw stat check adds the stat instead of a skill ("d100 + Grit to keep going").
 
 ## Skills
 
@@ -94,7 +94,7 @@ Implemented: `apb_skill`.
 
 Powers are what makes a traveler more than a person: spells, psionics, nanite swarms,
 mutations, whatever the realm calls them (they Translate like gear). Each power has a
-**rank** from 0 to 100, which is its percentage chance to work, and also scales its
+**rank** from 0 to 100, which you add to the roll to use it, and which also scales its
 effect.
 
 A character holds up to **8 powers**. How powers are gained and raised is not designed
@@ -187,13 +187,11 @@ Implemented: `apb_health_max`.
 - 6 equipped slots + 6 pack slots. Hard limit; forces choices.
 - Up to 2 **attuned** legendary items.
 
-## Defenses: one roll, and a wall worth climbing
+## Defenses are target numbers
 
-Defenses don't get their own roll. A defense is a **penalty on the attacker's roll**:
+Defenses don't get their own roll. A defense is the **TN the attacker has to beat**:
 
-> **Target = attack − defense ÷ 2** (round down)
-
-So **100 against 100 is 50%**, and no defense at all leaves your full chance.
+> **TN = 50 + the defense**
 
 | Defense | Stops |
 |---|---|
@@ -201,34 +199,42 @@ So **100 against 100 is 50%**, and no defense at all leaves your full chance.
 | **Ward** | powers |
 | **Resolve** | persuasion, intimidation, fear |
 
-A defense can differ by damage type: an iron golem's Armor is 90 against blades and
-bullets, but only 30 against lightning.
+Defenses run 0 to 100 like everything else, so **100 against 100 is 50%**: d100 + 100
+against TN 150. Stat blocks print the TN directly ("Iron golem: Armor TN 140"), so nobody
+adds the 50 at the table. A puzzle, a lock or a hazard is the same kind of number: its
+difficulty is its defense.
+
+A defense can differ by damage type: an iron golem's Armor is TN 140 against blades and
+bullets, but only TN 80 against lightning.
 
 The wall is meant to be steep. A defense is a **problem for the party to solve**, not a
 number to grind past. Every answer is a plain number you add or subtract:
 
 | Option | What it does | Examples |
 |---|---|---|
-| **Buff** the attacker | + to the attack | Overclock, Bless, a war cry, a stim |
-| **Debuff** the defense | − to the defense (it stops at 0) | Rust, Shatter, an EMP, Sunder |
-| **Pierce** | ignore that much defense, for one weapon or one fight | adamant oil, armor-piercing rounds, a rune of opening |
+| **Buff** the attacker | + to the roll | Overclock +20, Bless, a war cry, a stim |
+| **Debuff** the defense | − to the TN (the defense stops at 0) | Rust −20, Shatter, an EMP, Sunder |
+| **Pierce** | − to the TN, for one weapon or one fight | adamant oil, armor-piercing rounds, a rune of opening |
 | **Exploit** | use the damage type it's weak to | lightning on iron, fire on frost |
-| **Called shot** | aim for a weak spot: count a lower defense, at a penalty | a seam in the plates, the visor |
-| **Help** | an ally sets you up | a feint, covering fire, a distraction |
+| **Called shot** | aim for a weak spot: a lower TN, at a penalty to the roll | a seam in the plates, the visor |
+| **Help** | an ally sets you up: + to the roll | a feint, covering fire, a distraction |
+
+Every point now counts in full, so buffs and debuffs are kept modest: ±10 to ±20 is a big
+deal.
 
 ### The wizard and the iron golem
 
-An iron golem: **Armor 90** (30 against lightning). A fighter with **Melee 70** swings:
+An iron golem: **Armor TN 140** (TN 80 against lightning). A fighter with **Melee 70**:
 
-| Plan | Arithmetic | Chance |
-|---|---|---|
-| The fighter alone | 70 − 90 ÷ 2 | **25%** |
-| The wizard casts **Rust** on the golem (−40 Armor) | 70 − 50 ÷ 2 | **45%** |
-| The wizard **Overclocks** the fighter (+20) | 90 − 90 ÷ 2 | **45%** |
-| Both, on the next turn | 90 − 50 ÷ 2 | **65%** |
-| The fighter oils the blade with **adamant** (Pierce 40) | 70 − 50 ÷ 2 | **45%** |
-| The wizard throws **lightning** (Channel 60) | 60 − 30 ÷ 2 | **45%** |
-| A **called shot** at a seam (Armor 30, −20) | 50 − 30 ÷ 2 | **35%** |
+| Plan | Roll | Needs to beat | Chance |
+|---|---|---|---|
+| The fighter alone | d100 + 70 | 140 | **30%** |
+| The wizard casts **Rust** on the golem (TN −20) | d100 + 70 | 120 | **50%** |
+| The wizard **Overclocks** the fighter (+20) | d100 + 90 | 140 | **50%** |
+| Both, on the next turn | d100 + 90 | 120 | **70%** |
+| The fighter oils the blade with **adamant** (Pierce 20) | d100 + 70 | 120 | **50%** |
+| The wizard throws **lightning** (Channel 60) | d100 + 60 | 80 | **80%** |
+| A **called shot** at a seam (TN 90, −20 to the roll) | d100 + 50 | 90 | **60%** |
 
 Alone, the fighter is in trouble. With a plan, the odds swing hard. That's what the
 character with the right scroll, the right spell or the right idea is for, at the table
@@ -243,14 +249,14 @@ Results in a fight:
 | Success at a cost | a **glancing** hit (half damage), or a hit that leaves you exposed |
 | Fail | a miss, and the enemy gets an opening |
 
-Implemented: `apb_vs_defense`. Defenses, buffs and items that use them arrive with
-combat.
+Implemented: `apb_defense_tn`, `apb_chance` (the golem table above is a test case).
+Defenses, buffs and items that use them arrive with combat.
 
 ## Combat (milestone E3)
 
 Turn-based, zone-based, designed table-first so it plays the same on paper and on a C64.
 Solo hero plus optional companions and Echo allies. Defenses work as above. At high
-levels, opposed rolls matter (both sides roll; the better result wins), so a level-100
+levels, opposed rolls matter (both sides roll d100 + skill; the higher total wins), so a level-100
 traveler still meets equals.
 
 Design rules for combat:
