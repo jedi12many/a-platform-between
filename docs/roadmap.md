@@ -11,8 +11,9 @@
 - **Rules core in portable C** (`core/`): dice, checks, characters, Translation,
   Dissonance, Echoes, Passport passwords. Builds natively and for the C64; the same tests
   pass on both. *Started.*
-- Quest Script v0 and its compiler.
-- A short test Departure, playable on modern PC.
+- Quest Script v0, its compiler, and the Story VM. See [engine-plan.md](engine-plan.md)
+  for the milestones (E0–E7).
+- *Departure 00: The Fare*, the Waystation prologue, as the engine's test content.
 - A Deep Yards prototype: seeded procedural floors using the same rules core.
 
 ## Phase 2: first retro build
