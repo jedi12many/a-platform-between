@@ -507,6 +507,61 @@ static void test_boarding_pass(void)
     CHECK(apb_passport_check(&traveler) != 33330u);
 }
 
+/* The worked fight in docs/combat.md, whose numbers were worked out by hand. */
+static apb_roll hit;
+
+static void set_roll(uint8_t roll, int16_t total, int16_t tn)
+{
+    hit.roll = roll;
+    hit.total = total;
+    hit.tn = tn;
+    hit.result = apb_resolve(roll, total, tn);
+}
+
+static void test_combat(void)
+{
+    make_kestrel(&traveler);
+    traveler.equipped[0] = APB_ITEM_RUSTED_SABRE;
+    traveler.equipped[1] = APB_ITEM_BALLISTIC_WEAVE;
+    CHECK(apb_dodge(&traveler) == 8 && apb_armor(&traveler) == 30 && apb_speed(&traveler) == 5);
+    CHECK(apb_health_max(&traveler) == 27 && apb_melee_bonus(&traveler) == 4);
+    CHECK(apb_weapon_damage(APB_ITEM_RUSTED_SABRE) == 5 && apb_weapon_damage(APB_ITEM_PULSE_RIFLE) == 20);
+    CHECK(apb_weapon_damage(0) == APB_UNARMED_DAMAGE);
+
+    CHECK(apb_hit_tn(8, 30, 0, 0) == 88);                  /* to hit Kestrel          */
+    CHECK(apb_hit_tn(4, 20, 0, 0) == 74);                  /* the rust-guard          */
+    CHECK(apb_hit_tn(4, 0, 0, 0) == 54);                   /* ... with energy         */
+    CHECK(apb_hit_tn(4, 20, 0, 40) == 50);                 /* debuffs stop at TN 50   */
+    CHECK(apb_chance(62, 74) == 88 && apb_chance(45, 88) == 57 && apb_chance(20, 54) == 66);
+
+    set_roll(57, 119, 74);                                 /* Kestrel: 9 + 4 - 2      */
+    CHECK(hit.result == APB_SUCCESS && apb_damage(&hit, 5, 4, 2) == 11);
+    set_roll(71, 116, 88);                                 /* claws: 6 + 2            */
+    CHECK(hit.result == APB_SUCCESS && apb_damage(&hit, 6, 0, 0) == 8);
+    set_roll(34, 96, 74);                                  /* 9 + 2 - 2               */
+    CHECK(apb_damage(&hit, 5, 4, 2) == 9);
+
+    set_roll(24, 69, 88);                                  /* glancing: 6 / 2         */
+    CHECK(hit.result == APB_COST && apb_damage(&hit, 6, 0, 0) == 3);
+    set_roll(23, 68, 88);                                  /* 20 under is a miss      */
+    CHECK(hit.result == APB_FAIL && apb_damage(&hit, 6, 0, 0) == 0);
+    set_roll(88, 150, 74);                                 /* crit: (5 + 4 + 7) x 2 - 2 */
+    CHECK(hit.result == APB_CRIT && apb_damage(&hit, 5, 4, 2) == 30);
+    set_roll(100, 110, 150);                               /* a natural 100: no margin */
+    CHECK(hit.result == APB_CRIT && apb_damage(&hit, 5, 4, 2) == 16);
+    set_roll(1, 200, 74);                                  /* a natural 01 always misses */
+    CHECK(apb_damage(&hit, 5, 4, 2) == 0);
+    set_roll(57, 119, 74);                                 /* soak can stop a hit dead */
+    CHECK(apb_damage(&hit, 5, 4, 50) == 0);
+
+    CHECK(apb_in_area(1, -1, 1) && !apb_in_area(2, 0, 1) && apb_in_area(0, 0, 0));
+    CHECK(apb_flee_tn(0) == 100 && apb_flee_tn(2) == 120);
+    CHECK(apb_tile_cost(APB_TILE_OPEN) == 1 && apb_tile_cost(APB_TILE_ROUGH) == 2);
+    CHECK(apb_tile_cost(APB_TILE_COVER) == 2 && apb_tile_cost(APB_TILE_WALL) == 0);
+    CHECK(apb_tile_cost(APB_TILE_PIT) == 0 && apb_tile_cost(APB_TILE_COUNT) == 0);
+    CHECK(apb_tile_blocks_sight(APB_TILE_WALL) && !apb_tile_blocks_sight(APB_TILE_PIT));
+}
+
 int main(void)
 {
     test_dice();
@@ -519,6 +574,7 @@ int main(void)
     test_echoes();
     test_passport();
     test_boarding_pass();
+    test_combat();
 
     printf("%u checks, %u failed\n", checks, failures);
     return failures ? 1 : 0;

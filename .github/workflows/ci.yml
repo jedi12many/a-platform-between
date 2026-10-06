@@ -40,6 +40,9 @@ jobs:
       - name: Receipts (C core against the Python reference, PC and 6502)
         run: make test-receipts
 
+      - name: Combat rules (C core against the Python reference, PC and 6502)
+        run: make test-combat
+
       - name: Build C64 demo
         run: make c64
 

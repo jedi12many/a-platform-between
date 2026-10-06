@@ -6,7 +6,7 @@ CL65    ?= cl65
 SIM65   ?= sim65
 
 CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c core/src/registry.c \
-            core/src/translate.c core/src/echo.c core/src/passport.c
+            core/src/translate.c core/src/echo.c core/src/passport.c core/src/combat.c
 # Applying receipts happens at the Waystation, not in clients: kept out of CORE_SRC so
 # cc65 doesn't link it into C64 programs that never call it.
 APPLY_SRC := core/src/receipt.c
@@ -14,7 +14,7 @@ CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/
 VM_SRC   := vm/vm.c client/desk.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts c64 demo play crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 demo play crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -138,3 +138,13 @@ build/apply.sim: tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC) $(CORE_HDR) | b
 
 test-receipts: build/apply build/apply.sim
 	python3 tests/receipts/check_apply.py
+
+# Combat rules: the C core must agree with the Python reference, natively and on the 6502.
+build/attack: tests/combat/attack.c $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/combat/attack.c $(CORE_SRC)
+
+build/attack.sim: tests/combat/attack.c $(CORE_SRC) $(CORE_HDR) | build
+	$(CL65) -t sim6502 -O $(INC) -o $@ tests/combat/attack.c $(CORE_SRC)
+
+test-combat: build/attack build/attack.sim
+	python3 tests/combat/check_combat.py

@@ -135,7 +135,7 @@ def outcome(roll, total, tn):
         return "crit" if roll == 100 or (roll < 100 and roll % 11 == 0) else "success"
     if roll == 100:
         return "crit"
-    return "cost" if total >= tn - 20 else "fail"
+    return "cost" if total > tn - 20 else "fail"     # 81..100 against TN 100: 20 totals
 
 
 def ratings(who):

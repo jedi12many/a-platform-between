@@ -286,7 +286,7 @@ a test Departure; two receipts from overlapping Departures both land.
 
 | Step | What | Done when |
 |---|---|---|
-| **E3.1 Combat rules** (`core/`) | Dodge, defense TNs, damage with margin, stat bonus, crits, glancing hits and Soak; area attacks; terrain; fleeing. A Python reference written from combat.md. | C and Python agree on hand-worked and random attacks, on PC and 6502; the worked fight in combat.md is a test. |
+| **E3.1 Combat rules** (`core/`) | Dodge, defense TNs, damage with margin, stat bonus, crits, glancing hits and Soak; area attacks; terrain; fleeing. A Python reference written from combat.md. | C and Python agree on hand-worked and random attacks, on PC and 6502; the worked fight in combat.md is a test. *Done: `make test-combat`, 9,000 random attacks and 300 sheets. It caught the transcript dice check counting one total too many as a cost.* |
 | **E3.2 The battle** (`core/`) | Maps, movement and sight, the order of play, foe behaviors, rounds, the ways a fight ends. Deterministic, driven by a stream of actions. | Scripted battles give identical logs on PC and 6502. |
 | **E3.3 Quest Script** | `foe`, `map` and `fight` with `won:`/`lost:`/`fled:` branches; the image format; the verifier. A warning for a fight with no way around. | The compiler's tests cover fights; damaged fight data is refused. |
 | **E3.4 VM and HAL** | The VM hands a fight to the battle engine; the HAL draws the map and asks for actions. Health carries over; `~ heal`. | A test image's fight plays through the harness on PC and 6502. |

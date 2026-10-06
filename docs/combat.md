@@ -138,13 +138,20 @@ Dodge 8, Armor 30, so **TN 88** to hit her; Speed 5; sabre damage 5 + Might ÷ 2
 1. Kestrel (Grace 40) goes first. **d100 + 62 vs TN 74**: she hits on 13 or more (88%).
    She rolls 57: total 119, 45 over, so +4. Damage 9 + 4 = 13, minus Soak 2: **11**. The
    rust-guard is down to 9.
-2. The rust-guard's claws: **d100 + 45 vs TN 88**: a hit on 44 or more, glancing on 23 to
+2. The rust-guard's claws: **d100 + 45 vs TN 88**: a hit on 44 or more, glancing on 24 to
    43. It rolls 71: total 116, 28 over, +2. Damage 6 + 2 = **8**. Kestrel is down to 19.
 3. Kestrel rolls 34: total 96, 22 over, +2. 9 + 2 − 2 = **9**. The rust-guard falls.
 
 **The other answer.** Her pulse rifle is energy, and the rust-guard is weak to it: TN 54.
 But Kestrel isn't trained in Ranged (Grace ÷ 2 = 20): d100 + 20 vs 54 hits on 35 or more,
 66%, for 20 damage, and the first hit ends it. Two plans, both plain numbers on the sheet.
+
+## In the code
+
+`core/src/combat.c` (`apb_dodge`, `apb_speed`, `apb_armor`, `apb_melee_bonus`,
+`apb_weapon_damage`, `apb_hit_tn`, `apb_damage`, `apb_attack`, `apb_in_area`,
+`apb_flee_tn`, the tiles), checked against `tools/rules/combat.py` by `make test-combat`;
+the worked fight above is a test in `tests/test_core.c`.
 
 ## What this isn't (yet)
 

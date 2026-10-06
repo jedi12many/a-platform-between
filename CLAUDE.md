@@ -30,8 +30,11 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-receipts`: applying receipts (`core/src/receipt.c`) must agree with the
   Python reference (`tools/passport/receipt.py`) on hand-worked and random cases,
   natively and on sim65.
+- `make test-combat`: the combat rules (`core/src/combat.c`, `docs/combat.md`) must agree
+  with the Python reference (`tools/rules/combat.py`) on random attacks and character
+  sheets, natively and on sim65.
 
-Run all ten before pushing; CI runs them too. `make play` plays The Fare in a terminal.
+Run all eleven before pushing; CI runs them too. `make play` plays The Fare in a terminal.
 
 ## Rules-core house rules
 
