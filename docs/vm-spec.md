@@ -71,6 +71,7 @@ on ground you can stand on, no two fighters on one square) and every number's ra
 | squares | (w × h + 1) / 2 | row by row, two to a byte, high nibble first: 0 open, 1 wall, 2 pit, 3 rough, 4 cover, 5 hazard, 6 high ground, 7 exit |
 | starts | 1 + 2 each | 1–4 travelers' squares: x, y |
 | foes | 1 + 18 each | 1 to 8 − starts. Each: x, y, health, grace, dodge, armor, ward, soak, speed, attack, damage, damage type (0–4), ranged (0/1), power (0/1), area (0–4), weakness (0–4, or 255 for none), behavior (0 charge, 1 shoot, 2 guard), coward (0/1) |
+| foe names | 1 + 1–20 each | one per foe, in the same order: a length, then the name in ASCII (from the bestiary, "Rust-guard"), for the battle screen. The record must end exactly here |
 
 ### Car
 

@@ -23,6 +23,7 @@
 #define APB_VM_CAR_MAX     16384    /* a test build may use less (the 6502 harness: 4 KB) */
 #endif
 #define APB_VM_REWARD_SITES 32      /* XP, GIVE and DEBT instructions in one Departure */
+#define APB_VM_FOE_NAME_MAX 20      /* a foe's display name in an encounter record */
 #define APB_VM_SAVE_MAX    768      /* the largest save file, in bytes */
 
 /* What apb_vm_run returns. The first two match the receipt's APB_OUTCOME_*. */
@@ -66,6 +67,9 @@ void apb_vm_trace(uint8_t car, uint16_t pc);
 
 const apb_receipt   *apb_vm_receipt(void);
 uint8_t              apb_vm_health(void);       /* now; it carries from fight to fight */
+/* In a fight, the display name (ASCII, like game text) of fighter `who`: a foe. The
+ * traveler is fighter 0, and gets "". */
+const char          *apb_vm_foe_name(uint8_t who);
 const apb_character *apb_vm_character(void);   /* the working copy */
 const char          *apb_vm_error(void);       /* e.g. "car 1 at 233: bad jump" */
 

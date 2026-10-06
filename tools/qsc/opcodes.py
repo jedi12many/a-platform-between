@@ -79,6 +79,7 @@ MAX_DEPOT = 4096                # vm/apb_vm.h, APB_VM_DEPOT_MAX
 MAX_ENCOUNTERS = 32
 MAP_TILES = ".#O~+^=>"          # tile codes 0..7, in order (core/include/apb.h, APB_TILE_*)
 ENCOUNTER_FOE_BYTES = 18        # x, y, then 16 numbers (docs/vm-spec.md)
+FOE_NAME_MAX = 20               # each foe's display name, after the numbers
 BPE_MAX_PAIRS = 128
 BPE_MAX_DEPTH = 16
 

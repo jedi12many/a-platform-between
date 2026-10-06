@@ -251,9 +251,10 @@ def test_encounters():
     img = build(src)
     # 3 x 2; squares @ . a / # . > are open open open / wall open exit: 0 0 0 1 0 7,
     # two to a byte. One start at 0,0. One foe at 2,0: the ash rat's numbers from
-    # registry/foes.txt, Dodge = Grace 50 / 5 = 10, no weakness (255), charge, coward.
+    # registry/foes.txt, Dodge = Grace 50 / 5 = 10, no weakness (255), charge, coward;
+    # then its name, "Ash rat", length first.
     want = bytes([3, 2, 0x00, 0x01, 0x07, 1, 0, 0, 1, 2, 0,
-                  6, 50, 10, 0, 0, 0, 6, 30, 2, 0, 0, 0, 0, 255, 0, 1])
+                  6, 50, 10, 0, 0, 0, 6, 30, 2, 0, 0, 0, 0, 255, 0, 1]) + b"\x07Ash rat"
     from image import read_depot
     tail = img.depot[-(len(want) + 3):]
     if tail != bytes([1]) + struct.pack("<H", len(want)) + want:

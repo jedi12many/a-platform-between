@@ -122,17 +122,23 @@ build/apb: fe/term/term.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
 build/the-fare.apd: content/s1/00-the-fare/the-fare.qs | build
 	python3 tools/qsc/qsc.py build $< -o $@
 
+build/skirmish.apd: tests/term/skirmish.qs | build
+	python3 tools/qsc/qsc.py build $< -o $@
+
 play: build/apb build/the-fare.apd
 	./build/apb build/the-fare.apd
 
 # A recorded terminal playthrough must match its reviewed transcript. It boards with a
 # Boarding Pass (seed 1985) from tools/passport/boarding.py issue "<Kestrel's Passport>"
-# 0 1985 1985, typed loosely the way a player might.
-test-term: build/apb build/the-fare.apd
+# 0 1985 1985, typed loosely the way a player might. The skirmish is a recorded fight on
+# the battle screen (seed 3, no pass): the map, the roster, both menus and a "Back".
+test-term: build/apb build/the-fare.apd build/skirmish.apd
 	./build/apb --choices tests/term/fare-edge.choices build/the-fare.apd > build/term-fare-edge.txt
 	diff tests/term/fare-edge.expected build/term-fare-edge.txt
-	@awk 'length > 40 { print "line over 40 columns: " $$0; bad = 1 } END { exit bad }' build/term-fare-edge.txt
-	@echo "terminal: transcript matches, nothing over 40 columns"
+	./build/apb --seed 3 --choices tests/term/skirmish.choices build/skirmish.apd > build/term-skirmish.txt
+	diff tests/term/skirmish.expected build/term-skirmish.txt
+	@awk 'length > 40 { print FILENAME ": line over 40 columns: " $$0; bad = 1 } END { exit bad }' build/term-fare-edge.txt build/term-skirmish.txt
+	@echo "terminal: transcripts match, nothing over 40 columns"
 	python3 tests/term/check_roundtrip.py
 
 # Applying receipts: the C core must agree with the Python reference, natively and on

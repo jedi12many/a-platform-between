@@ -118,7 +118,7 @@ map scrapyard
 | `a`–`z` | where a foe starts |
 
 Every row is the same width; a map is at most 16 × 10, and holds at most 8 fighters in all.
-The compiler copies each foe's numbers into the image, so a later change to the bestiary
+The compiler copies each foe's numbers and name into the image, so a later change to the bestiary
 never changes a Departure that has shipped.
 
 ## Chapters and scenes

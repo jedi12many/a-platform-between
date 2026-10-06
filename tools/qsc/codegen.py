@@ -13,7 +13,8 @@ One car per chapter. Each scene is laid out as:
 import struct
 
 import qs_ast as A
-from opcodes import (COMPARE, MAP_TILES, MAX_CAR, MAX_DEPOT, MAX_ENCOUNTERS, NO_MENU,
+from opcodes import (COMPARE, FOE_NAME_MAX, MAP_TILES, MAX_CAR, MAX_DEPOT, MAX_ENCOUNTERS,
+                     NO_MENU,
                      NO_TITLE,
                      OFFICIAL_ONLY, OPS,
                      SKILL_RATING_BASE, STACK_DEPTH, TXT_CLASS, TXT_DEBT, TXT_LEVEL,
@@ -512,6 +513,9 @@ class Compiler:
                           int(reach != "melee"), int(reach == "power"), f["area"],
                           255 if f["weak"] is None else f["weak"], f["behavior"],
                           int(f["coward"])])
+        for x, y, c in foes:
+            name = self.reg["foes"][m.foes[c]]["display"].encode("ascii")[:FOE_NAME_MAX]
+            out += bytes([len(name)]) + name
         return bytes(out)
 
 

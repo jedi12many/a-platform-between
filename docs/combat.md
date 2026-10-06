@@ -177,6 +177,14 @@ an ambush, a lost fight) with logs reviewed by hand; `make test-combat` plays th
 PC and the 6502, re-checks every roll against the Python reference, and runs random
 battles under the sanitizers.
 
+On screen (`fe/term/term.c`, the model for the C64's): the map is drawn two characters to
+a square (`@` you, `a`, `b`, ... the foes, `x` one who's down) with a key and a roster
+giving each foe's health and the TN to hit it. A turn is two short menus, **Where to?**
+(stay, next to or toward a foe, to the exit, into cover, onto high ground) and **Then?**
+(attack, with the TN; defend; flee, with its TN, or take the exit; wait; back), offering
+only what the rules allow from that square. What happens is told in sentences, with
+every roll: *You attack Rust-guard: 62 + 20 = 82 against 56, a hit: 22 damage.*
+
 ## What this isn't (yet)
 
 - Powers and their costs (with the power registry), opposed rolls at high level, and

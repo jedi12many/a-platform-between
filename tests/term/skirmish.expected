@@ -1,0 +1,154 @@
+A PLATFORM BETWEEN
+
+Your Passport, please: one line at a
+time, then a blank line.
+Line 1:
+> 4pb794ar0a0105am7hdt
+Line 2:
+> 8V40-0000-0000-K60M-2A4A
+Line 3:
+> 50200810HJB
+Line 4:
+> 
+Kestrel, Salvaged Warden, level 1. Debt
+0.
+
+1. Board
+2. Start over
+> 1
+
+
+Your Boarding Pass, please, or a blank
+line to travel without one:
+> 
+Without a pass, nothing you earn on this
+trip can be stamped.
+1. Travel without a pass
+2. Type a pass
+> 1
+
+The yard is quiet. Then it isn't.
+
+Kestrel  Lvl 1  HP 27/27  Debt 0
+1. Fight
+2. Walk away
+> 1
+
+-- A fight! --
+  . . . . # . . . . >
+  . @ . . + . . = . a
+  . . ~ . ^ . . # . .
+  . . . . O . . . . b
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  27/27
+ a Scrap gunner  15/15  TN 56
+ b Ash rat  6/6  TN 60
+
+-- Round 1 --
+Ash rat moves.
+
+  . . . . # . . . . >
+  . @ . b + . . = . a
+  . . ~ . ^ . . # . .
+  . . . . O . . . . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  27/27
+ a Scrap gunner  15/15  TN 56
+ b Ash rat  6/6  TN 60
+
+Where to?
+1. Stay here
+2. Toward Scrap gunner (a)
+3. Next to Ash rat (b)
+4. Toward the exit
+5. Into cover
+> 5
+Then?
+1. Attack Scrap gunner (a): TN 56
+2. Attack Ash rat (b): TN 60
+3. Defend: +20 to your TN
+4. Flee: TN 110
+5. Wait
+6. Back
+> 6
+Where to?
+1. Stay here
+2. Toward Scrap gunner (a)
+3. Next to Ash rat (b)
+4. Toward the exit
+5. Into cover
+> 5
+Then?
+1. Attack Scrap gunner (a): TN 56
+2. Attack Ash rat (b): TN 60
+3. Defend: +20 to your TN
+4. Flee: TN 110
+5. Wait
+6. Back
+> 5
+
+You move.
+Scrap gunner attacks you: 66 + 40 = 106
+against 78, a crit: 12 damage.
+-- Round 2 --
+Ash rat attacks you: 81 + 30 = 111
+against 58, a hit: 7 damage.
+
+  . . . . # . . . . >
+  . . . b @ . . = . a
+  . . ~ . ^ . . # . .
+  . . . . O . . . . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  8/27
+ a Scrap gunner  15/15  TN 56
+ b Ash rat  6/6  TN 60
+
+Where to?
+1. Stay here
+2. Next to Scrap gunner (a)
+3. To the exit
+4. Onto high ground
+> 3
+Then?
+1. Attack Scrap gunner (a): TN 56
+2. Attack Ash rat (b): TN 60
+3. Defend: +20 to your TN
+4. Take the exit
+5. Wait
+6. Back
+> 1
+
+You move.
+You attack Scrap gunner: 62 + 20 = 82
+against 56, a hit: 22 damage.
+Scrap gunner is down.
+-- Round 3 --
+Ash rat moves.
+Ash rat attacks you: 2 + 30 = 32 against
+58, a miss.
+
+  . . . . # . . . b @
+  . . . . + . . = . x
+  . . ~ . ^ . . # . .
+  . . . . O . . . . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  8/27
+ x Scrap gunner  down
+ b Ash rat  6/6  TN 60
+
+Where to?
+1. Stay here
+2. Onto high ground
+> 1
+Then?
+1. Attack Ash rat (b): TN 60
+2. Defend: +20 to your TN
+3. Take the exit
+4. Wait
+5. Back
+> 
+[end of input]

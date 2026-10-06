@@ -201,6 +201,7 @@ static uint8_t encounter_ok(uint16_t at, uint16_t len)
     uint16_t tiles_at;
     uint16_t p;
     uint16_t q;
+    uint16_t names;
     const uint8_t *s;
 
     if (len < 2 || end > depot_len || end < at) return 0;
@@ -220,7 +221,21 @@ static uint8_t encounter_ok(uint16_t at, uint16_t len)
     q = p;                                   /* positions: starts, then each foe's */
     p = (uint16_t)(p + 2u * starts);
     foes = depot[p++];
-    if (foes < 1 || foes > 8 - starts || (uint16_t)(p + 18u * foes) != end) return 0;
+    if (foes < 1 || foes > 8 - starts || (uint16_t)(p + 18u * foes) >= end) return 0;
+    /* Each foe's name, after the numbers: 1 to 20 ASCII characters, length first. */
+    names = (uint16_t)(p + 18u * foes);
+    for (i = 0; i < foes; ++i) {
+        if (names >= end || depot[names] < 1 || depot[names] > APB_VM_FOE_NAME_MAX
+            || (uint16_t)(names + 1 + depot[names]) > end) {
+            return 0;
+        }
+        for (j = 0; j < depot[names]; ++j) {
+            t = depot[names + 1 + j];
+            if (t < 0x20 || t > 0x7E) return 0;
+        }
+        names = (uint16_t)(names + 1 + depot[names]);
+    }
+    if (names != end) return 0;
     for (i = 0; i < starts + foes; ++i) {
         s = depot + (i < starts ? q + 2u * i : p + 18u * (i - starts));
         x = s[0];
@@ -1074,6 +1089,8 @@ static uint16_t weapon_of(void)
 
 static apb_fighter fighter;
 static apb_action action;
+static uint16_t foe_names_at;       /* the fight's first foe name, in the depot */
+static char foe_name[APB_VM_FOE_NAME_MAX + 1];
 
 static void battle_event(const apb_event *e)
 {
@@ -1114,6 +1131,7 @@ static uint8_t fight(uint8_t n, uint8_t surprise)
     apb_battle_add(&fighter);
     p = (uint16_t)(p + 1 + 2u * depot[p]);
     foes = depot[p++];
+    foe_names_at = (uint16_t)(p + 18u * foes);
     for (i = 0; i < foes; ++i) {
         s = depot + p + 18u * i;
         memset(&fighter, 0, sizeof(fighter));
@@ -1552,6 +1570,19 @@ uint8_t apb_vm_run(void)
 uint8_t apb_vm_health(void)
 {
     return health;
+}
+
+const char *apb_vm_foe_name(uint8_t who)
+{
+    uint16_t at = foe_names_at;
+    uint8_t i;
+
+    foe_name[0] = '\0';
+    if (who == 0 || who >= apb_battle_count() || at == 0) return foe_name;
+    for (i = 1; i < who; ++i) at = (uint16_t)(at + 1 + depot[at]);
+    memcpy(foe_name, depot + at + 1, depot[at]);
+    foe_name[depot[at]] = '\0';
+    return foe_name;
 }
 
 const apb_receipt *apb_vm_receipt(void)

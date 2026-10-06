@@ -6,7 +6,8 @@ compiler's output is checked against the spec independently of the code that wro
 
 import struct
 
-from opcodes import (BY_CODE, ENCOUNTER_FOE_BYTES, MAP_TILES, MAX_CAR, MAX_ENCOUNTERS,
+from opcodes import (BY_CODE, ENCOUNTER_FOE_BYTES, FOE_NAME_MAX, MAP_TILES, MAX_CAR,
+                     MAX_ENCOUNTERS,
                      MAX_OPTIONS, NO_MENU, NO_TITLE, OFFICIAL_ONLY,
                      SKILL_RATING_BASE, TXT_CLASS, TXT_DEBT, TXT_END, TXT_LEVEL, TXT_NAME,
                      TXT_NEWLINE, TXT_RACE, TXT_VAR, WIDTH)
@@ -122,6 +123,11 @@ def read_encounter(blob, i):
                 or not (weak <= 4 or weak == 255) or behavior > 2 or coward > 1):
             raise BadImage(f"{where}: a foe's numbers are out of range")
         foes.append({"x": x, "y": y, "stats": v})
+    for f in foes:
+        n = r.take("<B")
+        if not 1 <= n <= FOE_NAME_MAX:
+            raise BadImage(f"{where}: a foe's name is {n} characters")
+        f["name"] = ascii_name(r.bytes(n), f"{where}: a foe's name")
     if r.pos != len(blob):
         raise BadImage(f"{where}: trailing bytes")
     return {"w": w, "h": h, "tiles": tiles, "starts": starts, "foes": foes}
@@ -301,7 +307,7 @@ def disassemble(data, registry=None):
              f"{len(d['pairs'])} text pairs, start scene {d['start']}, hash {d['hash']:04x}"]
     for i, e in enumerate(d["encounters"]):
         lines.append(f"; encounter {i}: {e['w']} x {e['h']}, {len(e['starts'])} start(s), "
-                     f"{len(e['foes'])} foe(s)")
+                     f"foes: " + ", ".join(f"{chr(97 + n)} {f['name']}" for n, f in enumerate(e['foes'])))
         for y in range(e["h"]):
             row = [MAP_TILES[t] for t in e["tiles"][y * e["w"]:(y + 1) * e["w"]]]
             for x, (sx, sy) in enumerate(e["starts"]):
