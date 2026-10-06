@@ -107,7 +107,8 @@ C64) when drawing; string literals in C are not used for game text.
 | vars | 128 bytes | |
 | expression stack | 16 × int16 | |
 | menu | 9 × (string id 2, target 2) | |
-| character | `apb_character` | the working copy; written to the Passport only at the end |
+| character | `apb_character` | a working copy of the boarding snapshot; the VM never writes a Passport |
+| receipt | small | every change made to the character (XP, Debt, items, Echoes), handed to the front end at `END`; see [boarding.md](boarding.md) |
 | rng | 2 | `apb_rng` |
 | rewards this Departure | small | items given count, for Branch Line limits |
 
@@ -126,7 +127,7 @@ car's code.
 | `JZ` | 02 | u16 addr | Pop; jump if zero |
 | `GOTO` | 03 | u16 scene | Enter a scene (loads its car if needed) |
 | `SWITCH4` | 04 | u16 × 4 | Pop 0..3; jump to that address (used after `CHECK`) |
-| `END` | 05 | u8 outcome | End the Departure: 0 complete, 1 failed |
+| `END` | 05 | u8 outcome | End the Departure: 0 complete, 1 failed; hand the receipt to the front end |
 
 ### Text and presentation
 
@@ -255,7 +256,8 @@ the scene directory), and applies the runtime checks to every operand, plus:
 | scene | 2 |
 | flags, vars | 64 + 128 |
 | rng | 2 |
-| character | `apb_character` |
+| character | `apb_character` (the working copy) |
+| receipt so far | small |
 | reward counters | small |
 
 A save made by one image only loads into an image with the same hash. On the C64 a save is

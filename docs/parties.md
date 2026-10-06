@@ -23,7 +23,9 @@ Party Departures are written for 2–4 characters with party roles in mind.
   - solo, controlling up to four of your own characters;
   - with friends, each bringing one or more;
   - mixed, filling empty slots from your roster.
-- Everyone who finishes gets XP, loot and their share of Debt reduction.
+- Everyone who finishes gets XP, loot and their share of Debt reduction, as a receipt
+  applied to their character as it is by then. A character in a weeks-long party game can
+  keep playing elsewhere meanwhile, and nothing is lost. See [boarding.md](boarding.md).
 
 ### Playing together across machines
 

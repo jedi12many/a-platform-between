@@ -84,6 +84,13 @@ A new character from the test suite:
 Long passwords are fine to type once in a while. For everyday use: disk saves on retro
 machines, files and accounts on modern ones, and a QR code on printed sheets.
 
+## Receipts and Travel Stamps
+
+A Departure doesn't return a new Passport; it returns a **receipt** of what changed, which
+is applied to the character as they are now. On retro platforms and at the table the
+receipt travels as a short **Travel Stamp** password. See [boarding.md](boarding.md); the
+stamp format comes with milestone E2.
+
 ## Registries
 
 Races, classes, skills, items and Echoes live in **global, append-only registries**, as

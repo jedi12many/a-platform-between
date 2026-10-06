@@ -43,6 +43,7 @@ make demo        # build and run the native demo
 | [Seasons](docs/seasons.md) | Seasons as DLC, carrying over, skipping a season, replaying (Rewind) |
 | [Sidings](docs/sidings.md) | Non-story content: procedural Deep Yards, mini-games |
 | [Parties](docs/parties.md) | Solo vs. party Departures, rosters, bringing four of your own |
+| [Boarding](docs/boarding.md) | One character in several games at once: snapshots, receipts, Travel Stamps |
 | [Tabletop](docs/tabletop.md) | Platform 0: printed sheets, gamebooks, Conductor modules, coming home |
 | [Rules v0](docs/rules-v0.md) | d100, the 100 scale, skills, powers, creation, levels |
 | [Passport spec](docs/passport-spec.md) | The portable character record: password, file, hub account |
