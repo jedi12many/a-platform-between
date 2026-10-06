@@ -288,8 +288,6 @@ void    apb_rewind_echoes(apb_character *ch, uint16_t departure);
 /* docs/combat.md. */
 #define APB_UNARMED_DAMAGE    2
 #define APB_COVER_BONUS       20   /* to the TN, against ranged attacks and powers */
-#define APB_DEFEND_BONUS      20   /* to the TN, until your next turn             */
-#define APB_HELP_BONUS        20   /* to an ally's next attack                    */
 #define APB_HIGH_GROUND_BONUS 10   /* to your attacks from high ground            */
 #define APB_HAZARD_DAMAGE     5
 #define APB_FLEE_TN           100
@@ -302,7 +300,7 @@ uint8_t apb_melee_bonus(const apb_character *ch);  /* Might / 20                
 /* 5 x the item's tier; bare hands (item 0) do APB_UNARMED_DAMAGE. */
 uint8_t apb_weapon_damage(uint16_t item);
 
-/* TN to hit: 50 + dodge + defense (Armor or Ward) + bonus (cover, defending), less
+/* TN to hit: 50 + dodge + defense (Armor or Ward) + bonus (cover), less
  * `reduce` (debuffs, pierce); never below 50. */
 int16_t apb_hit_tn(int16_t dodge, int16_t defense, int16_t bonus, int16_t reduce);
 

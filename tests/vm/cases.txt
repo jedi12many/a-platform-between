@@ -19,11 +19,12 @@ fare-tick       content/s1/00-the-fare/the-fare.qs              1     @tick,1,1,
 fare-lumen      content/s1/00-the-fare/the-fare.qs              23    @lumen,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
 # The Lost Property office, The Fare's one fight, and every road past it (Kestrel, with
 # her pulse rifle; turns are X.Y.ACTION.TARGET). Driving the rats out: fled, then won.
-# Creeping in: fail and cost start the fight in an ambush or a sneak, each fled; then a
+# Creeping in: fail and cost start the fight in an ambush or a sneak, each fled (the rats
+# get free attacks as she runs for the door); then a
 # clean success, or a crit. Won from an ambush and from a sneak. Lost all three ways (a
 # loss heals 10, so the next fight starts at 11), then leaving them to it.
-fare-hook-drive content/s1/00-the-fare/the-fare.qs              1     1,1,1,1,4,1,0.1.3.0,4,1,1.2.0.1,1.2.0.2,3,3,1,1,3
-fare-hook-creep content/s1/00-the-fare/the-fare.qs              50    1,1,1,1,4,2,0.1.3.0,4,2,0.1.3.0,4,2,3,3,1,1,3
+fare-hook-drive content/s1/00-the-fare/the-fare.qs              8     1,1,1,1,4,1,0.1.3.0,4,1,1.2.0.1,1.2.0.2,3,3,1,1,3
+fare-hook-creep content/s1/00-the-fare/the-fare.qs              188   1,1,1,1,4,2,0.1.3.0,4,2,0.1.3.0,4,2,3,3,1,1,3
 fare-hook-crit  content/s1/00-the-fare/the-fare.qs              63    1,1,1,1,4,2,3,3,1,1,3
 fare-hook-ambush content/s1/00-the-fare/the-fare.qs             2     1,1,1,1,4,2,1.2.0.1,1.2.0.2,3,3,1,1,3
 fare-hook-jump  content/s1/00-the-fare/the-fare.qs              1     1,1,1,1,4,2,1.2.0.1,1.2.0.2,3,3,1,1,3
@@ -48,7 +49,7 @@ stamp-echo      tests/qsc/ok/everything.qs                      -     @kestrel,@
 # pass's last bit), the Echoes Departure 2 plants are forgotten and the pup is a pup.
 rewind-not      tests/vm/rewind.qs                              -     @ash,@pass:ash:2:21:3,1
 rewind-yes      tests/vm/rewind.qs                              -     @ash,@pass:ash:2:22:3:rewind,1
-# Fights. fight.qs (the compiler's fixture): defending to the end, and sneaking past.
+# Fights. fight.qs (the compiler's fixture): standing guard to the end, and sneaking past.
 fight-yard      tests/qsc/ok/fight.qs                           3     1,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0
 fight-sneak     tests/qsc/ok/fight.qs                           4     2,1.1.3.0,1.1.3.0,1.1.3.0
 # fights.qs: a win, an escape by the exit with health carried over, a rest (~ heal 10),
@@ -56,3 +57,6 @@ fight-sneak     tests/qsc/ok/fight.qs                           4     2,1.1.3.0,
 fight-tour      tests/vm/fights.qs                              7     1,0.0.0.1,0.0.0.1,2,0.0.3.0,4,3,0.0.0.1,5
 fight-lost      tests/vm/fights.qs                              1     3,0.0.1.0,0.0.1.0,0.0.1.0,0.0.1.0,0.0.1.0
 fight-flee      tests/vm/fights.qs                              5     1,0.0.3.0,0.0.3.0,5
+# Quick (q): the computer plays Kestrel by the rule her rifle suggests (shoot), in the
+# alley ambush; she loses, and with no lost: branch the Departure ends.
+fight-quick     tests/vm/fights.qs                              7     3,q,q

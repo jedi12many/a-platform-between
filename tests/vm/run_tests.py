@@ -341,7 +341,7 @@ def saves():
             full = f.read()
         tokens = picks.split(",")
         for k in range(len(tokens)):
-            if "." in tokens[k]:
+            if "." in tokens[k] or tokens[k] == "q":         # a turn in a fight
                 continue                # a battle turn: saves are made at story menus
             for binary, sim in (("build/harness", False), ("build/harness.sim", True)):
                 if sim and not (name == "fare-edge" and k in (0, 5, len(tokens) - 1)):

@@ -42,7 +42,7 @@ Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash rat
   3) Leave them to it
 > 2
 You keep low, and keep to the shadows of the trunks.
-[check Stealth: 20+20=40 vs 100: fail]
+[check Stealth: 11+20=31 vs 100: fail]
 A suitcase gives way under your foot with a noise like a gunshot, and the rats come out of the trunk all at once.
 [fight: 9 x 5, 3 fighters, health 27]
   #########
@@ -52,20 +52,24 @@ A suitcase gives way under your foot with a noise like a gunshot, and the rats c
   #########
 round 0: 1's turn
   1 moves to 2,1
-  1 attacks 0: 14+30=44 vs 58: cost, 1 damage
+  1 attacks 0: 34+30=64 vs 58: success, 2 damage
 round 0: 2's turn
   2 moves to 2,2
-  2 attacks 0: 60+30=90 vs 58: success, 5 damage
+  2 attacks 0: 51+30=81 vs 58: success, 4 damage
 round 1: 1's turn
-  1 attacks 0: 63+30=93 vs 58: success, 5 damage
+  1 attacks 0: 85+30=115 vs 58: success, 7 damage
 round 1: 2's turn
-  2 attacks 0: 76+30=106 vs 58: success, 6 damage
+  2 attacks 0: 14+30=44 vs 58: cost, 1 damage
 round 1: 0's turn
 > 0.1.3.0
+  1 gets a free attack on 0
+  1 attacks 0: 74+30=104 vs 58: success, 6 damage
+  2 gets a free attack on 0
+  2 attacks 0: 8+30=38 vs 58: fail, 0 damage
   0 moves to 0,1
   0 takes the exit
   0 is gone
-[the fight is fled; health 10]
+[the fight is fled; health 7]
 You stumble out and kick the door shut behind you.
 [picture 2 concourse]
 The great hall. The board clatters. The Buffer Stop glows.
@@ -81,9 +85,9 @@ Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash rat
   3) Leave them to it
 > 2
 You keep low, and keep to the shadows of the trunks.
-[check Stealth: 70+20=90 vs 100: cost]
+[check Stealth: 73+20=93 vs 100: cost]
 You're halfway across when a hatbox slides. The rats turn, but you're closer than they would like.
-[fight: 9 x 5, 3 fighters, health 10]
+[fight: 9 x 5, 3 fighters, health 7]
   #########
   >..+..~.#
   #0.+..1.#
@@ -94,7 +98,7 @@ round 0: 0's turn
   0 moves to 0,1
   0 takes the exit
   0 is gone
-[the fight is fled; health 10]
+[the fight is fled; health 7]
 You back out and pull the door to.
 [picture 2 concourse]
 The great hall. The board clatters. The Buffer Stop glows.
@@ -110,7 +114,7 @@ Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash rat
   3) Leave them to it
 > 2
 You keep low, and keep to the shadows of the trunks.
-[check Stealth: 91+20=111 vs 100: success]
+[check Stealth: 94+20=114 vs 100: success]
 A floorboard thinks about creaking and decides not to. You have the hook, and the rats have their nest.
 The porter's hook is heavier than it looks, and fits your hand as if it had been made for it. A paper tag hangs from the handle: UNCLAIMED. Then, as you watch, the word fades, and in the same careful hand as the Stationmaster's ledger, your name writes itself in its place.
 [picture 2 concourse]

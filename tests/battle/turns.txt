@@ -1,0 +1,35 @@
+# Pool of Radiance turns (docs/combat.md, "Your turn"). A wall splits the room.
+# Above it, Kestrel (sabre) stands guard as a charger (a) comes for her, and gets a free
+# attack when it arrives; next turn she pulls away from it, and it gets one on her.
+# Below it, Fern (bare hands) waits for the end of the round, next to a grenadier (g).
+# It can't throw at her from there (the blast would catch it) and can't see Kestrel,
+# so it pulls away to get a shot, and Fern gets a free attack. When her turn comes
+# round, a second wait is refused. Then both go on quick.
+seed 88
+map
+###########
+#@.......a#
+#.........#
+#########.#
+#@g.......#
+###########
+end
+traveler 4PB794AR0A0105AM7HDT8V4000000000K60M2A4A50601902804008ZT0A 5
+traveler 4CB4W00006C101WPP9QHNB400000003G074MMABZ50000CY1GE 0
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 30 60  4  0  0  0  4 40  6  0  0  0  0 255 0  0
+foe g 20 10  0  0  0  0  4 40  3  1  0  2  1 255 1  0
+act 1 4 2 0
+act 1 1 1 0
+act 1 4 2 0
+act 1 4 4 0
+act q
+act 4 2 4 0
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q

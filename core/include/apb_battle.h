@@ -48,16 +48,18 @@ typedef struct {
     uint8_t weak_type;        /* a damage type that ignores its Armor, or 0xFF */
     uint8_t behavior;         /* APB_FOE_*                                     */
     uint8_t coward;           /* 1: runs off at a quarter health               */
-    uint8_t defending;        /* +20 to its TN until its next turn             */
-    uint8_t opened;           /* +20 to the next traveler attack on it (Help)  */
+    uint8_t guarding;         /* 1: a free attack on the next foe to come close */
+    uint8_t waited;           /* 1: it put its turn off this round              */
 } apb_fighter;
 
+/* A turn (docs/combat.md, "Your turn"): move, then one of these. */
 enum {
     APB_ACT_ATTACK = 0,       /* target: a fighter (or, for an area, any one in the blast) */
-    APB_ACT_DEFEND,
-    APB_ACT_HELP,             /* target: a foe next to you                     */
+    APB_ACT_GUARD,            /* a free attack on the first foe to come next to you  */
+    APB_ACT_WAIT,             /* take your turn at the end of the round: no move,
+                                 once a round                                        */
     APB_ACT_FLEE,
-    APB_ACT_WAIT
+    APB_ACT_DONE              /* nothing more                                         */
 };
 
 typedef struct {
@@ -73,11 +75,14 @@ enum {
     APB_EV_ATTACK,            /* actor attacked target: roll, damage           */
     APB_EV_DOWN,              /* target is down                                */
     APB_EV_HAZARD,            /* actor took damage from the ground             */
-    APB_EV_DEFEND,
-    APB_EV_HELP,              /* actor opened target up                        */
+    APB_EV_GUARD,             /* actor stands guard                            */
+    APB_EV_WAIT,              /* actor puts its turn off to the end of the round */
     APB_EV_FLEE,              /* actor tried to flee: roll (result), x/y unused */
     APB_EV_GONE,              /* actor left the fight                          */
-    APB_EV_END                /* the fight is over: value is APB_BATTLE_*      */
+    APB_EV_END,               /* the fight is over: value is APB_BATTLE_*      */
+    APB_EV_FREE               /* actor gets a free attack on target (an ATTACK
+                                 event follows): target pulled away, or came up
+                                 to actor on guard                             */
 };
 
 typedef struct {
@@ -131,6 +136,10 @@ uint8_t apb_battle_next(void);
  * no line of sight, a square it can't get to): nothing happens, and it's still their
  * turn. */
 uint8_t apb_battle_act(uint8_t who, const apb_action *a);
+
+/* Quick: what the computer would do with `who` now, by the rule its weapon suggests
+ * (a foe's printed rule, for a foe). Hand it to apb_battle_act. */
+void    apb_battle_quick(uint8_t who, apb_action *out);
 
 /* Helpers the front ends use to offer only what's possible. */
 uint8_t apb_battle_can_reach(uint8_t who, uint8_t x, uint8_t y);

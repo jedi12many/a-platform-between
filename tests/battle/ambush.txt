@@ -1,7 +1,7 @@
 # An ambush: the foes get a free round. Kestrel and Fern against a thug (t), a coward (c)
 # who runs off at a quarter health, and a grenadier (g) whose blast (Area 1) catches
-# anyone near its target, its own side included. Fern opens the thug up (Help: +20 to
-# Kestrel's next attack on it), then defends (+20 to her TN).
+# anyone near its target, its own side included. Fern stands guard throughout (a free
+# attack on the first foe to come next to her).
 seed 2026
 surprise foes
 map
@@ -18,7 +18,7 @@ traveler 4CB4W00006C101WPP9QHNB400000003G074MMABZ50000CY1GE 0
 foe t 20 30  6 10  0  0  4 40  6  0  0  0  0 255 0  0
 foe c 16 50 10  0  0  0  6 35  4  0  0  0  0 255 0  1
 foe g 12 20  4  0  0  0  4 40  3  1  0  2  1 255 1  0
-act 3 2 2 2
+act 3 2 1 0
 act 3 1 0 2
 act 3 2 1 0
 act 3 1 0 3

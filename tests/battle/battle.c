@@ -13,6 +13,7 @@
  *   foe L HEALTH GRACE DODGE ARMOR WARD SOAK SPEED ATTACK WEAPON RANGED POWER TYPE AREA
  *       WEAK BEHAVIOR COWARD             stands on the map's letter L
  *   act X Y KIND TARGET                  a traveler's turn (KIND: APB_ACT_*)
+ *   act q                                a traveler's turn on quick (apb_battle_quick)
  *
  * Fighters are numbered in the order they're added. When the actions run out, the log
  * ends with "out of actions".
@@ -49,8 +50,9 @@ static void on_event(const apb_event *e)
         break;
     case APB_EV_DOWN:   printf("  %u is down\n", e->target); break;
     case APB_EV_HAZARD: printf("  %u takes %u from the ground\n", e->actor, e->value); break;
-    case APB_EV_DEFEND: printf("  %u defends\n", e->actor); break;
-    case APB_EV_HELP:   printf("  %u opens %u up\n", e->actor, e->target); break;
+    case APB_EV_GUARD:  printf("  %u guards\n", e->actor); break;
+    case APB_EV_WAIT:   printf("  %u waits\n", e->actor); break;
+    case APB_EV_FREE:   printf("  %u gets a free attack on %u\n", e->actor, e->target); break;
     case APB_EV_FLEE:
         if (e->roll.roll) {
             printf("  %u tries to flee: %u+%d=%d vs %d: %s\n", e->actor, e->roll.roll,
@@ -182,11 +184,16 @@ int main(int argc, char **argv)
             }
             who = apb_battle_next();
             if (who == APB_NOBODY) break;
-            sscanf(line, "%*s %d %d %d %d", &v[0], &v[1], &v[2], &v[3]);
-            act.move_x = (uint8_t)v[0];
-            act.move_y = (uint8_t)v[1];
-            act.kind = (uint8_t)v[2];
-            act.target = (uint8_t)v[3];
+            if (strcmp(line, "act q") == 0) {
+                apb_battle_quick(who, &act);
+                printf("  (quick: act %u %u %u %u)\n", act.move_x, act.move_y, act.kind, act.target);
+            } else {
+                sscanf(line, "%*s %d %d %d %d", &v[0], &v[1], &v[2], &v[3]);
+                act.move_x = (uint8_t)v[0];
+                act.move_y = (uint8_t)v[1];
+                act.kind = (uint8_t)v[2];
+                act.target = (uint8_t)v[3];
+            }
             if (!apb_battle_act(who, &act)) printf("  (not allowed: %s)\n", line);
         }
     }

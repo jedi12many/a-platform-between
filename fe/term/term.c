@@ -316,6 +316,8 @@ static const char *const tile_names[] = { "", "wall", "pit", "rough", "cover", "
 static apb_fighter bf;
 static uint8_t last_round;
 static uint8_t redraw;
+static uint8_t free_next;    /* the next attack is a free one       */
+static uint8_t on_quick;     /* the computer is playing you          */
 
 /* Foe `who` (1..) is the letter a, b, ... on the map. */
 static char foe_letter(uint8_t who)
@@ -402,6 +404,7 @@ void hal_battle_begin(void)
 {
     printf("-- A fight! --\n");
     last_round = 0xFF;
+    free_next = on_quick = 0;
     show_battle();
     putchar('\n');
 }
@@ -428,8 +431,13 @@ void hal_battle_event(const apb_event *e)
     case APB_EV_MOVE:
         sprintf(line, "%s move%s.", actor, you ? "" : "s");
         break;
+    case APB_EV_FREE:
+        free_next = 1;
+        return;
     case APB_EV_ATTACK:
-        n = sprintf(line, "%s attack%s %s: %u + %d = %d against %d, %s", actor,
+        n = free_next ? sprintf(line, "Free attack! ") : 0;
+        free_next = 0;
+        n += sprintf(line + n, "%s attack%s %s: %u + %d = %d against %d, %s", actor,
                     you ? "" : "s", e->target ? fighter_name(e->target) : "you",
                     e->roll.roll, e->roll.total - e->roll.roll, e->roll.total, e->roll.tn,
                     hits[e->roll.result & 3]);
@@ -444,11 +452,11 @@ void hal_battle_event(const apb_event *e)
         sprintf(line, "The ground hurts %s: %u damage.", you ? "you" : fighter_name(e->actor),
                 e->value);
         break;
-    case APB_EV_DEFEND:
-        sprintf(line, "%s brace%s for it.", actor, you ? "" : "s");
+    case APB_EV_GUARD:
+        sprintf(line, "%s stand%s guard.", actor, you ? "" : "s");
         break;
-    case APB_EV_HELP:
-        sprintf(line, "%s open%s %s up.", actor, you ? "" : "s", fighter_name(e->target));
+    case APB_EV_WAIT:
+        sprintf(line, "%s wait%s to see what happens.", actor, you ? "" : "s");
         break;
     case APB_EV_FLEE:
         if (e->roll.roll) {
@@ -572,16 +580,29 @@ void hal_battle_turn(uint8_t who, apb_action *out)
     uint8_t here_x;
     uint8_t here_y;
     uint8_t adjacent;
-    uint8_t moves;
+    uint8_t waited;
+    char buf[16];
 
     if (redraw) {
         putchar('\n');
         show_battle();
         putchar('\n');
     }
+    if (on_quick) {
+        printf("On quick: Enter, or t to take over.\n> ");
+        read_line(buf, sizeof(buf));
+        if (buf[0] == 't' || buf[0] == 'T') {
+            on_quick = 0;
+        } else {
+            putchar('\n');
+            apb_battle_quick(who, out);
+            return;
+        }
+    }
     apb_battle_fighter(who, &bf);
     here_x = bf.x;
     here_y = bf.y;
+    waited = bf.waited;
     for (;;) {
         /* Where to? */
         n = 0;
@@ -617,8 +638,28 @@ void hal_battle_turn(uint8_t who, apb_action *out)
             && best_square(who, here_x, here_y, APB_TILE_HIGH, 0xFF, &to_x[n], &to_y[n])) {
             strcpy(labels[n++], "Onto high ground");
         }
-        moves = n;
-        pick = n > 1 ? battle_pick("Where to?", labels, n) : 0;
+        /* Instead of moving: put the turn off, or hand it to the computer. */
+        if (!waited) {
+            strcpy(labels[n], "Wait: act at the end of the round");
+            to_x[n++] = 0xFE;
+        }
+        strcpy(labels[n], "Quick: the computer plays you");
+        to_x[n++] = 0xFD;
+        pick = battle_pick("Where to?", labels, n);
+        if (to_x[pick] == 0xFE) {
+            putchar('\n');
+            out->move_x = here_x;
+            out->move_y = here_y;
+            out->kind = APB_ACT_WAIT;
+            out->target = 0;
+            return;
+        }
+        if (to_x[pick] == 0xFD) {
+            putchar('\n');
+            on_quick = 1;
+            apb_battle_quick(who, out);
+            return;
+        }
         out->move_x = to_x[pick];
         out->move_y = to_y[pick];
 
@@ -634,20 +675,18 @@ void hal_battle_turn(uint8_t who, apb_action *out)
                     apb_battle_tn(who, i));
             targets[n++] = i;
         }
-        strcpy(labels[n], "Defend: +20 to your TN");
-        targets[n++] = 0xF0 | APB_ACT_DEFEND;
+        strcpy(labels[n], "Guard: hit the first to come close");
+        targets[n++] = 0xF0 | APB_ACT_GUARD;
         if (apb_battle_tile(out->move_x, out->move_y) == APB_TILE_EXIT) {
             strcpy(labels[n], "Take the exit");
         } else {
             sprintf(labels[n], "Flee: TN %d", apb_flee_tn(adjacent));
         }
         targets[n++] = 0xF0 | APB_ACT_FLEE;
-        strcpy(labels[n], "Wait");
-        targets[n++] = 0xF0 | APB_ACT_WAIT;
-        if (moves > 1) {
-            strcpy(labels[n], "Back");
-            targets[n++] = 0xFF;
-        }
+        strcpy(labels[n], "Done");
+        targets[n++] = 0xF0 | APB_ACT_DONE;
+        strcpy(labels[n], "Back");
+        targets[n++] = 0xFF;
         pick = battle_pick("Then?", labels, n);
         if (targets[pick] == 0xFF) continue;
         putchar('\n');

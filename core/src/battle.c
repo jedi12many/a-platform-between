@@ -16,7 +16,8 @@ static uint8_t map_w;
 static uint8_t map_h;
 static uint8_t tiles[APB_MAP_H_MAX][APB_MAP_W_MAX];
 static uint8_t count;
-static uint8_t order[APB_FIGHTERS_MAX];
+static uint8_t base[APB_FIGHTERS_MAX];    /* the order of play, by Grace        */
+static uint8_t order[APB_FIGHTERS_MAX];   /* this round's: Wait moves you back  */
 static uint8_t round_no;
 static uint8_t next;        /* index into order                              */
 static uint8_t begun;       /* the traveler at `next` has started their turn */
@@ -57,8 +58,8 @@ typedef char apb_fighter_is_bytes[sizeof(apb_fighter) == FIELDS ? 1 : -1];
 #define f_weak_type   fd[20]
 #define f_behavior    fd[21]
 #define f_coward      fd[22]
-#define f_defending   fd[23]
-#define f_opened      fd[24]
+#define f_guarding    fd[23]
+#define f_waited      fd[24]
 
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static uint8_t cost_to[APB_MAP_H_MAX][APB_MAP_W_MAX];   /* movement used to get there */
@@ -145,6 +146,7 @@ uint8_t apb_battle_add(const apb_fighter *f)
     }
     for (k = 0; k < FIELDS; ++k) fd[k][i] = ((const uint8_t *)f)[k];
     f_state[i] = APB_IN_FIGHT;
+    f_guarding[i] = f_waited[i] = 0;
     if (f_health[i] > f_health_max[i]) f_health[i] = f_health_max[i];
     return count++;
 }
@@ -177,6 +179,8 @@ void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon
     out->athletics = apb_skill(ch, APB_SK_ATHLETICS);
     out->weapon = apb_weapon_damage(weapon_item);
     out->weak_type = 0xFF;
+    out->behavior = APB_AI_CHARGE;           /* on quick: the rule its weapon suggests */
+    if (arch == APB_ARCH_RANGED || arch == APB_ARCH_FOCUS) out->behavior = APB_AI_SHOOT;
     if (arch == APB_ARCH_RANGED) {
         out->ranged = 1;
         out->attack = apb_skill(ch, APB_SK_RANGED);
@@ -198,19 +202,20 @@ void apb_battle_start(uint8_t first)
     uint8_t q;
 
     /* Highest Grace first; travelers before foes on a tie; then the order they joined. */
-    for (i = 0; i < count; ++i) order[i] = i;
+    for (i = 0; i < count; ++i) base[i] = i;
     for (i = 1; i < count; ++i) {
         for (j = i; j > 0; --j) {
-            p = order[j - 1];
-            q = order[j];
+            p = base[j - 1];
+            q = base[j];
             if (f_grace[q] > f_grace[p] || (f_grace[q] == f_grace[p] && f_side[q] < f_side[p])) {
-                order[j] = p;
-                order[j - 1] = q;
+                base[j] = p;
+                base[j - 1] = q;
             } else {
                 break;
             }
         }
     }
+    memcpy(order, base, sizeof(order));
     surprise = first;
     round_no = first == APB_SURPRISE_NONE ? 1 : 0;
     next = 0;
@@ -308,7 +313,6 @@ int16_t apb_battle_tn(uint8_t a, uint8_t t)
     int16_t defense = f_power[a] ? f_ward[t] : (f_dmg_type[a] == f_weak_type[t] ? 0 : f_armor[t]);
     int16_t bonus = 0;
 
-    if (f_defending[t]) bonus = (int16_t)(bonus + APB_DEFEND_BONUS);
     if (f_ranged[a] && tiles[f_y[t]][f_x[t]] == APB_TILE_COVER) {
         bonus = (int16_t)(bonus + APB_COVER_BONUS);
     }
@@ -362,10 +366,6 @@ static void attack(uint8_t who, uint8_t target)
     if (tiles[f_y[who]][f_x[who]] == APB_TILE_HIGH && tiles[cy][cx] != APB_TILE_HIGH) {
         bonus = APB_HIGH_GROUND_BONUS;
     }
-    if (f_side[who] == APB_SIDE_TRAVELER && f_opened[target]) {
-        bonus = (int16_t)(bonus + APB_HELP_BONUS);
-        f_opened[target] = 0;
-    }
     roll = apb_d100(dice);
     for (i = 0; i < count; ++i) {
         if (f_state[i] != APB_IN_FIGHT) continue;
@@ -392,13 +392,42 @@ static void ground_hurts(uint8_t who)
     }
 }
 
+/* A free attack: i on who, if i can hit who from where it stands (an area weapon can't,
+ * next to you: the blast would catch its thrower). */
+static void free_attack(uint8_t i, uint8_t who)
+{
+    if (f_state[i] != APB_IN_FIGHT || f_state[who] != APB_IN_FIGHT) return;
+    if (!apb_battle_can_attack(i, who, f_x[i], f_y[i])) return;
+    emit(APB_EV_FREE, i, who, 0);
+    attack(i, who);
+}
+
+/* Moving. Pulling away from foes next to you gives each a free attack first; ending
+ * next to a foe on guard that you weren't next to gives it one after. */
 static void move_to(uint8_t who, uint8_t x, uint8_t y)
 {
-    if (f_x[who] == x && f_y[who] == y) return;
+    uint8_t i;
+    uint8_t sx = f_x[who];
+    uint8_t sy = f_y[who];
+
+    if (sx == x && sy == y) return;
+    for (i = 0; i < count; ++i) {
+        if (f_side[i] != f_side[who] && dist_to(i, who) == 1 && dist(f_x[i], f_y[i], x, y) > 1) {
+            free_attack(i, who);
+        }
+    }
+    if (f_state[who] != APB_IN_FIGHT) return;
     f_x[who] = x;
     f_y[who] = y;
     emit(APB_EV_MOVE, who, APB_NOBODY, 0);
     ground_hurts(who);
+    for (i = 0; i < count; ++i) {
+        if (f_guarding[i] && f_side[i] != f_side[who] && dist_to(i, who) == 1
+            && dist(f_x[i], f_y[i], sx, sy) > 1 && f_state[i] == APB_IN_FIGHT) {
+            f_guarding[i] = 0;
+            free_attack(i, who);
+        }
+    }
 }
 
 static uint8_t foes_next_to(uint8_t who)
@@ -426,11 +455,8 @@ static void flee(uint8_t who)
     emit(APB_EV_FLEE, who, APB_NOBODY, shot.result);
     if (shot.result == APB_COST) {
         /* Out, but every foe next to you gets a free attack on the way. */
-        for (i = 0; i < count && f_state[who] == APB_IN_FIGHT; ++i) {
-            if (f_state[i] == APB_IN_FIGHT && f_side[i] != f_side[who] && !f_ranged[i]
-                && dist_to(i, who) == 1) {
-                attack(i, who);
-            }
+        for (i = 0; i < count; ++i) {
+            if (f_side[i] != f_side[who] && dist_to(i, who) == 1) free_attack(i, who);
         }
     }
     if (shot.result != APB_FAIL && f_state[who] == APB_IN_FIGHT) {
@@ -441,7 +467,8 @@ static void flee(uint8_t who)
 
 /* ------------------------------------------------------------- the foes */
 
-/* The nearest traveler (that it can attack from x, y, if `attackable`), or APB_NOBODY. */
+/* The nearest of who's opponents (that it can attack from x, y, if `attackable`), or
+ * APB_NOBODY. */
 static uint8_t nearest(uint8_t who, uint8_t x, uint8_t y, uint8_t attackable)
 {
     uint8_t i;
@@ -450,7 +477,7 @@ static uint8_t nearest(uint8_t who, uint8_t x, uint8_t y, uint8_t attackable)
     uint8_t d;
 
     for (i = 0; i < count; ++i) {
-        if (f_state[i] != APB_IN_FIGHT || f_side[i] != APB_SIDE_TRAVELER) continue;
+        if (f_state[i] != APB_IN_FIGHT || f_side[i] == f_side[who]) continue;
         if (attackable && !apb_battle_can_attack(who, i, x, y)) continue;
         d = dist(x, y, f_x[i], f_y[i]);
         if (d < best_d) {
@@ -461,70 +488,91 @@ static uint8_t nearest(uint8_t who, uint8_t x, uint8_t y, uint8_t attackable)
     return best;
 }
 
-/* A shooter moves only as far as it must to get a shot: the cheapest square it can
- * reach and fire from (top-left first on a tie). Returns 0 if there's none. */
-static uint8_t find_shot(uint8_t who)
+/* What the computer does with `who`, by its rule (docs/combat.md): where it moves, and
+ * whom it attacks from there (APB_NOBODY: nobody). For a foe, and for a traveler on
+ * quick. */
+static uint8_t plan_x;
+static uint8_t plan_y;
+static uint8_t plan_target;
+
+static void plan(uint8_t who)
 {
     uint8_t x;
     uint8_t y;
-    uint8_t bx = 0;
-    uint8_t by = 0;
-    uint8_t best = 0xFF;
+    uint8_t t;
+    uint8_t goal;
+    uint8_t d;
+    uint8_t best;
 
+    plan_x = f_x[who];
+    plan_y = f_y[who];
+    plan_target = nearest(who, plan_x, plan_y, 1);
+    if (plan_target != APB_NOBODY || f_behavior[who] == APB_AI_GUARD) return;
     reach(who);
+    if (f_behavior[who] == APB_AI_SHOOT && f_ranged[who]) {
+        /* Only as far as it must to get a shot: the cheapest square it can fire from
+         * (top-left first on a tie). */
+        best = 0xFF;
+        for (y = 0; y < map_h; ++y) {
+            for (x = 0; x < map_w; ++x) {
+                if (cost_to[y][x] < best && (t = nearest(who, x, y, 1)) != APB_NOBODY) {
+                    best = cost_to[y][x];
+                    plan_x = x;
+                    plan_y = y;
+                    plan_target = t;
+                }
+            }
+        }
+        if (best != 0xFF) return;
+    }
+    /* Close in: the reachable square nearest the nearest opponent (cheapest to get to
+     * on a tie, then top-left first). */
+    goal = nearest(who, f_x[who], f_y[who], 0);
+    if (goal == APB_NOBODY) return;
+    best = dist_to(who, goal);
     for (y = 0; y < map_h; ++y) {
         for (x = 0; x < map_w; ++x) {
-            if (cost_to[y][x] < best && nearest(who, x, y, 1) != APB_NOBODY) {
-                best = cost_to[y][x];
-                bx = x;
-                by = y;
+            if (cost_to[y][x] == 0xFF) continue;
+            d = dist(x, y, f_x[goal], f_y[goal]);
+            if (d < best || (d == best && cost_to[y][x] < cost_to[plan_y][plan_x])) {
+                best = d;
+                plan_x = x;
+                plan_y = y;
             }
         }
     }
-    if (best == 0xFF) return 0;
-    move_to(who, bx, by);
-    return 1;
+    plan_target = nearest(who, plan_x, plan_y, 1);
+}
+
+static void guard(uint8_t who)
+{
+    f_guarding[who] = 1;
+    emit(APB_EV_GUARD, who, APB_NOBODY, 0);
 }
 
 static void foe_turn(uint8_t who)
 {
-    uint8_t target = nearest(who, f_x[who], f_y[who], 1);
-    uint8_t x;
-    uint8_t y;
-    uint8_t bx = f_x[who];
-    uint8_t by = f_y[who];
-    uint8_t goal;
-    uint8_t d;
-    uint8_t best_d;
+    plan(who);
+    move_to(who, plan_x, plan_y);
+    if (f_state[who] != APB_IN_FIGHT) return;
+    if (plan_target != APB_NOBODY) attack(who, plan_target);
+    else if (f_behavior[who] == APB_AI_GUARD) guard(who);
+}
 
-    if (target == APB_NOBODY && f_behavior[who] == APB_AI_SHOOT && f_ranged[who]
-        && find_shot(who)) {
-        if (f_state[who] != APB_IN_FIGHT) return;
-        target = nearest(who, f_x[who], f_y[who], 1);
+void apb_battle_quick(uint8_t who, apb_action *out)
+{
+    memset(out, 0, sizeof(*out));
+    if (who >= count) return;
+    plan(who);
+    out->move_x = plan_x;
+    out->move_y = plan_y;
+    out->kind = APB_ACT_DONE;
+    if (plan_target != APB_NOBODY) {
+        out->kind = APB_ACT_ATTACK;
+        out->target = plan_target;
+    } else if (f_behavior[who] == APB_AI_GUARD) {
+        out->kind = APB_ACT_GUARD;
     }
-    if (target == APB_NOBODY && f_behavior[who] != APB_AI_GUARD) {
-        /* Close in: the reachable square nearest the nearest traveler (cheapest to get
-         * to on a tie, then top-left first). */
-        goal = nearest(who, f_x[who], f_y[who], 0);
-        if (goal == APB_NOBODY) return;
-        reach(who);
-        best_d = dist_to(who, goal);
-        for (y = 0; y < map_h; ++y) {
-            for (x = 0; x < map_w; ++x) {
-                if (cost_to[y][x] == 0xFF) continue;
-                d = dist(x, y, f_x[goal], f_y[goal]);
-                if (d < best_d || (d == best_d && cost_to[y][x] < cost_to[by][bx])) {
-                    best_d = d;
-                    bx = x;
-                    by = y;
-                }
-            }
-        }
-        move_to(who, bx, by);
-        if (f_state[who] != APB_IN_FIGHT) return;
-        target = nearest(who, f_x[who], f_y[who], 1);
-    }
-    if (target != APB_NOBODY) attack(who, target);
 }
 
 /* ------------------------------------------------------------- turns */
@@ -546,16 +594,21 @@ static void advance(void)
 {
     begun = 0;
     if (++next >= count) {
+        /* A new round: back to the order of play, and anyone may wait again. */
         next = 0;
         if (round_no < 255) ++round_no;
+        memcpy(order, base, sizeof(order));
+        memset(f_waited, 0, sizeof(f_waited));
     }
 }
 
-/* Start of a fighter's turn: defending ends, and the ground may hurt. */
+/* Start of a fighter's turn: guarding ends, and the ground may hurt; but not again
+ * when a turn put off with Wait comes round. */
 static void begin_turn(uint8_t who)
 {
-    f_defending[who] = 0;
     emit(APB_EV_TURN, who, APB_NOBODY, round_no);
+    if (f_waited[who]) return;
+    f_guarding[who] = 0;
     ground_hurts(who);
 }
 
@@ -594,6 +647,7 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
 {
     uint8_t ok = 1;
     uint8_t t = a->target;
+    uint8_t i;
 
     if (result != APB_BATTLE_ON || who >= count || order[next] != who) return 0;
     if (a->move_x != f_x[who] || a->move_y != f_y[who]) {
@@ -603,29 +657,33 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
     case APB_ACT_ATTACK:
         ok = apb_battle_can_attack(who, t, a->move_x, a->move_y);
         break;
-    case APB_ACT_HELP:
-        ok = (uint8_t)(t < count && f_state[t] == APB_IN_FIGHT && f_side[t] != f_side[who]
-                       && dist(a->move_x, a->move_y, f_x[t], f_y[t]) == 1);
-        break;
-    case APB_ACT_DEFEND:
-    case APB_ACT_FLEE:
     case APB_ACT_WAIT:
+        ok = (uint8_t)(a->move_x == f_x[who] && a->move_y == f_y[who] && !f_waited[who]);
+        break;
+    case APB_ACT_GUARD:
+    case APB_ACT_FLEE:
+    case APB_ACT_DONE:
         break;
     default:
         ok = 0;
     }
     if (!ok) return 0;
 
+    if (a->kind == APB_ACT_WAIT) {
+        /* To the back of this round's order; the turn comes round again there. */
+        f_waited[who] = 1;
+        emit(APB_EV_WAIT, who, APB_NOBODY, 0);
+        for (i = next; i + 1 < count; ++i) order[i] = order[i + 1];
+        order[count - 1] = who;
+        begun = 0;
+        return 1;
+    }
     move_to(who, a->move_x, a->move_y);
     if (f_state[who] == APB_IN_FIGHT) {
         if (a->kind == APB_ACT_ATTACK) {
             attack(who, t);
-        } else if (a->kind == APB_ACT_DEFEND) {
-            f_defending[who] = 1;
-            emit(APB_EV_DEFEND, who, APB_NOBODY, 0);
-        } else if (a->kind == APB_ACT_HELP) {
-            f_opened[t] = 1;
-            emit(APB_EV_HELP, who, t, 0);
+        } else if (a->kind == APB_ACT_GUARD) {
+            guard(who);
         } else if (a->kind == APB_ACT_FLEE) {
             flee(who);
         }

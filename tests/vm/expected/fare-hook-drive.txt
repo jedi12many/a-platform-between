@@ -49,16 +49,20 @@ Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash rat
   #########
 round 1: 1's turn
   1 moves to 2,1
-  1 attacks 0: 65+30=95 vs 58: success, 5 damage
+  1 attacks 0: 8+30=38 vs 58: fail, 0 damage
 round 1: 2's turn
   2 moves to 2,2
-  2 attacks 0: 49+30=79 vs 58: success, 4 damage
+  2 attacks 0: 3+30=33 vs 58: fail, 0 damage
 round 1: 0's turn
 > 0.1.3.0
+  1 gets a free attack on 0
+  1 attacks 0: 71+30=101 vs 58: success, 6 damage
+  2 gets a free attack on 0
+  2 attacks 0: 3+30=33 vs 58: fail, 0 damage
   0 moves to 0,1
   0 takes the exit
   0 is gone
-[the fight is fled; health 18]
+[the fight is fled; health 21]
 You slam the door on them and lean on it until the scrabbling stops.
 [picture 2 concourse]
 The great hall. The board clatters. The Buffer Stop glows.
@@ -73,7 +77,7 @@ Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash rat
   2) Creep in for the hook
   3) Leave them to it
 > 1
-[fight: 9 x 5, 3 fighters, health 18]
+[fight: 9 x 5, 3 fighters, health 21]
   #########
   >..+..~.#
   #0.+..1.#
@@ -81,21 +85,21 @@ Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash rat
   #########
 round 1: 1's turn
   1 moves to 2,1
-  1 attacks 0: 24+30=54 vs 58: cost, 1 damage
+  1 attacks 0: 50+30=80 vs 58: success, 4 damage
 round 1: 2's turn
   2 moves to 2,2
-  2 attacks 0: 91+30=121 vs 58: success, 8 damage
+  2 attacks 0: 55+30=85 vs 58: crit, 8 damage
 round 1: 0's turn
 > 1.2.0.1
-  0 attacks 1: 24+20=44 vs 60: cost, 10 damage
+  0 attacks 1: 72+20=92 vs 60: success, 23 damage
   1 is down
 round 2: 2's turn
-  2 attacks 0: 35+30=65 vs 58: success, 2 damage
+  2 attacks 0: 5+30=35 vs 58: fail, 0 damage
 round 2: 0's turn
 > 1.2.0.2
-  0 attacks 2: 79+20=99 vs 60: success, 23 damage
+  0 attacks 2: 37+20=57 vs 60: cost, 10 damage
   2 is down
-[the fight is won; health 7]
+[the fight is won; health 9]
 The last rat bolts into a hole behind the trunks, trailing sparks.
 The porter's hook is heavier than it looks, and fits your hand as if it had been made for it. A paper tag hangs from the handle: UNCLAIMED. Then, as you watch, the word fades, and in the same careful hand as the Stationmaster's ledger, your name writes itself in its place.
 [picture 2 concourse]

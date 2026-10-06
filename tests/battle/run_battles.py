@@ -98,8 +98,8 @@ def recheck(name, path, log):
                 return
             if RESULTS[combat.resolve(int(roll), int(total), int(tn))] != result:
                 fail(f"{name}: {line.strip()}: wrong result")
-        elif line.startswith("round"):
-            last = None                                 # a new turn: a new roll
+        elif line.startswith("round") or "gets a free attack" in line:
+            last = None                                 # a new turn, or a free attack: a new roll
     return rolls
 
 
@@ -149,8 +149,11 @@ def random_battle(rng, path):
              rng.randint(0, 3), rng.choice([0, 1, 255]), rng.randint(0, 2), rng.randint(0, 1)]
         lines.append(f"foe {c} " + " ".join(map(str, v)))
     for _ in range(rng.randint(5, 60)):
-        lines.append(f"act {rng.randint(0, 17)} {rng.randint(0, 11)} {rng.randint(0, 5)} "
-                     f"{rng.randint(0, 9)}")
+        if rng.random() < 0.2:
+            lines.append("act q")
+        else:
+            lines.append(f"act {rng.randint(0, 17)} {rng.randint(0, 11)} {rng.randint(0, 5)} "
+                         f"{rng.randint(0, 9)}")
     with open(path, "w") as f:
         f.write("\n".join(lines) + "\n")
     return rows

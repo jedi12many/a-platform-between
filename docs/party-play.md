@@ -210,7 +210,7 @@ scraps of paper and revealed together.
 |---|---|
 | VM, menus | none: `hal_menu` returns the decided pick |
 | VM, fights | none: at a traveler's turn, `hal_battle_turn` returns its action, chosen by its player or, on quick, by the computer |
-| Rules core | the *Pool of Radiance* actions (guard, wait, free attacks on leaving a foe's reach, quick) in `combat.md`: milestone E3.8 |
+| Rules core | the *Pool of Radiance* actions (guard, wait, free attacks on leaving a foe's reach, quick) in `combat.md`: built in E3.8 |
 | VM, party | (with party support) several travelers, the spotlight, party conditions and checks, `personal` menus |
 | Quest Script | `check X everyone`, `check X pick`, `== scene personal` |
 | Clients | elections, voting, timers, the recap and the logs, on the HAL, shared by every front end like the boarding desk |

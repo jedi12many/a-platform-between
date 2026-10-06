@@ -62,8 +62,9 @@ void hal_battle_begin(void);
 void hal_battle_event(const apb_event *ev);
 
 /* A traveler's turn: fill `out` with what they do. Front ends can offer only what's
- * allowed (apb_battle_can_reach, apb_battle_can_attack); the VM checks again, says so
- * with hal_prompt if it isn't allowed, and asks again. */
+ * allowed (apb_battle_can_reach, apb_battle_can_attack), and fill it with
+ * apb_battle_quick for a traveler on quick; the VM checks again, says so with
+ * hal_prompt if it isn't allowed, and asks again. */
 void hal_battle_turn(uint8_t who, apb_action *out);
 
 /* The fight is over: result is APB_BATTLE_WON, _LOST or _FLED. */

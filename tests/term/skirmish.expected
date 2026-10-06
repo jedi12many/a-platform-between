@@ -64,91 +64,142 @@ Where to?
 3. Next to Ash rat (b)
 4. Toward the exit
 5. Into cover
-> 5
+6. Wait: act at the end of the round
+7. Quick: the computer plays you
+> 1
 Then?
-1. Attack Scrap gunner (a): TN 56
-2. Attack Ash rat (b): TN 60
-3. Defend: +20 to your TN
-4. Flee: TN 110
-5. Wait
-6. Back
-> 6
-Where to?
-1. Stay here
-2. Toward Scrap gunner (a)
-3. Next to Ash rat (b)
-4. Toward the exit
-5. Into cover
-> 5
-Then?
-1. Attack Scrap gunner (a): TN 56
-2. Attack Ash rat (b): TN 60
-3. Defend: +20 to your TN
-4. Flee: TN 110
-5. Wait
-6. Back
-> 5
+1. Attack Ash rat (b): TN 60
+2. Guard: hit the first to come close
+3. Flee: TN 100
+4. Done
+5. Back
+> 2
 
-You move.
+You stand guard.
+Scrap gunner moves.
 Scrap gunner attacks you: 66 + 40 = 106
-against 78, a crit: 12 damage.
+against 58, a crit: 16 damage.
 -- Round 2 --
-Ash rat attacks you: 81 + 30 = 111
-against 58, a hit: 7 damage.
+Ash rat moves.
+Free attack! You attack Ash rat: 81 + 20
+= 101 against 60, a hit: 24 damage.
+Ash rat is down.
 
-  . . . . # . . . . >
-  . . . b @ . . = . a
+  . . x . # . . . . >
+  . @ . . + . . = . .
   . . ~ . ^ . . # . .
-  . . . . O . . . . .
+  . . . . O . . a . .
  # wall  O pit  ~ rough  + cover
  ^ hazard  = high ground  > exit
- @ Kestrel  8/27
+ @ Kestrel  11/27
  a Scrap gunner  15/15  TN 56
- b Ash rat  6/6  TN 60
+ x Ash rat  down
+
+Where to?
+1. Stay here
+2. Next to Scrap gunner (a)
+3. Toward the exit
+4. Into cover
+5. Wait: act at the end of the round
+6. Quick: the computer plays you
+> 5
+
+You wait to see what happens.
+Scrap gunner attacks you: 62 + 40 = 102
+against 58, a hit: 8 damage.
+
+  . . x . # . . . . >
+  . @ . . + . . = . .
+  . . ~ . ^ . . # . .
+  . . . . O . . a . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  3/27
+ a Scrap gunner  15/15  TN 56
+ x Ash rat  down
+
+Where to?
+1. Stay here
+2. Next to Scrap gunner (a)
+3. Toward the exit
+4. Into cover
+5. Quick: the computer plays you
+> 4
+Then?
+1. Attack Scrap gunner (a): TN 56
+2. Guard: hit the first to come close
+3. Flee: TN 100
+4. Done
+5. Back
+> 5
+Where to?
+1. Stay here
+2. Next to Scrap gunner (a)
+3. Toward the exit
+4. Into cover
+5. Quick: the computer plays you
+> 4
+Then?
+1. Attack Scrap gunner (a): TN 56
+2. Guard: hit the first to come close
+3. Flee: TN 100
+4. Done
+5. Back
+> 1
+
+You move.
+You attack Scrap gunner: 2 + 20 = 22
+against 56, a miss.
+-- Round 3 --
+
+  . . x . # . . . . >
+  . . . . @ . . = . .
+  . . ~ . ^ . . # . .
+  . . . . O . . a . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  3/27
+ a Scrap gunner  15/15  TN 56
+ x Ash rat  down
 
 Where to?
 1. Stay here
 2. Next to Scrap gunner (a)
 3. To the exit
 4. Onto high ground
-> 3
-Then?
-1. Attack Scrap gunner (a): TN 56
-2. Attack Ash rat (b): TN 60
-3. Defend: +20 to your TN
-4. Take the exit
-5. Wait
-6. Back
-> 1
+5. Wait: act at the end of the round
+6. Quick: the computer plays you
+> 6
 
-You move.
-You attack Scrap gunner: 62 + 20 = 82
-against 56, a hit: 22 damage.
-Scrap gunner is down.
--- Round 3 --
-Ash rat moves.
-Ash rat attacks you: 2 + 30 = 32 against
-58, a miss.
+You attack Scrap gunner: 33 + 20 = 53
+against 56, a glancing hit: 10 damage.
+Scrap gunner attacks you: 38 + 40 = 78
+against 78, a glancing hit: 2 damage.
+-- Round 4 --
 
-  . . . . # . . . b @
-  . . . . + . . = . x
+  . . x . # . . . . >
+  . . . . @ . . = . .
   . . ~ . ^ . . # . .
-  . . . . O . . . . .
+  . . . . O . . a . .
  # wall  O pit  ~ rough  + cover
  ^ hazard  = high ground  > exit
- @ Kestrel  8/27
- x Scrap gunner  down
- b Ash rat  6/6  TN 60
+ @ Kestrel  1/27
+ a Scrap gunner  5/15  TN 56
+ x Ash rat  down
 
-Where to?
-1. Stay here
-2. Onto high ground
-> 1
-Then?
-1. Attack Ash rat (b): TN 60
-2. Defend: +20 to your TN
-3. Take the exit
-4. Wait
-5. Back
+On quick: Enter, or t to take over.
 > 
-[end of input]
+
+You attack Scrap gunner: 60 + 20 = 80
+against 56, a hit: 22 damage.
+Scrap gunner is down.
+You won the fight.
+
+The yard is quiet again.
+
+~ Departure complete ~
+
+Your receipt:
+
+You travelled without a Boarding Pass,
+so this trip can't be stamped.

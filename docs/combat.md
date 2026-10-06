@@ -109,8 +109,8 @@ Sight is blocked only by walls, and by other combatants for ranged attacks.
 
 ### Your turn
 
-*Draft, from review: the turn modelled on* Pool of Radiance*'s. Milestone E3.8 builds it;
-until then the engine has attack, defend, help, flee and wait (do nothing).*
+Modelled on *Pool of Radiance*'s turn, from review (milestone E3.8). Cast and Use come
+with powers and items.
 
 Move first, up to your Speed, then take one action:
 
@@ -141,7 +141,7 @@ at the table and on the screen:
 |---|---|
 | **Charge** | attacks the nearest traveler it can reach; otherwise moves as close to the nearest traveler as it can |
 | **Shoot** | shoots the nearest traveler it can see; otherwise moves only as far as it must to get a shot (or closes in, if it can't get one) |
-| **Guard** | stays put, and attacks anyone it can reach from where it stands |
+| **Guard** | stays put, and attacks anyone it can reach from where it stands; with nobody in reach, it stands guard (a free attack on the first traveler to come next to it) |
 | **Coward** (added to any rule) | runs off when it's down to a quarter of its health |
 
 When a foe has a choice of squares, it takes the one nearest its target, then the one
@@ -195,17 +195,20 @@ the worked fight above is a test in `tests/test_core.c`.
 
 `core/src/battle.c` (`core/include/apb_battle.h`) plays a whole battle from a stream of
 actions: the map, movement, sight, the order of play, the foes' rules and the endings.
-`tests/battle/` holds scenarios (the worked fight, the rifle, terrain, movement, fleeing,
-an ambush, a lost fight) with logs reviewed by hand; `make test-combat` plays them on the
+`apb_battle_quick` plays a traveler's turn by its weapon's rule, the same planning the
+foes use. `tests/battle/` holds scenarios (the worked fight, the rifle, terrain, movement,
+fleeing, an ambush, a lost fight, and *Pool of Radiance* turns: guard, wait, free
+attacks both ways, quick) with logs reviewed by hand; `make test-combat` plays them on the
 PC and the 6502, re-checks every roll against the Python reference, and runs random
 battles under the sanitizers.
 
 On screen (`fe/term/term.c`, the model for the C64's): the map is drawn two characters to
 a square (`@` you, `a`, `b`, ... the foes, `x` one who's down) with a key and a roster
 giving each foe's health and the TN to hit it. A turn is two short menus, **Where to?**
-(stay, next to or toward a foe, to the exit, into cover, onto high ground) and **Then?**
-(attack, with the TN; defend; flee, with its TN, or take the exit; wait; back), offering
-only what the rules allow from that square. What happens is told in sentences, with
+(stay, next to or toward a foe, to the exit, into cover, onto high ground; or instead
+of moving, wait, or quick) and **Then?** (attack, with the TN; guard; flee, with its TN,
+or take the exit; done; back), offering only what the rules allow from that square. On
+quick, each turn asks for Enter to go on, or t to take over again. What happens is told in sentences, with
 every roll: *You attack Rust-guard: 62 + 20 = 82 against 56, a hit: 22 damage.* Those
 sentences are the **combat log**, which players can read back, and which recaps what
 happened since a player's last turn ([party-play.md](party-play.md)).

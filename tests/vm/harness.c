@@ -12,8 +12,8 @@
  * player would; SEED 'resume' picks the saved trip up again instead of boarding.
  *
  * In a fight, a turn is a pick written X.Y.K.T: move to X,Y, then action K (APB_ACT_*)
- * on target T, e.g. 3.1.0.1 (move to 3,1 and attack fighter 1). Events print like the
- * battle logs in tests/battle/.
+ * on target T, e.g. 3.1.0.1 (move to 3,1 and attack fighter 1); q plays the turn on
+ * quick (apb_battle_quick). Events print like the battle logs in tests/battle/.
  *
  * SCRIPT is a comma-separated list. A number picks from a menu (1-based); a token
  * starting with ':' is a typed line (':' alone is a blank line). If the script starts
@@ -127,8 +127,9 @@ void hal_battle_event(const apb_event *e)
         break;
     case APB_EV_DOWN:   printf("  %u is down\n", e->target); break;
     case APB_EV_HAZARD: printf("  %u takes %u from the ground\n", e->actor, e->value); break;
-    case APB_EV_DEFEND: printf("  %u defends\n", e->actor); break;
-    case APB_EV_HELP:   printf("  %u opens %u up\n", e->actor, e->target); break;
+    case APB_EV_GUARD:  printf("  %u guards\n", e->actor); break;
+    case APB_EV_WAIT:   printf("  %u waits\n", e->actor); break;
+    case APB_EV_FREE:   printf("  %u gets a free attack on %u\n", e->actor, e->target); break;
     case APB_EV_FLEE:
         if (e->roll.roll) {
             printf("  %u tries to flee: %u+%d=%d vs %d: %s\n", e->actor, e->roll.roll,
@@ -172,9 +173,13 @@ void hal_battle_turn(uint8_t who, apb_action *out)
 
     next_token();
     printf("> %s\n", tok);
+    if (tok[0] == 'q') {
+        apb_battle_quick(who, out);
+        printf("  (quick: %u.%u.%u.%u)\n", out->move_x, out->move_y, out->kind, out->target);
+        return;
+    }
     v[0] = v[1] = v[2] = v[3] = 255;
     sscanf(tok, "%u.%u.%u.%u", &v[0], &v[1], &v[2], &v[3]);
-    (void)who;
     out->move_x = (uint8_t)v[0];
     out->move_y = (uint8_t)v[1];
     out->kind = (uint8_t)v[2];
