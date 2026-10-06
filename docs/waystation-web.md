@@ -30,12 +30,11 @@ written in Quest Script and played by the same VM in the browser.
 
 ## Receipts the server can trust
 
-The VM is deterministic and its only input is a list of choices. So an online client can
-send its receipt **with the choices and the dice seed that produced it**, and the server
-replays the Departure with the same VM to confirm the receipt. That gives verified
-characters for co-op, trading and leaderboards without trusting the client. Travel
-Stamps from retro machines and the tabletop stay *unverified* unless stamped at an
-organized-play event ([tabletop.md](tabletop.md)).
+Every trip starts with a **Boarding Pass** from the website, signed with a key only the
+server holds, and every receipt has to match one: right character, used once, within the
+Departure's possible rewards. Online clients also send the choices and dice seed, and the
+server replays the Departure with the same VM to confirm the result. See *Boarding
+passes* in [boarding.md](boarding.md).
 
 ## Retro machines
 
@@ -43,23 +42,22 @@ The website builds a disk image (`.d64` for the C64, and so on) holding the clie
 Departures you own, to load in an emulator or onto real hardware through an SD-card
 drive. Characters travel by Passport password or Travel Stamp, as before.
 
-## Offline still works
+## The website is required
 
-Some players will never open a browser, and a C64 has no network by default. Every
-client keeps a small offline path:
+Every player uses the Waystation website, including C64 players: they'll have a phone or
+another computer nearby. That keeps the clients simple. A client only needs to take a
+Passport and a Boarding Pass, play, and hand back a receipt; character creation, levelling
+up and everything else happens at the station.
 
-- enter a Passport password;
-- a plain character creator, for starting with no website at all;
-- Travel Stamps on the way out, to apply later (at the website, or in another client).
-
-The website is the front door, not the only door.
+A modern client can still play a Departure without a connection once boarded; its receipt
+waits until it can reach the Waystation.
 
 ## Build order
 
 | Step | What | Needs a server? |
 |---|---|---|
-| **W1** | A static site: the character creator, Passport decoding and editing (spending points), the tabletop sheet printer, applying Travel Stamps. The rules core runs in the browser as WebAssembly. | No |
-| **W2** | Accounts, a store for seasons and Departures, downloads and disk images, receipt sync from modern clients, replay verification | Yes |
+| **W1** | A static site: the character creator, Passport decoding and editing (spending points), the tabletop sheet printer. The rules core runs in the browser as WebAssembly. (Travel Stamps are applied without a server only on trust; signed Boarding Passes need W2.) | No |
+| **W2** | Accounts, Boarding Passes, a store for seasons and Departures, downloads and disk images, receipts from modern clients and Travel Stamps from retro ones, replay verification | Yes |
 | **W3** | Trading, the lost-and-found, meeting travelers, parties and co-op lobbies | Yes |
 
 W1 can come early: it needs only what already exists, plus a WebAssembly build. W2 and
@@ -67,7 +65,5 @@ W3 are the online Waystation (roadmap phase 4).
 
 ## Open questions
 
-- Is a modern client (Steam) allowed to work fully offline, with the website optional?
-  (Proposal: yes, with a local Waystation-lite for spending points.)
 - How DLC ownership reaches retro disk images (proposal: the website builds personalised
   images; there's no copy protection on a C64, and we won't pretend otherwise).

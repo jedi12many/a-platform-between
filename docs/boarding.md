@@ -53,17 +53,48 @@ game also plays Departure 02. The receipt applied last wins, and the Waystation'
 regulars notice ("Didn't you leave that pup? I could swear..."). It's a story beat, not lost
 data.
 
+## Boarding passes
+
+Receipts must only count for the character that earned them, once. The keys that make
+that true live on the server, never in a client: anyone can read a C64 disk, and a key a
+player holds is a key a player can share.
+
+1. **Board at the Waystation website.** Pick the character and the Departure; the server
+   issues a **Boarding Pass**: a short code (about 16-20 characters) holding the
+   character, the Departure, a one-time ticket number and a hash of the character as
+   boarded, signed with a key only the server has.
+2. **Give the client your Passport and the Boarding Pass.** On a C64 you type both (from
+   your phone screen); a modern client fetches them when you sign in.
+3. **The receipt carries the ticket number.** The server accepts it only for the character
+   the ticket was issued to, only once, and only within that Departure's possible rewards.
+
+### Reward manifests
+
+The compiler writes, for each Departure, the most it can ever give: the XP awarded on any
+route, the items it can give, the Echo states it can set, the most Debt it can pay down.
+The server refuses a receipt that claims more.
+
+### What's protected
+
+| Threat | Modern client, online | C64 and tabletop |
+|---|---|---|
+| Sharing a receipt with another player | Blocked: tied to the ticket and character | Blocked, the same way |
+| Applying a receipt twice | Blocked: one use per ticket | Blocked, the same way |
+| Claiming rewards the Departure can't give | Blocked: reward manifest | Blocked, the same way |
+| Claiming an outcome the Departure *could* give, without earning it | Blocked: the receipt comes with its choices and dice seed, and the server replays it | Possible: a C64 can't keep a secret |
+
+The last row is the honest limit. A determined cheater on a C64 can claim the best ending
+of a Departure they boarded, which they could have earned by replaying it anyway. Things
+that matter more (leaderboards, trading rare items, organized play) count only verified
+receipts.
+
 ## Carriers
 
 | Where | How the receipt travels |
 |---|---|
-| Modern, online | Sent to the web Waystation as soon as the Departure ends, with the choices and seed that produced it, so the server can replay and verify it; each receipt applies once. |
-| Modern, offline | Applied to the saved character on that machine. |
-| Retro | A **Travel Stamp**: a short password holding only the receipt (about 20–30 characters for a typical Departure, versus 55+ for a Passport). Enter it into whatever your Passport is now, on any platform. |
-| Tabletop | The Conductor writes out the receipt; the Passport Office turns it into a Travel Stamp, flagged tabletop. |
-
-Applying the same stamp twice can only be prevented online. Offline we accept it, the
-same way we accept cheating in single-player: it's your character.
+| Modern client | Sent to the Waystation as soon as the Departure ends, with the choices and seed that produced it, so the server can replay and verify it. |
+| Retro | A **Travel Stamp**: a short password holding the ticket number and the receipt (about 25-35 characters for a typical Departure), with a check code against typos. Enter it at the Waystation website. |
+| Tabletop | The Conductor's receipt, entered at the Waystation; Boarding Passes are issued for tabletop sessions too. |
 
 ## Engine notes
 
@@ -72,4 +103,7 @@ same way we accept cheating in single-player: it's your character.
   the receipt to the front end. It never writes a Passport itself.
 - Applying receipts is rules-core code (`core/`), so every platform, the hub and the
   Passport Office merge the same way.
-- The Travel Stamp format is specified with milestone E2, alongside the Passport.
+- The VM takes the Boarding Pass alongside the Passport and copies its ticket number into
+  the receipt.
+- The Travel Stamp and Boarding Pass formats are specified with milestone E2, alongside
+  the Passport; the reward manifest with the compiler.
