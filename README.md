@@ -45,5 +45,6 @@ make demo        # build and run the native demo
 | [Rules v0](docs/rules-v0.md) | Stats, classes, the core roll, levels, the 8-bit budget |
 | [Passport spec v0](docs/passport-spec.md) | The portable character record: password, file, hub account |
 | [Platforms & engines](docs/platforms.md) | One script, many engines; build order |
+| [Engine plan](docs/engine-plan.md) | Story VM, Quest Script, C64 budget, milestones E0–E7 |
 | [Roadmap](docs/roadmap.md) | Phases from paper rules to multiplayer |
 | [Departures](docs/departures/) | One-page treatments of the first solo Departures |

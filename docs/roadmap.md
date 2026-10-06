@@ -11,19 +11,20 @@
 - **Rules core in portable C** (`core/`): dice, checks, characters, Translation,
   Dissonance, Echoes, Passport passwords. Builds natively and for the C64; the same tests
   pass on both. *Started.*
-- Quest Script v0 and its compiler.
-- A short test Departure, playable on modern PC.
+- Quest Script v0, its compiler, and the Story VM. See [engine-plan.md](engine-plan.md)
+  for the milestones (E0–E7).
+- *Departure 00: The Fare*, the Waystation prologue, as the engine's test content.
 - A Deep Yards prototype: seeded procedural floors using the same rules core.
 
 ## Phase 2: first retro build
 
-- DOS engine.
-- Departure 01 playable on modern PC and DOS, with password Passports between them.
+- C64 front end (the 6502 toolchain is already working).
+- Departure 01 playable on modern PC and C64, with password Passports between them.
 
-## Phase 3: more platforms
+## Phase 3: more platforms and the community
 
-- Shared 6502 engine: C64 and Apple II.
-- Amiga. Then SNES.
+- Apple II (shares the 6502 engine), then DOS, Amiga, SNES.
+- The browser Workshop: community authors write, test and share Branch Lines.
 - The web Passport Office.
 
 ## Phase 4: the Waystation online
