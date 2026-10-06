@@ -31,3 +31,14 @@ uint8_t apb_d6(apb_rng *rng)
     } while (v > 5);
     return (uint8_t)(v + 1);
 }
+
+uint8_t apb_d100(apb_rng *rng)
+{
+    uint8_t v;
+
+    /* Top seven bits, rejecting 100..127, so every result is equally likely. */
+    do {
+        v = (uint8_t)(apb_rng_next(rng) >> 9);
+    } while (v > 99);
+    return (uint8_t)(v + 1);
+}

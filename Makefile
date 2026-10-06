@@ -1,15 +1,15 @@
 CC      ?= cc
 CFLAGS  ?= -O2
 WARN    := -std=c99 -pedantic -Wall -Wextra -Werror -Wdeclaration-after-statement
-INC     := -Icore/include -Icore/src
+INC     := -Icore/include -Icore/src -Ihal
 CL65    ?= cl65
 SIM65   ?= sim65
 
 CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c \
             core/src/translate.c core/src/echo.c core/src/passport.c
-CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h
+CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
 
-.PHONY: all test test-6502 c64 demo crosscheck clean
+.PHONY: all test test-6502 test-python c64 demo crosscheck clean
 
 all: test
 
@@ -56,3 +56,8 @@ crosscheck: build/demo build/demo.sim
 	$(SIM65) build/demo.sim > build/demo.6502.txt
 	diff build/demo.native.txt build/demo.6502.txt
 	@echo "crosscheck: native and 6502 output identical"
+
+# The Python Passport reference must read what the C engine writes.
+test-python: build/demo
+	./build/demo > build/demo.native.txt
+	python3 tools/passport/check_against_demo.py build/demo.native.txt
