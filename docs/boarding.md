@@ -154,6 +154,14 @@ symbols; the longest possible is 84.
 `apb_stamp_encode` in the rules core (clients only ever write stamps);
 `tools/passport/stamp.py` decodes them for the website and names the line of a typo.
 
+### Landing a stamp
+
+`tools/waystation/station.py` is a prototype of what the website does with one: find its
+ticket in the ledger (refused if never issued, issued to another character, or already
+used), check it against the Departure's reward manifest and the character as they boarded,
+then apply it to the character as they are now. `make test-term` runs the whole round trip
+through the terminal.
+
 ## Engine notes
 
 - The VM plays a working copy of the boarding snapshot, and records every change it makes

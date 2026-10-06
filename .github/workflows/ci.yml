@@ -34,7 +34,7 @@ jobs:
       - name: Story VM (playthroughs on PC and 6502, damaged images under sanitizers)
         run: make test-vm
 
-      - name: Terminal front end (recorded playthrough, 40 columns)
+      - name: Terminal front end (recorded playthrough, 40 columns, the round trip)
         run: make test-term
 
       - name: Receipts (C core against the Python reference, PC and 6502)

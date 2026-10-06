@@ -23,7 +23,9 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   boards a traveler from `tests/vm/travelers.txt`; every check is re-rolled from the
   rules and that traveler's Passport.
 - `make test-term`: the terminal front end's recorded playthrough must match
-  `tests/term/fare-edge.expected`, with nothing over 40 columns.
+  `tests/term/fare-edge.expected`, with nothing over 40 columns; and the round trip
+  (`tests/term/check_roundtrip.py`) must work: passes issued, trips played in the terminal,
+  Travel Stamps landed on the Passport.
 - `make test-receipts`: applying receipts (`core/src/receipt.c`) must agree with the
   Python reference (`tools/passport/receipt.py`) on hand-worked and random cases,
   natively and on sim65.
@@ -86,4 +88,5 @@ Characters are never made in a client; they're made at the Waystation website
 (`docs/waystation-web.md`). For tests,
 `python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM]` makes one,
 and `python3 tools/passport/boarding.py issue "PASSPORT" DEPARTURE TICKET SEED` issues it a
-Boarding Pass.
+Boarding Pass. `tools/waystation/station.py` is a prototype of the website's side: it issues
+passes into a ticket ledger and lands Travel Stamps against it and the reward manifest.

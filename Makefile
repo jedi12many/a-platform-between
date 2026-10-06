@@ -126,6 +126,7 @@ test-term: build/apb build/the-fare.apd
 	diff tests/term/fare-edge.expected build/term-fare-edge.txt
 	@awk 'length > 40 { print "line over 40 columns: " $$0; bad = 1 } END { exit bad }' build/term-fare-edge.txt
 	@echo "terminal: transcript matches, nothing over 40 columns"
+	python3 tests/term/check_roundtrip.py
 
 # Applying receipts: the C core must agree with the Python reference, natively and on
 # the 6502.
