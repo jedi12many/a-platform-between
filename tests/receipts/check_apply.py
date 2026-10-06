@@ -3,7 +3,8 @@
 Random characters (made with tools/passport/passport.py, then aged: levels, debt, items,
 Echoes) get random receipts. build/apply (core/src/receipt.c) and
 tools/passport/receipt.py must produce the same Passport and the same report, natively
-for every case and on sim65 for a sample. A few hand-worked cases pin the rules down.
+for every case and on sim65 for a sample. A few hand-worked cases pin the rules down. The C core's Travel Stamp
+of each receipt must match tools/passport/stamp.py's, and decode back to the receipt.
 
     python3 tests/receipts/check_apply.py
 """
@@ -19,6 +20,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools", "registry"))
 
 import passport  # noqa: E402
 import receipt  # noqa: E402
+import stamp  # noqa: E402
 
 failures = 0
 
@@ -45,7 +47,8 @@ def expected(ch, r):
             + f"levels {rep['levels']} gone {rep['gone']} stored"
             + "".join(f" {i}" for i in rep["stored"]) + " shifted"
             + "".join(f" {i}" for i in rep["shifted"]) + " legend"
-            + "".join(f" {e}={s}" for e, s in rep["legend"]) + "\n")
+            + "".join(f" {e}={s}" for e, s in rep["legend"]) + "\n"
+            + stamp.encode(dict(r, departure=7, ticket=123456789, outcome=0)) + "\n")
 
 
 def run(binary, ch, r):
@@ -164,6 +167,10 @@ def main():
         want = expected(ch, r)
         for binary in (["build/apply", "build/apply.sim"] if i < sample else ["build/apply"]):
             got = run(binary, ch, r)
+            if got.splitlines()[-1:] and binary == "build/apply":
+                back = stamp.decode(got.splitlines()[-1])
+                if back != dict(r, departure=7, ticket=123456789, outcome=0):
+                    fail(f"case {i}: the stamp decodes to {back}, not the receipt {r}")
             if got != want:
                 fail(f"case {i} on {binary}: {' '.join(args(ch, r))}\n"
                      f"  C:      {got!r}\n  Python: {want!r}")

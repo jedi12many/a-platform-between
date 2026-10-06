@@ -21,4 +21,5 @@ Hi Kestrel.
 > 1
 [check Tech: 67+22=89 vs 120: fail]
 [receipt: departure 901, complete, xp 0, debt paid 0 added 0, ticket 3141592653, gained, lost, echoes]
+[stamp: 20W5QD0ECK800000000Y01RSA4]
 [level 1, xp 0, debt 0]

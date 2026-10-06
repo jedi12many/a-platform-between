@@ -162,6 +162,7 @@ void apb_vm_trace(uint8_t car_no, uint16_t pc)
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static apb_character traveler;
 static apb_pass pass;
+static char stamp[APB_STAMP_BUF];
 
 static void print_receipt(const apb_receipt *r)
 {
@@ -180,6 +181,10 @@ static void print_receipt(const apb_receipt *r)
     printf(", echoes");
     for (i = 0; i < r->echo_count; ++i) printf(" %u=%u", r->echoes[i].id, r->echoes[i].state);
     printf("]\n");
+    if (r->ticket) {
+        apb_stamp_encode(r, stamp);
+        printf("[stamp: %s]\n", stamp);
+    }
 }
 
 int main(int argc, char **argv)

@@ -131,6 +131,29 @@ receipts.
 | Retro | A **Travel Stamp**: a short password holding the ticket number and the receipt (about 25-35 characters for a typical Departure), with a check code against typos. Enter it at the Waystation website. |
 | Tabletop | The Conductor's receipt, entered at the Waystation; Boarding Passes are issued for tabletop sessions too. |
 
+### Travel Stamp format
+
+Version 1. A receipt in the Passport alphabet, in lines of 19 symbols plus a check symbol
+(the last line may be shorter), ending in a CRC-16 like a Passport. *The Fare*'s is 26
+symbols; the longest possible is 84.
+
+| Field | Bits | Notes |
+|---|---|---|
+| version | 4 | 1 |
+| Departure | 16 | |
+| ticket | 32 | from the Boarding Pass |
+| outcome | 1 | 0 complete, 1 failed |
+| XP | 16 | |
+| Debt | 1 + 16 | 1: added, 0: paid; then the amount |
+| items gained | 4 + 10 each | a count, then item ids |
+| items lost | 4 + 10 each | |
+| Echoes | 4 + 14 each | a count, then id (10), state (2), state at boarding (2) |
+| padding | to a byte | zero |
+| CRC-16 | 16 | CCITT-FALSE over the bytes so far, as in the Passport |
+
+`apb_stamp_encode` in the rules core (clients only ever write stamps);
+`tools/passport/stamp.py` decodes them for the website and names the line of a typo.
+
 ## Engine notes
 
 - The VM plays a working copy of the boarding snapshot, and records every change it makes

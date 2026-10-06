@@ -1,5 +1,6 @@
 /*
- * Applies a receipt to a Passport and prints the new Passport and what happened, for
+ * Applies a receipt to a Passport and prints the new Passport and what happened, then
+ * the receipt as a Travel Stamp (Departure 7, ticket 123456789), for
  * tests/receipts/check_apply.py to compare with the Python reference. Native and sim65.
  *
  *   apply PASSPORT XP PAID ADDED GAINED LOST ECHOES
@@ -18,6 +19,7 @@ static apb_character ch;
 static apb_receipt r;
 static apb_applied out;
 static char password[APB_PASSWORD_BUF];
+static char stamp[APB_STAMP_BUF];
 
 static uint8_t parse_list(const char *s, uint16_t *list)
 {
@@ -78,5 +80,12 @@ int main(int argc, char **argv)
     printf(" legend");
     for (i = 0; i < out.legend_count; ++i) printf(" %u=%u", out.legend[i].id, out.legend[i].state);
     printf("\n");
+    r.departure = 7;
+    r.ticket = 123456789UL;
+    if (apb_stamp_encode(&r, stamp) != APB_PP_OK) {
+        printf("can't stamp\n");
+        return 1;
+    }
+    printf("%s\n", stamp);
     return 0;
 }

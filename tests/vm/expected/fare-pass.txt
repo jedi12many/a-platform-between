@@ -117,4 +117,5 @@ The shadows of its face rearrange into something like amusement. "Fen is a good 
 "Your first ticket will be at the window in the morning. There is no morning here, of course, but you'll know it when it comes. Fen will find you a bed."
 "Welcome back to the living, Fern."
 [receipt: departure 0, complete, xp 5, debt paid 0 added 50000, ticket 7777, gained, lost, echoes]
+[stamp: 20000001WR800BRD800S00PVMZ]
 [level 1, xp 5, debt 50000]

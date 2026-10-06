@@ -288,6 +288,8 @@ uint8_t hal_save(const char *name, const uint8_t *src, uint16_t len)
 
 /* --------------------------------------------------------------- the end */
 
+static char stamp[APB_STAMP_BUF];
+
 static void show_receipt(const apb_receipt *r)
 {
     uint8_t i;
@@ -307,9 +309,13 @@ static void show_receipt(const apb_receipt *r)
     if (r->echo_count) printf("  %u Echo%s will follow you.\n", r->echo_count,
                               r->echo_count == 1 ? "" : "es");
     putchar('\n');
-    if (r->ticket) {
-        printf("Ticket %lu.\n", (unsigned long)r->ticket);
-        wrapped("Take it to the Waystation to have it stamped into your Passport.", "");
+    if (r->ticket && apb_stamp_encode(r, stamp) == APB_PP_OK) {
+        wrapped("Your Travel Stamp. Type it in at the Waystation to have this trip "
+                "stamped into your Passport:", "");
+        putchar('\n');
+        for (i = 0; stamp[i]; i = (uint8_t)(i + APB_PASSWORD_LINE)) {
+            printf("  %.*s\n", APB_PASSWORD_LINE, stamp + i);
+        }
     } else {
         wrapped("You travelled without a Boarding Pass, so this trip can't be stamped.", "");
     }

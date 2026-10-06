@@ -369,6 +369,18 @@ typedef struct {
 } apb_pass;
 
 uint8_t apb_pass_encode(const apb_pass *pass, char *out);
+
+/* ------------------------------------------------------- Travel Stamp */
+
+/* A receipt as a password, for retro and tabletop players to type in at the Waystation
+ * (docs/boarding.md). Lines of 19 symbols plus a check, like a Passport. */
+#define APB_STAMP_VERSION 1
+#define APB_STAMP_MAX     84    /* the longest possible stamp, in symbols */
+#define APB_STAMP_BUF     (APB_STAMP_MAX + 1)
+
+/* Returns APB_PP_OK, or APB_PP_RANGE if a field doesn't fit (an item or Echo id over
+ * 1023, an Echo state over 3). */
+uint8_t apb_stamp_encode(const apb_receipt *r, char *out);
 /* Returns APB_PP_OK, _SYMBOL, _LENGTH, _LINE_CHECK, _VERSION or _CHECKSUM. */
 uint8_t apb_pass_decode(const char *in, apb_pass *pass);
 

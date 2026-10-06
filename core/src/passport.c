@@ -515,3 +515,56 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
     memcpy(ch, &work, sizeof(work));
     return APB_PP_OK;
 }
+
+/* ------------------------------------------------------- Travel Stamp */
+
+static void put_list(bitio *b, const uint16_t *items, uint8_t count)
+{
+    uint8_t i;
+
+    put_bits(b, count, 4);
+    for (i = 0; i < count; ++i) {
+        put_bits(b, items[i], 10);
+    }
+}
+
+uint8_t apb_stamp_encode(const apb_receipt *r, char *out)
+{
+    bitio b;
+    uint8_t i;
+
+    out[0] = '\0';
+    if (r->gained_count > APB_RECEIPT_MAX || r->lost_count > APB_RECEIPT_MAX
+        || r->echo_count > APB_RECEIPT_MAX) {
+        return APB_PP_RANGE;
+    }
+    for (i = 0; i < r->gained_count; ++i) if (r->gained[i] > 1023u) return APB_PP_RANGE;
+    for (i = 0; i < r->lost_count; ++i) if (r->lost[i] > 1023u) return APB_PP_RANGE;
+    for (i = 0; i < r->echo_count; ++i) {
+        if (r->echoes[i].id > 1023u || r->echoes[i].state > 3 || r->echoes[i].was > 3) {
+            return APB_PP_RANGE;
+        }
+    }
+
+    start_bits(&b);
+    put_bits(&b, APB_STAMP_VERSION, 4);
+    put_bits(&b, r->departure, 16);
+    put_bits(&b, (uint16_t)(r->ticket >> 16), 16);
+    put_bits(&b, (uint16_t)(r->ticket & 0xFFFFu), 16);
+    put_bits(&b, r->outcome ? 1 : 0, 1);
+    put_bits(&b, r->xp, 16);
+    put_bits(&b, r->debt_added ? 1 : 0, 1);         /* 1: Debt added, 0: paid */
+    put_bits(&b, r->debt_added ? r->debt_added : r->debt_paid, 16);
+    put_list(&b, r->gained, r->gained_count);
+    put_list(&b, r->lost, r->lost_count);
+    put_bits(&b, r->echo_count, 4);
+    for (i = 0; i < r->echo_count; ++i) {
+        put_bits(&b, r->echoes[i].id, 10);
+        put_bits(&b, r->echoes[i].state, 2);
+        put_bits(&b, r->echoes[i].was, 2);
+    }
+    b.pos = (uint16_t)((b.pos + 7u) & ~7u);
+    put_bits(&b, crc16(buf, (uint8_t)(b.pos >> 3)), 16);
+    write_symbols(&b, out);
+    return APB_PP_OK;
+}

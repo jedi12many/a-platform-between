@@ -11,7 +11,9 @@
    instruction in it, so every route, check outcome and race or class passage has been
    played and reviewed. The only code exempt is the chapter-title preamble of a scene
    that never opens its chapter.
-   Every receipt must fit its Departure's reward manifest (tools/qsc/manifest.py).
+   Every receipt must fit its Departure's reward manifest (tools/qsc/manifest.py), and a
+   trip boarded with a pass prints a Travel Stamp that tools/passport/stamp.py must decode
+   back to the same receipt.
    Every check in a playthrough is also re-rolled here, from the rules in
    docs/rules-v0.md and the traveler's Passport as tools/passport reads it: the die, the
    rating and the result must all agree.
@@ -40,6 +42,7 @@ from image import decode, read_car, read_depot  # noqa: E402
 import boarding  # noqa: E402
 import passport  # noqa: E402
 import registry  # noqa: E402
+import stamp  # noqa: E402
 from manifest import fits, manifest  # noqa: E402
 from parse import parse  # noqa: E402
 
@@ -190,8 +193,8 @@ def rewards(src):
 def receipt_fits(name, src, transcript):
     """The receipt a playthrough ends with must fit its Departure's reward manifest."""
     m = re.search(r"^\[receipt: departure (\d+), \w+, xp (\d+), debt paid (\d+) added (\d+), "
-                  r"gained([\d ]*), lost([\d ]*), echoes([\d= ]*)\]\n\[level \d+, xp \d+, debt (\d+)\]",
-                  transcript, re.M)
+                  r"(?:ticket \d+, )?gained([\d ]*), lost([\d ]*), echoes([\d= ]*)\]\n"
+                  r"(?:\[stamp: \w+\]\n)?\[level \d+, xp \d+, debt (\d+)\]", transcript, re.M)
     if not m:
         return 0
     dep, xp, paid, added, gained, lost, echoes, final = m.groups()
@@ -201,6 +204,14 @@ def receipt_fits(name, src, transcript):
     why = fits(rewards(src), r, int(final) + int(paid) - int(added))
     if why:
         fail(f"{name}: the receipt claims more than the Departure can give: {why}")
+    t = re.search(r"^\[stamp: (\w+)\]$", transcript, re.M)
+    if t:
+        ticket = int(re.search(r", ticket (\d+),", transcript).group(1))
+        back = stamp.decode(t.group(1))
+        want = dict(r, ticket=ticket, outcome=0 if ", complete," in m.group(0) else 1)
+        if {k: v for k, v in back.items() if k != "echoes"} != {k: v for k, v in want.items() if k != "echoes"} \
+           or [e[:2] for e in back["echoes"]] != [e[:2] for e in r["echoes"]]:
+            fail(f"{name}: the Travel Stamp decodes to {back}, not the receipt {want}")
     return 1
 
 
