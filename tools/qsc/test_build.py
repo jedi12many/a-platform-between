@@ -276,22 +276,27 @@ def test_manifests():
         dep, _ = parse(path, f.read(), REG)
     m = manifest(dep, REG)
     # Read off the script: `~ xp 5` once, `~ give TICKET_STUB` on the edge's crit,
-    # `~ debt = 50000` at the ledger, no Echoes.
+    # `~ give PORTERS_HOOK` in Lost Property, `~ debt = 50000` at the ledger, no Echoes.
     want = {"departure": 0, "title": "The Fare", "kind": "official", "levels": [1, 1],
             "xp": 5, "items": [{"id": REG["items"]["TICKET_STUB"]["id"], "name": "TICKET_STUB",
+                                "most": 1},
+                               {"id": REG["items"]["PORTERS_HOOK"]["id"], "name": "PORTERS_HOOK",
                                 "most": 1}],
             "echoes": [], "debt": {"set": [50000], "add": 0, "pay": 0}}
     if m != want:
         fail(f"The Fare's manifest: {m}")
     stub = REG["items"]["TICKET_STUB"]["id"]
-    ok = {"departure": 0, "xp": 5, "debt_paid": 0, "debt_added": 50000, "gained": [stub],
+    hook = REG["items"]["PORTERS_HOOK"]["id"]
+    sabre = REG["items"]["RUSTED_SABRE"]["id"]
+    ok = {"departure": 0, "xp": 5, "debt_paid": 0, "debt_added": 50000, "gained": [stub, hook],
           "lost": [], "echoes": []}
     if fits(m, ok, 0):
         fail(f"a fair receipt for The Fare was refused: {fits(m, ok, 0)}")
     for why, change, boarded in (
             ("more XP", {"xp": 6}, 0),
             ("a second stub", {"gained": [stub, stub]}, 0),
-            ("an item it never gives", {"gained": [stub + 1]}, 0),
+            ("a second hook", {"gained": [stub, hook, hook]}, 0),
+            ("an item it never gives", {"gained": [sabre]}, 0),
             ("an Echo it never sets", {"echoes": [(4, 1, 0)]}, 0),
             ("Debt paid it can't pay", {"debt_added": 0, "debt_paid": 100}, 50000),
             ("Debt beyond the ledger", {"debt_added": 50001}, 0),

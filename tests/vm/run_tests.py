@@ -416,6 +416,43 @@ def damaged(rng, files):
     return files
 
 
+def wrapped_menu(case="fare-edge"):
+    """A scene whose menu offset wraps round 65536 back to the start of the car must be
+    refused (it once got past the verifier and read far beyond the car)."""
+    src_dir = os.path.join(BUILD, case)
+    files = {}
+    for n in os.listdir(src_dir):
+        with open(os.path.join(src_dir, n), "rb") as f:
+            files[n] = f.read()
+    d = read_depot(files["DEPOT"])
+    car, at = [e for e in d["directory"] if e[0] == 0][1]       # a scene past the start
+    data = bytearray(files["CAR00"])
+    struct.pack_into("<H", data, 9 + at, (0x10002 - at) & 0xFFFF)   # wraps to an instruction
+    files["CAR00"] = bytes(data)
+    depot = bytearray(files["DEPOT"])
+    struct.pack_into("<H", depot, d["hash_at"], 0)
+    cars = b"".join(files[k] for k in sorted(files) if k.startswith("CAR"))
+    struct.pack_into("<H", depot, d["hash_at"], crc16(bytes(depot) + cars))
+    files["DEPOT"] = bytes(depot)
+    out = os.path.join(BUILD, "damaged")
+    os.makedirs(out, exist_ok=True)
+    for n in os.listdir(out):
+        os.remove(os.path.join(out, n))
+    for n, data in files.items():
+        with open(os.path.join(out, n), "wb") as f:
+            f.write(data)
+    env = dict(os.environ, ASAN_OPTIONS="detect_leaks=0:abort_on_error=0",
+               UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1")
+    p = subprocess.run(["build/harness.asan", out, "7", "1,1,1"], capture_output=True,
+                       text=True, timeout=20, cwd=ROOT, env=env)
+    if p.returncode != 0 or "runtime error" in p.stderr or "Sanitizer" in p.stderr:
+        fail(f"wrapped menu offset: exit {p.returncode}\n{p.stderr[-2000:]}")
+    elif "bad menu offset" not in p.stdout:
+        fail("wrapped menu offset: not refused: " + p.stdout.strip().splitlines()[-1])
+    else:
+        print("ok  wrapped menu offset: refused")
+
+
 def damage(count, case="fare-edge"):
     src_dir = os.path.join(BUILD, case)
     files = {}
@@ -458,7 +495,8 @@ def main():
     coverage()
     if not update:
         saves()
-        damaged_saves(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2)
+        wrapped_menu()
+    damaged_saves(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2)
     damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")))
     damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2, "fight-tour")
     print(f"vm tests: {failures} failed")

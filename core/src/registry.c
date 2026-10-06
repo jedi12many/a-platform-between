@@ -71,6 +71,7 @@ static const char item_4[] = { 72, 111, 118, 101, 114, 45, 98, 105, 107, 101, 0 
 static const char item_5[] = { 82, 117, 115, 116, 101, 100, 32, 115, 97, 98, 114, 101, 0 };
 static const char item_6[] = { 77, 69, 82, 73, 68, 73, 65, 78, 39, 115, 32, 99, 111, 114, 101, 0 };
 static const char item_7[] = { 66, 108, 97, 110, 107, 32, 116, 105, 99, 107, 101, 116, 32, 115, 116, 117, 98, 0 };
+static const char item_8[] = { 80, 111, 114, 116, 101, 114, 39, 115, 32, 104, 111, 111, 107, 0 };
 
 /* Indexed by item id; ids with no item are all zeros. */
 const apb_item_def apb_items[APB_ITEM_COUNT] = {
@@ -82,10 +83,11 @@ const apb_item_def apb_items[APB_ITEM_COUNT] = {
     { APB_ARCH_MELEE, 1, APB_DMG_KINETIC, 3, 0 },  /* RUSTED_SABRE */
     { APB_ARCH_FOCUS, 2, APB_DMG_MIND, 8, 0 },  /* MERIDIAN_CORE */
     { APB_ARCH_FOCUS, 1, APB_DMG_MIND, 5, 5 },  /* TICKET_STUB */
+    { APB_ARCH_MELEE, 1, APB_DMG_KINETIC, 3, 0 },  /* PORTERS_HOOK */
 };
 
 const char *const apb_item_names[APB_ITEM_COUNT] = {
-    item_none, item_1, item_2, item_3, item_4, item_5, item_6, item_7
+    item_none, item_1, item_2, item_3, item_4, item_5, item_6, item_7, item_8
 };
 
 /* Canon default state of each Echo, indexed by id. */

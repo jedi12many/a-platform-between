@@ -32,6 +32,7 @@ Across the hall, warm light spills from a doorway under a painted sign: a rail t
   1) Read the departure board
   2) Walk back to the platform edge
   3) Go into the Buffer Stop
+  4) Try the door marked LOST PROPERTY
 > 3
 [picture 3 buffer_stop]
 The Buffer Stop is warm, and crowded, and wrong in a dozen small ways that add up to cozy. A knight in rusted plate is arguing with a cloud of moths. Something made of glass is drinking something made of light.

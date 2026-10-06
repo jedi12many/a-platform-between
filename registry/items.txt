@@ -12,3 +12,4 @@
 5     RUSTED_SABRE      melee      1     kinetic  3   0   "Rusted sabre"
 6     MERIDIAN_CORE     focus      2     mind     8   0   "MERIDIAN's core"      # Departure 01
 7     TICKET_STUB       focus      1     mind     5   5   "Blank ticket stub"    # Departure 00
+8     PORTERS_HOOK      melee      1     kinetic  3   0   "Porter's hook"        # Departure 00

@@ -44,6 +44,7 @@ Across the hall, warm light spills from a doorway under a painted sign: a rail t
   1) Read the departure board
   2) Walk back to the platform edge
   3) Go into the Buffer Stop
+  4) Try the door marked LOST PROPERTY
 > 1
 The letters settle long enough to read:
 KEPLER-NINE    PLAT 1  DELAYED 18 MIN
@@ -52,6 +53,7 @@ LANTERN COURTS PLAT 3  DRESS: FORMAL
 Then they flip again, into places you have never heard of, and some you have heard of and know to be gone.
   1) Walk back to the platform edge
   2) Go into the Buffer Stop
+  3) Try the door marked LOST PROPERTY
 > 1
 The platform ends where the glass roof ends, and past it there is only the grey shimmer. You reach into it.
 [check FATE: 65+50=115 vs 100: success]
@@ -60,6 +62,7 @@ Nobody leaves the Waystation that way. You understand that now.
 [picture 2 concourse]
 The great hall. The board clatters. The Buffer Stop glows.
   1) Go into the Buffer Stop
+  2) Try the door marked LOST PROPERTY
 > 1
 [picture 3 buffer_stop]
 The Buffer Stop is warm, and crowded, and wrong in a dozen small ways that add up to cozy. A knight in rusted plate is arguing with a cloud of moths. Something made of glass is drinking something made of light.

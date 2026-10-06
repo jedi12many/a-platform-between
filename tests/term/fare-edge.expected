@@ -111,8 +111,9 @@ Kestrel  Lvl 1  HP 27/27  Debt 0
 1. Read the departure board
 2. Walk back to the platform edge
 3. Go into the Buffer Stop
+4. Try the door marked LOST PROPERTY
 > 9
-Pick a number from 1 to 3, or s to save.
+Pick a number from 1 to 4, or s to save.
 > 2
 
 The platform ends where the glass roof
@@ -135,6 +136,7 @@ Buffer Stop glows.
 Kestrel  Lvl 1  HP 27/27  Debt 0
 1. Read the departure board
 2. Go into the Buffer Stop
+3. Try the door marked LOST PROPERTY
 > 2
 
 The Buffer Stop is warm, and crowded,

@@ -119,8 +119,8 @@ def check_shapes():
         fail(f"everything.qs vault commands: {vault}")
 
     fare = check_clean(os.path.join(ROOT, "content", "s1", "00-the-fare", "the-fare.qs"))
-    if sum(1 for _ in fare.scenes()) != 12 or fare.start != "static":
-        fail("the-fare.qs: 12 scenes starting at 'static'")
+    if sum(1 for _ in fare.scenes()) != 18 or fare.start != "static":
+        fail("the-fare.qs: 18 scenes starting at 'static'")
 
 
 for path in sorted(glob.glob(os.path.join(ROOT, "tests", "qsc", "ok", "*.qs"))):

@@ -537,7 +537,8 @@ static uint8_t verify_car(uint8_t index)
                 return 0;
             }
             menu = rd16(code + at);
-            if (menu != NO_MENU && (uint16_t)(at + menu) >= code_len) {
+            /* Compared with what's left, not added: a huge offset would wrap round. */
+            if (menu != NO_MENU && menu >= (uint16_t)(code_len - at)) {
                 fail("bad menu offset", at);
                 return 0;
             }

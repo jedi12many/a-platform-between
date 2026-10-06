@@ -1,16 +1,3 @@
-* Your Passport, please: one line at a time, then a blank line.
-* Line 1:
-< 58J6P00008G102H85P1D
-* Line 2:
-< 8V400000000586CMAA7X
-* Line 3:
-< 500008530B
-* Line 4:
-< 
-Tick, Chronomite Medic, level 1. Debt 0.
-  1) Board
-  2) Start over
-> 1
 === The Static
 [picture 0 static]
 Static.
@@ -27,11 +14,12 @@ You remember dying. You remember it very clearly.
   1) Remember it
 > 1
 It comes back in pieces. First, the body it happened to.
-Small and quick, and always a heartbeat ahead of everyone. You saw your death coming a moment before it came. It didn't help.
+Iron joints, old code, and a vow you took from a book you found in a scrapyard. You were a knight. You are still technically correct about that.
 Then what you were doing, when it happened.
   1) Remember the rest
 > 1
-Someone was bleeding, and you were the only one who knew how to stop it. You stopped it. You didn't notice what was happening to you.
+You were holding a door. Behind it, people you had promised to protect. In front of it, something that did not care about promises. You held it for a long time. Long enough.
+Somewhere in your memory banks, a log entry is still open: CAUSE OF DEATH, followed by nothing.
 That was the end. You are sure of it.
 The bench creaks. Somewhere down the platform, a train whistle sounds, mournful and far away.
   1) Stand up
@@ -44,25 +32,25 @@ Across the hall, warm light spills from a doorway under a painted sign: a rail t
   2) Walk back to the platform edge
   3) Go into the Buffer Stop
   4) Try the door marked LOST PROPERTY
-> 1
-The letters settle long enough to read:
-KEPLER-NINE    PLAT 1  DELAYED 18 MIN
-ASHMOUTH       PLAT 2  LAST TRAIN
-LANTERN COURTS PLAT 3  DRESS: FORMAL
-Then they flip again, into places you have never heard of, and some you have heard of and know to be gone.
-  1) Walk back to the platform edge
-  2) Go into the Buffer Stop
-  3) Try the door marked LOST PROPERTY
-> 1
-The platform ends where the glass roof ends, and past it there is only the grey shimmer. You reach into it.
-[check FATE: 65+50=115 vs 100: success]
-Your hand goes in and comes back wet with something that isn't water. It's cold, and it's a little like being forgotten.
-Nobody leaves the Waystation that way. You understand that now.
+> 4
+=== Lost Property
+Between a shuttered newsstand and a clock with no hands there is a narrow door: LOST PROPERTY. It opens onto a little office drifted with luggage nobody will ever come back for. Steamer trunks, hatboxes, a birdcage with a sleeping cloud in it.
+On the counter lies a porter's hook, long and brass and well kept, the only thing in the room that looks like it is waiting for someone.
+Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash rats, nesting in a trunk, and they don't like visitors.
+  1) Drive them out
+  2) Creep in for the hook
+  3) Leave them to it
+> 2
+You keep low, and keep to the shadows of the trunks.
+[check Stealth: 88+20=108 vs 100: crit]
+The rats never stir. You lift the hook from the counter and are out of the door before the dust settles.
+The porter's hook is heavier than it looks, and fits your hand as if it had been made for it. A paper tag hangs from the handle: UNCLAIMED. Then, as you watch, the word fades, and in the same careful hand as the Stationmaster's ledger, your name writes itself in its place.
 [picture 2 concourse]
 The great hall. The board clatters. The Buffer Stop glows.
-  1) Go into the Buffer Stop
-  2) Try the door marked LOST PROPERTY
-> 1
+  1) Read the departure board
+  2) Walk back to the platform edge
+  3) Go into the Buffer Stop
+> 3
 [picture 3 buffer_stop]
 The Buffer Stop is warm, and crowded, and wrong in a dozen small ways that add up to cozy. A knight in rusted plate is arguing with a cloud of moths. Something made of glass is drinking something made of light.
 Behind the bar, a tree is wiping down glasses. Its bark glows faintly green, and the rag in its twig-hand keeps catching fire, and it keeps patting it out without looking.
@@ -70,16 +58,7 @@ In the corner booth, alone, sits a tall figure in a velvet coat. A brass ledger 
   1) Talk to the bartender
   2) Ask Fen where you are
   3) Go to the corner booth
-> 1
-"Fen," says the tree, before you can ask. "Bartender. Rad-Dryad, same as some of you, different as most. Drink?"
-  1) Ask Fen where you are
-  2) Go to the corner booth
-> 1
-[check Persuade: 49+17=66 vs 100: fail]
-Fen just points at the corner booth with a burning twig.
-  1) Ask Fen where you are
-  2) Go to the corner booth
-> 2
+> 3
 [picture 4 stationmaster]
 The figure in the velvet coat rises as you approach. It is very tall. Its face is a polite arrangement of shadow, and its voice is warm, and patient, and has never once been surprised.
 "Please, sit. You'll want to sit for this part."
@@ -87,8 +66,8 @@ It opens the brass ledger and turns it toward you. On the page, in a careful han
 "We're a little behind on the paperwork," says the Stationmaster. "Would you mind?"
   1) Say your name
 > 1
-"Tick," you say, and the ink finishes the word on its own.
-"Of course," says the Stationmaster. "Medic. Chronomite. Yes, that all matches."
+"Kestrel," you say, and the ink finishes the word on its own.
+"Of course," says the Stationmaster. "Warden. Salvaged. Yes, that all matches."
 Below your name, a number writes itself into the ledger, digit by digit. It is a large number.
 "50000," says the Stationmaster, kindly. "Your fare."
   1) Listen
@@ -98,17 +77,9 @@ Below your name, a number writes itself into the ledger, digit by digit. It is a
   1) Ask who it is
   2) Ask what happens if you refuse
   3) Accept the terms
-> 1
-"I keep the station," it says. "I keep the ledger. I keep the trains running on time, which is harder than you'd think, given that most of them run through it."
-  1) Ask what happens if you refuse
-  2) Accept the terms
-> 1
-"Then you are free to go." It gestures at the shimmer beyond the glass roof. "I'd only point out that the last place you were going, you have already been."
-It glances at your hand. "Ah. You've tried the edge. Then you know."
-  1) Accept the terms
-> 1
+> 3
 "Splendid." The Stationmaster closes the ledger. Somewhere far away, a whistle answers.
 "Your first ticket will be at the window in the morning. There is no morning here, of course, but you'll know it when it comes. Fen will find you a bed."
-"Welcome back to the living, Tick."
-[receipt: departure 0, complete, xp 5, debt paid 0 added 50000, gained, lost, echoes]
+"Welcome back to the living, Kestrel."
+[receipt: departure 0, complete, xp 5, debt paid 0 added 50000, gained 8, lost, echoes]
 [level 1, xp 5, debt 50000]
