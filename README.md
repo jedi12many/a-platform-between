@@ -58,7 +58,7 @@ make demo        # build and run the native demo
 | [Seasons](docs/seasons.md) | Seasons as DLC, carrying over, skipping a season, replaying (Rewind) |
 | [Sidings](docs/sidings.md) | Non-story content: procedural Deep Yards, mini-games |
 | [Parties](docs/parties.md) | Solo vs. party Departures, rosters, bringing four of your own |
-| [Party play](docs/party-play.md) | Votes, personal moments, checks in a party, fights declared at once (draft) |
+| [Party play](docs/party-play.md) | The leader and votes, personal moments, checks in a party, turns and the combat log |
 | [Boarding](docs/boarding.md) | One character in several games at once: snapshots, receipts, Travel Stamps |
 | [Waystation on the web](docs/waystation-web.md) | The station is a website: build, shop, trade, meet; the clients are the trains |
 | [Tabletop](docs/tabletop.md) | Platform 0: printed sheets, gamebooks, Conductor modules, coming home |

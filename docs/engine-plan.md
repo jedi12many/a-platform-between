@@ -173,9 +173,10 @@ putting their minis on a map the DM just drew.
 - **How you got here shapes the fight.** An ambush on the mountain path starts with the
   party strung out on a ledge; sneaking in by the river starts with them unseen. The story
   choice sets the starting positions and who acts first.
-- **Each round, everyone declares an action at once**, then the round resolves in
-  initiative order. Nobody waits through other players' turns, and clicking faster never
-  helps.
+- **Each character takes its own turn** in the order of play, and its player chooses its
+  action then, as in *Pool of Radiance*: move, attack, cast, guard, wait, flee, or quick
+  (the computer plays it). A **combat log** recaps what happened since your last turn,
+  so nobody has to watch every turn ([party-play.md](party-play.md)).
 - **Retreat is always an option**, and every encounter ends with a result the story picks
   up: won, lost, fled, or something the Departure defines (parleyed, captured).
 
@@ -185,8 +186,7 @@ Co-op will mix machines: a modern PC next to a C64 Ultimate on a network link. N
 mode depends on machine speed:
 
 - Story mode waits for people (reading and voting), not processors.
-- Encounters are turn-based with simultaneous declaration: thinking speed matters,
-  machine speed doesn't.
+- Encounters are turn-based: thinking speed matters, machine speed doesn't.
 - **Turn timers are optional and generous**, set by the party. With none, a game can even
   be played slowly, a turn a day, like the old play-by-mail games.
 - **Animations never hold up the game.** Each machine animates results at its own pace (or
@@ -203,7 +203,7 @@ The whole game is **deterministic**: given the same image, the same starting cha
 the same random seed and the same list of choices, every machine produces the same result.
 So co-op never sends game state, only choices:
 
-- Each client sends its player's votes and declared actions (a few bytes each) to the host.
+- Each client sends its player's votes and turns (a few bytes each) to the host.
 - The **host is authoritative** (the details: [party-play.md](party-play.md)): it tallies votes, runs the same rules core, picks the
   random seed, and sends every player the decided choice (or the round's actions) and seed.
 - Each client replays the round locally and shows it. Results match because the rules
@@ -292,7 +292,8 @@ a test Departure; two receipts from overlapping Departures both land.
 | **E3.4 VM and HAL** | The VM hands a fight to the battle engine; the HAL draws the map and asks for actions. Health carries over; `~ heal`. | A test image's fight plays through the harness on PC and 6502. *Done: `FIGHT` runs the battle engine through four HAL calls; health carries over, `~ heal` restores it, saves keep it; five fight playthroughs (won, lost, fled by exit and by roll, an ambush, a sneak) match on PC and 6502 with every roll re-checked, and resume from any story menu. The 6502 harness needs a 4 KB car and 2 KB depot buffer to fit.* |
 | **E3.5 Terminal battle map** | The map at 40 columns, the action menu, the round's results. | A fight is playable by hand. *Done: the map two characters to a square with a key to its squares, a roster (health, the TN to hit each foe), and two menus a turn, "Where to?" (stay, next to or toward a foe, the exit, cover, high ground) and "Then?" (attack with its TN, defend, flee with its TN or take the exit, wait, back), offering only what's possible; events as sentences with every roll. Images now carry foe names. A recorded skirmish in `make test-term`, nothing over 40 columns.* |
 | **E3.6 A fight in *The Fare*** | Something worth fighting, and a road around it. Transcript tests, coverage, saves around fights. | Every route still covered; transcripts match on both. *Done: the Lost Property office off the concourse, its own chapter, keeps every car under 4 KB. Ash rats guard a porter's hook (a new item, id 8). Fight them, creep past (Stealth: a success skips the fight, a cost starts it on your terms, a fail in an ambush) or leave them be; a loss heals 10. Six new playthroughs run every instruction, saved and resumed at every menu, on PC and 6502. The image fuzzer found a menu offset that wrapped past 65535 and got through the verifier; it's fixed, with a regression test.* |
-| **E3.7 Voting (design)** | How a party votes on story choices and declares actions at once. | A reviewed design. *Drafted for review: [party-play.md](party-play.md). An elected leader; the party chooses "the leader decides" or democracy (one vote per seat, the leader breaks ties); personal moments, party checks, fights declared as intentions worked out at each turn, and the network messages. The VM never sees a vote, only the decision.* |
+| **E3.7 Voting (design)** | How a party votes on story choices and declares actions at once. | A reviewed design. *Done: [party-play.md](party-play.md). An elected leader; the party chooses "the leader decides" or democracy (one vote per character, the leader breaks ties); the best at it rolls story checks; personal moments; fights turn by turn as in* Pool of Radiance*, with a combat log and a recap since your last turn; the network messages. The VM never sees a vote, only the decision.* |
+| **E3.8 *Pool of Radiance* turns** | The turn from review ([combat.md](combat.md), *Your turn*): guard (a free attack on the first foe to come close), wait (act at the end of the round), free attacks on anyone pulling away, done, and quick (the computer plays a character). The terminal shows the log, and a recap. Cast and use come with powers and items. | Python reference and C agree; battle scenarios for each new action match on PC and 6502; *The Fare*'s fight still covered. |
 
 ### Departure 00: The Fare
 

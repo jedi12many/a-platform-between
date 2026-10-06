@@ -102,15 +102,37 @@ Sight is blocked only by walls, and by other combatants for ranged attacks.
    worked out once per fight, so there's nothing to roll. The story sets who's caught
    off guard: in an **ambush**, the foes get a free round before the first one; if the
    party **sneaks up**, the travelers do.
-2. **Each combatant moves up to their Speed and takes one action**, before or after moving:
-   - **Attack** with a weapon or power.
-   - **Use** an item (a stim, an oil, a grenade).
-   - **Defend**: +20 to your TN until your next turn.
-   - **Help** an ally next to the same foe: +20 to their next attack on it.
-   - **Flee** (see below).
-3. In co-op, everyone **declares at once**, then the round plays out in order: you declare
-   an intention ("next to the rust-guard, attack it"), worked out at your turn
-   ([party-play.md](party-play.md)). Solo, you just choose.
+2. **Each combatant takes a turn**: it moves up to its Speed and takes one action. On a
+   traveler's turn its player chooses, seeing the board as it is then: solo or in a
+   party, every character chooses on its own turn, as in *Pool of Radiance*
+   ([party-play.md](party-play.md)).
+
+### Your turn
+
+*Draft, from review: the turn modelled on* Pool of Radiance*'s. Milestone E3.8 builds it;
+until then the engine has attack, defend, help, flee and wait (do nothing).*
+
+Move first, up to your Speed, then take one action:
+
+| Action | What it does |
+|---|---|
+| **Attack** | a foe next to you with a melee weapon, or one in sight with a ranged weapon |
+| **Cast** | use a power (with the power registry, later). A power that takes time goes off at the start of your next turn, and a hit before then spoils it, so you can interrupt a foe's casting by hitting it first |
+| **Use** | an item: a stim, an oil, a grenade (later) |
+| **Guard** | stand ready: until your next turn, **the first foe that moves next to you takes a free attack** from you, before it can act |
+| **Wait** | put your turn off until the end of the round, to see what the foes do first. Only before you've moved, and once a round |
+| **Flee** | get out (see *Ending a fight*) |
+| **Done** | end your turn (having just moved, or not even that) |
+| **Quick** | the computer plays this character, by the rule its weapon suggests (**charge** with a melee weapon, **shoot** with a ranged one), until you take it back at the start of any of its turns. You can put the whole party on quick |
+
+**Free attacks.** Moving away from a foe that's next to you gives that foe **a free
+attack** on you as you go, before your move. A foe that steps away from you gives you
+one, too. It's one free attack per foe each time someone pulls away, made with whatever
+the attacker is holding. Fleeing at a cost (below) gives the same.
+
+There is no facing: nobody has a back to stab, which keeps the map readable at 40
+columns and simple at a table. And the order of play isn't re-rolled each round as it
+was in *Pool of Radiance*: it's set by Grace, with nothing to roll at a table.
 
 Foes act by a short, printed rule (on the card at the table), so a fight plays the same
 at the table and on the screen:
@@ -184,11 +206,15 @@ giving each foe's health and the TN to hit it. A turn is two short menus, **Wher
 (stay, next to or toward a foe, to the exit, into cover, onto high ground) and **Then?**
 (attack, with the TN; defend; flee, with its TN, or take the exit; wait; back), offering
 only what the rules allow from that square. What happens is told in sentences, with
-every roll: *You attack Rust-guard: 62 + 20 = 82 against 56, a hit: 22 damage.*
+every roll: *You attack Rust-guard: 62 + 20 = 82 against 56, a hit: 22 damage.* Those
+sentences are the **combat log**, which players can read back, and which recaps what
+happened since a player's last turn ([party-play.md](party-play.md)).
 
 ## What this isn't (yet)
 
 - Powers and their costs (with the power registry), opposed rolls at high level, and
   limits on stacking buffs: later, after playtests.
+- Bandaging a traveler who's down, as in *Pool of Radiance*, so a fight with a party
+  isn't over for whoever falls first: with party support.
 - Companions and Echo allies fight with the same numbers; how they're recruited is still
   an open question in [rules-v0.md](rules-v0.md).
