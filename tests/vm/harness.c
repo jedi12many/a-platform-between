@@ -11,6 +11,10 @@
  * A pick of 'S' saves the trip (DIR/SAVE) and quits when the menu comes back, the way a
  * player would; SEED 'resume' picks the saved trip up again instead of boarding.
  *
+ * In a fight, a turn is a pick written X.Y.K.T: move to X,Y, then action K (APB_ACT_*)
+ * on target T, e.g. 3.1.0.1 (move to 3,1 and attack fighter 1). Events print like the
+ * battle logs in tests/battle/.
+ *
  * SCRIPT is a comma-separated list. A number picks from a menu (1-based); a token
  * starting with ':' is a typed line (':' alone is a blank line). If the script starts
  * with a typed line, the traveler boards at the boarding desk; otherwise the built-in
@@ -82,6 +86,68 @@ void hal_check(uint8_t rating, const apb_roll *roll)
            results[roll->result]);
 }
 
+/* ------------------------------------------------------------- battles */
+
+static const char *const endings[] = { "on", "won", "lost", "fled" };
+static const char tile_chars[] = ".#O~+^=>";
+
+void hal_battle_begin(void)
+{
+    uint8_t x;
+    uint8_t y;
+    uint8_t i;
+    char c;
+    apb_fighter f;
+
+    printf("[fight: %u x %u, %u fighters, health %u]\n", apb_battle_width(),
+           apb_battle_height(), apb_battle_count(), apb_vm_health());
+    for (y = 0; y < apb_battle_height(); ++y) {
+        printf("  ");
+        for (x = 0; x < apb_battle_width(); ++x) {
+            c = tile_chars[apb_battle_tile(x, y) & 7];
+            for (i = 0; i < apb_battle_count(); ++i) {
+                apb_battle_fighter(i, &f);
+                if (f.x == x && f.y == y) c = (char)('0' + i);
+            }
+            putchar(c);
+        }
+        putchar('\n');
+    }
+}
+
+void hal_battle_event(const apb_event *e)
+{
+    switch (e->kind) {
+    case APB_EV_TURN:   printf("round %u: %u's turn\n", e->value, e->actor); break;
+    case APB_EV_MOVE:   printf("  %u moves to %u,%u\n", e->actor, e->x, e->y); break;
+    case APB_EV_ATTACK:
+        printf("  %u attacks %u: %u+%d=%d vs %d: %s, %u damage\n", e->actor, e->target,
+               e->roll.roll, e->roll.total - e->roll.roll, e->roll.total, e->roll.tn,
+               results[e->roll.result], e->value);
+        break;
+    case APB_EV_DOWN:   printf("  %u is down\n", e->target); break;
+    case APB_EV_HAZARD: printf("  %u takes %u from the ground\n", e->actor, e->value); break;
+    case APB_EV_DEFEND: printf("  %u defends\n", e->actor); break;
+    case APB_EV_HELP:   printf("  %u opens %u up\n", e->actor, e->target); break;
+    case APB_EV_FLEE:
+        if (e->roll.roll) {
+            printf("  %u tries to flee: %u+%d=%d vs %d: %s\n", e->actor, e->roll.roll,
+                   e->roll.total - e->roll.roll, e->roll.total, e->roll.tn,
+                   results[e->roll.result]);
+        } else {
+            printf("  %u takes the exit\n", e->actor);
+        }
+        break;
+    case APB_EV_GONE:   printf("  %u is gone\n", e->actor); break;
+    case APB_EV_END:    break;
+    }
+}
+
+void hal_battle_end(uint8_t result)
+{
+    printf("[the fight is %s; health %u]\n", endings[result & 3], apb_vm_health());
+}
+
 /* The next script token into `tok`; exits cleanly when the script runs out. */
 static char tok[64];
 
@@ -99,6 +165,21 @@ static void next_token(void)
 }
 
 static uint8_t quitting;
+
+void hal_battle_turn(uint8_t who, apb_action *out)
+{
+    unsigned v[4];
+
+    next_token();
+    printf("> %s\n", tok);
+    v[0] = v[1] = v[2] = v[3] = 255;
+    sscanf(tok, "%u.%u.%u.%u", &v[0], &v[1], &v[2], &v[3]);
+    (void)who;
+    out->move_x = (uint8_t)v[0];
+    out->move_y = (uint8_t)v[1];
+    out->kind = (uint8_t)v[2];
+    out->target = (uint8_t)v[3];
+}
 
 uint8_t hal_menu(const char *const *labels, uint8_t count)
 {

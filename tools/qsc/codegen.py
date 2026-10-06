@@ -324,6 +324,8 @@ class Compiler:
             asm.op("TAKE", self.reg["items"][a[0]]["id"])
         elif cmd.name == "xp":
             asm.op("XP", a[0])
+        elif cmd.name == "heal":
+            asm.op("HEAL", a[0])
         elif cmd.name == "debt":
             asm.op("DEBT", {"set": 0, "add": 1, "sub": 2}[a[0]], a[1])
         elif cmd.name == "picture":

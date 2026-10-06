@@ -305,6 +305,72 @@ uint8_t hal_save(const char *name, const uint8_t *src, uint16_t len)
     return n == len ? HAL_OK : HAL_IO_ERROR;
 }
 
+/* ----------------------------------------------------------- battles */
+
+/* A plain first version; the battle screen proper is milestone E3.5. */
+static const char tile_chars[] = ".#O~+^=>";
+
+void hal_battle_begin(void)
+{
+    uint8_t x;
+    uint8_t y;
+    uint8_t i;
+    char c;
+    apb_fighter f;
+
+    printf("\nA fight! You are 0; your foes are numbered.\n");
+    for (y = 0; y < apb_battle_height(); ++y) {
+        printf("  ");
+        for (x = 0; x < apb_battle_width(); ++x) {
+            c = tile_chars[apb_battle_tile(x, y) & 7];
+            for (i = 0; i < apb_battle_count(); ++i) {
+                apb_battle_fighter(i, &f);
+                if (f.state == APB_IN_FIGHT && f.x == x && f.y == y) c = (char)('0' + i);
+            }
+            putchar(c);
+        }
+        putchar('\n');
+    }
+}
+
+void hal_battle_event(const apb_event *e)
+{
+    static const char *const results[] = { "a miss", "a glancing hit", "a hit", "a crit" };
+
+    if (e->kind == APB_EV_MOVE) printf("%u moves to %u,%u.\n", e->actor, e->x, e->y);
+    else if (e->kind == APB_EV_ATTACK)
+        printf("%u attacks %u: %u, %s, %u damage.\n", e->actor, e->target, e->roll.roll,
+               results[e->roll.result & 3], e->value);
+    else if (e->kind == APB_EV_DOWN) printf("%u is down.\n", e->target);
+    else if (e->kind == APB_EV_GONE) printf("%u is gone.\n", e->actor);
+    else if (e->kind == APB_EV_HAZARD) printf("%u takes %u from the ground.\n", e->actor, e->value);
+}
+
+void hal_battle_turn(uint8_t who, apb_action *out)
+{
+    char buf[40];
+    unsigned v[4];
+
+    hal_battle_begin();
+    printf("Your turn: x y action target (action 0 attack, 1 defend, 2 help, 3 flee, 4 wait)\n");
+    read_line(buf, sizeof(buf));
+    v[0] = v[1] = v[2] = v[3] = 255;
+    sscanf(buf, "%u %u %u %u", &v[0], &v[1], &v[2], &v[3]);
+    (void)who;
+    out->move_x = (uint8_t)v[0];
+    out->move_y = (uint8_t)v[1];
+    out->kind = (uint8_t)v[2];
+    out->target = (uint8_t)v[3];
+}
+
+void hal_battle_end(uint8_t result)
+{
+    static const char *const endings[] = { "", "You won the fight.", "You lost the fight.",
+                                           "You got away." };
+
+    printf("%s\n\n", endings[result & 3]);
+}
+
 /* --------------------------------------------------------------- the end */
 
 static char stamp[APB_STAMP_BUF];

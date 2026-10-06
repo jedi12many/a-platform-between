@@ -261,6 +261,9 @@ def test_encounters():
     code = bytes(img.cars[0])
     if bytes([0x3A, 0, 1]) not in code:
         fail("FIGHT 0, ambush (3A 00 01) isn't in the code")
+    healed = bytes(build(TINY.replace("~ set f", "~ set f ~ heal full ~ heal 7")).cars[0])
+    if bytes([0x4D, 255, 0x4D, 7]) not in healed:
+        fail("~ heal full and ~ heal 7 aren't HEAL 255 and HEAL 7 (4D FF 4D 07)")
     e = read_depot(img.depot)["encounters"][0]
     if (e["w"], e["h"], e["starts"], e["foes"][0]["x"]) != (3, 2, [(0, 0)], 2):
         fail(f"encounter read back as {e}")

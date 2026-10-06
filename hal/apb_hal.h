@@ -17,6 +17,7 @@
 #include <stdint.h>
 
 #include "apb.h"
+#include "apb_battle.h"
 
 /* Results for the file functions. */
 enum {
@@ -50,6 +51,23 @@ void hal_pause(void);
 /* A check was rolled: show it, the way a player at a table would see it.
  * `rating` is numbered as in the VM spec: 0..5 a stat, 16..27 a skill. */
 void hal_check(uint8_t rating, const apb_roll *roll);
+
+/* ---------------------------------------------------------- battles */
+
+/* A fight has begun: the map and the fighters are set up (read them with the
+ * apb_battle_* functions in apb_battle.h). Show them. */
+void hal_battle_begin(void);
+
+/* Something happened in the fight: show it. */
+void hal_battle_event(const apb_event *ev);
+
+/* A traveler's turn: fill `out` with what they do. Front ends can offer only what's
+ * allowed (apb_battle_can_reach, apb_battle_can_attack); the VM checks again, says so
+ * with hal_prompt if it isn't allowed, and asks again. */
+void hal_battle_turn(uint8_t who, apb_action *out);
+
+/* The fight is over: result is APB_BATTLE_WON, _LOST or _FLED. */
+void hal_battle_end(uint8_t result);
 
 /* ---------------------------------------------------- presentation */
 

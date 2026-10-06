@@ -55,6 +55,7 @@ OPS = {
     "XP":         (0x4A, ["u8"]),
     "DEBT":       (0x4B, ["u8", "u16"]),
     "ECHO_SET":   (0x4C, ["echo", "u8"]),
+    "HEAL":       (0x4D, ["u8"]),
 }
 
 BY_CODE = {code: (name, operands) for name, (code, operands) in OPS.items()}

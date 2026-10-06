@@ -14,8 +14,8 @@ APPLY_SRC := core/src/receipt.c
 # made smaller (docs/engine-plan.md, Risks).
 BATTLE_SRC := core/src/battle.c
 CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
-VM_SRC   := vm/vm.c client/desk.c
-VM_HDR   := vm/apb_vm.h client/apb_desk.h
+VM_SRC   := vm/vm.c client/desk.c core/src/battle.c
+VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
 .PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 demo play crosscheck registry check-registry check-content clean
 
@@ -95,8 +95,12 @@ check-content: | build
 build/harness: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
 
+# On the 6502 the harness uses a 4 KB car and a 2 KB depot buffer so that the VM, the
+# battle engine and stdio fit the simulator's 64 KB (The Fare's biggest car is 3.3 KB; a
+# car too big is refused at load, so a test fails loudly). Fitting the real C64 is
+# milestone E4's memory work.
 build/harness.sim: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
-	$(CL65) -t sim6502 -O $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
+	$(CL65) -t sim6502 -O -DAPB_VM_CAR_MAX=4096 -DAPB_VM_DEPOT_MAX=2048 $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
 
 # The same harness with AddressSanitizer and UndefinedBehaviorSanitizer, for damage tests.
 build/harness.asan: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build

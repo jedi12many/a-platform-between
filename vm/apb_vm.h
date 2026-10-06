@@ -16,8 +16,12 @@
 
 #include "apb.h"
 
-#define APB_VM_DEPOT_MAX   4096
-#define APB_VM_CAR_MAX     16384
+#ifndef APB_VM_DEPOT_MAX
+#define APB_VM_DEPOT_MAX   4096     /* a test build may use less (the 6502 harness: 2 KB) */
+#endif
+#ifndef APB_VM_CAR_MAX
+#define APB_VM_CAR_MAX     16384    /* a test build may use less (the 6502 harness: 4 KB) */
+#endif
 #define APB_VM_REWARD_SITES 32      /* XP, GIVE and DEBT instructions in one Departure */
 #define APB_VM_SAVE_MAX    768      /* the largest save file, in bytes */
 
@@ -61,6 +65,7 @@ void apb_vm_trace(uint8_t car, uint16_t pc);
 #endif
 
 const apb_receipt   *apb_vm_receipt(void);
+uint8_t              apb_vm_health(void);       /* now; it carries from fight to fight */
 const apb_character *apb_vm_character(void);   /* the working copy */
 const char          *apb_vm_error(void);       /* e.g. "car 1 at 233: bad jump" */
 

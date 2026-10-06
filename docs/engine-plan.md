@@ -289,7 +289,7 @@ a test Departure; two receipts from overlapping Departures both land.
 | **E3.1 Combat rules** (`core/`) | Dodge, defense TNs, damage with margin, stat bonus, crits, glancing hits and Soak; area attacks; terrain; fleeing. A Python reference written from combat.md. | C and Python agree on hand-worked and random attacks, on PC and 6502; the worked fight in combat.md is a test. *Done: `make test-combat`, 9,000 random attacks and 300 sheets. It caught the transcript dice check counting one total too many as a cost.* |
 | **E3.2 The battle** (`core/`) | Maps, movement and sight, the order of play, foe behaviors, rounds, the ways a fight ends. Deterministic, driven by a stream of actions. | Scripted battles give identical logs on PC and 6502. *Done (6.3 KB of 6502 code): seven reviewed scenarios, every roll re-checked; 300 random battles under the sanitizers. Building it settled three rules in combat.md: a blast can't catch its thrower, shooters move only as far as they must, cover protects whoever stands in it.* |
 | **E3.3 Quest Script** | `foe`, `map` and `fight` with `won:`/`lost:`/`fled:` branches; the image format; the verifier. A warning for a fight with no way around. | The compiler's tests cover fights; damaged fight data is refused. *Done: the shared bestiary (`registry/foes.txt`); `map` and `fight` with plain-word errors; encounter records in the depot, checked on load in Python and C, 150 damaged copies under the sanitizers; the warning for a fight with no way around.* |
-| **E3.4 VM and HAL** | The VM hands a fight to the battle engine; the HAL draws the map and asks for actions. Health carries over; `~ heal`. | A test image's fight plays through the harness on PC and 6502. |
+| **E3.4 VM and HAL** | The VM hands a fight to the battle engine; the HAL draws the map and asks for actions. Health carries over; `~ heal`. | A test image's fight plays through the harness on PC and 6502. *Done: `FIGHT` runs the battle engine through four HAL calls; health carries over, `~ heal` restores it, saves keep it; five fight playthroughs (won, lost, fled by exit and by roll, an ambush, a sneak) match on PC and 6502 with every roll re-checked, and resume from any story menu. The 6502 harness needs a 4 KB car and 2 KB depot buffer to fit.* |
 | **E3.5 Terminal battle map** | The map at 40 columns, the action menu, the round's results. | A fight is playable by hand. |
 | **E3.6 A fight in *The Fare*** | Something worth fighting, and a road around it. Transcript tests, coverage, saves around fights. | Every route still covered; transcripts match on both. |
 | **E3.7 Voting (design)** | How a party votes on story choices and declares actions at once. | A reviewed design in this document. |
@@ -379,6 +379,11 @@ rewards, possibly becoming official.
   static arrays than for structs reached through pointers), it is 6.3 KB, with identical
   results. Still to do for the C64 (E4): load it from disk only when a fight starts, a
   classic overlay.
+  *E3.4: the VM is now 15+ KB of code and 22 KB of buffers;* with the battle engine and
+  stdio it no longer fits the 64 KB simulator with a 16 KB car, so the 6502 test harness
+  runs with a 4 KB car and a 2 KB depot buffer (`-DAPB_VM_CAR_MAX`, `-DAPB_VM_DEPOT_MAX`).
+  E4 needs a real memory map: smaller cars (chapters), overlays for the battle and the
+  desk, and no stdio.
   *E2 adds about 2 KB to `passport.c`:* Boarding Pass decoding and Travel Stamp encoding,
   which a client needs, beside the Passport and pass encoders, which only tests and the
   website need. cc65 links whole files, so E4 should split them (`apb_receipt_apply` is

@@ -15,7 +15,7 @@ INSERTS = ["name", "race", "class", "debt", "level"]
 KEYWORDS = {"if", "else", "check", "flag", "var", "and", "or", "not", "has", "echo",
             "visited", "level", "race", "class", "name", "debt", "vs"}
 COMMANDS = ["set", "clear", "let", "add", "sub", "echo", "give", "take", "xp", "debt",
-            "picture", "pause", "end"]
+            "heal", "picture", "pause", "end"]
 OUTCOMES = ["crit", "success", "cost", "fail"]
 TN_WORDS = {"easy": 80, "routine": 90, "normal": 100, "tricky": 110, "hard": 120,
             "very_hard": 130}
@@ -832,6 +832,11 @@ class Parser:
         elif name == "xp":
             if need(1, "xp 10"):
                 return A.Command("xp", [self.number(args[0], line, 1, 255, "XP")], line)
+        elif name == "heal":
+            if need(1, "heal 10' or '~ heal full"):
+                if args[0] == "full":
+                    return A.Command("heal", [255], line)
+                return A.Command("heal", [self.number(args[0], line, 1, 254, "healing")], line)
         elif name == "debt":
             if not official:
                 self.err(line, "Branch Lines can't change Debt")

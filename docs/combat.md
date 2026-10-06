@@ -139,7 +139,12 @@ you're out; success at a cost, you're out but each foe next to you gets a free a
 fail, you're still here. Running away never ends the Departure on its own.
 
 Health carries over: wounds from one fight are still there for the next, until the story
-heals you (a rest, a medic, `~ heal`). Back at the Waystation, everyone is whole again.
+heals you (a rest, a medic, `~ heal`). Back at the Waystation, everyone is whole again. A
+lost fight that the story carries on from (a `lost:` branch) leaves you on 1 health.
+
+You fight with the first weapon you have equipped (melee, ranged, or a focus for powers),
+or bare-handed. Choosing a weapon mid-fight, and using items, come later. Saves are made
+between fights, at story menus, not during one.
 
 ## A worked fight
 

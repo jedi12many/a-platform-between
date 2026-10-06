@@ -1,0 +1,32 @@
+Three doors.
+  1) The rat
+  2) The guard by the back door
+  3) The alley
+  4) Rest
+  5) Leave
+> 1
+[fight: 5 x 1, 2 fighters, health 27]
+  0...1
+round 1: 1's turn
+  1 moves to 1,0
+  1 attacks 0: 68+30=98 vs 58: success, 6 damage
+round 1: 0's turn
+> 0.0.3.0
+  0 tries to flee: 18+62=80 vs 110: fail
+round 2: 1's turn
+  1 attacks 0: 80+30=110 vs 58: success, 7 damage
+round 2: 0's turn
+> 0.0.3.0
+  0 tries to flee: 70+62=132 vs 110: success
+  0 is gone
+[the fight is fled; health 14]
+You back away from the rat.
+Three doors.
+  1) The rat
+  2) The guard by the back door
+  3) The alley
+  4) Rest
+  5) Leave
+> 5
+[receipt: departure 904, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

@@ -1,0 +1,23 @@
+=== The Yard
+Two rust-guards and a gunner stand between you and the gate.
+  1) Fight your way through
+  2) Go round by the fence
+> 2
+The fence is longer than it looks, but nobody sees you.
+[fight: 9 x 5, 4 fighters, health 27]
+  #########
+  #0.~~.1.#
+  #...+.^2>
+  #==...3.#
+  #########
+round 0: 0's turn
+> 1.1.3.0
+  0 tries to flee: 4+62=66 vs 100: fail
+round 1: 0's turn
+> 1.1.3.0
+  0 tries to flee: 34+62=96 vs 100: cost
+  0 is gone
+[the fight is fled; health 27]
+The gate swings open.
+[receipt: departure 903, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

@@ -211,7 +211,7 @@ re-running the scene's entry text or commands.
 | `AND` `OR` | 36–37 | — | pop b, pop a, push logical result |
 | `NOT` | 38 | — | pop a, push !a |
 | `CHECK` | 39 | u8 rating, u8 tn | d100 + the rating (numbered as for `RATING`) against the TN (50–250): pushes 0 fail, 1 cost, 2 success, 3 crit (via `apb_check`) |
-| `FIGHT` | 3A | u8 encounter, u8 surprise | plays the encounter (surprise: 0 none, 1 the foes go first, 2 the travelers do): pushes 0 won, 1 lost, 2 fled. The compiler follows it with a `SWITCH4` whose fourth slot is never taken |
+| `FIGHT` | 3A | u8 encounter, u8 surprise | plays the encounter (surprise: 0 none, 1 the foes go first, 2 the travelers do) with the battle engine (`core/src/battle.c`): the traveler takes the first start, with their health now and the first weapon they have equipped; the HAL shows the map and events and asks for each turn (`hal_battle_begin`, `_event`, `_turn`, `_end`). Pushes 0 won, 1 lost, 2 fled; health carries on, and a lost fight the story carries on from leaves 1. The compiler follows it with a `SWITCH4` whose fourth slot is never taken |
 
 `visited` compiles to `FLAG` on the scene's compiler-allocated flag.
 
@@ -229,6 +229,7 @@ re-running the scene's entry text or commands.
 | `XP` | 4A | u8 n | `apb_gain_xp`; pays once per trip | ignored above the level band |
 | `DEBT` | 4B | u8 mode, u16 n | mode 0 set, 1 add, 2 subtract (saturating); pays once per trip | refused |
 | `ECHO_SET` | 4C | u16 echo, u8 state | `apb_echo_set` | refused |
+| `HEAL` | 4D | u8 n | health + n, up to the most; 255 heals fully | yes |
 
 "Pays once per trip": the VM remembers (car, offset) of each `GIVE`, `XP` and `DEBT` it
 has run since boarding, up to 32 (`APB_VM_REWARD_SITES`), and passes over one it has run
@@ -287,7 +288,7 @@ disk. Little-endian, version 1:
 
 | Field | Size |
 |---|---|
-| magic, version | 3: `41 53 01` |
+| magic, version | 3: `41 53 02` (version 2 added health) |
 | departure id, image hash | 2 + 2: a save only loads into the image that made it |
 | car, menu offset | 1 + 2: the `MENU` instruction to show again |
 | menu entries | 1 + 4 each: string id, target |
@@ -295,7 +296,7 @@ disk. Little-endian, version 1:
 | flags | one byte per 8 of the image's flags |
 | vars | one byte per variable |
 | rng | 2 |
-| Debt at boarding, Branch Line gives | 2 + 1 |
+| Debt at boarding, health now, Branch Line gives | 2 + 1 + 1 |
 | rewards already paid | 1 + 3 each: car, offset |
 | receipt so far | departure 2, ticket 4, outcome 1, XP 2, Debt paid 2, added 2, items gained and lost (1 + 2 each), Echoes (1 + 4 each: id, state, state at boarding) |
 | character | 1 + the working copy as a Passport password |

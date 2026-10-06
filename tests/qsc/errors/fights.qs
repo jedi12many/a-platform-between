@@ -40,6 +40,7 @@ fight arena
     draw: -> b                       // error: each line starts with won:, lost: or fled:
 fight arnea                          // error: Did you mean 'arena'?
 fight arena surprise                 // error: write 'ambush' or 'sneak', or nothing
+~ heal                               // error: is written '~ heal 10' or '~ heal full'
 fight spare
 -> b
 

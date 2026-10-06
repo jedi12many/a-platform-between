@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "apb.h"
+#include "apb_battle.h"
 #include "apb_hal.h"
 #include "apb_vm.h"
 #include "names.h"
@@ -32,7 +33,8 @@ enum {
     OP_AND = 0x36, OP_OR = 0x37, OP_NOT = 0x38, OP_CHECK = 0x39, OP_FIGHT = 0x3A,
     OP_SET = 0x40, OP_CLR = 0x41, OP_LET = 0x42, OP_ADD = 0x43, OP_SUB = 0x44,
     OP_GIVE = 0x48, OP_TAKE = 0x49, OP_XP = 0x4A, OP_DEBT = 0x4B, OP_ECHO_SET = 0x4C,
-    OP_LAST = 0x4C
+    OP_HEAL = 0x4D,
+    OP_LAST = 0x4D
 };
 
 /* Operand kinds, one letter each:
@@ -43,7 +45,7 @@ static const char *const operands[OP_LAST + 1] = {
     "t", "p", "",  "",  0, 0, 0, 0, "", "ta", "", 0, 0, 0, 0, 0,          /* 10 */
     "b", "h", "f", "v", "i", "eb", "r", "", "", "", 0, 0, 0, 0, 0, 0,     /* 20 */
     "", "", "", "", "", "", "", "", "", "rb", "nb", 0, 0, 0, 0, 0,        /* 30 */
-    "f", "f", "v", "vb", "vb", 0, 0, 0, "i", "i", "b", "bw", "eb"        /* 40 */
+    "f", "f", "v", "vb", "vb", 0, 0, 0, "i", "i", "b", "bw", "eb", "b"   /* 40 */
 };
 
 #define SKILL_BASE   16
@@ -116,6 +118,7 @@ static apb_character ch;
 static apb_rng rng;
 static apb_receipt receipt;
 static uint16_t boarded_debt;
+static uint8_t health;              /* carries from fight to fight in a Departure */
 static uint8_t gives;
 
 static char error_buf[48];
@@ -828,7 +831,7 @@ static uint8_t first_pay(void)
  * edited save is refused, never trusted. The character is kept as its Passport. */
 #define SAVE_MAGIC_1 0x41   /* bytes, not characters: 'A' 'S' in ASCII */
 #define SAVE_MAGIC_2 0x53
-#define SAVE_VERSION 1
+#define SAVE_VERSION 2      /* 2: health */
 
 static uint8_t save_buf[APB_VM_SAVE_MAX];
 static uint16_t sv_pos;
@@ -912,6 +915,7 @@ static uint8_t save_game(uint16_t menu_at)
     for (i = 0; i < var_count; ++i) sv_put8(vars[i]);
     sv_put16(rng.state);
     sv_put16(boarded_debt);
+    sv_put8(health);
     sv_put8(gives);
     sv_put8(paid_count);
     for (i = 0; i < paid_count; ++i) {
@@ -984,6 +988,7 @@ static uint16_t load_game(void)
     rng.state = sv_get16();
     if (rng.state == 0) sv_bad = 1;         /* xorshift never reaches 0 */
     boarded_debt = sv_get16();
+    health = sv_get8();
     gives = sv_get8();
     paid_count = sv_get8();
     if (paid_count > APB_VM_REWARD_SITES) sv_bad = 1;
@@ -1046,6 +1051,97 @@ static uint16_t load_game(void)
     }
 #endif
     return at;
+}
+
+/* -------------------------------------------------------------- fights */
+
+/* You fight with the first weapon you have equipped (a melee or ranged weapon, or a
+ * focus), or your bare hands. */
+static uint16_t weapon_of(void)
+{
+    uint8_t i;
+    uint16_t id;
+    uint8_t a;
+
+    for (i = 0; i < APB_EQUIP_SLOTS; ++i) {
+        id = ch.equipped[i];
+        if (id == 0 || id >= APB_ITEM_COUNT || apb_items[id].tier == 0) continue;
+        a = apb_items[id].archetype;
+        if (a == APB_ARCH_MELEE || a == APB_ARCH_RANGED || a == APB_ARCH_FOCUS) return id;
+    }
+    return 0;
+}
+
+static apb_fighter fighter;
+static apb_action action;
+
+static void battle_event(const apb_event *e)
+{
+    hal_battle_event(e);
+}
+
+/* Play encounter `n` (checked when the depot loaded). Returns 0 won, 1 lost, 2 fled. */
+static uint8_t fight(uint8_t n, uint8_t surprise)
+{
+    uint16_t at = encounters_at;
+    uint16_t tiles_at;
+    uint16_t p;
+    const uint8_t *s;
+    uint8_t w;
+    uint8_t h;
+    uint8_t x;
+    uint8_t y;
+    uint8_t i;
+    uint8_t foes;
+    uint8_t who;
+    uint8_t result;
+
+    while (n--) at = (uint16_t)(at + 2 + rd16(depot + at));
+    at = (uint16_t)(at + 2);
+    w = depot[at];
+    h = depot[at + 1];
+    tiles_at = (uint16_t)(at + 2);
+    apb_battle_init(w, h, &rng, battle_event);
+    for (y = 0; y < h; ++y) {
+        for (x = 0; x < w; ++x) apb_battle_set_tile(x, y, enc_tile(tiles_at, w, x, y));
+    }
+    p = (uint16_t)(tiles_at + (w * h + 1) / 2);
+    /* The traveler takes the first start (a party takes the rest, later). */
+    apb_fighter_from(&fighter, &ch, weapon_of());
+    fighter.health = health;
+    fighter.x = depot[p + 1];
+    fighter.y = depot[p + 2];
+    apb_battle_add(&fighter);
+    p = (uint16_t)(p + 1 + 2u * depot[p]);
+    foes = depot[p++];
+    for (i = 0; i < foes; ++i) {
+        s = depot + p + 18u * i;
+        memset(&fighter, 0, sizeof(fighter));
+        fighter.side = APB_SIDE_FOE;
+        fighter.x = s[0];         fighter.y = s[1];
+        fighter.health = s[2];    fighter.health_max = s[2];
+        fighter.grace = s[3];     fighter.dodge = s[4];     fighter.armor = s[5];
+        fighter.ward = s[6];      fighter.soak = s[7];      fighter.speed = s[8];
+        fighter.attack = s[9];    fighter.weapon = s[10];   fighter.dmg_type = s[11];
+        fighter.ranged = s[12];   fighter.power = s[13];    fighter.area = s[14];
+        fighter.weak_type = s[15]; fighter.behavior = s[16]; fighter.coward = s[17];
+        apb_battle_add(&fighter);
+    }
+    apb_battle_start(surprise);
+    hal_battle_begin();
+    for (;;) {
+        who = apb_battle_next();
+        if (who == APB_NOBODY) break;
+        steps = 0;
+        hal_battle_turn(who, &action);
+        if (!apb_battle_act(who, &action)) hal_prompt("You can't do that.");
+    }
+    result = apb_battle_result();
+    apb_battle_fighter(0, &fighter);
+    /* Lose, and the story carries on with you on your feet, just. */
+    health = fighter.health ? fighter.health : 1;
+    hal_battle_end(result);
+    return (uint8_t)(result - 1);
 }
 
 /* -------------------------------------------------------------- running */
@@ -1161,6 +1257,7 @@ uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed)
     }
     opened = 0;                 /* the next board opens the image again */
     memcpy(&ch, snapshot, sizeof(ch));
+    health = apb_health_max(&ch);
     memset(flags, 0, sizeof(flags));
     for (i = 0; i < var_count; ++i) {
         vars[i] = depot[var_init_at + i];
@@ -1369,8 +1466,10 @@ uint8_t apb_vm_run(void)
             push(!pop());
             break;
         case OP_FIGHT:
-            /* The battle map arrives with milestone E3.4. */
-            fail("fights aren't playable yet", pc);
+            i = FETCH8();
+            a = FETCH8();
+            if (i >= encounter_count || a > 2) { fail("bad fight", pc); break; }
+            push(fight(i, (uint8_t)a));
             break;
         case OP_CHECK:
             i = FETCH8();
@@ -1426,6 +1525,11 @@ uint8_t apb_vm_run(void)
             else if (i == 1) ch.debt = (uint16_t)(ch.debt > 0xFFFFu - a ? 0xFFFFu : ch.debt + a);
             else ch.debt = (uint16_t)(ch.debt < a ? 0 : ch.debt - a);
             break;
+        case OP_HEAL:
+            i = FETCH8();
+            a = apb_health_max(&ch);
+            health = (uint8_t)(i == 255 || health + i > a ? a : health + i);
+            break;
         case OP_ECHO_SET:
             a = FETCH16();
             i = FETCH8();
@@ -1443,6 +1547,11 @@ uint8_t apb_vm_run(void)
     }
     hal_error(error_buf);
     return APB_VM_ERROR;
+}
+
+uint8_t apb_vm_health(void)
+{
+    return health;
 }
 
 const apb_receipt *apb_vm_receipt(void)
