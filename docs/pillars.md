@@ -8,6 +8,12 @@ Each **Departure** is a complete story in 4–6 hours, about five chapters, one 
 cheap to buy. Departures release in seasons: each stands alone, with a thread running
 through them. Most are solo; some are written for parties of 2–4. We start with solo.
 
+Seasons are the business model: Season 1 (the Waystation) is the base game, each later
+season is a DLC with a new station, Stationmaster and main story, and everything you've
+done carries over. Any Departure can be replayed for a different outcome.
+See [seasons.md](seasons.md). Between Departures there are **Sidings**: procedural dungeons
+and mini-games that build your character. See [sidings.md](sidings.md).
+
 ## 2. One character, every world
 
 You make a character once and take them everywhere. Level, gear, Debt and Echoes travel

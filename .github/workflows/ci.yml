@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rules-core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cc65
+        run: sudo apt-get update && sudo apt-get install -y cc65
+
+      - name: Tests (native)
+        run: make test
+
+      - name: Tests (6502, sim65)
+        run: make test-6502
+
+      - name: Native vs 6502 crosscheck
+        run: make crosscheck
+
+      - name: Build C64 demo
+        run: make c64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: c64-demo
+          path: build/demo.prg
