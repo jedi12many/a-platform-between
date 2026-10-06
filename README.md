@@ -35,7 +35,7 @@ make demo        # build and run the native demo
 
 | Doc | What it covers |
 |---|---|
-| [Pillars](docs/pillars.md) | The five ideas everything else hangs off |
+| [Pillars](docs/pillars.md) | The ideas everything else hangs off |
 | [World bible](docs/world-bible.md) | The Waystation, the Stationmaster, Debt, the mystery, races, realms |
 | [Translation](docs/translation.md) | Tech/Magic levels, how gear and bodies change between realms, Force It and Dissonance |
 | [Echoes](docs/echoes.md) | How a character's choices follow them and come back |

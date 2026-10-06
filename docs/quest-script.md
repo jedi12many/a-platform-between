@@ -279,6 +279,40 @@ can *read* all of them, in conditions and with `{name}`, `{race}` and `{class}`.
 | `~ end complete` | the Departure succeeded: rewards are kept |
 | `~ end failed` | the Departure failed: the character returns to the Waystation |
 
+## Writing roadblocks
+
+Departures are built for preparation, not balance (see *Roadblocks* in
+[rules-v0.md](rules-v0.md)). A roadblock scene looks like this:
+
+```
+== vault_door
+The door is guarded by an iron golem. The floor in front of it is scattered with
+dented armor, none of it recent, all of it empty.
+
+* [Size it up]
+    check LORE
+        success: Iron through and through. Lightning would find every rivet.
+                 ~ set knows_golem
+        cost:    Iron. Heavy. You'd want something sharper than steel.
+        fail:    It's big. That's all you can tell.
++ {has ADAMANT_OIL} [Oil your blade and fight] -> golem_fight
++ {CHANNEL >= 40 and knows_golem} [Call the lightning] -> golem_lightning
++ [Fight it anyway] -> golem_fight
++ [Find another way] -> service_tunnels
+```
+
+Rules for every roadblock:
+
+- **Telegraph it.** The player should be able to see it's dangerous before committing.
+- **Offer a way to learn more**: a check that reveals defenses or weaknesses.
+- **Show the answers the player has**, gated on items, skills, powers or flags, and let
+  the rest stay hidden.
+- **Always offer the other road.** The compiler will warn about a scene with a fight
+  and no exit that avoids it.
+- **The other road must lead somewhere real**: another route to an ending, not a dead end.
+- **Leave it standing.** A roadblock the player skipped is still there on a Rewind or a
+  later visit.
+
 ## Branch Lines: what's different
 
 Community Departures (`kind: branch`) use the same language, with these limits so they

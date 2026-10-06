@@ -255,11 +255,43 @@ traveler still meets equals.
 
 Design rules for combat:
 
-- **Players always have options.** Every tough enemy should have at least two answers a
-  prepared party might hold: a weakness, a debuff, a tool.
+- **Tough enemies have answers, but you may not be carrying them.** Every roadblock
+  should have at least two answers a *prepared* party might hold: a weakness, a debuff, a
+  tool. An unprepared party may have none of them. See *Roadblocks* below.
 - **Every option is a number on the sheet or the card.** No hidden formulas.
 - **Items for the occasion matter.** Consumables and specialist gear (oils, scrolls,
   charges) are a core part of the loot, not filler.
+
+## Roadblocks
+
+The world isn't scaled to you. Some enemies, doors and hazards are **roadblocks**: if you
+didn't prepare for them, you can't get through today, and the right move is to go another
+way.
+
+- **Not every path is open.** A Departure never promises that the road you're on
+  continues. It promises that *some* road does.
+- **Preparation is the skill.** Tickets come with rumors ("iron guardians in the lower
+  vaults"). The Waystation's traders sell answers. Six pack slots means you can't carry an
+  answer to everything, so what you pack decides which roads open.
+- **You can see it before it sees you.** Roadblocks are telegraphed: the scorched walls,
+  the crushed armor at the door, the silence. A `LORE`, `INTUITION` or `SURVIVAL` check can
+  reveal a roadblock's defenses and weaknesses before you commit.
+- **Retreat is always on the table.** Backing off before a fight is free. Fleeing a fight
+  in progress is a roll, with a cost if it goes badly, but it never ends the Departure on
+  its own. Death pulls you back to the Waystation with more Debt; running away doesn't.
+- **The other way is a real way.** Going around means a different route: longer,
+  stranger, more dangerous elsewhere, missing what the roadblock guarded, sometimes leading
+  to a different ending. It's never a punishment corridor.
+- **You can come back.** Characters live a long time. The golem that turned you back at
+  level 8 is still there at level 30, and so is what it guards. A Rewind, or a later
+  Departure to the same realm, is your second try. Knowing a roadblock's weakness can be a
+  **Key** Echo that travels with you.
+- **Rewards behind roadblocks stay worth it.** XP fades when you've outgrown a Departure,
+  but unique loot and Echoes behind a roadblock can be claimed once, whenever you finally
+  get there.
+
+At the tabletop, the Conductor plays it straight: don't fudge the golem down to the
+party's level. Telegraph it, let them scout, and leave the other road open.
 
 ## Open questions
 
