@@ -22,6 +22,9 @@ jobs:
       - name: Native vs 6502 crosscheck
         run: make crosscheck
 
+      - name: Python Passport reference reads the C output
+        run: make test-python
+
       - name: Build C64 demo
         run: make c64
 

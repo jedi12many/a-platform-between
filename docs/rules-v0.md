@@ -1,81 +1,202 @@
 # Rules v0
 
-A first proposal. Everything here is open for change. The parts marked in
-`core/` (the roll, health, XP, Translation, Dissonance bands) are implemented there and
-tested on both PC and 6502.
+A first proposal, open for change. What's marked as implemented lives in `core/` and is
+tested on both PC and 6502. The numbers are first guesses; playtests will tune them.
 
 ## Hard constraints
 
-- Whole numbers only. Every stored value fits in a byte (0–255); most are far smaller.
+- Whole numbers only. Every stored value fits in a byte (0–255).
+- Everything must be playable by hand at a table, with pencil and percentile dice. See
+  [tabletop.md](tabletop.md).
 - One deterministic random-number generator, identical on every platform, so a given seed
   produces the same fight on the C64 and on Windows.
-- Small numbers on purpose (bounded accuracy): a level-1 goblin should still matter a
-  little at level 15.
+
+## The 100 scale
+
+Characters are meant to live a long time: across Departures, seasons and years.
+
+| | Range |
+|---|---|
+| Level | 1–100 |
+| Stats | 0–100 |
+| Skills | 0–100 |
+| Powers | 0–100 |
+
+Every rating *is* a percentage chance. A Melee of 62 hits on 62 or less. No conversion,
+no table: what you see is your chance.
+
+## The core roll: d100
+
+Roll **d100** (two ten-sided dice, tens and ones; `00` is 100). Compare it to the
+**target**: the stat, skill or power being tested, plus or minus the situation.
+
+| Roll | Result |
+|---|---|
+| **01**, or **doubles** (11, 22 … 99) at or under the target | **Crit**: success, with something extra |
+| At or under the target | **Success** |
+| Up to 20 over the target | **Success at a cost**: it works, but something goes wrong |
+| More than 20 over | **Fail**, and things move |
+| **100** | Always fails |
+
+**Modifiers:**
+
+| Situation | Modifier |
+|---|---|
+| Easy | +20 |
+| Routine | +10 |
+| Normal | 0 |
+| Tricky | −10 |
+| Hard | −20 |
+| Very hard | −30 |
+
+Targets are kept between 1 and 100. A target of 100 still fails on a 100, and a target of
+1 still crits on a 01.
+
+Implemented: `apb_d100`, `apb_resolve`, `apb_check`.
 
 ## Stats
 
-Six stats, rated 1–9 at creation (typical 3–5), cap 12.
-
 | Stat | Covers |
 |---|---|
-| **Might** | Melee, carrying, forcing doors |
-| **Grace** | Ranged, dodging, stealth, fine work |
-| **Grit** | Health, resisting poison and fear |
-| **Wits** | Tech, lore, noticing things |
-| **Presence** | Talking, leading, intimidating, channeling |
+| **Might** | Strength, melee, carrying, forcing doors |
+| **Grace** | Agility, aim, stealth, fine work |
+| **Grit** | Toughness, health, resisting poison and fear |
+| **Wits** | Intelligence, tech, lore, noticing things |
+| **Presence** | Force of personality, talking, leading, channeling |
 | **Fate** | Luck, timing, how the multiverse treats you |
 
-## The core roll
+A raw stat check uses the stat as the target ("roll under your Grit to keep going").
 
-**2d6 + stat + skill bonus** (if any) vs. the situation.
+## Skills
 
-| Total | Result |
+Twelve skills, each governed by a stat. A skill's rating is:
+
+> **half its stat + its training**, at most 100
+
+| Skill | Stat | | Skill | Stat |
+|---|---|---|---|---|
+| Melee | Might | | Tech | Wits |
+| Athletics | Might | | Medicine | Wits |
+| Ranged | Grace | | Lore | Wits |
+| Stealth | Grace | | Persuade | Presence |
+| Endurance | Grit | | Channel | Presence |
+| Survival | Grit | | Intuition | Fate |
+
+Untrained, you still have half your stat: everyone can try anything. Training is what you
+add on top, from 0 to 100.
+
+**Tagged skills** (three, chosen at creation) start with 20 training and learn twice as
+fast. That's taken straight from Fallout.
+
+Implemented: `apb_skill`.
+
+## Powers
+
+Powers are what makes a traveler more than a person: spells, psionics, nanite swarms,
+mutations, whatever the realm calls them (they Translate like gear). Each power has a
+**rank** from 0 to 100, which is its percentage chance to work, and also scales its
+effect.
+
+A character holds up to **8 powers**. How powers are gained and raised is not designed
+yet; the Passport already stores them.
+
+## Character creation
+
+A traditional creator, the same on every platform (and on paper):
+
+1. **Name**: up to 8 characters.
+2. **Race**: +10 to one stat.
+3. **Class**: +5 to one stat, and tags two skills.
+4. **Stats**: buy them, or roll them.
+5. **Tag one more skill** of your choice.
+6. **Confirm.** The character starts at level 1.
+
+### Races and classes
+
+| Race | +10 | | Class | +5 | Tags |
+|---|---|---|---|---|---|
+| Human | Fate | | Warden | Might | Melee, Endurance |
+| Hollowborn | Grit | | Rogue | Grace | Stealth, Ranged |
+| Glassfolk | Wits | | Tinker | Wits | Tech, Lore |
+| Rad-Dryad | Presence | | Channeler | Presence | Channel, Intuition |
+| Chronomite | Grace | | Medic | Wits | Medicine, Survival |
+| Salvaged | Might | | | | |
+| Moth-folk | Presence | | | | |
+
+Classes describe what you *do*, not what genre you're from, so they Translate cleanly:
+
+| Class | Does |
 |---|---|
-| 12+ | Full success, with something extra |
-| 9–11 | Success |
-| 6–8 | Success at a cost, or partial |
-| 5 or less | Failure, and things move |
+| **Warden** | Stands in front, protects, takes hits |
+| **Rogue** | Sneaks, steals, strikes first |
+| **Tinker** | Builds, repairs, hacks, jury-rigs (gadgets Translate to charms and traps) |
+| **Channeler** | Spells, psionics, nanites: whatever the realm calls it |
+| **Medic** | Heals, cures, keeps you going |
 
-2d6 gives a bell curve that's easy on 8-bit math, and the "success at a cost" band keeps
-stories moving rather than stalling on misses.
+### Point-buy (the default)
 
-## Classes
+Every stat starts at **25**. Spend **150 points**, one point per +1. No stat can be bought
+above **70** (before race and class bonuses). All 150 must be spent.
 
-Classes describe what you *do*, not what genre you're in, so they translate cleanly.
+### Rolling (the option)
 
-| Class | Does | Key stats |
-|---|---|---|
-| **Warden** | Stands in front, protects, takes hits | Might, Grit |
-| **Rogue** | Sneaks, steals, strikes first | Grace, Fate |
-| **Tinker** | Builds, repairs, hacks, jury-rigs (gadgets translate to charms and traps) | Wits |
-| **Channeler** | Spells, psionics, nanites: whatever the realm calls it | Presence |
-| **Medic** | Heals, cures, keeps you going | Wits, Grit |
+For each stat, roll **3d6 × 5** (15 to 90). Roll six times, then arrange the results among
+the stats however you like. Don't like the set? Roll a whole new set, up to **3 times**;
+the last set rolled must be kept. Rolled characters average close to bought ones, but can
+come out stronger or weaker. That's the point of rolling.
 
-## Levels and perks
+Implemented: `apb_pointbuy_valid`, `apb_roll_stats`, `apb_character_create`.
 
-- Levels 1–20. XP to the next level is 10 + 5 × current level (15 at level 1).
-- Each level: +1 to a stat (cap 12) *or* a skill, plus health.
-- A **perk** every level: where the weird specialization lives (Fallout-style).
-- Departures have a **level band** (e.g. 1–5, 4–8) and soft-scale if you arrive over it.
+## Levels
+
+- **Levels 1–100.** Every level costs **100 XP**, so XP is simply "percent of the way to
+  the next level".
+- **Each Departure awards XP for its level band.** Over the band, the award drops 10% per
+  level, to nothing at 10 levels over. Old Departures stay replayable, but they stop
+  making you stronger.
+- **Each level gives:**
+  - **1 stat point**: +1 to any stat.
+  - **Skill points**: 1 + Wits ÷ 20 (1–6).
+- **Raising a skill costs more the better you are**, by its current rating:
+
+| Rating | Cost per raise |
+|---|---|
+| under 50 | 1 point |
+| 50–74 | 2 points |
+| 75–89 | 3 points |
+| 90 and up | 4 points |
+
+Each raise adds 1 training, or 2 for a tagged skill.
+
+Roughly: a focused, tagged skill reaches 100 in about 20 levels; mastering several takes
+most of the 100. A Departure of 4–6 hours is worth 2–3 levels early on, so level 100 is
+dozens of Departures, several seasons, away.
+
+Implemented: `apb_xp_award`, `apb_gain_xp`, `apb_raise_stat`, `apb_raise_skill`.
 
 ## Health and death
 
-- Health = Grit × 3 + level × 2. Tuned in playtest.
+- **Health = 10 + Grit ÷ 4 + 2 per level.** About 25 for a new character, 235 at most.
 - At 0 health you are pulled back to the Waystation. The Departure can be retried; your
   Debt goes up significantly. No permadeath.
 
+Implemented: `apb_health_max`.
+
 ## Inventory
 
-- 6 equipped slots + 6 pack slots. Hard limit; forces choices and keeps the Passport small.
+- 6 equipped slots + 6 pack slots. Hard limit; forces choices.
 - Up to 2 **attuned** legendary items.
 
-## Combat style (proposal)
+## Combat (milestone E3)
 
-Turn-based, small grid or zones, solo hero plus optional companions/allies (Echo allies
-join here). Turn-based is the easiest to keep identical across five platforms.
+Turn-based, zone-based, designed table-first so it plays the same on paper and on a C64.
+Solo hero plus optional companions and Echo allies. At high levels, opposed rolls matter
+(both sides roll; the better result wins), so a level-100 traveler still meets equals.
 
 ## Open questions
 
-- 2d6 vs. d20: 2d6 proposed above; revisit after paper playtests.
+- How powers are gained and raised.
+- Weapon damage on the 100 scale (by tier, by roll, by margin?). Comes with combat.
 - Companions: recruitable per Departure only, or carried on the Passport?
-- How fast does Debt go down per Departure? (Target: ~8–12 Departures to go home.)
+- How fast Debt goes down. Going home should be possible well before level 100, so
+  long-lived characters are the ones who choose to stay.

@@ -9,8 +9,10 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   (`apt-get install cc65`).
 - `make crosscheck`: the demo's native and 6502 output must be byte-identical.
 - `make c64`: build `build/demo.prg` for the Commodore 64.
+- `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
+  C engine's password.
 
-Run all four before pushing; CI runs them too.
+Run all five before pushing; CI runs them too.
 
 ## Rules-core house rules
 
@@ -26,7 +28,8 @@ The core must build with cc65 for the 6502 and give identical results everywhere
 - cc65 2.19's optimizer has bugs. If a test passes natively but fails on sim65, suspect
   the compiler, rewrite the expression, and leave a comment (see `core/src/translate.c`).
 - Golden values in tests (dice, passwords) must be derived independently, not copied from
-  the code's own output.
+  the code's own output. Use `tools/passport/passport.py` for passwords.
+- Rules must stay playable at a table by hand (see `docs/tabletop.md`).
 
 ## Registries
 

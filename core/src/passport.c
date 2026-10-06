@@ -4,17 +4,16 @@
 #include "names.h"
 
 /*
- * Passport password, format version 1. See docs/passport-spec.md.
+ * Passport password, format version 2. See docs/passport-spec.md.
  *
- * 360 bits of fields, a 16-bit CRC, 4 zero pad bits: 380 bits, written as 76
- * base-32 symbols in 4 lines of 19, each line followed by a check symbol.
+ * A fixed part, then counted lists (only what the character actually has), zero
+ * bits up to a byte boundary, a CRC-16 over those bytes, and zero bits up to a
+ * whole symbol. Written in base 32, in lines of 19 symbols plus a check symbol;
+ * the last line may be shorter.
  */
 
-#define PAYLOAD_BITS   360
-#define PAYLOAD_BYTES  (PAYLOAD_BITS / 8)
-#define DATA_SYMBOLS   76
-#define LINE_DATA      (APB_PASSWORD_LINE - 1)
-#define BUF_BYTES      48
+#define LINE_DATA   (APB_PASSWORD_LINE - 1)
+#define BUF_BYTES   90      /* 705 bits at most, see the spec */
 
 /* Crockford-style base 32: no I, L, O or U, so they can't be misread. */
 static const char sym_upper[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -23,10 +22,21 @@ static const char sym_lower[] = "0123456789abcdefghjkmnpqrstvwxyz";
 typedef struct {
     uint8_t *buf;
     uint16_t pos;
+    uint16_t limit;   /* bits available */
+    uint8_t  bad;     /* set when reading or writing past the limit */
 } bitio;
+
+/* Static: the 6502 gives a function at most 256 bytes of locals. */
+static uint8_t buf[BUF_BYTES];
+static uint8_t symbols[APB_PASSWORD_MAX];
+static apb_character work;
 
 static void put_bits(bitio *b, uint16_t value, uint8_t n)
 {
+    if (b->pos + n > b->limit) {
+        b->bad = 1;
+        return;
+    }
     while (n--) {
         if ((value >> n) & 1u) {
             b->buf[b->pos >> 3] |= (uint8_t)(0x80u >> (b->pos & 7u));
@@ -39,6 +49,10 @@ static uint16_t get_bits(bitio *b, uint8_t n)
 {
     uint16_t value = 0;
 
+    if (b->pos + n > b->limit) {
+        b->bad = 1;
+        return 0;
+    }
     while (n--) {
         value = (uint16_t)(value << 1);
         if (b->buf[b->pos >> 3] & (uint8_t)(0x80u >> (b->pos & 7u))) {
@@ -69,12 +83,12 @@ static uint16_t crc16(const uint8_t *data, uint8_t len)
 }
 
 /* Odd weights are invertible mod 32, so any single wrong symbol changes it. */
-static uint8_t line_check(const uint8_t *values)
+static uint8_t line_check(const uint8_t *values, uint8_t count)
 {
     uint16_t sum = 0;
     uint8_t i;
 
-    for (i = 0; i < LINE_DATA; ++i) {
+    for (i = 0; i < count; ++i) {
         sum = (uint16_t)(sum + values[i] * (uint8_t)(2 * i + 1));
     }
     return (uint8_t)(sum & 31u);
@@ -105,10 +119,16 @@ static uint8_t fields_fit(const apb_character *ch)
     uint8_t i;
 
     if (ch->race >= 32 || ch->cls >= 16) return 0;
-    if (ch->level == 0 || ch->level >= 32 || ch->xp >= 128) return 0;
-    if (ch->flags >= 128) return 0;
+    if (ch->level == 0 || ch->level > APB_LEVEL_MAX || ch->xp >= APB_XP_PER_LEVEL) return 0;
+    if (ch->flags >= 128 || ch->tags >= (1u << APB_SKILL_COUNT)) return 0;
     for (i = 0; i < APB_STAT_COUNT; ++i) {
-        if (ch->stat[i] >= 16) return 0;
+        if (ch->stat[i] > APB_RATING_MAX) return 0;
+    }
+    for (i = 0; i < APB_SKILL_COUNT; ++i) {
+        if (ch->training[i] > APB_RATING_MAX) return 0;
+    }
+    for (i = 0; i < APB_POWER_SLOTS; ++i) {
+        if (ch->power[i].rank > APB_RATING_MAX) return 0;
     }
     for (i = 0; i < APB_EQUIP_SLOTS; ++i) {
         if (ch->equipped[i] >= 1024) return 0;
@@ -122,24 +142,67 @@ static uint8_t fields_fit(const apb_character *ch)
     return 1;
 }
 
+static void put_items(bitio *b, const uint16_t *slots, uint8_t count)
+{
+    uint8_t i;
+    uint8_t n = 0;
+
+    for (i = 0; i < count; ++i) {
+        if (slots[i]) ++n;
+    }
+    put_bits(b, n, 3);
+    for (i = 0; i < count; ++i) {
+        if (slots[i]) {
+            put_bits(b, i, 3);
+            put_bits(b, slots[i], 10);
+        }
+    }
+}
+
+static void get_items(bitio *b, uint16_t *slots, uint8_t count)
+{
+    uint8_t n = (uint8_t)get_bits(b, 3);
+    uint8_t slot;
+
+    if (n > count) {
+        b->bad = 1;
+        return;
+    }
+    while (n--) {
+        slot = (uint8_t)get_bits(b, 3);
+        if (slot >= count || slots[slot] != 0) {
+            b->bad = 1;
+            return;
+        }
+        slots[slot] = get_bits(b, 10);
+        if (slots[slot] == 0) {
+            b->bad = 1;
+            return;
+        }
+    }
+}
+
 uint8_t apb_passport_encode(const apb_character *ch, char *out)
 {
-    uint8_t buf[BUF_BYTES];
-    uint8_t values[LINE_DATA];
     bitio b;
     uint8_t i;
-    uint8_t line;
+    uint8_t n;
     uint8_t name_done = 0;
+    uint16_t data;
+    uint16_t s;
+    uint8_t line_len;
     char *o = out;
 
+    out[0] = '\0';
     if (!fields_fit(ch)) {
-        out[0] = '\0';
         return APB_PP_RANGE;
     }
 
     memset(buf, 0, sizeof(buf));
     b.buf = buf;
     b.pos = 0;
+    b.limit = BUF_BYTES * 8;
+    b.bad = 0;
 
     put_bits(&b, APB_PASSPORT_VERSION, 4);
     for (i = 0; i < APB_NAME_LEN; ++i) {
@@ -150,35 +213,75 @@ uint8_t apb_passport_encode(const apb_character *ch, char *out)
     }
     put_bits(&b, ch->race, 5);
     put_bits(&b, ch->cls, 4);
-    put_bits(&b, ch->level, 5);
+    put_bits(&b, ch->level, 7);
     put_bits(&b, ch->xp, 7);
     for (i = 0; i < APB_STAT_COUNT; ++i) {
-        put_bits(&b, ch->stat[i], 4);
+        put_bits(&b, ch->stat[i], 7);
     }
-    put_bits(&b, ch->perks[0], 16);
-    put_bits(&b, ch->perks[1], 16);
+    put_bits(&b, ch->stat_points, 8);
+    put_bits(&b, ch->skill_points, 8);
     put_bits(&b, ch->debt, 16);
-    for (i = 0; i < APB_EQUIP_SLOTS; ++i) {
-        put_bits(&b, ch->equipped[i], 10);
-    }
-    for (i = 0; i < APB_PACK_SLOTS; ++i) {
-        put_bits(&b, ch->pack[i], 10);
-    }
-    for (i = 0; i < APB_ECHO_SLOTS; ++i) {
-        put_bits(&b, ch->echo[i].id, 10);
-        put_bits(&b, ch->echo[i].state, 2);
-    }
     put_bits(&b, ch->flags, 7);
+    put_bits(&b, ch->tags, APB_SKILL_COUNT);
 
-    put_bits(&b, crc16(buf, PAYLOAD_BYTES), 16);
-
-    b.pos = 0;
-    for (line = 0; line < APB_PASSWORD_LINES; ++line) {
-        for (i = 0; i < LINE_DATA; ++i) {
-            values[i] = (uint8_t)get_bits(&b, 5);
-            *o++ = sym_upper[values[i]];
+    n = 0;
+    for (i = 0; i < APB_SKILL_COUNT; ++i) {
+        if (ch->training[i]) ++n;
+    }
+    put_bits(&b, n, 4);
+    for (i = 0; i < APB_SKILL_COUNT; ++i) {
+        if (ch->training[i]) {
+            put_bits(&b, i, 4);
+            put_bits(&b, ch->training[i], 7);
         }
-        *o++ = sym_upper[line_check(values)];
+    }
+
+    n = 0;
+    for (i = 0; i < APB_POWER_SLOTS; ++i) {
+        if (ch->power[i].id) ++n;
+    }
+    put_bits(&b, n, 4);
+    for (i = 0; i < APB_POWER_SLOTS; ++i) {
+        if (ch->power[i].id) {
+            put_bits(&b, ch->power[i].id, 8);
+            put_bits(&b, ch->power[i].rank, 7);
+        }
+    }
+
+    put_items(&b, ch->equipped, APB_EQUIP_SLOTS);
+    put_items(&b, ch->pack, APB_PACK_SLOTS);
+
+    n = 0;
+    for (i = 0; i < APB_ECHO_SLOTS; ++i) {
+        if (ch->echo[i].id) ++n;
+    }
+    put_bits(&b, n, 4);
+    for (i = 0; i < APB_ECHO_SLOTS; ++i) {
+        if (ch->echo[i].id) {
+            put_bits(&b, ch->echo[i].id, 10);
+            put_bits(&b, ch->echo[i].state, 2);
+        }
+    }
+
+    b.pos = (uint16_t)((b.pos + 7u) & ~7u);
+    put_bits(&b, crc16(buf, (uint8_t)(b.pos >> 3)), 16);
+    if (b.bad) {
+        return APB_PP_RANGE;
+    }
+
+    /* Out to symbols: lines of 19 data symbols, each followed by its check. */
+    data = (uint16_t)((b.pos + 4u) / 5u);
+    b.limit = (uint16_t)(data * 5u);
+    b.pos = 0;
+    line_len = 0;
+    for (s = 0; s < data; ++s) {
+        symbols[line_len] = (uint8_t)get_bits(&b, 5);
+        *o++ = sym_upper[symbols[line_len]];
+        ++line_len;
+        if (line_len == LINE_DATA || s + 1 == data) {
+            *o++ = sym_upper[line_check(symbols, line_len)];
+            line_len = 0;
+        }
     }
     *o = '\0';
     return APB_PP_OK;
@@ -186,13 +289,17 @@ uint8_t apb_passport_encode(const apb_character *ch, char *out)
 
 uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line)
 {
-    uint8_t symbols[APB_PASSWORD_LEN];
-    uint8_t buf[BUF_BYTES];
     uint8_t count = 0;
+    uint8_t lines;
     uint8_t line;
+    uint8_t line_start;
+    uint8_t line_len;
+    uint8_t data;
     uint8_t i;
+    uint8_t n;
     int8_t v;
     uint16_t stored_crc;
+    uint8_t version;
     bitio b;
 
     for (; *in != '\0'; ++in) {
@@ -203,70 +310,120 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
         if (v < 0) {
             return APB_PP_SYMBOL;
         }
-        if (count == APB_PASSWORD_LEN) {
+        if (count == APB_PASSWORD_MAX) {
             return APB_PP_LENGTH;
         }
         symbols[count++] = (uint8_t)v;
     }
-    if (count != APB_PASSWORD_LEN) {
+
+    lines = (uint8_t)((count + APB_PASSWORD_LINE - 1) / APB_PASSWORD_LINE);
+    if (lines == 0 || count - (lines - 1) * APB_PASSWORD_LINE < 2) {
         return APB_PP_LENGTH;
     }
 
-    for (line = 0; line < APB_PASSWORD_LINES; ++line) {
-        if (line_check(&symbols[line * APB_PASSWORD_LINE])
-            != symbols[line * APB_PASSWORD_LINE + LINE_DATA]) {
+    /* Check each line, and pack the data symbols into bits as we go. */
+    memset(buf, 0, sizeof(buf));
+    b.buf = buf;
+    b.pos = 0;
+    b.limit = BUF_BYTES * 8;
+    b.bad = 0;
+    data = 0;
+    for (line = 0; line < lines; ++line) {
+        line_start = (uint8_t)(line * APB_PASSWORD_LINE);
+        line_len = (uint8_t)(line + 1 < lines ? LINE_DATA : count - line_start - 1);
+        if (line_check(&symbols[line_start], line_len) != symbols[line_start + line_len]) {
             if (bad_line) {
                 *bad_line = (uint8_t)(line + 1);
             }
             return APB_PP_LINE_CHECK;
         }
-    }
-
-    memset(buf, 0, sizeof(buf));
-    b.buf = buf;
-    b.pos = 0;
-    for (line = 0; line < APB_PASSWORD_LINES; ++line) {
-        for (i = 0; i < LINE_DATA; ++i) {
-            put_bits(&b, symbols[line * APB_PASSWORD_LINE + i], 5);
+        for (i = 0; i < line_len; ++i) {
+            put_bits(&b, symbols[line_start + i], 5);
         }
+        data = (uint8_t)(data + line_len);
+    }
+    if (b.bad) {
+        return APB_PP_LENGTH;
     }
 
-    b.pos = PAYLOAD_BITS;
-    stored_crc = get_bits(&b, 16);
-    if (get_bits(&b, 4) != 0 || stored_crc != crc16(buf, PAYLOAD_BYTES)) {
-        return APB_PP_CHECKSUM;
-    }
-
+    b.limit = (uint16_t)(data * 5u);
     b.pos = 0;
-    if (get_bits(&b, 4) != APB_PASSPORT_VERSION) {
+    version = (uint8_t)get_bits(&b, 4);
+    if (version != APB_PASSPORT_VERSION) {
         return APB_PP_VERSION;
     }
 
-    memset(ch, 0, sizeof(*ch));
+    memset(&work, 0, sizeof(work));
     for (i = 0; i < APB_NAME_LEN; ++i) {
-        ch->name[i] = apb_name_char((uint8_t)get_bits(&b, 5));
+        work.name[i] = apb_name_char((uint8_t)get_bits(&b, 5));
     }
-    apb_name_normalize(ch->name, ch->name);
-    ch->race = (uint8_t)get_bits(&b, 5);
-    ch->cls = (uint8_t)get_bits(&b, 4);
-    ch->level = (uint8_t)get_bits(&b, 5);
-    ch->xp = (uint8_t)get_bits(&b, 7);
+    apb_name_normalize(work.name, work.name);
+    work.race = (uint8_t)get_bits(&b, 5);
+    work.cls = (uint8_t)get_bits(&b, 4);
+    work.level = (uint8_t)get_bits(&b, 7);
+    work.xp = (uint8_t)get_bits(&b, 7);
     for (i = 0; i < APB_STAT_COUNT; ++i) {
-        ch->stat[i] = (uint8_t)get_bits(&b, 4);
+        work.stat[i] = (uint8_t)get_bits(&b, 7);
     }
-    ch->perks[0] = get_bits(&b, 16);
-    ch->perks[1] = get_bits(&b, 16);
-    ch->debt = get_bits(&b, 16);
-    for (i = 0; i < APB_EQUIP_SLOTS; ++i) {
-        ch->equipped[i] = get_bits(&b, 10);
+    work.stat_points = (uint8_t)get_bits(&b, 8);
+    work.skill_points = (uint8_t)get_bits(&b, 8);
+    work.debt = get_bits(&b, 16);
+    work.flags = (uint8_t)get_bits(&b, 7);
+    work.tags = get_bits(&b, APB_SKILL_COUNT);
+
+    n = (uint8_t)get_bits(&b, 4);
+    if (n > APB_SKILL_COUNT) b.bad = 1;
+    while (n-- && !b.bad) {
+        i = (uint8_t)get_bits(&b, 4);
+        if (i >= APB_SKILL_COUNT || work.training[i] != 0) {
+            b.bad = 1;
+            break;
+        }
+        work.training[i] = (uint8_t)get_bits(&b, 7);
+        if (work.training[i] == 0) b.bad = 1;
     }
-    for (i = 0; i < APB_PACK_SLOTS; ++i) {
-        ch->pack[i] = get_bits(&b, 10);
+
+    n = (uint8_t)get_bits(&b, 4);
+    if (n > APB_POWER_SLOTS) b.bad = 1;
+    for (i = 0; i < n && !b.bad; ++i) {
+        work.power[i].id = (uint8_t)get_bits(&b, 8);
+        work.power[i].rank = (uint8_t)get_bits(&b, 7);
+        if (work.power[i].id == 0) b.bad = 1;
     }
-    for (i = 0; i < APB_ECHO_SLOTS; ++i) {
-        ch->echo[i].id = get_bits(&b, 10);
-        ch->echo[i].state = (uint8_t)get_bits(&b, 2);
+
+    if (!b.bad) get_items(&b, work.equipped, APB_EQUIP_SLOTS);
+    if (!b.bad) get_items(&b, work.pack, APB_PACK_SLOTS);
+
+    n = (uint8_t)get_bits(&b, 4);
+    if (n > APB_ECHO_SLOTS) b.bad = 1;
+    for (i = 0; i < n && !b.bad; ++i) {
+        work.echo[i].id = get_bits(&b, 10);
+        work.echo[i].state = (uint8_t)get_bits(&b, 2);
+        if (work.echo[i].id == 0) b.bad = 1;
     }
-    ch->flags = (uint8_t)get_bits(&b, 7);
+    if (b.bad) {
+        return APB_PP_CHECKSUM;
+    }
+
+    /* Zero padding to a byte, the CRC, then zero padding to the last symbol. */
+    while (b.pos & 7u) {
+        if (get_bits(&b, 1) != 0 || b.bad) return APB_PP_CHECKSUM;
+    }
+    n = (uint8_t)(b.pos >> 3);
+    stored_crc = get_bits(&b, 16);
+    if (b.bad || stored_crc != crc16(buf, n)) {
+        return APB_PP_CHECKSUM;
+    }
+    if (b.limit - b.pos >= 5) {
+        return APB_PP_LENGTH;
+    }
+    while (b.pos < b.limit) {
+        if (get_bits(&b, 1) != 0) return APB_PP_CHECKSUM;
+    }
+
+    if (!fields_fit(&work)) {
+        return APB_PP_CHECKSUM;
+    }
+    memcpy(ch, &work, sizeof(work));
     return APB_PP_OK;
 }

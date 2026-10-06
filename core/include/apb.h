@@ -55,29 +55,52 @@ enum {
     APB_RACE_COUNT
 };
 
-#define APB_STAT_CAP   12
-#define APB_LEVEL_MAX  20
-
-/* ---------------------------------------------------- the core roll */
-
-/* 2d6 + stat + bonus - difficulty. */
+/* Skills, each governed by a stat. */
 enum {
-    APB_FAIL = 0,     /* 5 or less: failure, and things move  */
-    APB_COST,         /* 6-8: success at a cost, or partial   */
-    APB_SUCCESS,      /* 9-11: success                        */
-    APB_CRIT          /* 12+: success with something extra    */
+    APB_SK_MELEE = 0,   /* Might    */
+    APB_SK_ATHLETICS,   /* Might    */
+    APB_SK_RANGED,      /* Grace    */
+    APB_SK_STEALTH,     /* Grace    */
+    APB_SK_ENDURANCE,   /* Grit     */
+    APB_SK_SURVIVAL,    /* Grit     */
+    APB_SK_TECH,        /* Wits     */
+    APB_SK_MEDICINE,    /* Wits     */
+    APB_SK_LORE,        /* Wits     */
+    APB_SK_PERSUADE,    /* Presence */
+    APB_SK_CHANNEL,     /* Presence */
+    APB_SK_INTUITION,   /* Fate     */
+    APB_SKILL_COUNT
 };
 
+#define APB_RATING_MAX  100   /* stats, skills and powers all top out at 100 */
+#define APB_LEVEL_MAX   100
+#define APB_XP_PER_LEVEL 100  /* every level costs the same; see apb_xp_award */
+#define APB_POWER_SLOTS 8
+
+extern const uint8_t apb_skill_stat[APB_SKILL_COUNT];  /* governing stat */
+
+/* ------------------------------------------------- the core roll: d100 */
+
+/* Roll d100 at or under a rating. Doubles under it (11, 22 .. 99) or a 1 is a
+ * crit; up to 20 over is success at a cost; 100 always fails. */
+enum {
+    APB_FAIL = 0,
+    APB_COST,
+    APB_SUCCESS,
+    APB_CRIT
+};
+
+#define APB_COST_MARGIN 20
+
 typedef struct {
-    uint8_t die1;
-    uint8_t die2;
-    int16_t total;
+    uint8_t roll;     /* 1..100                           */
+    uint8_t target;   /* rating + modifier, kept to 1..100 */
     uint8_t result;
 } apb_roll;
 
-uint8_t apb_classify(int16_t total);
-uint8_t apb_check(apb_rng *rng, uint8_t stat, int8_t bonus, int8_t difficulty,
-                  apb_roll *out);
+uint8_t apb_d100(apb_rng *rng);
+uint8_t apb_resolve(uint8_t roll, int16_t target);
+uint8_t apb_check(apb_rng *rng, uint8_t rating, int8_t modifier, apb_roll *out);
 
 /* -------------------------------------------------------- characters */
 
@@ -88,6 +111,7 @@ uint8_t apb_check(apb_rng *rng, uint8_t stat, int8_t bonus, int8_t difficulty,
 
 #define APB_FLAG_VERIFIED 0x01  /* approved by the hub server          */
 #define APB_FLAG_RETIRED  0x02  /* paid their Debt and went home       */
+#define APB_FLAG_TABLETOP 0x04  /* changed at a tabletop game          */
 
 typedef struct {
     uint16_t id;     /* 1..1023 in the Echo registry, 0 = empty slot */
@@ -95,25 +119,91 @@ typedef struct {
 } apb_echo;
 
 typedef struct {
-    char     name[APB_NAME_LEN + 1];
-    uint8_t  race;
-    uint8_t  cls;
-    uint8_t  level;
-    uint8_t  xp;
-    uint8_t  stat[APB_STAT_COUNT];
-    uint16_t perks[2];
-    uint16_t debt;
-    uint16_t equipped[APB_EQUIP_SLOTS];  /* item registry IDs, 0 = empty */
-    uint16_t pack[APB_PACK_SLOTS];
-    apb_echo echo[APB_ECHO_SLOTS];       /* oldest first */
-    uint8_t  flags;
+    uint8_t id;      /* 1..255 in the power registry, 0 = empty slot  */
+    uint8_t rank;    /* 0..100                                       */
+} apb_power;
+
+typedef struct {
+    char      name[APB_NAME_LEN + 1];
+    uint8_t   race;
+    uint8_t   cls;
+    uint8_t   level;                     /* 1..100                        */
+    uint8_t   xp;                        /* 0..99 toward the next level   */
+    uint8_t   stat[APB_STAT_COUNT];      /* 0..100                        */
+    uint8_t   training[APB_SKILL_COUNT]; /* 0..100; see apb_skill()       */
+    uint16_t  tags;                      /* bit per tagged skill          */
+    uint8_t   stat_points;               /* unspent, from levelling up    */
+    uint8_t   skill_points;
+    apb_power power[APB_POWER_SLOTS];    /* filled from the front         */
+    uint16_t  debt;
+    uint16_t  equipped[APB_EQUIP_SLOTS]; /* item registry IDs, 0 = empty  */
+    uint16_t  pack[APB_PACK_SLOTS];
+    apb_echo  echo[APB_ECHO_SLOTS];      /* oldest first                  */
+    uint8_t   flags;
 } apb_character;
 
 void    apb_character_init(apb_character *ch, const char *name, uint8_t race,
                            uint8_t cls);
 uint8_t apb_health_max(const apb_character *ch);
-uint8_t apb_xp_to_next(uint8_t level);
-uint8_t apb_gain_xp(apb_character *ch, uint8_t amount); /* returns levels gained */
+
+/* A skill's rating: half its governing stat plus training, at most 100. */
+uint8_t apb_skill(const apb_character *ch, uint8_t skill);
+
+/* ---------------------------------------------- character creation */
+/* See docs/rules-v0.md. The same rules are printed in the tabletop rules. */
+
+#define APB_BUY_BASE    25   /* every stat starts here                */
+#define APB_BUY_POINTS  150  /* points to spend                       */
+#define APB_BUY_MAX     70   /* highest a stat can be bought to       */
+#define APB_REROLLS     3    /* times a rolled set may be re-rolled   */
+#define APB_RACE_BONUS  10
+#define APB_CLASS_BONUS 5
+#define APB_TAG_BONUS   20   /* starting training in each tagged skill */
+
+extern const uint8_t apb_race_bonus[APB_RACE_COUNT];   /* stat each race raises */
+extern const uint8_t apb_class_bonus[APB_CLASS_COUNT]; /* stat each class raises */
+extern const uint8_t apb_class_tags[APB_CLASS_COUNT][2]; /* skills each class tags */
+
+/* 1 if `base` is a legal point-buy: every stat APB_BUY_BASE..APB_BUY_MAX and
+ * exactly APB_BUY_POINTS spent. */
+uint8_t apb_pointbuy_valid(const uint8_t *base);
+
+/* One rolled stat: 3d6 x 5 (15..90). */
+uint8_t apb_roll_stat(apb_rng *rng);
+/* Six rolled stats in order; the player may then arrange them freely. */
+void    apb_roll_stats(apb_rng *rng, uint8_t *out);
+
+/* Make a new level-1 character from base stats (bought, or rolled and
+ * arranged), adding race and class bonuses and tagging the class's two skills
+ * plus `extra_tag`. Returns 1, or 0 if extra_tag is already a class tag or not
+ * a skill. */
+uint8_t apb_character_create(apb_character *ch, const char *name, uint8_t race,
+                             uint8_t cls, const uint8_t *base, uint8_t extra_tag);
+
+/* ------------------------------------------------------- progression */
+
+#define APB_STAT_POINTS_PER_LEVEL 1
+
+/* XP for a reward of `base`, for a character of `level` in content whose
+ * level band tops out at `band_max`: full below or in the band, then 10% less
+ * per level over it, nothing at 10 or more over. `base` at most 6000. */
+uint16_t apb_xp_award(uint16_t base, uint8_t level, uint8_t band_max);
+
+/* Add XP; returns levels gained. Each level grants stat and skill points. */
+uint8_t apb_gain_xp(apb_character *ch, uint16_t amount);
+
+/* Skill points per level: 1 + Wits / 20 (so 1..6). */
+uint8_t apb_skill_points_per_level(const apb_character *ch);
+
+/* Skill points one raise costs, by the skill's current rating: 1 below 50,
+ * 2 below 75, 3 below 90, 4 from 90 up. */
+uint8_t apb_skill_raise_cost(uint8_t rating);
+
+/* Raise a stat by 1 (one stat point), or a skill's training by 1, or 2 if it
+ * is tagged (skill points per apb_skill_raise_cost). Return 1 if raised, 0 if
+ * not enough points or already at 100. */
+uint8_t apb_raise_stat(apb_character *ch, uint8_t stat);
+uint8_t apb_raise_skill(apb_character *ch, uint8_t skill);
 
 /* ------------------------------------------------------- Translation */
 
@@ -192,11 +282,10 @@ void    apb_echo_clear(apb_character *ch, uint16_t id);
 
 /* ---------------------------------------------------------- Passport */
 
-#define APB_PASSPORT_VERSION 1
-#define APB_PASSWORD_LINES   4
-#define APB_PASSWORD_LINE    20   /* 19 data symbols + 1 check symbol */
-#define APB_PASSWORD_LEN     (APB_PASSWORD_LINES * APB_PASSWORD_LINE)
-#define APB_PASSWORD_BUF     (APB_PASSWORD_LEN + 1)
+#define APB_PASSPORT_VERSION 2
+#define APB_PASSWORD_LINE    20   /* 19 data symbols + 1 check symbol; the last line may be shorter */
+#define APB_PASSWORD_MAX     160  /* the longest possible password, in symbols */
+#define APB_PASSWORD_BUF     (APB_PASSWORD_MAX + 1)
 
 enum {
     APB_PP_OK = 0,
