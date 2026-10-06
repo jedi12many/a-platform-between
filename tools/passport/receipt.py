@@ -1,8 +1,9 @@
 """Reference implementation of applying a receipt to a character.
 
 Written from docs/boarding.md ("Applying a receipt"), docs/seasons.md (Rewind) and
-docs/rules-v0.md (levels), independently of core/src/receipt.c, so the two can check each other. This is what the
-Waystation website will run when a receipt or Travel Stamp comes home.
+docs/rules-v0.md (levels), independently of core/src/receipt.c, so the two can check
+each other. This is what the Waystation website will run when a receipt or Travel Stamp
+comes home.
 
 A character is a dict as tools/passport/passport.py decodes it. A receipt is a dict:
 
