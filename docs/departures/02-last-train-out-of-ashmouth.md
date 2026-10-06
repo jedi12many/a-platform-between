@@ -1,6 +1,6 @@
 # Departure 02: The Last Train Out of Ashmouth
 
-**Realm:** Ashmouth Wastes · **TL 6 / ML 1** · **Platform:** DOS · **Solo** · **Levels 2–5**
+**Realm:** Ashmouth Wastes · **TL 6 / ML 1** · **Line:** Platform 2 · **First gauge:** DOS · **Solo** · **Levels 2–5**
 
 ## The ticket
 

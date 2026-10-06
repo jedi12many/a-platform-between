@@ -117,7 +117,7 @@ Lines of plain text are what the player reads.
 ```
 The letters settle long enough to read:
 
-| KEPLER-NINE    PLAT 6  DELAYED 18 MIN
+| KEPLER-NINE    PLAT 1  DELAYED 18 MIN
 | ASHMOUTH       PLAT 2  LAST TRAIN
 ```
 

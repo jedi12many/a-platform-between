@@ -1,6 +1,6 @@
 # Departure 01: Eighteen Minutes
 
-**Realm:** Station Kepler-Nine · **TL 8 / ML 0** · **Platform:** C64 · **Solo** · **Levels 1–3**
+**Realm:** Station Kepler-Nine · **TL 8 / ML 0** · **Line:** Platform 1 · **First gauge:** C64 · **Solo** · **Levels 1–3**
 
 ## The ticket
 

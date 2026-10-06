@@ -7,7 +7,9 @@ The game is sold in **seasons**. The base game is Season 1; each later season is
 Each season brings:
 
 - **A new station** with its own **Stationmaster**, its own terms, and its own look.
-- **A new main story**: a run of Departures with a thread through them and a finale.
+- **New Platforms**, each a line of related Departures, or more Departures on existing
+  lines, with a main story threaded through them and a finale. Lines are played in any
+  order; see [lines.md](lines.md).
 - **A new home biome**, with its own Tech Level and Magic Level that shape the station
   and its Departures.
 - New races, classes, powers, items and Echoes, added to the shared registries.
@@ -18,6 +20,8 @@ Each season brings:
 | 2 | TBD | TBD | TBD | Ideas welcome |
 
 Season 1 is where the hook lives: you died, you owe your fare, the Waystation is home.
+Every new traveler starts with the **Arrivals** (*The Fare* and a few more short solo pieces
+at the station), which come with the base game.
 Later stations are the "A" in *A Platform Between*: there were always other stations.
 
 ## Carrying over
@@ -43,6 +47,9 @@ You can start any season without having played the earlier ones.
   gossip says so.
 - Skipped Echoes stay **unset** on the Passport. If you later go back and play that season,
   your real choice replaces the default.
+
+Inside a season, the same rules let you board a line's Departures out of order, and go
+back for the earlier ones later: see *Boarding in any order* in [lines.md](lines.md).
 
 ## Replaying: Rewind
 

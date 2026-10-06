@@ -54,7 +54,8 @@ Departures jump around in time, so payoffs can go any direction:
 ## Unset Echoes and canon defaults
 
 Every Echo in the registry has a **canon default** state. State 0 on the Passport means
-*unset*: you never played the Departure that plants it (a skipped season, say). When a
+*unset*: you never played the Departure that plants it (a skipped season, or a Departure
+you skipped past on its line; see [lines.md](lines.md)). When a
 Departure asks about an unset Echo, it uses the canon default, and the hub gossip says
 "someone" made that choice. Your real choice replaces the default if you later play it.
 

@@ -1,5 +1,6 @@
 // Departure 00: The Fare
-// The prologue. The character has just been made in the character creator.
+// The first of the Arrivals (docs/lines.md). The character has just been made at the
+// Waystation website.
 // They wake at the Waystation, remember how they died (written for their race
 // and class), meet the Stationmaster, and learn what they owe.
 //
@@ -52,7 +53,7 @@ cracked glass. Beyond the glass there is no sky, only a slow grey shimmer,
 like rain that has forgotten which way is down. A sign hangs from the
 ironwork:
 
-| PLATFORM 1 -- ALL DEPARTURES
+| ARRIVALS -- ALL LINES
 
 You remember dying. You remember it very clearly.
 
@@ -137,9 +138,9 @@ else
     ~ set read_board
     The letters settle long enough to read:
 
-    | KEPLER-NINE    PLAT 6  DELAYED 18 MIN
+    | KEPLER-NINE    PLAT 1  DELAYED 18 MIN
     | ASHMOUTH       PLAT 2  LAST TRAIN
-    | LANTERN COURTS PLAT 9  DRESS: FORMAL
+    | LANTERN COURTS PLAT 3  DRESS: FORMAL
 
     Then they flip again, into places you have never heard of, and some you
     have heard of and know to be gone.

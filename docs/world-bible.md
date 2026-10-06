@@ -32,8 +32,13 @@ Pay it all and you can go home and rewrite your own death.
 ## The Waystation
 
 - **The concourse**: the departure board (the main menu), ticket window, lost-and-found.
-- **The platforms**: each realm leaves from its own platform. The retro editions *are*
-  platforms: "The C64 train leaves from Platform 6."
+  New travelers start here with the **Arrivals**, a few short solo pieces at the station
+  before any realm. See [lines.md](lines.md).
+- **The platforms**: each Platform is a **line**, a series of related Departures, usually
+  into one realm: Platform 1 runs to Kepler-Nine. Board any Departure on a line in any
+  order, and go back for the earlier ones whenever you like.
+- **Gauges**: the machines the game runs on. The C64 is narrow gauge: smaller trains, the
+  same lines. Platform 0, the oldest, is the tabletop, where any line runs by hand.
 - **The bar** (name TBD): gossip, rumors, other travelers, Echo reactions.
 - **Traders**: buy, sell and re-translate gear.
 - **The ledger room**: where the Stationmaster keeps every traveler's account.

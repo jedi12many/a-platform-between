@@ -1,6 +1,6 @@
 # Departure 03: Tea With the Lich
 
-**Realm:** The Lantern Courts · **TL 3 / ML 9** · **Platform:** Apple II · **Solo** · **Levels 3–6**
+**Realm:** The Lantern Courts · **TL 3 / ML 9** · **Line:** Platform 3 · **First gauge:** Apple II · **Solo** · **Levels 3–6**
 
 ## The ticket
 
