@@ -1,0 +1,9 @@
+Hi Kestrel.
+  1) Stay
+> 1
+  1) Go
+  2) Stay
+> 1
+[check Tech: 67+22=89 vs 120: fail]
+[receipt: departure 901, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

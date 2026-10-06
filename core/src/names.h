@@ -12,5 +12,8 @@ char    apb_name_char(uint8_t index);
 /* Copy up to APB_NAME_LEN symbols into out (NUL-terminated, upper case,
  * trailing spaces trimmed). */
 void    apb_name_normalize(const char *in, char *out);
+/* The ASCII byte for a name character, whatever the platform's own character set
+ * (on the C64, cc65 stores the name in PETSCII). Game text is always ASCII. */
+uint8_t apb_name_ascii(char c);
 
 #endif

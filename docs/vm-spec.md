@@ -232,7 +232,9 @@ car:pc"*) if any of these fail:
 - menu not over 9 options, never empty at `MENU`;
 - `GOTO` loads a car whose index and magic match;
 - byte-pair expansion depth ≤ 16;
-- privileged opcodes absent from Branch Line images.
+- privileged opcodes absent from Branch Line images;
+- no more than 20,000 instructions between one menu and the next (or the end): a damaged
+  or hostile image can't hang the machine.
 
 ## The verifier
 
@@ -242,11 +244,17 @@ the scene directory), and applies the runtime checks to every operand, plus:
 
 - every jump target lands on an instruction boundary (modern builds; the C64 build skips
   this one and relies on the runtime checks, since it needs a 2 KB bitmap);
+- scene starts in each car appear in increasing order, so the walk can follow the
+  directory without searching it;
 - the depot's pair table obeys the "only lower codes" rule;
 - every string, once expanded, holds only printable ASCII, insert codes and line breaks,
   and its variable inserts are in range;
 - every scene's menu offset points at a `MENU_CLEAR`;
-- the image hash matches.
+- the image hash matches (modern builds: it means reading every car once at boarding,
+  which on a C64 disk would take minutes; the C64 checks each car as it loads instead).
+
+The reference implementation is `vm/vm.c`; `tools/qsc/image.py` applies the same rules
+in Python.
 
 ## Saves
 

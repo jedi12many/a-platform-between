@@ -1,15 +1,17 @@
 CC      ?= cc
 CFLAGS  ?= -O2
 WARN    := -std=c99 -pedantic -Wall -Wextra -Werror -Wdeclaration-after-statement
-INC     := -Icore/include -Icore/src -Ihal
+INC     := -Icore/include -Icore/src -Ihal -Ivm
 CL65    ?= cl65
 SIM65   ?= sim65
 
 CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c core/src/registry.c \
             core/src/translate.c core/src/echo.c core/src/passport.c
 CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
+VM_SRC   := vm/vm.c
+VM_HDR   := vm/apb_vm.h
 
-.PHONY: all test test-6502 test-python c64 demo crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm c64 demo crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -82,3 +84,19 @@ check-content: | build
 	@for f in $$(find content -name '*.qs' | sort); do \
 		python3 tools/qsc/qsc.py build $$f -o build/content/$$(basename $$f .qs).apd || exit 1; \
 	done
+
+# The Story VM test harness, native and for sim65.
+build/harness: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
+
+build/harness.sim: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
+	$(CL65) -t sim6502 -O $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
+
+# The same harness with AddressSanitizer and UndefinedBehaviorSanitizer, for damage tests.
+build/harness.asan: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
+		-o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
+
+# Story VM: playthroughs (native == expected, 6502 == native) and damaged images.
+test-vm: build/harness build/harness.sim build/harness.asan
+	python3 tests/vm/run_tests.py

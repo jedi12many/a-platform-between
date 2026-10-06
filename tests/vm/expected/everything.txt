@@ -1,0 +1,22 @@
+=== One
+[picture 0 hall]
++ This line starts with a plus and is plain text.
+First line of a paragraph, second line of the same paragraph.
+A new paragraph for Kestrel the Salvaged Warden, level 1, owing 0.
+FIXED LINE ONE
+FIXED  LINE TWO
+Back to prose.
+Armed, and alone.
+[check Tech: 27+22=49 vs 145: fail]
+Locked.
+  1) Once only
+  2) Leave
+> 1
+Gone after this.
+  1) Leave
+> 1
+=== Two
+Inside.
+[pause]
+[receipt: departure 7, complete, xp 10, debt paid 0 added 0, gained 1, lost 1, echoes 4=3]
+[level 1, xp 10, debt 0]

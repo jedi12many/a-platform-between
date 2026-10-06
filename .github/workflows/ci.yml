@@ -31,6 +31,9 @@ jobs:
       - name: Every Departure compiles and verifies
         run: make check-content
 
+      - name: Story VM (playthroughs on PC and 6502, damaged images under sanitizers)
+        run: make test-vm
+
       - name: Build C64 demo
         run: make c64
 

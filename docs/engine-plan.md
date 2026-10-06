@@ -250,7 +250,7 @@ identical transcripts on the PC and the 6502.
 | **E1.1 Registry as data** | Items, Echoes, skills, races and classes in one text file each, under `registry/`. A script generates `apb_registry.h` and the tables the compiler and Python tools use. | The header is generated and the build is unchanged. *Done.* |
 | **E1.2 Compiler front half** (`tools/qsc/`, Python) | Lexer and parser for Quest Script v0, name resolution, friendly errors with line numbers and "did you mean". | `the-fare.qs` parses; a test file of broken scripts gives the right messages. *Done.* |
 | **E1.3 Compiler back half** | Code generation per the VM spec, byte-pair text compression, the `.apd` writer, and the route map ("only one road to victory" warnings). | `the-fare.apd` builds under the size limits. *Done: 5.5 KB, text at 55%.* |
-| **E1.4 Story VM** (`vm/`, C) | Loader and verifier, the instruction loop, text decoding, menus. All input arrives as choices through the HAL. | A hand-made image runs; corrupt images are refused, not crashed |
+| **E1.4 Story VM** (`vm/`, C) | Loader and verifier, the instruction loop, text decoding, menus. All input arrives as choices through the HAL. | A hand-made image runs; corrupt images are refused, not crashed. *Done: The Fare plays on PC and 6502 with identical transcripts; 300 damaged images, no crashes.* |
 | **E1.5 Character creator** (C, on the HAL) | Point-buy or roll, race, class, extra tag, name, confirm, using only `hal_menu` and `hal_ask_name`. | A character can be made by menu, and by a choice list in tests |
 | **E1.6 Terminal front end** (`fe/term/`) | The stdio HAL: wrapping, menus, status line. A `--choices file` mode that reads choices and writes a transcript. | *The Fare* is playable by hand |
 | **E1.7 Playthrough tests** | Choice lists covering every route through *The Fare*, golden transcripts, run natively and on sim65. | Transcripts match on both; CI runs them |
@@ -334,6 +334,13 @@ rewards, possibly becoming official.
   the Branch Line ledger), or only use the official registries.
 
 ## Risks
+
+- **C64 memory (measured at E1.4).** The VM is about 9.9 KB of 6502 code and needs about
+  21 KB of buffers (a 16 KB car, a 4 KB depot). A test program that also links the full
+  stdio library and the Passport code overflows the default C64 memory layout by about
+  1.3 KB. Plan for E4: bank out BASIC ROM for 8 KB more RAM, size the depot buffer to the
+  image, leave stdio and the Passport encoder out of the game itself, and look for code
+  size savings in the VM.
 
 - **cc65 optimizer bugs.** Already hit one. Mitigation: every test runs on sim65, so we
   find them.

@@ -9,6 +9,17 @@
 static const char upper[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ-'.!?";
 static const char lower[] = " abcdefghijklmnopqrstuvwxyz-'.!?";
 
+/* The same alphabet as byte values, so it stays ASCII on every platform. */
+static const uint8_t ascii[APB_NAME_SYMBOLS] = {
+    32, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
+    84, 85, 86, 87, 88, 89, 90, 45, 39, 46, 33, 63
+};
+
+uint8_t apb_name_ascii(char c)
+{
+    return ascii[apb_name_index(c)];
+}
+
 uint8_t apb_name_index(char c)
 {
     uint8_t i;

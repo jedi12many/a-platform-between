@@ -14,8 +14,12 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
 - `make check-content`: every `.qs` file in `content/` must compile to an image the
   verifier accepts.
+- `make test-vm`: Story VM playthroughs (`tests/vm/cases.txt`) must match their expected
+  transcripts natively and on sim65, and damaged images must never crash the VM under
+  AddressSanitizer/UBSan. After a deliberate change, `python3 tests/vm/run_tests.py
+  --update` rewrites the expected transcripts: read the diff before committing it.
 
-Run all seven before pushing; CI runs them too.
+Run all eight before pushing; CI runs them too.
 
 ## Rules-core house rules
 
@@ -56,3 +60,10 @@ message on its line with `// error: ...` or `// warning: ...`. `test_build.py` c
 code generator against bytecode assembled by hand from the spec, round-trips every
 string, and damages images to prove the verifier refuses them without crashing. Error messages are for
 authors, not programmers: say what's wrong in plain words, and suggest the fix.
+
+## Story VM
+
+`vm/` (C, same house rules as `core/`): loads an image through the HAL, verifies it,
+plays it, and fills in a receipt (`docs/boarding.md`). Game text is always ASCII; file
+names and error messages are C strings in the platform's own character set. Never trust
+the image: every operand is checked when it's used, not only at load.

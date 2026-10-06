@@ -1,0 +1,6 @@
+# name          source                                          seed  picks
+lantern         tests/qsc/ok/lantern-test.qs                    1985  1,2,1,1,2,3
+tiny            tests/vm/tiny.qs                                7     1,1
+everything      tests/qsc/ok/everything.qs                      42    1,1
+fare-edge       content/s1/00-the-fare/the-fare.qs              1985  1,1,1,1,2,2,2,3,1,1,2,2
+fare-fight      content/s1/00-the-fare/the-fare.qs              2026  2,1,1,1,3,1,2,1,1,3
