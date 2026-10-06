@@ -144,7 +144,7 @@ Each one ends with something playable or testable.
 
 | # | Milestone | Done when |
 |---|---|---|
-| **E0** | **Specs**: Quest Script v0 (written as a public reference), bytecode and VM spec, HAL interface | Docs reviewed; one real scene written in Quest Script |
+| **E0** | **Specs**: Quest Script v0 (written as a public reference), bytecode and VM spec, HAL interface | Docs reviewed; one real scene written in Quest Script. *Drafted: [quest-script.md](quest-script.md), [vm-spec.md](vm-spec.md), `hal/apb_hal.h`, The Fare chapters 1–2. Awaiting review.* |
 | **E1** | **Text VM on the terminal**: compiler (scenes, text, choices, flags, gotos, checks, items, Echoes) with friendly errors, VM in C with a load-time image verifier, terminal front end | *Departure 00: The Fare* (the prologue at the Waystation) is playable in a terminal, and its transcripts match on sim65 |
 | **E2** | **Starting and ending a Departure**: Passport in, rewards and Echoes out, mid-Departure saves, Rewind | Play *The Fare*, get a Passport, carry it into a test Departure |
 | **E3** | **Combat**: zone-based, turn-based fights in the rules core, called from Quest Script | A fight in *The Fare*, covered by transcript tests |

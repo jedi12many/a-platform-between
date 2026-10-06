@@ -46,5 +46,7 @@ make demo        # build and run the native demo
 | [Passport spec v0](docs/passport-spec.md) | The portable character record: password, file, hub account |
 | [Platforms & engines](docs/platforms.md) | One script, many engines; build order |
 | [Engine plan](docs/engine-plan.md) | Story VM, Quest Script, C64 budget, milestones E0–E7 |
+| [Quest Script](docs/quest-script.md) | The language Departures are written in (public reference) |
+| [VM spec](docs/vm-spec.md) | Departure image format, bytecode, runtime checks, saves |
 | [Roadmap](docs/roadmap.md) | Phases from paper rules to multiplayer |
 | [Departures](docs/departures/) | One-page treatments of the first solo Departures |

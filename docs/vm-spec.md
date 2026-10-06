@@ -1,0 +1,250 @@
+# Story VM and Departure image spec (v0)
+
+How a compiled Departure is laid out, and how the Story VM runs it. Audience: whoever
+writes the compiler (`tools/qsc/`), the VM (`vm/`) or a platform front end.
+
+> **Status:** v0 draft (milestone E0). Byte layouts may change until E1 ships; after
+> that, changes bump the image version.
+
+## Principles
+
+1. **The compiler does the work.** Parsing, name resolution, checks, compression and
+   layout all happen on a PC. The VM is a small loop.
+2. **The VM never trusts an image.** Every operand is bounds-checked when it is used.
+   A bad image stops the VM with an error; it never reads or writes outside its buffers.
+   A load-time verifier runs the same checks up front for friendlier errors.
+3. **Same results everywhere.** No floating point, no host-dependent behavior. Playthrough
+   transcripts must match on every platform.
+4. **All multi-byte numbers are little-endian** (native on the 6502, x86 and in
+   WebAssembly; the 68000 Amiga and the 65816 SNES front ends read them byte by byte).
+
+## The image
+
+A Departure image is a **depot** (loaded once, stays in memory) plus one **car** per
+chapter (loaded one at a time). On a PC they sit in one `.apd` file; on a C64 disk each is
+its own file (`DEPOT`, `CAR00`, `CAR01`, ...), so the loader stays trivial.
+
+### `.apd` container
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 4 | magic `APD1` |
+| 4 | 2 | depot length |
+| 6 | 1 | car count (1..64) |
+| 7 | 1 | reserved, 0 |
+| 8 | 2 × cars | each car's length |
+| … | | depot bytes, then each car's bytes, in order |
+
+### Depot
+
+| Field | Size | Notes |
+|---|---|---|
+| magic | 2 | `DP` |
+| image version | 1 | `0` for v0 |
+| kind | 1 | `0` official, `1` branch |
+| departure id | 2 | |
+| season | 1 | 0 for branch |
+| realm TL, ML | 1 + 1 | |
+| level min, max | 1 + 1 | |
+| flag count | 2 | ≤ 512 |
+| var count | 1 | ≤ 128 |
+| scene count | 2 | ≤ 1024 |
+| start scene | 2 | |
+| image hash | 2 | CRC-16 of the whole image with this field zeroed; saves record it |
+| title | 1 + n | length-prefixed ASCII, ≤ 40 |
+| var initial values | var count | |
+| scene directory | 3 × scenes | per scene: car (1), offset into that car's code (2) |
+| BPE pair table | 1 + 2 × pairs | pair count (≤ 128), then two bytes per pair |
+| picture names | 1 + … | count, then length-prefixed names; index = picture id |
+
+### Car
+
+| Field | Size | Notes |
+|---|---|---|
+| magic | 2 | `CR` |
+| car index | 1 | must match its place in the image |
+| title string | 2 | string id of the chapter title, `0xFFFF` for none |
+| code length | 2 | |
+| string count | 2 | ≤ 1024 |
+| code | code length | bytecode |
+| string offsets | 2 × strings | offset of each string from the start of string data |
+| string data | rest | compressed strings, each ending in `0x00` |
+
+A car is at most 16 KB in total.
+
+## Text encoding
+
+Strings are ASCII `0x20`–`0x7E`, plus:
+
+| Byte | Meaning |
+|---|---|
+| `0x00` | end of string |
+| `0x01` | insert character name |
+| `0x02` | insert race name |
+| `0x03` | insert class name |
+| `0x04` | insert Debt |
+| `0x05` *n* | insert variable *n* |
+| `0x06` | insert level |
+| `0x0A` | paragraph break inside a string |
+| `0x80`–`0xFF` | a byte pair (see below) |
+
+**Byte-pair compression.** Code `0x80 + i` stands for the two bytes in entry *i* of the
+depot's pair table. Entry *i* may only contain bytes below `0x80 + i`, so expansion always
+terminates; the compiler also keeps expansion depth ≤ 16, and the decoder refuses deeper
+nesting. The decoder needs a 16-byte stack and nothing else.
+
+Text is stored as ASCII. Front ends convert to their own character set (PETSCII on the
+C64) when drawing; string literals in C are not used for game text.
+
+## VM state
+
+| State | Size | Notes |
+|---|---|---|
+| current car, pc | 1 + 2 | |
+| current scene | 2 | |
+| flags | 64 bytes | 512 bits; scene `visited` and once-only choice flags are allocated by the compiler from the same pool |
+| vars | 128 bytes | |
+| expression stack | 16 × int16 | |
+| menu | 9 × (string id 2, target 2) | |
+| character | `apb_character` | the working copy; written to the Passport only at the end |
+| rng | 2 | `apb_rng` |
+| rewards this Departure | small | items given count, for Branch Line limits |
+
+## Instructions
+
+One opcode byte, then fixed operands. `u8`/`u16`/`s8`/`s16` are 1- or 2-byte operands.
+"Pop"/"push" refer to the expression stack. Jump targets are offsets within the current
+car's code.
+
+### Flow
+
+| Op | Hex | Operands | Effect |
+|---|---|---|---|
+| `HALT_ERR` | 00 | — | Stop with "bad image" (catches running into zeroed memory) |
+| `JMP` | 01 | u16 addr | Jump |
+| `JZ` | 02 | u16 addr | Pop; jump if zero |
+| `GOTO` | 03 | u16 scene | Enter a scene (loads its car if needed) |
+| `SWITCH4` | 04 | u16 × 4 | Pop 0..3; jump to that address (used after `CHECK`) |
+| `END` | 05 | u8 outcome | End the Departure: 0 complete, 1 failed |
+
+### Text and presentation
+
+| Op | Hex | Operands | Effect |
+|---|---|---|---|
+| `TEXT` | 10 | u16 string | Print a paragraph |
+| `PICTURE` | 11 | u8 picture | Show a picture |
+| `PAUSE` | 12 | — | Wait for a key |
+| `CHAPTER` | 13 | — | Show the current car's chapter title |
+
+### Menus
+
+| Op | Hex | Operands | Effect |
+|---|---|---|---|
+| `MENU_CLEAR` | 18 | — | Empty the menu |
+| `OPTION` | 19 | u16 string, u16 addr | Add an option (error if more than 9) |
+| `MENU` | 1A | — | Show the menu, wait for a pick, jump to its address. Error if empty. |
+
+A scene compiles to: entry code (text, commands), `SET visited`, then a **menu block**:
+`MENU_CLEAR`, conditional `OPTION`s, `MENU`. A choice body ends with `JMP` back to the
+menu block. Once-only choices are a compiler-allocated flag tested before `OPTION` and set
+at the start of the body. The VM has no special support for either.
+
+**Scene layout.** Each scene's code starts with a 2-byte **menu offset** (data, not an
+instruction): where its menu block begins, relative to the scene. Entering a scene
+(`GOTO`, or starting the Departure) begins executing just after those two bytes.
+
+**Saving** is only allowed while waiting in `MENU`. A save records the scene, not the pc.
+Loading jumps straight to the scene's menu block (scene directory offset + menu offset),
+which rebuilds the menu from the saved flags, so it comes back exactly as it was without
+re-running the scene's entry text or commands.
+
+### Expressions
+
+| Op | Hex | Operands | Push |
+|---|---|---|---|
+| `PUSH8` | 20 | u8 | the value |
+| `PUSH16` | 21 | s16 | the value |
+| `FLAG` | 22 | u16 flag | 1 if set |
+| `VAR` | 23 | u8 var | its value |
+| `HAS` | 24 | u16 item | 1 if carried |
+| `ECHO` | 25 | u16 echo, u8 default | its state, or `default` if unset |
+| `STAT` | 26 | u8 stat | the stat |
+| `LEVEL` | 27 | — | character level |
+| `RACE` | 28 | — | race number |
+| `CLASS` | 29 | — | class number |
+| `EQ` `NE` `LT` `LE` `GT` `GE` | 30–35 | — | pop b, pop a, push a ⋄ b |
+| `AND` `OR` | 36–37 | — | pop b, pop a, push logical result |
+| `NOT` | 38 | — | pop a, push !a |
+| `CHECK` | 39 | u8 stat, s8 bonus, s8 difficulty | 0 fail, 1 cost, 2 success, 3 crit (via `apb_check`) |
+
+`visited` compiles to `FLAG` on the scene's compiler-allocated flag.
+
+### Changing state
+
+| Op | Hex | Operands | Effect | Branch Lines |
+|---|---|---|---|---|
+| `SET` | 40 | u16 flag | set flag | yes |
+| `CLR` | 41 | u16 flag | clear flag | yes |
+| `LET` | 42 | u8 var | pop into var (clamped 0..255) | yes |
+| `ADD` | 43 | u8 var, u8 n | add, saturating at 255 | yes |
+| `SUB` | 44 | u8 var, u8 n | subtract, saturating at 0 | yes |
+| `GIVE` | 48 | u16 item | add to pack (no room: lost-and-found message) | tier ≤ 3, limited count |
+| `TAKE` | 49 | u16 item | remove if carried | yes |
+| `XP` | 4A | u8 n | `apb_gain_xp` | ignored above the level band |
+| `DEBT` | 4B | u8 mode, u16 n | mode 0 set, 1 add, 2 subtract (saturating) | refused |
+| `ECHO_SET` | 4C | u16 echo, u8 state | `apb_echo_set` | refused |
+| `SET_RACE` | 4D | u8 race | | refused |
+| `SET_CLASS` | 4E | u8 class | | refused |
+| `STAT_SET` | 4F | u8 stat, u8 mode, u8 n | mode 0 set, 1 add, 2 subtract; clamped 1..`APB_STAT_CAP` | refused |
+| `ASK_NAME` | 50 | — | ask for a name, store it normalized | refused |
+
+"Refused" means the VM stops with an error if a Branch Line image contains it; the
+verifier rejects such an image at load time, and the compiler never emits it.
+
+Unassigned opcodes are errors.
+
+## Runtime checks
+
+The VM stops with an error (and the front end shows *"The train has derailed: error N at
+car:pc"*) if any of these fail:
+
+- pc and every jump target inside the current car's code;
+- string, scene, flag, var, picture, item and Echo ids in range;
+- expression stack never over- or underflows;
+- menu not over 9 options, never empty at `MENU`;
+- `GOTO` loads a car whose index and magic match;
+- byte-pair expansion depth ≤ 16;
+- privileged opcodes absent from Branch Line images.
+
+## The verifier
+
+Runs when an image loads, before anything is shown. It walks every car's code linearly,
+decoding each instruction, and applies the runtime checks to every operand, plus:
+
+- every jump target lands on an instruction boundary (modern builds; the C64 build skips
+  this one and relies on the runtime checks, since it needs a 2 KB bitmap);
+- the depot's pair table obeys the "only lower codes" rule;
+- the image hash matches.
+
+## Saves
+
+| Field | Size |
+|---|---|
+| departure id, image hash | 2 + 2 |
+| scene | 2 |
+| flags, vars | 64 + 128 |
+| rng | 2 |
+| character | `apb_character` |
+| reward counters | small |
+
+A save made by one image only loads into an image with the same hash. On the C64 a save is
+one small file on the Departure's disk.
+
+## Branch Line ledger
+
+When a Branch Line ends, its flags and vars are stored under its departure id in the
+player's Branch Line ledger (save data on modern platforms; a file on the C64 disk). The
+Passport is never touched.
+
+Not in v0: commands for a Branch Line to read a ledger entry back (its own, or an earlier
+episode's), so community series can remember previous episodes.

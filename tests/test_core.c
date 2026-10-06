@@ -8,6 +8,7 @@
 
 #include "apb.h"
 #include "apb_registry.h"
+#include "apb_hal.h"   /* not used yet; compiled here so both toolchains check it */
 
 static unsigned failures = 0;
 static unsigned checks = 0;

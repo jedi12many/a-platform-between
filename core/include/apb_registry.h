@@ -16,6 +16,7 @@
 #define APB_ITEM_HOVER_BIKE      4   /* vehicle t3 kinetic TL8 ML0 */
 #define APB_ITEM_RUSTED_SABRE    5   /* melee   t1 kinetic TL3 ML0 */
 #define APB_ITEM_MERIDIAN_CORE   6   /* focus   t2 mind    TL8 ML0 (Departure 01) */
+#define APB_ITEM_TICKET_STUB     7   /* focus   t1 mind    TL5 ML5 (Departure 00) */
 
 /* ----------------------------------------------------------- Echoes */
 /* Each Echo lists its states (1..3) and its canon default. */

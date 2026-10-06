@@ -1,13 +1,13 @@
 CC      ?= cc
 CFLAGS  ?= -O2
 WARN    := -std=c99 -pedantic -Wall -Wextra -Werror -Wdeclaration-after-statement
-INC     := -Icore/include -Icore/src
+INC     := -Icore/include -Icore/src -Ihal
 CL65    ?= cl65
 SIM65   ?= sim65
 
 CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c \
             core/src/translate.c core/src/echo.c core/src/passport.c
-CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h
+CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
 
 .PHONY: all test test-6502 c64 demo crosscheck clean
 
