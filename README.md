@@ -17,6 +17,20 @@ modern PC and on old machines: Commodore 64, Apple II, Amiga, SNES and DOS.
 
 Pre-production. Everything here is a draft for discussion.
 
+## Code
+
+The rules core lives in [`core/`](core/): portable C that builds both for modern machines
+and for the Commodore 64 with [cc65](https://cc65.github.io/). The same test suite runs
+natively and on a simulated 6502, and must give identical results.
+
+```sh
+make test        # build and run the tests natively
+make test-6502   # run the same tests on the sim65 6502 simulator (needs cc65)
+make crosscheck  # the demo's native and 6502 output must be byte-identical
+make c64         # build the C64 demo: build/demo.prg (needs cc65)
+make demo        # build and run the native demo
+```
+
 ## Docs
 
 | Doc | What it covers |
@@ -25,6 +39,9 @@ Pre-production. Everything here is a draft for discussion.
 | [World bible](docs/world-bible.md) | The Waystation, the Stationmaster, Debt, the mystery, races, realms |
 | [Translation](docs/translation.md) | Tech/Magic levels, how gear and bodies change between realms, Force It and Dissonance |
 | [Echoes](docs/echoes.md) | How a character's choices follow them and come back |
+| [Seasons](docs/seasons.md) | Seasons as DLC, carrying over, skipping a season, replaying (Rewind) |
+| [Sidings](docs/sidings.md) | Non-story content: procedural Deep Yards, mini-games |
+| [Parties](docs/parties.md) | Solo vs. party Departures, rosters, bringing four of your own |
 | [Rules v0](docs/rules-v0.md) | Stats, classes, the core roll, levels, the 8-bit budget |
 | [Passport spec v0](docs/passport-spec.md) | The portable character record: password, file, hub account |
 | [Platforms & engines](docs/platforms.md) | One script, many engines; build order |

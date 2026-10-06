@@ -1,6 +1,8 @@
 # Rules v0
 
-A first proposal. Everything here is open for change.
+A first proposal. Everything here is open for change. The parts marked in
+`core/` (the roll, health, XP, Translation, Dissonance bands) are implemented there and
+tested on both PC and 6502.
 
 ## Hard constraints
 
@@ -51,13 +53,14 @@ Classes describe what you *do*, not what genre you're in, so they translate clea
 
 ## Levels and perks
 
-- Levels 1–20. Each level: +1 to a stat (cap 12) *or* a skill, plus health.
+- Levels 1–20. XP to the next level is 10 + 5 × current level (15 at level 1).
+- Each level: +1 to a stat (cap 12) *or* a skill, plus health.
 - A **perk** every level: where the weird specialization lives (Fallout-style).
 - Departures have a **level band** (e.g. 1–5, 4–8) and soft-scale if you arrive over it.
 
 ## Health and death
 
-- Health = Grit × 3 + level × 2, roughly. Tuned in playtest.
+- Health = Grit × 3 + level × 2. Tuned in playtest.
 - At 0 health you are pulled back to the Waystation. The Departure can be retried; your
   Debt goes up significantly. No permadeath.
 
