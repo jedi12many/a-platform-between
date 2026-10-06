@@ -4,8 +4,8 @@ Quest Script is the language Departures are written in, both ours and the commun
 Branch Lines. It is plain text, and it's meant to read like a story with a few marks in
 the margin.
 
-> **Status:** v0. The compiler checks scripts (`python3 tools/qsc/qsc.py check FILE.qs`);
-> building playable images arrives with milestone E1.3.
+> **Status:** v0. Check a script with `python3 tools/qsc/qsc.py check FILE.qs`; compile it
+> with `python3 tools/qsc/qsc.py build FILE.qs -o FILE.apd`.
 > Features marked *(official only)* are refused in Branch Lines.
 
 ## A whole Departure, small
@@ -73,6 +73,7 @@ A Departure is one or more `.qs` files (UTF-8 text). The **header** comes first,
 | `realm` | yes | `tl N, ml N`: the realm's Tech and Magic Levels, 0–9. Drives Translation. |
 | `levels` | yes | The level band, for example `2-5`. |
 | `start` | yes | The scene the Departure begins in. |
+| `linear` | no | `yes` if the Departure is deliberately one road (a prologue, say): turns off the "only one road to victory" warning. |
 
 ## Declarations
 
@@ -148,7 +149,8 @@ The letters settle long enough to read:
 - Choices come last in a scene, after its text: they're its menu. A choice can't go
   inside an `if`; put the condition on the choice instead (`+ {met_fen} [...]`).
 - `+` is a choice that stays on the menu. `*` disappears once it has been picked.
-- The label goes in `[ ]`. Keep it under 37 characters so it fits a C64 line.
+- The label goes in `[ ]`. Keep it to 37 characters so it fits a C64 line. Labels are
+  plain text: `{name}` and friends aren't inserted there.
 - `-> scene` after the label goes straight there.
 - Otherwise, the indented lines under the choice run, and then **the scene's menu comes
   back** (without repeating the scene's text). End the block with `-> scene` to go
@@ -359,13 +361,15 @@ Rules for every roadblock:
 - **Leave it standing.** A roadblock the player skipped is still there on a Rewind or a
   later visit.
 
-### Compiler help (planned)
+### Compiler help
 
-The compiler maps every route from the start to each `~ end complete` and warns when:
+The compiler maps every route from the start to each `~ end complete` and warns when
+every route to an ending passes through the same scene ("only one road to victory"), or
+when no route reaches an ending at all. Mark a deliberately linear Departure with
+`linear: yes` in the header.
 
-- only one route reaches an ending;
-- every route runs through the same roadblock;
-- a roadblock scene has no way to leave without passing it.
+Planned with encounters (E3): a warning when a fight has no way to leave without
+passing it.
 
 ## Branch Lines: what's different
 

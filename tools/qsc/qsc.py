@@ -1,8 +1,9 @@
 """qsc: the Quest Script compiler.
 
-    python3 tools/qsc/qsc.py check FILE.qs     report errors and warnings
-
-E1.2 parses and checks a Departure. Building the compiled image (`build`) comes in E1.3.
+    python3 tools/qsc/qsc.py check FILE.qs                 report errors and warnings
+    python3 tools/qsc/qsc.py build FILE.qs -o OUT.apd      compile to a Departure image
+    python3 tools/qsc/qsc.py build FILE.qs --split DIR     ... as DEPOT, CAR00, ... files
+    python3 tools/qsc/qsc.py dump FILE.apd                 verify and disassemble an image
 """
 
 import os
@@ -13,6 +14,8 @@ sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "registry"))
 
 import registry  # noqa: E402
+from codegen import CompileError, compile_departure  # noqa: E402
+from image import BadImage, disassemble, verify  # noqa: E402
 from parse import parse  # noqa: E402
 
 
@@ -26,13 +29,21 @@ def report(diag, source_lines, out=sys.stderr):
                 print(f"    | {source_lines[line - 1].rstrip()}", file=out)
 
 
-def check(path):
+def load(path):
     with open(path, encoding="utf-8") as f:
         source = f.read()
-    dep, diag = parse(path, source, registry.load())
+    reg = registry.load()
+    dep, diag = parse(path, source, reg)
     report(diag, source.splitlines())
     if diag.errors:
         print(f"{len(diag.errors)} error(s), {len(diag.warnings)} warning(s)", file=sys.stderr)
+        return None, None, diag
+    return dep, reg, diag
+
+
+def check(path):
+    dep, _, diag = load(path)
+    if dep is None:
         return 1
     scenes = sum(1 for _ in dep.scenes())
     print(f"{os.path.basename(path)}: ok. '{dep.title}', {len(dep.chapters)} chapter(s), "
@@ -41,9 +52,60 @@ def check(path):
     return 0
 
 
+def build(path, out=None, split=None):
+    dep, reg, _ = load(path)
+    if dep is None:
+        return 1
+    try:
+        image = compile_departure(dep, reg)
+    except CompileError as e:
+        print(f"{os.path.basename(path)}:{e.line}: error: {e}", file=sys.stderr)
+        return 1
+    data = image.apd()
+    verify(data, reg)       # never write an image the VM would refuse
+    if out:
+        with open(out, "wb") as f:
+            f.write(data)
+    if split:
+        os.makedirs(split, exist_ok=True)
+        for name, blob in image.files().items():
+            with open(os.path.join(split, name), "wb") as f:
+                f.write(blob)
+    cars = ", ".join(str(len(c)) for c in image.cars)
+    print(f"{os.path.basename(path)}: {len(data)} bytes (depot {len(image.depot)}, "
+          f"cars {cars}), {len(image.pairs)} text pairs")
+    return 0
+
+
+def dump(path):
+    with open(path, "rb") as f:
+        data = f.read()
+    try:
+        print(disassemble(data, registry.load()), end="")
+    except BadImage as e:
+        print(f"{os.path.basename(path)}: bad image: {e}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main(argv):
-    if len(argv) == 3 and argv[1] == "check":
-        return check(argv[2])
+    args = argv[1:]
+    if len(args) == 2 and args[0] == "check":
+        return check(args[1])
+    if len(args) == 2 and args[0] == "dump":
+        return dump(args[1])
+    if len(args) >= 2 and args[0] == "build":
+        out = split = None
+        rest = args[2:]
+        while rest:
+            if rest[0] == "-o" and len(rest) > 1:
+                out, rest = rest[1], rest[2:]
+            elif rest[0] == "--split" and len(rest) > 1:
+                split, rest = rest[1], rest[2:]
+            else:
+                break
+        if not rest:
+            return build(args[1], out, split)
     print(__doc__, file=sys.stderr)
     return 2
 

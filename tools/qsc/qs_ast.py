@@ -170,6 +170,7 @@ class Departure:
     level_min: int = 1
     level_max: int = 1
     start: str = ""
+    linear: bool = False        # deliberately one road: don't warn about it
     flags: dict = field(default_factory=dict)   # name -> line
     vars: dict = field(default_factory=dict)    # name -> (initial value, line)
     chapters: List[Chapter] = field(default_factory=list)

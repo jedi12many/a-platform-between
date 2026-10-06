@@ -63,6 +63,7 @@ test-python: build/demo
 	python3 tools/passport/check_against_demo.py build/demo.native.txt
 	python3 tools/registry/test_registry.py
 	python3 tools/qsc/test_qsc.py
+	python3 tools/qsc/test_build.py
 
 # Regenerate the C registry from registry/*.txt after editing them.
 registry:
@@ -75,6 +76,9 @@ check-registry: | build
 	diff core/src/registry.c build/registry/registry.c
 	@echo "registry: generated code matches registry/*.txt"
 
-# Every Departure in content/ must compile without errors.
-check-content:
-	@for f in $$(find content -name '*.qs' | sort); do python3 tools/qsc/qsc.py check $$f || exit 1; done
+# Every Departure in content/ must compile to an image the verifier accepts.
+check-content: | build
+	@mkdir -p build/content
+	@for f in $$(find content -name '*.qs' | sort); do \
+		python3 tools/qsc/qsc.py build $$f -o build/content/$$(basename $$f .qs).apd || exit 1; \
+	done

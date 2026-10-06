@@ -3,8 +3,9 @@
 How a compiled Departure is laid out, and how the Story VM runs it. Audience: whoever
 writes the compiler (`tools/qsc/`), the VM (`vm/`) or a platform front end.
 
-> **Status:** v0 draft (milestone E0). Byte layouts may change until E1 ships; after
-> that, changes bump the image version.
+> **Status:** v0. The compiler (`tools/qsc/`) writes this format, and its verifier
+> (`tools/qsc/image.py`) checks it; `qsc dump FILE.apd` disassembles an image. Byte layouts
+> may change until E1 ships; after that, changes bump the image version.
 
 ## Principles
 
@@ -50,7 +51,7 @@ its own file (`DEPOT`, `CAR00`, `CAR01`, ...), so the loader stays trivial.
 | var count | 1 | ≤ 128 |
 | scene count | 2 | ≤ 1024 |
 | start scene | 2 | |
-| image hash | 2 | CRC-16 of the whole image with this field zeroed; saves record it |
+| image hash | 2 | CRC-16/CCITT-FALSE over the depot (with this field zeroed) followed by every car in order; saves record it |
 | title | 1 + n | length-prefixed ASCII, ≤ 40 |
 | var initial values | var count | |
 | scene directory | 3 × scenes | per scene: car (1), offset into that car's code (2) |
@@ -63,7 +64,7 @@ its own file (`DEPOT`, `CAR00`, `CAR01`, ...), so the loader stays trivial.
 |---|---|---|
 | magic | 2 | `CR` |
 | car index | 1 | must match its place in the image |
-| title string | 2 | string id of the chapter title, `0xFFFF` for none |
+| title string | 2 | string id of the chapter title, `0xFFFF` for an untitled chapter |
 | code length | 2 | |
 | string count | 2 | ≤ 1024 |
 | code | code length | bytecode |
@@ -83,7 +84,7 @@ Strings are ASCII `0x20`–`0x7E`, plus:
 | `0x02` | insert race name |
 | `0x03` | insert class name |
 | `0x04` | insert Debt |
-| `0x05` *n* | insert variable *n* |
+| `0x05` *n* + 1 | insert variable *n* (stored plus one, so it's never `0x00`) |
 | `0x06` | insert level |
 | `0x0A` | line break inside a paragraph (from `|` lines) |
 | `0x80`–`0xFF` | a byte pair (see below) |
@@ -150,8 +151,27 @@ menu block. Once-only choices are a compiler-allocated flag tested before `OPTIO
 at the start of the body. The VM has no special support for either.
 
 **Scene layout.** Each scene's code starts with a 2-byte **menu offset** (data, not an
-instruction): where its menu block begins, relative to the scene. Entering a scene
-(`GOTO`, or starting the Departure) begins executing just after those two bytes.
+instruction): where its menu block begins, relative to the scene, or `0xFFFF` for a scene
+with no menu (one that always moves on). Entering a scene (`GOTO`, or starting the
+Departure) begins executing just after those two bytes.
+
+How the compiler lays a scene out:
+
+```
+u16 menu offset
+FLAG chapter; NOT; JZ +; SET chapter; CHAPTER      (titled chapters: the first entry shows the title)
+entry code                                         (text, commands, ifs, checks)
+SET visited                                        (before every way out of the entry code,
+                                                    only for scenes some 'visited' tests)
+MENU_CLEAR
+  [FLAG once; NOT; JZ skip]  [condition; JZ skip]  OPTION label, body
+  ...
+MENU
+body: [SET once]  statements  JMP menu             (or GOTO scene, or END)
+```
+
+Compiler flags are numbered after the author's: one per scene that a `visited` condition
+tests, one per titled chapter, one per once-only (`*`) choice. All count toward the 512.
 
 **Saving** is only allowed while waiting in `MENU`. A save records the scene, not the pc.
 Loading jumps straight to the scene's menu block (scene directory offset + menu offset),
@@ -216,11 +236,15 @@ car:pc"*) if any of these fail:
 ## The verifier
 
 Runs when an image loads, before anything is shown. It walks every car's code linearly,
-decoding each instruction, and applies the runtime checks to every operand, plus:
+decoding each instruction (skipping the 2-byte menu offset at each scene start listed in
+the scene directory), and applies the runtime checks to every operand, plus:
 
 - every jump target lands on an instruction boundary (modern builds; the C64 build skips
   this one and relies on the runtime checks, since it needs a 2 KB bitmap);
 - the depot's pair table obeys the "only lower codes" rule;
+- every string, once expanded, holds only printable ASCII, insert codes and line breaks,
+  and its variable inserts are in range;
+- every scene's menu offset points at a `MENU_CLEAR`;
 - the image hash matches.
 
 ## Saves

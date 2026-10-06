@@ -25,10 +25,10 @@ jobs:
       - name: Native vs 6502 crosscheck
         run: make crosscheck
 
-      - name: Python tools (Passport reference, registry, Quest Script parser)
+      - name: Python tools (Passport reference, registry, Quest Script compiler)
         run: make test-python
 
-      - name: Every Departure compiles
+      - name: Every Departure compiles and verifies
         run: make check-content
 
       - name: Build C64 demo

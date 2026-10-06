@@ -10,7 +10,7 @@ import re
 
 import qs_ast as A
 
-HEADER_KEYS = ["title", "id", "kind", "season", "realm", "levels", "start"]
+HEADER_KEYS = ["title", "id", "kind", "season", "realm", "levels", "start", "linear"]
 INSERTS = ["name", "race", "class", "debt", "level"]
 KEYWORDS = {"if", "else", "check", "flag", "var", "and", "or", "not", "has", "echo",
             "visited", "level", "race", "class", "name", "debt", "vs"}
@@ -262,6 +262,11 @@ class Parser:
                 d.level_max = self.number(m.group(2), line, 1, 100, "highest level")
                 if d.level_min > d.level_max:
                     self.err(line, "the level band runs backwards")
+        elif key == "linear":
+            if value not in ("yes", "no"):
+                self.err(line, f"linear must be 'yes' or 'no', not '{value}'")
+            else:
+                d.linear = value == "yes"
         elif key == "start":
             if self.lower_name(value, line, "scene name"):
                 d.start = value
@@ -862,6 +867,19 @@ class Parser:
         for name, (_, line) in self.dep.vars.items():
             if name not in self.used_vars:
                 self.diag.warn(line, f"variable '{name}' is declared but never used")
+        if self.dep.start in scenes and not self.diag.errors:
+            import routes
+            start_line = scenes[self.dep.start].line
+            common, ends = routes.bottlenecks(self.dep)
+            if not ends:
+                self.diag.warn(start_line, "no route from the start reaches '~ end complete'")
+            elif common and not self.dep.linear:
+                shown = ", ".join(f"'{n}'" for n in common[:3])
+                more = f" and {len(common) - 3} more" if len(common) > 3 else ""
+                self.diag.warn(start_line, f"only one road to victory: every route to an "
+                                           f"ending passes through {shown}{more}. Add "
+                                           "another way, or put 'linear: yes' in the header "
+                                           "if that's deliberate")
         if self.dep.start in scenes:
             reached = reachable(self.dep.start, scenes)
             for s in scenes.values():

@@ -12,7 +12,8 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
   C engine's password; the registry and Quest Script parser tests must pass.
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
-- `make check-content`: every `.qs` file in `content/` must compile cleanly.
+- `make check-content`: every `.qs` file in `content/` must compile to an image the
+  verifier accepts.
 
 Run all seven before pushing; CI runs them too.
 
@@ -45,8 +46,13 @@ Passports in the wild depend on them.
 
 ## Quest Script compiler
 
-`tools/qsc/` (Python): `qsc.py check FILE.qs` parses and checks a Departure. The language
-is defined in `docs/quest-script.md`; keep the two in step. Parser tests live in
+`tools/qsc/` (Python): `qsc.py check FILE.qs` parses and checks a Departure;
+`qsc.py build FILE.qs -o FILE.apd` compiles it (`--split DIR` for C64-style files);
+`qsc.py dump FILE.apd` verifies and disassembles an image. The language is defined in
+`docs/quest-script.md` and the image format in `docs/vm-spec.md`; keep code and docs in
+step. Opcodes live in `tools/qsc/opcodes.py`. Parser tests live in
 `tests/qsc/`: files in `ok/` must be clean, and files in `errors/` mark each expected
-message on its line with `// error: ...` or `// warning: ...`. Error messages are for
+message on its line with `// error: ...` or `// warning: ...`. `test_build.py` checks the
+code generator against bytecode assembled by hand from the spec, round-trips every
+string, and damages images to prove the verifier refuses them without crashing. Error messages are for
 authors, not programmers: say what's wrong in plain words, and suggest the fix.

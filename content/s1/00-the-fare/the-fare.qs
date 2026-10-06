@@ -13,6 +13,7 @@ season: 1
 realm: tl 5, ml 5
 levels: 1-1
 start: static
+linear: yes                  // a prologue: one road, on purpose
 
 flag read_board
 flag tried_to_leave
