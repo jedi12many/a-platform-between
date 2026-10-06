@@ -69,7 +69,8 @@ Damage is variable, but it comes from the roll you already made, not a second di
 Some weapons and powers have an **area** (a grenade, a fireball: *Area 1* means the target
 square and every square touching it). Roll once; compare that one total with each
 combatant's TN in the area, friend or foe, and work out each one's damage separately.
-Dodge still counts: you dive clear.
+Dodge still counts: you dive clear. You can't aim a blast that would catch you, but it
+can catch your friends.
 
 ## The battle map
 
@@ -82,8 +83,8 @@ characters (it fits a 40-column screen with room for text, and copies onto squar
 | `#` | **wall**: blocks movement and sight |
 | `O` | **pit**: can't be entered or crossed on foot; it doesn't block sight |
 | `~` | **rough** (water, rubble, snow): costs 2 squares of movement |
-| `+` | **cover** (crates, a low wall): costs 2 to enter; +20 to your TN against ranged attacks and powers aimed past it |
-| `^` | **hazard** (fire, radiation): 5 damage to anyone who enters it or starts a round there; Soak counts |
+| `+` | **cover** (crates, a low wall): costs 2 to enter; while you stand in it, +20 to your TN against ranged attacks and powers |
+| `^` | **hazard** (fire, radiation): 5 damage to anyone who ends a move on it or starts a turn there; Soak counts |
 | `=` | **high ground**: +10 to your attacks against anyone not on high ground |
 | `>` | **exit**: a way out of the fight |
 | `@` | where a traveler starts |
@@ -108,9 +109,18 @@ Sight is blocked only by walls, and by other combatants for ranged attacks.
 3. In co-op, everyone **declares at once**, then the round plays out in order
    ([engine-plan.md](engine-plan.md)). Solo, you just choose.
 
-Foes act by a short, printed rule (on the card at the table): *close in and attack the
-nearest traveler*, *keep distance and shoot*, *guard the door*, *flee at a quarter
-health*. No hidden formulas, so a fight plays the same at the table and on the screen.
+Foes act by a short, printed rule (on the card at the table), so a fight plays the same
+at the table and on the screen:
+
+| Rule | The foe |
+|---|---|
+| **Charge** | attacks the nearest traveler it can reach; otherwise moves as close to the nearest traveler as it can |
+| **Shoot** | shoots the nearest traveler it can see; otherwise moves only as far as it must to get a shot (or closes in, if it can't get one) |
+| **Guard** | stays put, and attacks anyone it can reach from where it stands |
+| **Coward** (added to any rule) | runs off when it's down to a quarter of its health |
+
+When a foe has a choice of squares, it takes the one nearest its target, then the one
+cheapest to reach, then the one nearest the top-left corner of the map.
 
 ## Ending a fight
 
@@ -152,6 +162,13 @@ But Kestrel isn't trained in Ranged (Grace ÷ 2 = 20): d100 + 20 vs 54 hits on 3
 `apb_weapon_damage`, `apb_hit_tn`, `apb_damage`, `apb_attack`, `apb_in_area`,
 `apb_flee_tn`, the tiles), checked against `tools/rules/combat.py` by `make test-combat`;
 the worked fight above is a test in `tests/test_core.c`.
+
+`core/src/battle.c` (`core/include/apb_battle.h`) plays a whole battle from a stream of
+actions: the map, movement, sight, the order of play, the foes' rules and the endings.
+`tests/battle/` holds scenarios (the worked fight, the rifle, terrain, movement, fleeing,
+an ambush, a lost fight) with logs reviewed by hand; `make test-combat` plays them on the
+PC and the 6502, re-checks every roll against the Python reference, and runs random
+battles under the sanitizers.
 
 ## What this isn't (yet)
 

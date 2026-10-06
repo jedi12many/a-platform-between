@@ -9,7 +9,8 @@ and the web Passport Office.
 
 `new` makes a test character until the Waystation website exists (point-buy stats,
 before race and class bonuses), and prints its Passport in lines. ITEM is equipped (`-`
-for none); ECHO=STATE plants Echoes, as if earlier Departures had.
+for none, or several separated by commas); ECHO=STATE plants Echoes, as if earlier
+Departures had.
 """
 
 import json
@@ -277,7 +278,8 @@ if __name__ == "__main__":
         ch = create(name, race, cls, values, tag)
         if rest and "=" not in rest[0]:
             if rest[0] != "-":
-                ch["equipped"] = {0: _REG["items"][rest[0]]["id"]}
+                ch["equipped"] = {i: _REG["items"][name]["id"]
+                                  for i, name in enumerate(rest[0].split(","))}
             rest = rest[1:]
         for planted in rest:
             echo, _, state = planted.partition("=")

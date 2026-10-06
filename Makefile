@@ -10,7 +10,10 @@ CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c core/src/registry.c
 # Applying receipts happens at the Waystation, not in clients: kept out of CORE_SRC so
 # cc65 doesn't link it into C64 programs that never call it.
 APPLY_SRC := core/src/receipt.c
-CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
+# The battle engine: about 10 KB of 6502 code, so only linked where it's used until it's
+# made smaller (docs/engine-plan.md, Risks).
+BATTLE_SRC := core/src/battle.c
+CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
 VM_SRC   := vm/vm.c client/desk.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h
 
@@ -146,5 +149,17 @@ build/attack: tests/combat/attack.c $(CORE_SRC) $(CORE_HDR) | build
 build/attack.sim: tests/combat/attack.c $(CORE_SRC) $(CORE_HDR) | build
 	$(CL65) -t sim6502 -O $(INC) -o $@ tests/combat/attack.c $(CORE_SRC)
 
-test-combat: build/attack build/attack.sim
+test-combat: build/attack build/attack.sim build/battle build/battle.sim build/battle.asan
 	python3 tests/combat/check_combat.py
+	python3 tests/battle/run_battles.py
+
+# Battles: scenarios played natively and on the 6502, with the same log.
+build/battle: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)
+
+build/battle.sim: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
+	$(CL65) -t sim6502 -O $(INC) -o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)
+
+build/battle.asan: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
+		-o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)

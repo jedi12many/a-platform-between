@@ -1,0 +1,17 @@
+0: traveler at 1,1, health 27, attack 62, TN to hit 88
+1: foe a at 1,4, health 60
+round 1: 0's turn
+  (not allowed: act 4 1 4 0)
+  0 moves to 3,1
+round 1: 1's turn
+round 2: 0's turn
+  (not allowed: act 1 4 4 0)
+  0 moves to 1,3
+round 2: 1's turn
+  1 attacks 0: 68+10=78 vs 88: cost, 0 damage
+round 3: 0's turn
+  0 attacks 1: 18+62=80 vs 50: success, 12 damage
+round 3: 1's turn
+  1 attacks 0: 80+10=90 vs 88: success, 1 damage
+round 4: 0's turn
+out of actions

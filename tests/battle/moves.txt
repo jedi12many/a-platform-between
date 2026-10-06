@@ -1,0 +1,20 @@
+# Movement. In a corridor of rough ground (~ costs 2), Speed 5 reaches the second rough
+# square (cost 4) but not the third (6). A guard (a) blocks the way down the side passage:
+# nobody walks through a fighter.
+seed 5
+map
+#########
+#@~~~...#
+#.#######
+#.#######
+#a#######
+#########
+end
+traveler 4PB794AR0A0105AM7HDT8V4000000000K60M2A4A50601902804008ZT0A 5
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 60  5  0  0  0  0  4 10  1  0  0  0  0 255 2  0
+act 4 1 4 0
+act 3 1 4 0
+act 1 4 4 0
+act 1 3 4 0
+act 1 3 0 1

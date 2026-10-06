@@ -1,0 +1,27 @@
+# Terrain. A shooter (b) and a charger (c). A wall blocks Kestrel's first shot; she can't
+# walk into a pit or past her speed. From high ground (=) she shoots at +10. The charger
+# steps onto a hazard (^): 5 on entering, 5 more when its next turn starts there. Then
+# Kestrel moves into cover (+): the shooter's TN against her goes up by 20.
+seed 99
+map
+############
+#@.#.....b.#
+#=+....OO..#
+#^.~~......#
+#c.........#
+############
+end
+traveler 4PB794AR0A0105AM7HDT8V4000000000K60M2A4A50601902804008ZT0A 1
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe b 60 30  6  0  0  0  4 40  4  1  0  0  0 255 1  0
+foe c 12 10  2  0  0  0  5 30  5  0  0  0  0 255 0  0
+act 1 1 0 1
+act 7 2 4 0
+act 10 4 4 0
+act 1 2 0 1
+act 2 2 0 1
+act 2 2 0 2
+act 2 2 0 2
+act 2 2 0 1
+act 2 2 0 1
+act 2 2 0 1

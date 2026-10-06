@@ -32,7 +32,10 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   natively and on sim65.
 - `make test-combat`: the combat rules (`core/src/combat.c`, `docs/combat.md`) must agree
   with the Python reference (`tools/rules/combat.py`) on random attacks and character
-  sheets, natively and on sim65.
+  sheets, natively and on sim65; and the battle scenarios (`tests/battle/*.txt`, the engine
+  in `core/src/battle.c`) must match their reviewed logs on both, with every roll
+  re-checked, and random battles must never crash under the sanitizers.
+  `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff.
 
 Run all eleven before pushing; CI runs them too. `make play` plays The Fare in a terminal.
 

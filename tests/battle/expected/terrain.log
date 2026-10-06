@@ -1,0 +1,33 @@
+0: traveler at 1,1, health 27, attack 20, TN to hit 88
+1: foe b at 9,1, health 60
+2: foe c at 1,4, health 12
+round 1: 0's turn
+  (not allowed: act 1 1 0 1)
+  (not allowed: act 7 2 4 0)
+  (not allowed: act 10 4 4 0)
+  0 moves to 1,2
+  0 attacks 1: 76+30=106 vs 56: success, 25 damage
+round 1: 1's turn
+  1 attacks 0: 19+40=59 vs 88: fail, 0 damage
+round 1: 2's turn
+  2 moves to 1,3
+  2 takes 5 from the ground
+  2 attacks 0: 71+30=101 vs 88: success, 6 damage
+round 2: 0's turn
+  0 moves to 2,2
+  0 attacks 1: 65+20=85 vs 56: success, 22 damage
+round 2: 1's turn
+  1 attacks 0: 71+40=111 vs 108: success, 4 damage
+round 2: 2's turn
+  2 takes 5 from the ground
+  2 attacks 0: 14+30=44 vs 88: fail, 0 damage
+round 3: 0's turn
+  0 attacks 2: 98+20=118 vs 52: success, 26 damage
+  2 is down
+round 3: 1's turn
+  1 attacks 0: 6+40=46 vs 108: fail, 0 damage
+round 4: 0's turn
+  (not allowed: act 2 2 0 2)
+  0 attacks 1: 67+20=87 vs 56: success, 23 damage
+  1 is down
+the fight is won
