@@ -9,6 +9,7 @@
    instruction in it, so every route, check outcome and race or class passage has been
    played and reviewed. The only code exempt is the chapter-title preamble of a scene
    that never opens its chapter.
+   Every receipt must fit its Departure's reward manifest (tools/qsc/manifest.py).
    Every check in a playthrough is also re-rolled here, from the rules in
    docs/rules-v0.md and the traveler's Passport as tools/passport reads it: the die, the
    rating and the result must all agree.
@@ -35,6 +36,9 @@ sys.path.insert(0, os.path.join(ROOT, "tools", "passport"))
 from codegen import crc16  # noqa: E402
 from image import decode, read_car, read_depot  # noqa: E402
 import passport  # noqa: E402
+import registry  # noqa: E402
+from manifest import fits, manifest  # noqa: E402
+from parse import parse  # noqa: E402
 
 # Departures whose playthroughs must, together, run every instruction.
 COVERED = ["content/s1/00-the-fare/the-fare.qs"]
@@ -153,6 +157,30 @@ def dice(name, seed, transcript, who):
     return n
 
 
+def rewards(src):
+    with open(os.path.join(ROOT, src), encoding="utf-8") as f:
+        reg = registry.load()
+        dep, _ = parse(src, f.read(), reg)
+    return manifest(dep, reg)
+
+
+def receipt_fits(name, src, transcript):
+    """The receipt a playthrough ends with must fit its Departure's reward manifest."""
+    m = re.search(r"^\[receipt: departure (\d+), \w+, xp (\d+), debt paid (\d+) added (\d+), "
+                  r"gained([\d ]*), lost([\d ]*), echoes([\d= ]*)\]\n\[level \d+, xp \d+, debt (\d+)\]",
+                  transcript, re.M)
+    if not m:
+        return 0
+    dep, xp, paid, added, gained, lost, echoes, final = m.groups()
+    r = {"departure": int(dep), "xp": int(xp), "debt_paid": int(paid), "debt_added": int(added),
+         "gained": [int(i) for i in gained.split()], "lost": [int(i) for i in lost.split()],
+         "echoes": [(int(e.split("=")[0]), int(e.split("=")[1]), 0) for e in echoes.split()]}
+    why = fits(rewards(src), r, int(final) + int(paid) - int(added))
+    if why:
+        fail(f"{name}: the receipt claims more than the Departure can give: {why}")
+    return 1
+
+
 def playthroughs(update):
     for name, src, seed, picks, who in cases(with_traveler=True):
         out = os.path.join(BUILD, name)
@@ -171,6 +199,7 @@ def playthroughs(update):
             if native != expected:
                 fail(f"{name}: transcript differs from tests/vm/expected/{name}.txt")
         rerolled = dice(name, seed, native, who) if who else 0
+        receipt_fits(name, src, native)
         code, sim, err = run(["sim65", "build/harness.sim", out, seed, picks], timeout=600)
         if sim != native:
             fail(f"{name}: the 6502 transcript differs from the native one")

@@ -6,6 +6,8 @@
 - Compression must round-trip and obey the pair rules.
 - The verifier must refuse damaged images with BadImage, never crash.
 - Limits only the code generator can see (flags, car size) must be reported.
+- Reward manifests: The Fare's is checked against a hand reading of the script, receipts
+  that claim too much are refused, and more than 32 reward commands is an error.
 """
 
 import glob
@@ -22,6 +24,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "registry"))
 import registry  # noqa: E402
 from codegen import CompileError, compile_departure, crc16  # noqa: E402
 from image import BadImage, read_car, split_apd, verify  # noqa: E402
+from manifest import ManifestError, fits, manifest  # noqa: E402
 from parse import parse  # noqa: E402
 from textpack import compress, expand  # noqa: E402
 
@@ -241,7 +244,51 @@ def test_verifier_never_crashes():
             fail(f"wrong reason: {e}")
 
 
+def test_manifests():
+    path = os.path.join(ROOT, "content", "s1", "00-the-fare", "the-fare.qs")
+    with open(path, encoding="utf-8") as f:
+        dep, _ = parse(path, f.read(), REG)
+    m = manifest(dep, REG)
+    # Read off the script: `~ xp 5` once, `~ give TICKET_STUB` on the edge's crit,
+    # `~ debt = 50000` at the ledger, no Echoes.
+    want = {"departure": 0, "title": "The Fare", "kind": "official", "levels": [1, 1],
+            "xp": 5, "items": [{"id": REG["items"]["TICKET_STUB"]["id"], "name": "TICKET_STUB",
+                                "most": 1}],
+            "echoes": [], "debt": {"set": [50000], "add": 0, "pay": 0}}
+    if m != want:
+        fail(f"The Fare's manifest: {m}")
+    stub = REG["items"]["TICKET_STUB"]["id"]
+    ok = {"departure": 0, "xp": 5, "debt_paid": 0, "debt_added": 50000, "gained": [stub],
+          "lost": [], "echoes": []}
+    if fits(m, ok, 0):
+        fail(f"a fair receipt for The Fare was refused: {fits(m, ok, 0)}")
+    for why, change, boarded in (
+            ("more XP", {"xp": 6}, 0),
+            ("a second stub", {"gained": [stub, stub]}, 0),
+            ("an item it never gives", {"gained": [stub + 1]}, 0),
+            ("an Echo it never sets", {"echoes": [(4, 1, 0)]}, 0),
+            ("Debt paid it can't pay", {"debt_added": 0, "debt_paid": 100}, 50000),
+            ("Debt beyond the ledger", {"debt_added": 50001}, 0),
+            ("another Departure", {"departure": 1}, 0)):
+        bad = dict(ok, **change)
+        if not fits(m, bad, boarded):
+            fail(f"a receipt with {why} should be refused")
+    # Setting Debt to 50000 from 60000 pays 10000: that fits.
+    if fits(m, dict(ok, debt_added=0, debt_paid=10000), 60000):
+        fail("setting Debt down to the fare should fit")
+
+    many = TINY.replace("+ [Stay]\n    ~ set f", "+ [Stay]\n" + "    ~ xp 1\n" * 33)
+    dep, diag = parse("many.qs", many, REG)
+    try:
+        manifest(dep, REG)
+        fail("33 reward commands should be refused")
+    except ManifestError as e:
+        if "the most is 32" not in str(e):
+            fail(f"wrong message for too many rewards: {e}")
+
+
 test_hand_assembled()
+test_manifests()
 for p in sorted(glob.glob(os.path.join(ROOT, "tests", "qsc", "ok", "*.qs")) +
                 glob.glob(os.path.join(ROOT, "content", "**", "*.qs"), recursive=True)):
     check_image(p)

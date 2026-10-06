@@ -17,3 +17,5 @@ fare-prism      content/s1/00-the-fare/the-fare.qs              3     @prism,1,1
 fare-fern       content/s1/00-the-fare/the-fare.qs              1     @fern,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
 fare-tick       content/s1/00-the-fare/the-fare.qs              1     @tick,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1
 fare-lumen      content/s1/00-the-fare/the-fare.qs              23    @lumen,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+# Rewards pay once: the bell is rung three times, but pays 10 XP and one stub.
+loop            tests/vm/loop.qs                                5     1,1,2

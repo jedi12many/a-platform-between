@@ -92,6 +92,14 @@ static uint16_t strings_len;
 
 /* Running state. */
 static uint16_t pc;
+static uint16_t op_at;              /* where the running instruction starts */
+
+/* Each reward instruction (XP, GIVE, DEBT) pays at most once per trip, however often the
+ * story passes it, so a Departure's reward manifest is a true bound and loops can't be
+ * farmed. The compiler allows at most APB_VM_REWARD_SITES of them. */
+static uint8_t  paid_car[APB_VM_REWARD_SITES];
+static uint16_t paid_at[APB_VM_REWARD_SITES];
+static uint8_t  paid_count;
 static uint8_t flags[64];
 static uint8_t vars[128];
 static int16_t stack[STACK_MAX];
@@ -702,6 +710,25 @@ static void award_xp(uint8_t n)
     receipt.xp = (uint16_t)(receipt.xp + xp);
 }
 
+/* 1 the first time the running reward instruction is reached this trip, else 0. */
+static uint8_t first_pay(void)
+{
+    uint8_t i;
+
+    for (i = 0; i < paid_count; ++i) {
+        if (paid_at[i] == op_at && paid_car[i] == car_index) {
+            return 0;
+        }
+    }
+    if (paid_count >= APB_VM_REWARD_SITES) {
+        return 0;               /* more than the compiler allows: pay nothing more */
+    }
+    paid_car[paid_count] = car_index;
+    paid_at[paid_count] = op_at;
+    ++paid_count;
+    return 1;
+}
+
 /* -------------------------------------------------------------- running */
 
 static uint8_t push(int16_t v)
@@ -762,6 +789,7 @@ uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed)
         vars[i] = depot[var_init_at + i];
     }
     memset(&receipt, 0, sizeof(receipt));
+    paid_count = 0;
     receipt.departure = dep_id;
     boarded_debt = ch.debt;
     gives = 0;
@@ -814,6 +842,7 @@ uint8_t apb_vm_run(void)
             fail("bad instruction", pc);
             break;
         }
+        op_at = pc;
         ++pc;
         switch (op) {
         case OP_JMP:
@@ -991,7 +1020,7 @@ uint8_t apb_vm_run(void)
         case OP_GIVE:
             a = FETCH16();
             if (a >= APB_ITEM_COUNT || apb_items[a].tier == 0) { fail("bad item", pc); break; }
-            give(a);
+            if (first_pay()) give(a);
             break;
         case OP_TAKE:
             a = FETCH16();
@@ -999,12 +1028,14 @@ uint8_t apb_vm_run(void)
             take(a);
             break;
         case OP_XP:
-            award_xp(FETCH8());
+            i = FETCH8();
+            if (first_pay()) award_xp(i);
             break;
         case OP_DEBT:
             i = FETCH8();
             a = FETCH16();
             if (kind == 1 || i > 2) { fail("bad debt", pc); break; }
+            if (!first_pay()) break;
             if (i == 0) ch.debt = a;
             else if (i == 1) ch.debt = (uint16_t)(ch.debt > 0xFFFFu - a ? 0xFFFFu : ch.debt + a);
             else ch.debt = (uint16_t)(ch.debt < a ? 0 : ch.debt - a);

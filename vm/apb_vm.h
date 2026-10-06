@@ -18,6 +18,7 @@
 
 #define APB_VM_DEPOT_MAX   4096
 #define APB_VM_CAR_MAX     16384
+#define APB_VM_REWARD_SITES 32      /* XP, GIVE and DEBT instructions in one Departure */
 
 /* What apb_vm_run returns. The first two match the receipt's APB_OUTCOME_*. */
 enum {

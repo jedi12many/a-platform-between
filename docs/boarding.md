@@ -77,8 +77,13 @@ player holds is a key a player can share.
 ### Reward manifests
 
 The compiler writes, for each Departure, the most it can ever give: the XP awarded on any
-route, the items it can give, the Echo states it can set, the most Debt it can pay down.
-The server refuses a receipt that claims more.
+route, the items it can give, the Echo states it can set, the most Debt it can pay down
+or add, and the values it can set Debt to (`qsc.py build FILE.qs --manifest FILE.json`,
+`tools/qsc/manifest.py`). The server refuses a receipt that claims more.
+
+The bound is exact because each `~ xp`, `~ give` and `~ debt` pays at most once per trip
+(the VM keeps track), so the most a Departure can give is what its commands add up to.
+`make test-vm` checks every playthrough's receipt against its manifest.
 
 ### What's protected
 

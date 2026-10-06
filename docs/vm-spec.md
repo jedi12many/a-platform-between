@@ -110,7 +110,7 @@ C64) when drawing; string literals in C are not used for game text.
 | character | `apb_character` | a working copy of the boarding snapshot; the VM never writes a Passport |
 | receipt | small | every change made to the character (XP, Debt, items, Echoes), handed to the front end at `END`; see [boarding.md](boarding.md) |
 | rng | 2 | `apb_rng` |
-| rewards this Departure | small | items given count, for Branch Line limits |
+| rewards this Departure | 3 × 32 + 2 | (car, offset) of each reward instruction already paid; items given count, for Branch Line limits |
 
 ## Instructions
 
@@ -209,11 +209,17 @@ re-running the scene's entry text or commands.
 | `LET` | 42 | u8 var | pop into var (clamped 0..255) | yes |
 | `ADD` | 43 | u8 var, u8 n | add, saturating at 255 | yes |
 | `SUB` | 44 | u8 var, u8 n | subtract, saturating at 0 | yes |
-| `GIVE` | 48 | u16 item | add to pack (no room: lost-and-found message) | tier ≤ 3, limited count |
+| `GIVE` | 48 | u16 item | add to pack (no room: lost-and-found message); pays once per trip | tier ≤ 3, limited count |
 | `TAKE` | 49 | u16 item | remove if carried | yes |
-| `XP` | 4A | u8 n | `apb_gain_xp` | ignored above the level band |
-| `DEBT` | 4B | u8 mode, u16 n | mode 0 set, 1 add, 2 subtract (saturating) | refused |
+| `XP` | 4A | u8 n | `apb_gain_xp`; pays once per trip | ignored above the level band |
+| `DEBT` | 4B | u8 mode, u16 n | mode 0 set, 1 add, 2 subtract (saturating); pays once per trip | refused |
 | `ECHO_SET` | 4C | u16 echo, u8 state | `apb_echo_set` | refused |
+
+"Pays once per trip": the VM remembers (car, offset) of each `GIVE`, `XP` and `DEBT` it
+has run since boarding, up to 32 (`APB_VM_REWARD_SITES`), and passes over one it has run
+before. The compiler allows at most 32 per Departure, so the list never fills; if a
+damaged image has more, the extras pay nothing. This is what makes the compiler's reward
+manifest a true bound.
 
 "Refused" means the VM stops with an error if a Branch Line image contains it; the
 verifier rejects such an image at load time, and the compiler never emits it.
@@ -266,7 +272,7 @@ in Python.
 | rng | 2 |
 | character | `apb_character` (the working copy) |
 | receipt so far | small |
-| reward counters | small |
+| reward counters, rewards already paid | small, 3 × 32 |
 
 A save made by one image only loads into an image with the same hash. On the C64 a save is
 one small file on the Departure's disk.

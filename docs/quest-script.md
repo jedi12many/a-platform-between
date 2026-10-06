@@ -283,6 +283,14 @@ Commands start with `~`. Several can share a line: `~ give KEYCARD ~ set alarm`.
 | `~ xp 10` | award experience |
 | `~ debt - 500` / `~ debt + 500` / `~ debt = 50000` | change Debt *(official only)* |
 
+**Rewards pay once.** Each `~ xp`, `~ give` and `~ debt` command pays the first time the
+story reaches it, and never again that trip, however often the player passes it: a bell
+you can ring forever gives its XP once. That keeps loops from being farmed, and lets the
+compiler write a **reward manifest**: the most the Departure can ever give, which the
+Waystation checks receipts against (`qsc.py build FILE.qs --manifest FILE.json`; see
+[boarding.md](boarding.md)). To give the same thing at several moments, write a command at
+each.
+
 Stories never create or rebuild characters. Name, race, class and stats come from the
 character creator, before the first Departure (see [rules-v0.md](rules-v0.md)). Stories
 can *read* all of them, in conditions and with `{name}`, `{race}` and `{class}`.
@@ -393,6 +401,7 @@ can't damage anyone's character or the main story:
 | Flags / variables | 512 / 128 | memory on the C64 |
 | Chapter size (compiled) | 16 KB | one chapter in C64 memory at a time |
 | Scenes per Departure | 1024 | |
+| `~ xp`, `~ give` and `~ debt` commands | 32 | the VM remembers which have paid |
 
 The compiler tells you when you hit one, and where.
 
