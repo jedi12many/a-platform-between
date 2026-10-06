@@ -10,9 +10,10 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make crosscheck`: the demo's native and 6502 output must be byte-identical.
 - `make c64`: build `build/demo.prg` for the Commodore 64.
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
-  C engine's password.
+  C engine's password, and the registry loader tests must pass.
+- `make check-registry`: the generated C registry must match `registry/*.txt`.
 
-Run all five before pushing; CI runs them too.
+Run all six before pushing; CI runs them too.
 
 ## Rules-core house rules
 
@@ -33,5 +34,10 @@ The core must build with cc65 for the 6502 and give identical results everywhere
 
 ## Registries
 
-`core/include/apb_registry.h` is append-only. Never reuse or renumber an item or Echo ID;
+Races, classes, skills, items and Echoes live in `registry/*.txt`, the single source of
+truth (see `registry/README.md`). After editing them, run `make registry` to regenerate
+`core/include/apb_registry.h` and `core/src/registry.c`; never edit those two by hand.
+Python tools read the registry through `tools/registry/registry.py`.
+
+The registry is append-only. Never reuse, renumber or reorder an id or an Echo's states;
 Passports in the wild depend on them.

@@ -13,6 +13,8 @@
 
 #include <stdint.h>
 
+#include "apb_registry.h"   /* generated from the registry/ text files */
+
 /* ---------------------------------------------------------------- dice */
 
 typedef struct {
@@ -35,42 +37,7 @@ enum {
     APB_STAT_COUNT
 };
 
-enum {
-    APB_WARDEN = 0,
-    APB_ROGUE,
-    APB_TINKER,
-    APB_CHANNELER,
-    APB_MEDIC,
-    APB_CLASS_COUNT
-};
-
-enum {
-    APB_HUMAN = 0,
-    APB_HOLLOWBORN,
-    APB_GLASSFOLK,
-    APB_RAD_DRYAD,
-    APB_CHRONOMITE,
-    APB_SALVAGED,
-    APB_MOTH_FOLK,
-    APB_RACE_COUNT
-};
-
-/* Skills, each governed by a stat. */
-enum {
-    APB_SK_MELEE = 0,   /* Might    */
-    APB_SK_ATHLETICS,   /* Might    */
-    APB_SK_RANGED,      /* Grace    */
-    APB_SK_STEALTH,     /* Grace    */
-    APB_SK_ENDURANCE,   /* Grit     */
-    APB_SK_SURVIVAL,    /* Grit     */
-    APB_SK_TECH,        /* Wits     */
-    APB_SK_MEDICINE,    /* Wits     */
-    APB_SK_LORE,        /* Wits     */
-    APB_SK_PERSUADE,    /* Presence */
-    APB_SK_CHANNEL,     /* Presence */
-    APB_SK_INTUITION,   /* Fate     */
-    APB_SKILL_COUNT
-};
+/* Races, classes and skills come from the registry (the registry/ text files). */
 
 #define APB_RATING_MAX  100   /* stats, skills and powers all top out at 100 */
 #define APB_LEVEL_MAX   100
@@ -78,6 +45,11 @@ enum {
 #define APB_POWER_SLOTS 8
 
 extern const uint8_t apb_skill_stat[APB_SKILL_COUNT];  /* governing stat */
+
+/* Names shown to players, from the registry. ASCII, like all game text. */
+extern const char *const apb_race_names[APB_RACE_COUNT];
+extern const char *const apb_class_names[APB_CLASS_COUNT];
+extern const char *const apb_skill_names[APB_SKILL_COUNT];
 
 /* ------------------------------------------- the core roll: d100 + skill */
 
@@ -275,6 +247,12 @@ typedef struct {
     uint8_t tier;        /* conserved, +1 when forced                */
     uint8_t dissonance;  /* added on arrival                         */
 } apb_translation;
+
+/* Every item in the registry, indexed by id (all zeros where there's none),
+ * its name, and every Echo's canon default state. */
+extern const apb_item_def apb_items[APB_ITEM_COUNT];
+extern const char *const apb_item_names[APB_ITEM_COUNT];
+extern const uint8_t apb_echo_defaults[APB_ECHO_COUNT];
 
 /* supported: bitmask of archetypes the engine can present (1 << APB_ARCH_x). */
 void apb_translate(const apb_item_def *item, const apb_realm *realm,

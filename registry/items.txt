@@ -1,0 +1,14 @@
+# Items. Append only: an id, once shipped, is never reused or changed, because
+# Passports in the wild hold it. Ids are 1..1023 (10 bits); 0 means "empty".
+#
+# archetype: melee ranged armor tool focus vehicle
+# damage:    kinetic energy fire cold mind
+#
+# id  NAME              archetype  tier  damage   TL  ML  "Shown as"             # where from
+1     PULSE_RIFLE       ranged     4     energy   8   0   "Pulse rifle"
+2     BALLISTIC_WEAVE   armor      3     kinetic  8   0   "Ballistic weave"
+3     MED_SCANNER       tool       2     mind     7   0   "Med-scanner"
+4     HOVER_BIKE        vehicle    3     kinetic  8   0   "Hover-bike"
+5     RUSTED_SABRE      melee      1     kinetic  3   0   "Rusted sabre"
+6     MERIDIAN_CORE     focus      2     mind     8   0   "MERIDIAN's core"      # Departure 01
+7     TICKET_STUB       focus      1     mind     5   5   "Blank ticket stub"    # Departure 00

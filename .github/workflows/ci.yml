@@ -13,6 +13,9 @@ jobs:
       - name: Install cc65
         run: sudo apt-get update && sudo apt-get install -y cc65
 
+      - name: Generated registry matches registry/*.txt
+        run: make check-registry
+
       - name: Tests (native)
         run: make test
 
@@ -22,7 +25,7 @@ jobs:
       - name: Native vs 6502 crosscheck
         run: make crosscheck
 
-      - name: Python Passport reference reads the C output
+      - name: Python tools (Passport reference, registry)
         run: make test-python
 
       - name: Build C64 demo

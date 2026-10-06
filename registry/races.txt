@@ -1,0 +1,11 @@
+# Playable races. Append only: an id, once shipped, never changes.
+# The Passport stores a race in 5 bits (at most 32).
+#
+# id  NAME         bonus     "Shown as"
+0     HUMAN        FATE      "Human"
+1     HOLLOWBORN   GRIT      "Hollowborn"
+2     GLASSFOLK    WITS      "Glassfolk"
+3     RAD_DRYAD    PRESENCE  "Rad-Dryad"
+4     CHRONOMITE   GRACE     "Chronomite"
+5     SALVAGED     MIGHT     "Salvaged"
+6     MOTH_FOLK    PRESENCE  "Moth-folk"

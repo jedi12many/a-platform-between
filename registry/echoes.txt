@@ -1,0 +1,18 @@
+# Echoes: story choices that follow a character. Append only: an id, once shipped,
+# is never reused or changed, and states are never reordered (new states may be
+# added at the end, up to 3). Ids are 1..1023.
+#
+# kind: ally nemesis debt mark key
+# The state marked * is the canon default, used when a character never made the
+# choice (a skipped season, say).
+#
+# id  NAME            kind     departure  states
+1     MERIDIAN        ally     01         FREED      WIPED*     CARRIED
+2     KEPLER_CREW     debt     01         SAVED      LOST*
+3     SEED_VAULT      key      01         DELIVERED* KEPT       DESTROYED
+4     WOLF_PUP        ally     02         SAVED      LEFT*      SWORN
+5     JACE_CUTTER     nemesis  02         SPARED     KILLED*    RECRUITED
+6     OREN_VEY        key      02         BOARDED*   STAYED
+7     YSOLDE          ally     03         BEFRIENDED EXPOSED*   DESTROYED
+8     LANTERN_COURT   mark     03         WELCOME*   BANISHED
+9     YSOLDE_LEDGER   key      03         READ       BURNED*

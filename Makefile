@@ -5,11 +5,11 @@ INC     := -Icore/include -Icore/src -Ihal
 CL65    ?= cl65
 SIM65   ?= sim65
 
-CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c \
+CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c core/src/registry.c \
             core/src/translate.c core/src/echo.c core/src/passport.c
 CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
 
-.PHONY: all test test-6502 test-python c64 demo crosscheck clean
+.PHONY: all test test-6502 test-python c64 demo crosscheck registry check-registry clean
 
 all: test
 
@@ -61,3 +61,15 @@ crosscheck: build/demo build/demo.sim
 test-python: build/demo
 	./build/demo > build/demo.native.txt
 	python3 tools/passport/check_against_demo.py build/demo.native.txt
+	python3 tools/registry/test_registry.py
+
+# Regenerate the C registry from registry/*.txt after editing them.
+registry:
+	python3 tools/registry/gen.py
+
+# The committed C registry must match registry/*.txt.
+check-registry: | build
+	python3 tools/registry/gen.py build/registry
+	diff core/include/apb_registry.h build/registry/apb_registry.h
+	diff core/src/registry.c build/registry/registry.c
+	@echo "registry: generated code matches registry/*.txt"

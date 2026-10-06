@@ -8,19 +8,25 @@ and the web Passport Office.
 """
 
 import json
+import os
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "registry"))
+import registry  # noqa: E402
 
 VERSION = 2
 NAME_ALPHABET = " ABCDEFGHIJKLMNOPQRSTUVWXYZ-'.!?"
 SYMBOLS = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 LINE_DATA = 19
 
-STATS = ["might", "grace", "grit", "wits", "presence", "fate"]
-SKILLS = ["melee", "athletics", "ranged", "stealth", "endurance", "survival",
-          "tech", "medicine", "lore", "persuade", "channel", "intuition"]
-RACES = ["Human", "Hollowborn", "Glassfolk", "Rad-Dryad", "Chronomite",
-         "Salvaged", "Moth-folk"]
-CLASSES = ["Warden", "Rogue", "Tinker", "Channeler", "Medic"]
+# Names come from the registry, the same files the C engine is generated from.
+_REG = registry.load()
+STATS = [s.lower() for s in registry.STATS]
+SKILLS = [e["display"] for e in sorted(_REG["skills"].values(), key=lambda e: e["id"])]
+RACES = [e["display"] for e in sorted(_REG["races"].values(), key=lambda e: e["id"])]
+CLASSES = [e["display"] for e in sorted(_REG["classes"].values(), key=lambda e: e["id"])]
+ITEMS = {e["id"]: e["display"] for e in _REG["items"].values()}
+ECHOES = {e["id"]: e for e in _REG["echoes"].values()}
 
 
 class PassportError(ValueError):
@@ -197,6 +203,11 @@ def describe(ch):
     out["stats"] = dict(zip(STATS, ch["stats"]))
     out["tags"] = [SKILLS[s] for s in ch["tags"]]
     out["training"] = {SKILLS[s]: t for s, t in ch["training"].items()}
+    for key in ("equipped", "pack"):
+        out[key] = {slot: ITEMS.get(i, f"item {i}") for slot, i in ch[key].items()}
+    out["echoes"] = [f"{ECHOES[i]['name']}: {ECHOES[i]['states'][st - 1]}"
+                     if i in ECHOES and 1 <= st <= len(ECHOES[i]["states"]) else f"echo {i}: {st}"
+                     for i, st in ch["echoes"]]
     return out
 
 

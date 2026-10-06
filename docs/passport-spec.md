@@ -86,9 +86,10 @@ machines, files and accounts on modern ones, and a QR code on printed sheets.
 
 ## Registries
 
-Items and Echoes live in **global, append-only registries**. IDs are never reused or
-changed. Every Departure ships with the full registry; an engine that can't present an
-item shows it as an Unidentified Relic and keeps it.
+Races, classes, skills, items and Echoes live in **global, append-only registries**, as
+text files in `registry/` (see `registry/README.md`). IDs are never reused or changed.
+Every Departure ships with the full registry; an engine that can't present an item shows
+it as an Unidentified Relic and keeps it.
 
 ## Trust
 

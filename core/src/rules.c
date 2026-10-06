@@ -47,14 +47,6 @@ uint8_t apb_chance(int16_t rating_and_bonus, int16_t tn)
 
 /* -------------------------------------------------------- characters */
 
-const uint8_t apb_skill_stat[APB_SKILL_COUNT] = {
-    APB_MIGHT, APB_MIGHT,               /* Melee, Athletics      */
-    APB_GRACE, APB_GRACE,               /* Ranged, Stealth       */
-    APB_GRIT, APB_GRIT,                 /* Endurance, Survival   */
-    APB_WITS, APB_WITS, APB_WITS,       /* Tech, Medicine, Lore  */
-    APB_PRESENCE, APB_PRESENCE,         /* Persuade, Channel     */
-    APB_FATE                            /* Intuition             */
-};
 
 void apb_character_init(apb_character *ch, const char *name, uint8_t race,
                         uint8_t cls)
@@ -88,31 +80,7 @@ uint8_t apb_skill(const apb_character *ch, uint8_t skill)
 
 /* ---------------------------------------------- character creation */
 
-const uint8_t apb_race_bonus[APB_RACE_COUNT] = {
-    APB_FATE,       /* Human       */
-    APB_GRIT,       /* Hollowborn  */
-    APB_WITS,       /* Glassfolk   */
-    APB_PRESENCE,   /* Rad-Dryad   */
-    APB_GRACE,      /* Chronomite  */
-    APB_MIGHT,      /* Salvaged    */
-    APB_PRESENCE    /* Moth-folk   */
-};
-
-const uint8_t apb_class_bonus[APB_CLASS_COUNT] = {
-    APB_MIGHT,      /* Warden      */
-    APB_GRACE,      /* Rogue       */
-    APB_WITS,       /* Tinker      */
-    APB_PRESENCE,   /* Channeler   */
-    APB_WITS        /* Medic       */
-};
-
-const uint8_t apb_class_tags[APB_CLASS_COUNT][2] = {
-    { APB_SK_MELEE,    APB_SK_ENDURANCE },   /* Warden    */
-    { APB_SK_STEALTH,  APB_SK_RANGED },      /* Rogue     */
-    { APB_SK_TECH,     APB_SK_LORE },        /* Tinker    */
-    { APB_SK_CHANNEL,  APB_SK_INTUITION },   /* Channeler */
-    { APB_SK_MEDICINE, APB_SK_SURVIVAL }     /* Medic     */
-};
+/* Race and class bonuses and tags come from the registry (registry.c). */
 
 uint8_t apb_pointbuy_valid(const uint8_t *base)
 {
