@@ -102,6 +102,12 @@ uint8_t apb_d100(apb_rng *rng);
 uint8_t apb_resolve(uint8_t roll, int16_t target);
 uint8_t apb_check(apb_rng *rng, uint8_t rating, int8_t modifier, apb_roll *out);
 
+/* The target for an attack (or power, or persuasion) against a defense
+ * (Armor, Ward, Resolve): attack + bonus - (defense - pierce) / 2, rounding
+ * down. `defense` is after any debuffs; with pierce taken off, it stops at 0.
+ * The result is not clamped; apb_check and apb_resolve keep it to 1..100. */
+int16_t apb_vs_defense(uint8_t attack, int16_t bonus, int16_t defense, uint8_t pierce);
+
 /* -------------------------------------------------------- characters */
 
 #define APB_NAME_LEN     8

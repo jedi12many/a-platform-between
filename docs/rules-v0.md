@@ -187,16 +187,85 @@ Implemented: `apb_health_max`.
 - 6 equipped slots + 6 pack slots. Hard limit; forces choices.
 - Up to 2 **attuned** legendary items.
 
+## Defenses: one roll, and a wall worth climbing
+
+Defenses don't get their own roll. A defense is a **penalty on the attacker's roll**:
+
+> **Target = attack − defense ÷ 2** (round down)
+
+So **100 against 100 is 50%**, and no defense at all leaves your full chance.
+
+| Defense | Stops |
+|---|---|
+| **Armor** | weapons |
+| **Ward** | powers |
+| **Resolve** | persuasion, intimidation, fear |
+
+A defense can differ by damage type: an iron golem's Armor is 90 against blades and
+bullets, but only 30 against lightning.
+
+The wall is meant to be steep. A defense is a **problem for the party to solve**, not a
+number to grind past. Every answer is a plain number you add or subtract:
+
+| Option | What it does | Examples |
+|---|---|---|
+| **Buff** the attacker | + to the attack | Overclock, Bless, a war cry, a stim |
+| **Debuff** the defense | − to the defense (it stops at 0) | Rust, Shatter, an EMP, Sunder |
+| **Pierce** | ignore that much defense, for one weapon or one fight | adamant oil, armor-piercing rounds, a rune of opening |
+| **Exploit** | use the damage type it's weak to | lightning on iron, fire on frost |
+| **Called shot** | aim for a weak spot: count a lower defense, at a penalty | a seam in the plates, the visor |
+| **Help** | an ally sets you up | a feint, covering fire, a distraction |
+
+### The wizard and the iron golem
+
+An iron golem: **Armor 90** (30 against lightning). A fighter with **Melee 70** swings:
+
+| Plan | Arithmetic | Chance |
+|---|---|---|
+| The fighter alone | 70 − 90 ÷ 2 | **25%** |
+| The wizard casts **Rust** on the golem (−40 Armor) | 70 − 50 ÷ 2 | **45%** |
+| The wizard **Overclocks** the fighter (+20) | 90 − 90 ÷ 2 | **45%** |
+| Both, on the next turn | 90 − 50 ÷ 2 | **65%** |
+| The fighter oils the blade with **adamant** (Pierce 40) | 70 − 50 ÷ 2 | **45%** |
+| The wizard throws **lightning** (Channel 60) | 60 − 30 ÷ 2 | **45%** |
+| A **called shot** at a seam (Armor 30, −20) | 50 − 30 ÷ 2 | **35%** |
+
+Alone, the fighter is in trouble. With a plan, the odds swing hard. That's what the
+character with the right scroll, the right spell or the right idea is for, at the table
+and on a C64 alike.
+
+Results in a fight:
+
+| Result | In combat |
+|---|---|
+| Crit | a hit that does something extra: double damage, a disarm, a knock-down |
+| Success | a hit |
+| Success at a cost | a **glancing** hit (half damage), or a hit that leaves you exposed |
+| Fail | a miss, and the enemy gets an opening |
+
+Implemented: `apb_vs_defense`. Defenses, buffs and items that use them arrive with
+combat.
+
 ## Combat (milestone E3)
 
 Turn-based, zone-based, designed table-first so it plays the same on paper and on a C64.
-Solo hero plus optional companions and Echo allies. At high levels, opposed rolls matter
-(both sides roll; the better result wins), so a level-100 traveler still meets equals.
+Solo hero plus optional companions and Echo allies. Defenses work as above. At high
+levels, opposed rolls matter (both sides roll; the better result wins), so a level-100
+traveler still meets equals.
+
+Design rules for combat:
+
+- **Players always have options.** Every tough enemy should have at least two answers a
+  prepared party might hold: a weakness, a debuff, a tool.
+- **Every option is a number on the sheet or the card.** No hidden formulas.
+- **Items for the occasion matter.** Consumables and specialist gear (oils, scrolls,
+  charges) are a core part of the loot, not filler.
 
 ## Open questions
 
 - How powers are gained and raised.
 - Weapon damage on the 100 scale (by tier, by roll, by margin?). Comes with combat.
+- Limits on stacking buffs and debuffs, if playtests show runaway combinations.
 - Companions: recruitable per Departure only, or carried on the Passport?
 - How fast Debt goes down. Going home should be possible well before level 100, so
   long-lived characters are the ones who choose to stay.

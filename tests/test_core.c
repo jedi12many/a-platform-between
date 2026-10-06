@@ -101,6 +101,28 @@ static void test_resolve(void)
     CHECK(roll.roll == 5 && roll.target == 1 && roll.result == APB_COST);
 }
 
+static void test_vs_defense(void)
+{
+    /* The anchor: 100 against 100 is 50%. */
+    CHECK(apb_vs_defense(100, 0, 100, 0) == 50);
+    CHECK(apb_vs_defense(70, 0, 0, 0) == 70);
+    CHECK(apb_vs_defense(70, 0, 45, 0) == 48);     /* half of 45 rounds down */
+    CHECK(apb_vs_defense(40, 0, 100, 0) == -10);   /* checks clamp this to 1 */
+
+    /* The iron golem (Armor 90) from docs/rules-v0.md. */
+    CHECK(apb_vs_defense(70, 0, 90, 0) == 25);     /* the fighter, alone     */
+    CHECK(apb_vs_defense(70, 0, 90 - 40, 0) == 45);/* after Rust, -40 Armor  */
+    CHECK(apb_vs_defense(70, 20, 90, 0) == 45);    /* with Overclock, +20    */
+    CHECK(apb_vs_defense(70, 20, 90 - 40, 0) == 65);/* both                  */
+    CHECK(apb_vs_defense(70, 0, 90, 40) == 45);    /* adamant oil, Pierce 40 */
+    CHECK(apb_vs_defense(60, 0, 30, 0) == 45);     /* lightning: Armor 30    */
+    CHECK(apb_vs_defense(70, -20, 30, 0) == 35);   /* called shot at a seam  */
+
+    /* Armor stops at 0. */
+    CHECK(apb_vs_defense(50, 0, 20, 60) == 50);
+    CHECK(apb_vs_defense(50, 0, -30, 0) == 50);
+}
+
 static void make_kestrel(apb_character *out)
 {
     uint8_t base[APB_STAT_COUNT];
@@ -409,6 +431,7 @@ int main(void)
 {
     test_dice();
     test_resolve();
+    test_vs_defense();
     test_creation();
     test_progression();
     test_translate();

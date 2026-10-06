@@ -31,6 +31,16 @@ uint8_t apb_check(apb_rng *rng, uint8_t rating, int8_t modifier, apb_roll *out)
     return out->result;
 }
 
+int16_t apb_vs_defense(uint8_t attack, int16_t bonus, int16_t defense, uint8_t pierce)
+{
+    int16_t d = (int16_t)(defense - pierce);
+
+    if (d < 0) {
+        d = 0;
+    }
+    return (int16_t)(attack + bonus - d / 2);
+}
+
 /* -------------------------------------------------------- characters */
 
 const uint8_t apb_skill_stat[APB_SKILL_COUNT] = {
