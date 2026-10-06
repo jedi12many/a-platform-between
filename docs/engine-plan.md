@@ -56,7 +56,6 @@ Exploration is **scene-based**: every location is a scene with exits and actions
 menu, like a gamebook with a full RPG underneath. This works identically on all five
 retro platforms and makes Departures fast to write. Platforms with the power for it can
 add a small tile map per location later as presentation; the story logic doesn't change.
-*(Decision 1 below.)*
 
 The **Waystation hub is just another Departure image**: the departure board, the bar, the
 ticket window are scenes. Picking a ticket loads that Departure. No separate hub engine.
@@ -121,14 +120,13 @@ side of a 1541 floppy (170 KB). One Departure per disk side is the target.
 | **Terminal** (C, stdio) | Development, writing, automated tests | First |
 | **sim65** (the 6502 simulator) | Running test playthroughs on a real 6502 instruction set | First |
 | **C64** (cc65) | First retro target. The toolchain is already working. | Second |
-| **Modern** (SDL2 desktop, plus a WebAssembly build for the browser) | The main commercial version; the browser build is for sharing and playtests | Third |
+| **Modern** (SDL2 desktop, plus a WebAssembly build for the browser) | The main commercial version; the browser build is for sharing, playtests and the community Workshop | Third |
 | **Apple II** | Shares the 6502 VM; new HAL only | Later |
 | **DOS** | New HAL; Open Watcom or DJGPP | Later |
 | **Amiga, SNES** | New HALs | Later |
 
-This puts the C64 ahead of DOS, which changes the original roadmap. The reason: the
-6502 toolchain and tests already work, and anything that fits the C64 fits everywhere.
-*(Decision 2 below.)*
+The C64 comes ahead of DOS: the 6502 toolchain and tests already work, and anything
+that fits the C64 fits everywhere.
 
 ## Testing: scripted playthroughs
 
@@ -146,8 +144,8 @@ Each one ends with something playable or testable.
 
 | # | Milestone | Done when |
 |---|---|---|
-| **E0** | **Specs**: Quest Script v0, bytecode and VM spec, HAL interface | Docs reviewed; one real scene written in Quest Script |
-| **E1** | **Text VM on the terminal**: compiler (scenes, text, choices, flags, gotos, checks, items, Echoes), VM in C, terminal front end | *Departure 00: The Fare* (the prologue at the Waystation) is playable in a terminal, and its transcripts match on sim65 |
+| **E0** | **Specs**: Quest Script v0 (written as a public reference), bytecode and VM spec, HAL interface | Docs reviewed; one real scene written in Quest Script |
+| **E1** | **Text VM on the terminal**: compiler (scenes, text, choices, flags, gotos, checks, items, Echoes) with friendly errors, VM in C with a load-time image verifier, terminal front end | *Departure 00: The Fare* (the prologue at the Waystation) is playable in a terminal, and its transcripts match on sim65 |
 | **E2** | **Starting and ending a Departure**: Passport in, rewards and Echoes out, mid-Departure saves, Rewind | Play *The Fare*, get a Passport, carry it into a test Departure |
 | **E3** | **Combat**: zone-based, turn-based fights in the rules core, called from Quest Script | A fight in *The Fare*, covered by transcript tests |
 | **E4** | **C64 front end**: text window, menus, status bar, picture area, disk loading of cars, `.d64` disk images | *The Fare* playable on a C64 (VICE emulator) |
@@ -155,7 +153,8 @@ Each one ends with something playable or testable.
 | **E6** | **Modern front end**: SDL2 desktop and browser builds | *The Fare* and the slice playable in a browser |
 | **E7** | **Deep Yards prototype**: seeded procedural floors | A 10-floor descent playable on terminal and C64 |
 
-After E7: Apple II, DOS, Amiga, SNES front ends; the full Departure 01; party support.
+After E7: the browser Workshop for community authors, Apple II, DOS, Amiga and SNES
+front ends, the full Departure 01, party support.
 
 ### Departure 00: The Fare
 
@@ -177,6 +176,58 @@ content/s1/      Season 1 Quest Script sources (The Fare, Departure 01, ...)
 tests/playthroughs/   input scripts and golden transcripts
 ```
 
+## Community Departures
+
+Players will be able to write and share their own Departures. That's a design
+requirement from E0 on, not a later add-on.
+
+### In the fiction: Branch Lines
+
+Official Departures leave from the Waystation's platforms. Community Departures run on
+**Branch Lines**: unofficial tracks laid by travelers, which the Stationmaster tolerates
+but doesn't bill for. You board them from a side platform at the Waystation.
+
+### What it means for the engine
+
+- **Quest Script is a public language.** It gets a proper reference manual, stable
+  versioning, and compiler errors written for people who aren't programmers ("line 42:
+  there's no scene called `brige`; did you mean `bridge`?").
+- **The compiler goes where authors are.** It starts as a Python tool; later the same
+  compiler runs in the browser (the **Workshop**), with a live preview using the WebAssembly
+  build, so authors need nothing installed.
+- **The VM never trusts an image.** Every Departure image is verified when it loads: every
+  jump, string, scene, item and Echo reference is bounds-checked before anything runs. A
+  broken or malicious image is refused with a message, never a crash. This protects the C64
+  build as much as the PC one.
+- **Same pipeline as ours.** Community authors get the same tools, the same playthrough
+  tests, and the same C64 disk-image builder. A Branch Line can run on real hardware.
+
+### Protecting characters and canon
+
+A community Departure must not be able to wreck someone's character or the main story.
+
+| | Official Departures | Branch Lines (community) |
+|---|---|---|
+| XP | Normal | Normal, capped at the Departure's level band |
+| Items | Any | Only existing registry items, at most tier 3, with a per-Departure limit |
+| Debt | Paid down | Not paid down (the Stationmaster doesn't bill for them) |
+| Echoes | Written to the Passport | Kept in a separate **Branch Line ledger** stored with the save, never in the Passport's 8 slots |
+| Reading your Echoes | Yes | Yes, read-only: a Branch Line can react to your canon choices but never change them |
+
+Exceptional community Departures can be **certified** by us and promoted to full
+rewards, possibly becoming official.
+
+### Sharing
+
+- Modern: Steam Workshop and a community board in the online Waystation.
+- Retro: Branch Lines export as `.d64` (and later other) disk images, like ours.
+
+### Open questions
+
+- Moderation and certification process.
+- Whether Branch Lines can define new items and Echoes of their own (they'd live only in
+  the Branch Line ledger), or only use the official registries.
+
 ## Risks
 
 - **cc65 optimizer bugs.** Already hit one. Mitigation: every test runs on sim65, so we
@@ -189,13 +240,11 @@ tests/playthroughs/   input scripts and golden transcripts
 - **Writing tools.** A custom language has no editor. Mitigation: plain text with good
   compiler errors first; a VS Code syntax extension later.
 
-## Decisions
+## Decisions (settled)
 
-1. **Exploration style.** Recommended: scene-based (gamebook-plus menus) for v1, with tile
-   maps as optional per-platform presentation later. Alternative: tile maps from the start.
-2. **First retro target.** Recommended: C64 (toolchain already working). Alternative: DOS.
-3. **Quest Script.** Recommended: our own ink-inspired language. Alternative: write in ink
-   itself and compile ink's output to our bytecode (proven editor, but a much bigger
-   runtime to fit on a C64).
-4. **Modern front end.** Recommended: SDL2 desktop plus a WebAssembly browser build from
-   the same C. Alternative: a separate engine (Godot, Unity) reading the same images.
+1. **Exploration: scene menus.** Every location is a scene with text, a picture and a menu.
+   Tile maps may come later as optional presentation on platforms that can afford them.
+2. **First retro target: the Commodore 64.** DOS moves after the Apple II.
+3. **Quest Script: our own ink-like language**, designed from the start for community
+   authors too. See *Community Departures* below.
+4. **Modern front end: SDL2 desktop plus a WebAssembly browser build**, from the same C.

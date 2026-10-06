@@ -18,13 +18,13 @@
 
 ## Phase 2: first retro build
 
-- DOS engine.
-- Departure 01 playable on modern PC and DOS, with password Passports between them.
+- C64 front end (the 6502 toolchain is already working).
+- Departure 01 playable on modern PC and C64, with password Passports between them.
 
-## Phase 3: more platforms
+## Phase 3: more platforms and the community
 
-- Shared 6502 engine: C64 and Apple II.
-- Amiga. Then SNES.
+- Apple II (shares the 6502 engine), then DOS, Amiga, SNES.
+- The browser Workshop: community authors write, test and share Branch Lines.
 - The web Passport Office.
 
 ## Phase 4: the Waystation online

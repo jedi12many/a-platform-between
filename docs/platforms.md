@@ -19,10 +19,11 @@ The Infocom/SCUMM approach:
 
 The rules core is the same everywhere; presentation differs.
 
-## Design to the C64, ship DOS first
+## Design to the C64, ship the C64 first
 
-Design every system against C64 limits (64 KB RAM, 1 MHz, disk or tape). Ship the first
-retro build on DOS, the easiest target. If it fits the C64, it fits everywhere.
+Design every system against C64 limits (64 KB RAM, 1 MHz, disk). The C64 is also the
+first retro front end: its toolchain is already working, and if it fits the C64, it fits
+everywhere. See [engine-plan.md](engine-plan.md).
 
 ## Lore
 
