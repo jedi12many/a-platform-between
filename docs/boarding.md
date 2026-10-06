@@ -57,7 +57,7 @@ data.
 
 | Where | How the receipt travels |
 |---|---|
-| Modern, online | Applied by the hub as soon as the Departure ends; each receipt applies once. |
+| Modern, online | Sent to the web Waystation as soon as the Departure ends, with the choices and seed that produced it, so the server can replay and verify it; each receipt applies once. |
 | Modern, offline | Applied to the saved character on that machine. |
 | Retro | A **Travel Stamp**: a short password holding only the receipt (about 20–30 characters for a typical Departure, versus 55+ for a Passport). Enter it into whatever your Passport is now, on any platform. |
 | Tabletop | The Conductor writes out the receipt; the Passport Office turns it into a Travel Stamp, flagged tabletop. |

@@ -235,6 +235,7 @@ Each one ends with something playable or testable.
 | **E4** | **C64 front end**: text window, menus, status bar, picture area, disk loading of cars, `.d64` disk images | *The Fare* playable on a C64 (VICE emulator) |
 | **E5** | **Vertical slice**: chapter 1 of *Eighteen Minutes* | Playable on terminal and C64 |
 | **E6** | **Modern front end**: SDL2 desktop and browser builds | *The Fare* and the slice playable in a browser |
+| **W1** | **The Waystation, static site**: creator, Passport editing and level-ups, tabletop sheets, Travel Stamps, with the rules core as WebAssembly. Can start any time after E1. See [waystation-web.md](waystation-web.md). | A character made in the browser boards *The Fare* in the terminal, and its Travel Stamp comes back |
 | **E7** | **Deep Yards prototype**: seeded procedural floors | A 10-floor descent playable on terminal and C64 |
 
 After E7: the browser Workshop for community authors, Apple II, DOS, Amiga and SNES
@@ -251,7 +252,7 @@ identical transcripts on the PC and the 6502.
 | **E1.2 Compiler front half** (`tools/qsc/`, Python) | Lexer and parser for Quest Script v0, name resolution, friendly errors with line numbers and "did you mean". | `the-fare.qs` parses; a test file of broken scripts gives the right messages. *Done.* |
 | **E1.3 Compiler back half** | Code generation per the VM spec, byte-pair text compression, the `.apd` writer, and the route map ("only one road to victory" warnings). | `the-fare.apd` builds under the size limits. *Done: 5.5 KB, text at 55%.* |
 | **E1.4 Story VM** (`vm/`, C) | Loader and verifier, the instruction loop, text decoding, menus. All input arrives as choices through the HAL. | A hand-made image runs; corrupt images are refused, not crashed. *Done: The Fare plays on PC and 6502 with identical transcripts; 300 damaged images, no crashes.* |
-| **E1.5 Character creator** (C, on the HAL) | Point-buy or roll, race, class, extra tag, name, confirm, using only `hal_menu` and `hal_ask_name`. | A character can be made by menu, and by a choice list in tests |
+| **E1.5 Boarding desk** (C, on the HAL) | How a client starts: enter a Passport password, or (offline) make a character with a plain creator: point-buy or roll, race, class, extra tag, name. Built only on `hal_menu` and `hal_ask_name`. The main creator lives at the web Waystation ([waystation-web.md](waystation-web.md)). | A Passport can be entered or a character made, by hand and by a choice list in tests |
 | **E1.6 Terminal front end** (`fe/term/`) | The stdio HAL: wrapping, menus, status line. A `--choices file` mode that reads choices and writes a transcript. | *The Fare* is playable by hand |
 | **E1.7 Playthrough tests** | Choice lists covering every route through *The Fare*, golden transcripts, run natively and on sim65. | Transcripts match on both; CI runs them |
 
