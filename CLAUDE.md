@@ -10,10 +10,11 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make crosscheck`: the demo's native and 6502 output must be byte-identical.
 - `make c64`: build `build/demo.prg` for the Commodore 64.
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
-  C engine's password, and the registry loader tests must pass.
+  C engine's password; the registry and Quest Script parser tests must pass.
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
+- `make check-content`: every `.qs` file in `content/` must compile cleanly.
 
-Run all six before pushing; CI runs them too.
+Run all seven before pushing; CI runs them too.
 
 ## Rules-core house rules
 
@@ -41,3 +42,11 @@ Python tools read the registry through `tools/registry/registry.py`.
 
 The registry is append-only. Never reuse, renumber or reorder an id or an Echo's states;
 Passports in the wild depend on them.
+
+## Quest Script compiler
+
+`tools/qsc/` (Python): `qsc.py check FILE.qs` parses and checks a Departure. The language
+is defined in `docs/quest-script.md`; keep the two in step. Parser tests live in
+`tests/qsc/`: files in `ok/` must be clean, and files in `errors/` mark each expected
+message on its line with `// error: ...` or `// warning: ...`. Error messages are for
+authors, not programmers: say what's wrong in plain words, and suggest the fix.

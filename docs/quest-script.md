@@ -4,7 +4,8 @@ Quest Script is the language Departures are written in, both ours and the commun
 Branch Lines. It is plain text, and it's meant to read like a story with a few marks in
 the margin.
 
-> **Status:** v0 draft (milestone E0). Nothing is final until the compiler exists (E1).
+> **Status:** v0. The compiler checks scripts (`python3 tools/qsc/qsc.py check FILE.qs`);
+> building playable images arrives with milestone E1.3.
 > Features marked *(official only)* are refused in Branch Lines.
 
 ## A whole Departure, small
@@ -48,8 +49,10 @@ A Departure is one or more `.qs` files (UTF-8 text). The **header** comes first,
 **declarations**, then **chapters** and **scenes**.
 
 - `//` starts a comment, to the end of the line.
-- Indentation is how blocks are grouped (choices, `if`, `check`). Use 4 spaces. Tabs are
-  an error, because they look the same as spaces but aren't.
+- Indentation is how blocks are grouped (choices, `if`, `check`): a block is everything
+  indented deeper than the line that opens it. 4 spaces is the habit; continuation lines
+  under a `check` result can line up with its text. Tabs are an error, because they look
+  the same as spaces but aren't.
 - Names (scenes, flags, variables) are `lower_case_with_underscores`. Game words (stats,
   races, items, Echoes) are `UPPER_CASE`.
 - Keywords (`if`, `else`, `check`, `flag`, `var`, ...) are lower case, so prose that
@@ -106,8 +109,21 @@ Lines of plain text are what the player reads.
 - Text is ASCII. Curly quotes, apostrophes, `—` and `…` are converted for you
   (`"`, `'`, `--`, `...`). Other characters are an error, because the old machines can't
   show them.
-- A line can't *start* with `*`, `+`, `~`, `->`, `==`, `if`, `else`, `check` or a
+- **Fixed lines.** A line starting with `|` is printed on its own line, exactly as written
+  (spaces included), instead of joining the paragraph. Use it for signs, departure boards,
+  verse and lists. Keep `|` lines to 38 characters so they fit a 40-column screen.
+
+```
+The letters settle long enough to read:
+
+| KEPLER-NINE    PLAT 6  DELAYED 18 MIN
+| ASHMOUTH       PLAT 2  LAST TRAIN
+```
+
+- A line can't *start* with `*`, `+`, `~`, `->`, `==`, `|`, `if`, `else`, `check` or a
   `{`; those mean something. Start the line with `\` to print it as text anyway.
+- Any text line can end with commands or a jump: `You find a keycard. ~ give KEYCARD`, or
+  `You run. -> corridor`.
 
 ### Inserting values
 
@@ -129,6 +145,8 @@ Lines of plain text are what the player reads.
     ~ give KEYCARD
 ```
 
+- Choices come last in a scene, after its text: they're its menu. A choice can't go
+  inside an `if`; put the condition on the choice instead (`+ {met_fen} [...]`).
 - `+` is a choice that stays on the menu. `*` disappears once it has been picked.
 - The label goes in `[ ]`. Keep it under 37 characters so it fits a C64 line.
 - `-> scene` after the label goes straight there.

@@ -85,7 +85,7 @@ Strings are ASCII `0x20`–`0x7E`, plus:
 | `0x04` | insert Debt |
 | `0x05` *n* | insert variable *n* |
 | `0x06` | insert level |
-| `0x0A` | paragraph break inside a string |
+| `0x0A` | line break inside a paragraph (from `|` lines) |
 | `0x80`–`0xFF` | a byte pair (see below) |
 
 **Byte-pair compression.** Code `0x80 + i` stands for the two bytes in entry *i* of the

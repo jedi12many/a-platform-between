@@ -51,7 +51,7 @@ cracked glass. Beyond the glass there is no sky, only a slow grey shimmer,
 like rain that has forgotten which way is down. A sign hangs from the
 ironwork:
 
-PLATFORM 1 -- ALL DEPARTURES
+| PLATFORM 1 -- ALL DEPARTURES
 
 You remember dying. You remember it very clearly.
 
@@ -136,9 +136,9 @@ else
     ~ set read_board
     The letters settle long enough to read:
 
-    KEPLER-NINE ........ PLATFORM 6 ... DELAYED (18 MIN)
-    ASHMOUTH ........... PLATFORM 2 ... LAST TRAIN
-    THE LANTERN COURTS . PLATFORM 9 ... DRESS: FORMAL
+    | KEPLER-NINE    PLAT 6  DELAYED 18 MIN
+    | ASHMOUTH       PLAT 2  LAST TRAIN
+    | LANTERN COURTS PLAT 9  DRESS: FORMAL
 
     Then they flip again, into places you have never heard of, and some you
     have heard of and know to be gone.

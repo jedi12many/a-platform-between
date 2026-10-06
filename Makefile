@@ -9,7 +9,7 @@ CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c core/src/registry.c
             core/src/translate.c core/src/echo.c core/src/passport.c
 CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
 
-.PHONY: all test test-6502 test-python c64 demo crosscheck registry check-registry clean
+.PHONY: all test test-6502 test-python c64 demo crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -62,6 +62,7 @@ test-python: build/demo
 	./build/demo > build/demo.native.txt
 	python3 tools/passport/check_against_demo.py build/demo.native.txt
 	python3 tools/registry/test_registry.py
+	python3 tools/qsc/test_qsc.py
 
 # Regenerate the C registry from registry/*.txt after editing them.
 registry:
@@ -73,3 +74,7 @@ check-registry: | build
 	diff core/include/apb_registry.h build/registry/apb_registry.h
 	diff core/src/registry.c build/registry/registry.c
 	@echo "registry: generated code matches registry/*.txt"
+
+# Every Departure in content/ must compile without errors.
+check-content:
+	@for f in $$(find content -name '*.qs' | sort); do python3 tools/qsc/qsc.py check $$f || exit 1; done

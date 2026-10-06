@@ -248,7 +248,7 @@ identical transcripts on the PC and the 6502.
 | Step | What | Done when |
 |---|---|---|
 | **E1.1 Registry as data** | Items, Echoes, skills, races and classes in one text file each, under `registry/`. A script generates `apb_registry.h` and the tables the compiler and Python tools use. | The header is generated and the build is unchanged. *Done.* |
-| **E1.2 Compiler front half** (`tools/qsc/`, Python) | Lexer and parser for Quest Script v0, name resolution, friendly errors with line numbers and "did you mean". | `the-fare.qs` parses; a test file of broken scripts gives the right messages |
+| **E1.2 Compiler front half** (`tools/qsc/`, Python) | Lexer and parser for Quest Script v0, name resolution, friendly errors with line numbers and "did you mean". | `the-fare.qs` parses; a test file of broken scripts gives the right messages. *Done.* |
 | **E1.3 Compiler back half** | Code generation per the VM spec, byte-pair text compression, the `.apd` writer, and the route map ("only one road to victory" warnings). | `the-fare.apd` builds under the size limits |
 | **E1.4 Story VM** (`vm/`, C) | Loader and verifier, the instruction loop, text decoding, menus. All input arrives as choices through the HAL. | A hand-made image runs; corrupt images are refused, not crashed |
 | **E1.5 Character creator** (C, on the HAL) | Point-buy or roll, race, class, extra tag, name, confirm, using only `hal_menu` and `hal_ask_name`. | A character can be made by menu, and by a choice list in tests |

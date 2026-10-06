@@ -28,6 +28,7 @@ make test        # build and run the tests natively
 make test-6502   # run the same tests on the sim65 6502 simulator (needs cc65)
 make crosscheck  # the demo's native and 6502 output must be byte-identical
 make c64         # build the C64 demo: build/demo.prg (needs cc65)
+make check-content  # compile-check every Departure in content/
 make demo        # build and run the native demo
 ```
 
