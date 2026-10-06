@@ -110,7 +110,7 @@ C64) when drawing; string literals in C are not used for game text.
 | character | `apb_character` | a working copy of the boarding snapshot; the VM never writes a Passport |
 | receipt | small | every change made to the character (XP, Debt, items, Echoes), handed to the front end at `END`; see [boarding.md](boarding.md) |
 | rng | 2 | `apb_rng` |
-| rewards this Departure | small | items given count, for Branch Line limits |
+| rewards this Departure | 3 × 32 + 2 | (car, offset) of each reward instruction already paid; items given count, for Branch Line limits |
 
 ## Instructions
 
@@ -209,11 +209,17 @@ re-running the scene's entry text or commands.
 | `LET` | 42 | u8 var | pop into var (clamped 0..255) | yes |
 | `ADD` | 43 | u8 var, u8 n | add, saturating at 255 | yes |
 | `SUB` | 44 | u8 var, u8 n | subtract, saturating at 0 | yes |
-| `GIVE` | 48 | u16 item | add to pack (no room: lost-and-found message) | tier ≤ 3, limited count |
+| `GIVE` | 48 | u16 item | add to pack (no room: lost-and-found message); pays once per trip | tier ≤ 3, limited count |
 | `TAKE` | 49 | u16 item | remove if carried | yes |
-| `XP` | 4A | u8 n | `apb_gain_xp` | ignored above the level band |
-| `DEBT` | 4B | u8 mode, u16 n | mode 0 set, 1 add, 2 subtract (saturating) | refused |
+| `XP` | 4A | u8 n | `apb_gain_xp`; pays once per trip | ignored above the level band |
+| `DEBT` | 4B | u8 mode, u16 n | mode 0 set, 1 add, 2 subtract (saturating); pays once per trip | refused |
 | `ECHO_SET` | 4C | u16 echo, u8 state | `apb_echo_set` | refused |
+
+"Pays once per trip": the VM remembers (car, offset) of each `GIVE`, `XP` and `DEBT` it
+has run since boarding, up to 32 (`APB_VM_REWARD_SITES`), and passes over one it has run
+before. The compiler allows at most 32 per Departure, so the list never fills; if a
+damaged image has more, the extras pay nothing. This is what makes the compiler's reward
+manifest a true bound.
 
 "Refused" means the VM stops with an error if a Branch Line image contains it; the
 verifier rejects such an image at load time, and the compiler never emits it.
@@ -258,18 +264,32 @@ in Python.
 
 ## Saves
 
+A save is made at a menu: the front end's `hal_menu` returns `APB_MENU_SAVE`, the VM writes
+the file `SAVE` through `hal_save`, says "Saved." and shows the menu again.
+`apb_vm_resume` reads it back and shows that menu. *The Fare* saves in about 100 bytes; the
+most is 768 (`APB_VM_SAVE_MAX`). On the C64 a save is one small file on the Departure's
+disk. Little-endian, version 1:
+
 | Field | Size |
 |---|---|
-| departure id, image hash | 2 + 2 |
-| scene | 2 |
-| flags, vars | 64 + 128 |
+| magic, version | 3: `41 53 01` |
+| departure id, image hash | 2 + 2: a save only loads into the image that made it |
+| car, menu offset | 1 + 2: the `MENU` instruction to show again |
+| menu entries | 1 + 4 each: string id, target |
+| expression stack | 1 + 2 each |
+| flags | one byte per 8 of the image's flags |
+| vars | one byte per variable |
 | rng | 2 |
-| character | `apb_character` (the working copy) |
-| receipt so far | small |
-| reward counters | small |
+| Debt at boarding, Branch Line gives | 2 + 1 |
+| rewards already paid | 1 + 3 each: car, offset |
+| receipt so far | departure 2, ticket 4, outcome 1, XP 2, Debt paid 2, added 2, items gained and lost (1 + 2 each), Echoes (1 + 4 each: id, state, state at boarding) |
+| character | 1 + the working copy as a Passport password |
+| CRC-16 | 2, over everything before it |
 
-A save made by one image only loads into an image with the same hash. On the C64 a save is
-one small file on the Departure's disk.
+Like an image, a save is never trusted. Its CRC, magic, image, every count, the car, the
+menu (it must be a `MENU` instruction, and under full checks an instruction boundary), each
+option's string and target, the dice state (never 0), and the character (a valid Passport)
+are all checked before play resumes; anything wrong refuses the save.
 
 ## Branch Line ledger
 

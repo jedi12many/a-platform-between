@@ -1,0 +1,14 @@
+You ring the bell.
+  1) Ring it again
+  2) Leave
+> 1
+You ring the bell.
+  1) Ring it again
+  2) Leave
+> 1
+You ring the bell.
+  1) Ring it again
+  2) Leave
+> 2
+[receipt: departure 902, complete, xp 10, debt paid 0 added 100, gained 7, lost, echoes]
+[level 1, xp 10, debt 100]

@@ -23,7 +23,9 @@ Pre-production. Everything here is a draft for discussion.
 make play
 ```
 
-Board with a Passport. To make one for testing (until the Waystation website exists):
+Board with a Passport and, if you have one, a Boarding Pass; type `s` at any menu to save,
+and `./build/apb --resume build/the-fare.apd` to pick up again. To make a Passport for
+testing (until the Waystation website exists):
 
 ```sh
 python3 tools/passport/passport.py new Kestrel SALVAGED WARDEN 70,40,60,45,35,50 ATHLETICS

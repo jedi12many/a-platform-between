@@ -5,10 +5,11 @@ two can check each other. Also the starting point for the character-sheet printe
 and the web Passport Office.
 
     python3 tools/passport/passport.py decode "<password>"
-    python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM]
+    python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM] [ECHO=STATE...]
 
 `new` makes a test character until the Waystation website exists (point-buy stats,
-before race and class bonuses), and prints its Passport in lines.
+before race and class bonuses), and prints its Passport in lines. ITEM is equipped (`-`
+for none); ECHO=STATE plants Echoes, as if earlier Departures had.
 """
 
 import json
@@ -63,7 +64,8 @@ def new_character():
     }
 
 
-def encode(ch):
+def _payload(ch):
+    """The Passport's fields as bytes, before the CRC (docs/passport-spec.md)."""
     bits = []
 
     def put(value, n):
@@ -108,17 +110,36 @@ def encode(ch):
 
     while len(bits) % 8:
         bits.append(0)
-    payload = bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, len(bits), 8))
-    put(crc16(payload), 16)
+    return bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, len(bits), 8))
+
+
+def check(ch):
+    """The Passport's CRC-16: what a Boarding Pass carries to name the character as boarded."""
+    return crc16(_payload(ch))
+
+
+def symbols(bits):
+    """Bits to password text: lines of 19 data symbols, each followed by its check."""
     while len(bits) % 5:
         bits.append(0)
-
     values = [int("".join(map(str, bits[i:i + 5])), 2) for i in range(0, len(bits), 5)]
     out = ""
     for start in range(0, len(values), LINE_DATA):
         line = values[start:start + LINE_DATA]
         out += "".join(SYMBOLS[v] for v in line) + SYMBOLS[line_check(line)]
     return out
+
+
+def to_bits(value, n):
+    if value < 0 or value >= (1 << n):
+        raise PassportError(f"value {value} doesn't fit in {n} bits")
+    return [(value >> (n - 1 - i)) & 1 for i in range(n)]
+
+
+def encode(ch):
+    payload = _payload(ch)
+    bits = [(b >> (7 - i)) & 1 for b in payload for i in range(8)] + to_bits(crc16(payload), 16)
+    return symbols(bits)
 
 
 def lines(password):
@@ -248,14 +269,20 @@ def describe(ch):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) in (7, 8) and sys.argv[1] == "new":
-        _, _, name, race, cls, stats, tag, *item = sys.argv
+    if len(sys.argv) >= 7 and sys.argv[1] == "new":
+        _, _, name, race, cls, stats, tag, *rest = sys.argv
         values = [int(v) for v in stats.split(",")]
         if len(values) != 6 or not pointbuy_ok(values):
             sys.exit("stats must be six point-buy values: 25..70 each, 150 points spent")
         ch = create(name, race, cls, values, tag)
-        if item:
-            ch["equipped"] = {0: _REG["items"][item[0]]["id"]}
+        if rest and "=" not in rest[0]:
+            if rest[0] != "-":
+                ch["equipped"] = {0: _REG["items"][rest[0]]["id"]}
+            rest = rest[1:]
+        for planted in rest:
+            echo, _, state = planted.partition("=")
+            e = _REG["echoes"][echo]
+            ch["echoes"].append((e["id"], e["states"].index(state) + 1))
         print("\n".join(lines(encode(ch))))
     elif len(sys.argv) == 3 and sys.argv[1] == "decode":
         try:

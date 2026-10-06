@@ -73,3 +73,18 @@ void apb_echo_clear(apb_character *ch, uint16_t id)
         }
     }
 }
+
+void apb_rewind_echoes(apb_character *ch, uint16_t departure)
+{
+    uint8_t i = 0;
+
+    /* apb_echo_clear closes the gap, so only step on when nothing was cleared. */
+    while (i < APB_ECHO_SLOTS) {
+        if (ch->echo[i].id != 0 && ch->echo[i].id < APB_ECHO_COUNT
+            && apb_echo_departures[ch->echo[i].id] == departure) {
+            apb_echo_clear(ch, ch->echo[i].id);
+        } else {
+            ++i;
+        }
+    }
+}

@@ -253,6 +253,7 @@ typedef struct {
 extern const apb_item_def apb_items[APB_ITEM_COUNT];
 extern const char *const apb_item_names[APB_ITEM_COUNT];
 extern const uint8_t apb_echo_defaults[APB_ECHO_COUNT];
+extern const uint16_t apb_echo_departures[APB_ECHO_COUNT];
 
 /* supported: bitmask of archetypes the engine can present (1 << APB_ARCH_x). */
 void apb_translate(const apb_item_def *item, const apb_realm *realm,
@@ -278,6 +279,64 @@ uint8_t apb_echo_get_or(const apb_character *ch, uint16_t id, uint8_t canon_defa
  * *evicted (for the Legend) and 1 is returned; otherwise 0. */
 uint8_t apb_echo_set(apb_character *ch, uint16_t id, uint8_t state, apb_echo *evicted);
 void    apb_echo_clear(apb_character *ch, uint16_t id);
+/* Forget the Echoes `departure` plants (and what became of them): a Rewind of it plays
+ * as if for the first time, and its receipt sets the new choices. */
+void    apb_rewind_echoes(apb_character *ch, uint16_t departure);
+
+/* ---------------------------------------------------------- Receipts */
+
+/* What a Departure hands back: only what changed (docs/boarding.md). A receipt is net:
+ * an item given and taken back in the same trip appears in neither list. */
+#define APB_RECEIPT_MAX 8           /* entries per list */
+
+enum {
+    APB_OUTCOME_COMPLETE = 0,
+    APB_OUTCOME_FAILED
+};
+
+typedef struct {
+    uint16_t id;
+    uint8_t  state;  /* the state the Departure left it in            */
+    uint8_t  was;    /* its state when the character boarded (0 unset) */
+} apb_receipt_echo;
+
+typedef struct {
+    uint16_t departure;
+    uint32_t ticket;                        /* from the Boarding Pass; 0: none  */
+    uint8_t  outcome;                       /* APB_OUTCOME_*                    */
+    uint16_t xp;                            /* awarded, after the level band    */
+    uint16_t debt_paid;                     /* one of these two is 0            */
+    uint16_t debt_added;
+    uint8_t  gained_count;
+    uint16_t gained[APB_RECEIPT_MAX];       /* item ids                         */
+    uint8_t  lost_count;
+    uint16_t lost[APB_RECEIPT_MAX];
+    uint8_t  echo_count;
+    apb_receipt_echo echoes[APB_RECEIPT_MAX];
+} apb_receipt;
+
+/* What applying a receipt did, for the Waystation to tell the player. */
+typedef struct {
+    uint8_t  levels;                        /* levels gained                    */
+    uint8_t  stored_count;                  /* gained, but the pack was full:   */
+    uint16_t stored[APB_RECEIPT_MAX];       /*   kept at the lost-and-found     */
+    uint8_t  gone;                          /* lost, but no longer carried      */
+    uint8_t  shifted_count;                 /* Echoes changed elsewhere since   */
+    uint16_t shifted[APB_RECEIPT_MAX];      /*   boarding: "the timeline shifted" */
+    uint8_t  legend_count;                  /* Echoes pushed out to the Legend  */
+    apb_echo legend[APB_RECEIPT_MAX];
+} apb_applied;
+
+/* A Rewind (docs/seasons.md): replaying a Departure the character has played. */
+#define APB_REWIND_FEE 500          /* Debt, charged on landing */
+
+/* Apply a receipt to a character as they are now (not as they boarded). Lost items go
+ * first, so they make room for gained ones. If `rewind`, the Echoes that Departure
+ * plants are forgotten first (the receipt sets the new choices), XP and Debt paid down
+ * are halved, and the Rewind fee is added to Debt. `out` may be NULL. */
+void apb_receipt_apply(apb_character *ch, const apb_receipt *r, uint8_t rewind,
+                       apb_applied *out);
+
 
 /* ---------------------------------------------------------- Passport */
 
@@ -297,7 +356,44 @@ enum {
 };
 
 uint8_t apb_passport_encode(const apb_character *ch, char *out);
+/* The Passport's own CRC-16: a check of everything about the character, carried in
+ * Boarding Passes to say which version of the character boarded. 0 if it can't be
+ * encoded. */
+uint16_t apb_passport_check(const apb_character *ch);
 /* bad_line receives the 1-based line number on APB_PP_LINE_CHECK; may be NULL. */
 uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line);
+
+/* ------------------------------------------------------- Boarding Pass */
+
+/* Issued by the Waystation for one trip (docs/boarding.md). One line of 18 symbols in
+ * the Passport alphabet. The ticket is a random number the server draws and remembers:
+ * a receipt only counts if it quotes a ticket issued to that character, once. */
+#define APB_PASS_VERSION 1
+#define APB_PASS_LEN     18
+#define APB_PASS_BUF     (APB_PASS_LEN + 1)
+
+typedef struct {
+    uint16_t departure;
+    uint32_t ticket;
+    uint16_t check;      /* apb_passport_check of the character as boarded */
+    uint16_t seed;       /* the dice for this trip                          */
+    uint8_t  rewind;     /* 1: a replay of a Departure they have played     */
+} apb_pass;
+
+uint8_t apb_pass_encode(const apb_pass *pass, char *out);
+
+/* ------------------------------------------------------- Travel Stamp */
+
+/* A receipt as a password, for retro and tabletop players to type in at the Waystation
+ * (docs/boarding.md). Lines of 19 symbols plus a check, like a Passport. */
+#define APB_STAMP_VERSION 1
+#define APB_STAMP_MAX     84    /* the longest possible stamp, in symbols */
+#define APB_STAMP_BUF     (APB_STAMP_MAX + 1)
+
+/* Returns APB_PP_OK, or APB_PP_RANGE if a field doesn't fit (an item or Echo id over
+ * 1023, an Echo state over 3). */
+uint8_t apb_stamp_encode(const apb_receipt *r, char *out);
+/* Returns APB_PP_OK, _SYMBOL, _LENGTH, _LINE_CHECK or _VERSION. */
+uint8_t apb_pass_decode(const char *in, apb_pass *pass);
 
 #endif

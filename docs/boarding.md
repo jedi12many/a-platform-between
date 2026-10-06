@@ -27,20 +27,30 @@ What a Departure hands back when it ends:
 | Debt change | signed: paid down, or added (a failed Departure, a death) |
 | Items gained | |
 | Items lost | taken, used up, or given away in the story |
-| Echoes set | Echo id and new state |
-| Echoes cleared | by a Rewind |
+| Echoes set | Echo id, new state, and its state at boarding |
+
+A Rewind's receipt looks like any other: the Waystation knows the ticket was a Rewind, and
+when it lands, the Echoes that Departure plants are cleared from the character before the
+receipt's are set (so a choice the replay never made goes back to its canon default).
+
+A receipt is **net**: an item given and taken back in the same trip appears in neither
+list, so the lists never overlap.
 
 ## Applying a receipt
 
-Receipts are applied to the character **as they are now**, not as they boarded:
+Receipts are applied to the character **as they are now**, not as they boarded. Lost
+items go before gained ones, so they make room in the pack. `apb_receipt_apply` in the
+rules core does this, and `tools/passport/receipt.py` is its reference, checked against it
+by `make test-receipts`.
 
 | Field | Rule |
 |---|---|
 | XP | Added. Level-ups happen now, and their stat and skill points are spent at the Waystation. |
 | Debt | Added, kept within 0..65535. |
+| On a Rewind | First the Departure's own Echoes are cleared; XP and Debt paid down are halved; the 500 Debt fee is added. |
 | Items gained | Into the pack; if it's full, the Waystation's lost-and-found keeps them. |
-| Items lost | Removed if still carried; if already gone (sold, traded), nothing happens. |
-| Echoes | Set to the receipt's state. If the Echo was changed elsewhere since boarding, the receipt still wins and the character is told the timeline shifted. |
+| Items lost | Removed if still carried (the pack first, then what's equipped); if already gone (sold, traded), nothing happens. |
+| Echoes | Set to the receipt's state. If the Echo was changed elsewhere since boarding (it's now neither its state at boarding nor the receipt's), the receipt still wins and the character is told the timeline shifted. A full Passport pushes its oldest Echo to the Legend. |
 
 Nothing else changes in a Departure. Stat and skill points are spent only at the
 Waystation, and name, race and class only change in the character creator, so they can
@@ -60,19 +70,48 @@ that true live on the server, never in a client: anyone can read a C64 disk, and
 player holds is a key a player can share.
 
 1. **Board at the Waystation website.** Pick the character and the Departure; the server
-   issues a **Boarding Pass**: a short code (about 16-20 characters) holding the
-   character, the Departure, a one-time ticket number and a hash of the character as
-   boarded, signed with a key only the server has.
+   issues a **Boarding Pass**: one line of 18 symbols holding the Departure, a one-time
+   ticket number, a check of the character as boarded, and the dice seed for the trip.
 2. **Give the client your Passport and the Boarding Pass.** On a C64 you type both (from
-   your phone screen); a modern client fetches them when you sign in.
+   your phone screen); a modern client fetches them when you sign in. The client checks
+   the pass is for this Departure and this character as they are now; a pass from before
+   their last trip is refused, and the website issues a new one.
 3. **The receipt carries the ticket number.** The server accepts it only for the character
    the ticket was issued to, only once, and only within that Departure's possible rewards.
+
+The server's secret is the ticket itself: a random 32-bit number it draws and remembers,
+with the character and Departure it was issued for. A forged or borrowed receipt would
+have to guess a live ticket issued to that very character. That protects receipts the way
+a signature would, with nothing secret in the client and a pass short enough to type.
+
+### Boarding Pass format
+
+Version 1. The Passport alphabet and line check ([passport-spec.md](passport-spec.md)),
+one line: 17 data symbols and a check symbol.
+
+| Field | Bits | Notes |
+|---|---|---|
+| version | 4 | 1 |
+| Departure | 16 | the image's id |
+| ticket | 32 | random, drawn by the server |
+| character check | 16 | the Passport's own CRC-16 (`apb_passport_check`): any change to the character changes it |
+| seed | 16 | the dice for this trip, so the server can replay an online trip and a player can't re-roll by boarding again |
+| Rewind | 1 | 1: a replay of a Departure the character has played ([seasons.md](seasons.md)); the train forgets that Departure's Echoes before play |
+
+`apb_pass_encode` / `apb_pass_decode` in the rules core; `tools/passport/boarding.py` is
+the reference and issues passes for testing until the website exists. A player can travel
+without a pass (the desk warns that nothing earned can be stamped); tests use that too.
 
 ### Reward manifests
 
 The compiler writes, for each Departure, the most it can ever give: the XP awarded on any
-route, the items it can give, the Echo states it can set, the most Debt it can pay down.
-The server refuses a receipt that claims more.
+route, the items it can give, the Echo states it can set, the most Debt it can pay down
+or add, and the values it can set Debt to (`qsc.py build FILE.qs --manifest FILE.json`,
+`tools/qsc/manifest.py`). The server refuses a receipt that claims more.
+
+The bound is exact because each `~ xp`, `~ give` and `~ debt` pays at most once per trip
+(the VM keeps track), so the most a Departure can give is what its commands add up to.
+`make test-vm` checks every playthrough's receipt against its manifest.
 
 ### What's protected
 
@@ -95,6 +134,37 @@ receipts.
 | Modern client | Sent to the Waystation as soon as the Departure ends, with the choices and seed that produced it, so the server can replay and verify it. |
 | Retro | A **Travel Stamp**: a short password holding the ticket number and the receipt (about 25-35 characters for a typical Departure), with a check code against typos. Enter it at the Waystation website. |
 | Tabletop | The Conductor's receipt, entered at the Waystation; Boarding Passes are issued for tabletop sessions too. |
+
+### Travel Stamp format
+
+Version 1. A receipt in the Passport alphabet, in lines of 19 symbols plus a check symbol
+(the last line may be shorter), ending in a CRC-16 like a Passport. *The Fare*'s is 26
+symbols; the longest possible is 84.
+
+| Field | Bits | Notes |
+|---|---|---|
+| version | 4 | 1 |
+| Departure | 16 | |
+| ticket | 32 | from the Boarding Pass |
+| outcome | 1 | 0 complete, 1 failed |
+| XP | 16 | |
+| Debt | 1 + 16 | 1: added, 0: paid; then the amount |
+| items gained | 4 + 10 each | a count, then item ids |
+| items lost | 4 + 10 each | |
+| Echoes | 4 + 14 each | a count, then id (10), state (2), state at boarding (2) |
+| padding | to a byte | zero |
+| CRC-16 | 16 | CCITT-FALSE over the bytes so far, as in the Passport |
+
+`apb_stamp_encode` in the rules core (clients only ever write stamps);
+`tools/passport/stamp.py` decodes them for the website and names the line of a typo.
+
+### Landing a stamp
+
+`tools/waystation/station.py` is a prototype of what the website does with one: find its
+ticket in the ledger (refused if never issued, issued to another character, or already
+used), check it against the Departure's reward manifest and the character as they boarded,
+then apply it to the character as they are now. `make test-term` runs the whole round trip
+through the terminal.
 
 ## Engine notes
 

@@ -1,0 +1,25 @@
+* Your Passport, please: one line at a time, then a blank line.
+* Line 1:
+< 4PB794AR0A0105AM7HDT
+* Line 2:
+< 8V4000000000K60M2A4A
+* Line 3:
+< 50200810HJB
+* Line 4:
+< 
+Kestrel, Salvaged Warden, level 1. Debt 0.
+  1) Board
+  2) Start over
+> 1
+* Your Boarding Pass, please, or a blank line to travel without one:
+< 20W5QD0ECKC26800EW
+Hi Kestrel.
+  1) Stay
+> 1
+  1) Go
+  2) Stay
+> 1
+[check Tech: 67+22=89 vs 120: fail]
+[receipt: departure 901, complete, xp 0, debt paid 0 added 0, ticket 3141592653, gained, lost, echoes]
+[stamp: 20W5QD0ECK800000000Y01RSA4]
+[level 1, xp 0, debt 0]

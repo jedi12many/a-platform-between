@@ -262,6 +262,23 @@ E1.6 and E1.7.
 Out of scope for E1: combat (E3), saves and Passport hand-off (E2), pictures, the C64
 screen (E4).
 
+### E2 in detail
+
+**Goal:** a Departure starts from a Boarding Pass and ends in a receipt that lands on the
+character, on any machine. *The Fare*'s receipt is applied to a Passport and carried into
+a test Departure; two receipts from overlapping Departures both land.
+
+| Step | What | Done when |
+|---|---|---|
+| **E2.1 Applying receipts** (`core/`) | The receipt moves into the rules core; `apb_receipt_apply` follows [boarding.md](boarding.md). Receipts are net, and record each Echo's state at boarding so a timeline shift can be told. A Python reference (`tools/passport/receipt.py`) for the website. | C and Python agree on hand-worked and random receipts, on PC and 6502; overlapping receipts both land in either order. *Done: `make test-receipts`; it found 16-bit XP overflow in `apb_gain_xp`.* |
+| **E2.2 Reward manifests** (`tools/qsc/`) | The compiler writes the most a Departure can give: XP, items, Echo states, Debt either way. Each reward command pays once per trip (the VM keeps track), so the bound is real. | Every playthrough's receipt fits its manifest; the manifest for *The Fare* is checked by hand. *Done: `qsc.py build --manifest`; a loop test proves rewards pay once on PC and 6502; receipts that claim too much are refused.* |
+| **E2.3 Boarding Pass** | Format: character check, Departure, ticket number, dice seed. A Python issuer (the server side); the desk takes the pass and checks it matches the Passport and the Departure. | A pass for another character or Departure is refused with a plain message. *Done: 18 symbols; the ticket is a random number the server remembers, in place of a signature; the terminal boards with one.* |
+| **E2.4 Travel Stamp** | Format: ticket number plus the receipt, with check symbols, typed at the website. Encoder in C, decoder in Python. | Every playthrough's receipt survives the round trip; typos are caught by line. *Done: The Fare's stamp is 26 symbols; every stamped playthrough and 400 random receipts round-trip, on PC and 6502.* |
+| **E2.5 The round trip** | Terminal: board with Passport and pass, play, print the stamp. `tools/passport` applies a stamp to a Passport, as the website will. | *The Fare*'s stamp lands on a Passport that then boards a test Departure. *Done: `tools/waystation/station.py` issues passes into a ticket ledger and lands stamps; reused, forged and never-issued stamps are refused, and two overlapping trips both land.* |
+| **E2.6 Saves** | Mid-Departure saves per [vm-spec.md](vm-spec.md), through `hal_save`/`hal_load`. | A playthrough saved and resumed at every menu gives the same transcript. *Done: about 100 bytes for The Fare; 38 save points resume exactly (3 on the 6502); 150 damaged saves are refused or play on, under the sanitizers; `s` saves in the terminal, `--resume` picks up.* |
+| **E2.7 Rewind** | Replaying a Departure: reduced rewards, the Rewind fee, Echoes it planted replaced. | A Rewind's receipt follows [seasons.md](seasons.md). *Done: the pass's last bit marks a Rewind (the Waystation sets it for a Departure already played); the train forgets that Departure's Echoes; landing halves XP and Debt paid and charges 500 Debt, the same in C and Python.* |
+| **E2.8 Receipts that teach** | A receipt can add a tagged skill, for the Arrivals ([lines.md](lines.md)). Needs a Passport-compatible way to carry it. | A test Arrival grants a tag that lands on the Passport. *Deferred: depends on whether the Arrivals take over the extra tag from the character creator ([lines.md](lines.md)), still a proposal.* |
+
 ### Departure 00: The Fare
 
 A short prologue, about 20–30 minutes, built alongside the engine as its test content:
@@ -342,6 +359,10 @@ rewards, possibly becoming official.
   1.3 KB. Plan for E4: bank out BASIC ROM for 8 KB more RAM, size the depot buffer to the
   image, leave stdio and the Passport encoder out of the game itself, and look for code
   size savings in the VM.
+  *E2 adds about 2 KB to `passport.c`:* Boarding Pass decoding and Travel Stamp encoding,
+  which a client needs, beside the Passport and pass encoders, which only tests and the
+  website need. cc65 links whole files, so E4 should split them (`apb_receipt_apply` is
+  already kept out of clients, in its own file).
 
 - **cc65 optimizer bugs.** Already hit one. Mitigation: every test runs on sim65, so we
   find them.

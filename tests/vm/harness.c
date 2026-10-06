@@ -5,6 +5,12 @@
  *
  *   harness DIR SEED SCRIPT       e.g. harness build/vm/tiny 1985 2,1
  *
+ * SEED '-' asks for a Boarding Pass at the desk (after the Passport, or for the built-in
+ * traveler), which then seeds the dice; travelling without one uses seed 1.
+ *
+ * A pick of 'S' saves the trip (DIR/SAVE) and quits when the menu comes back, the way a
+ * player would; SEED 'resume' picks the saved trip up again instead of boarding.
+ *
  * SCRIPT is a comma-separated list. A number picks from a menu (1-based); a token
  * starting with ':' is a typed line (':' alone is a blank line). If the script starts
  * with a typed line, the traveler boards at the boarding desk; otherwise the built-in
@@ -92,15 +98,25 @@ static void next_token(void)
     if (*picks == ',') ++picks;
 }
 
+static uint8_t quitting;
+
 uint8_t hal_menu(const char *const *labels, uint8_t count)
 {
     uint8_t i;
 
+    if (quitting) {
+        printf("[quit]\n");
+        exit(0);
+    }
     for (i = 0; i < count; ++i) {
         printf("  %u) %s\n", i + 1, labels[i]);
     }
     next_token();
     printf("> %s\n", tok);
+    if (tok[0] == 'S') {
+        quitting = 1;
+        return APB_MENU_SAVE;
+    }
     return (uint8_t)(atoi(tok) - 1);
 }
 
@@ -139,8 +155,17 @@ uint8_t hal_load(const char *name, uint8_t *dst, uint16_t max, uint16_t *len)
 
 uint8_t hal_save(const char *name, const uint8_t *src, uint16_t len)
 {
-    (void)name; (void)src; (void)len;
-    return HAL_IO_ERROR;
+    FILE *f;
+    uint8_t ok;
+
+    sprintf(path, "%s/%s", dir, name);
+    f = fopen(path, "wb");
+    if (!f) {
+        return HAL_IO_ERROR;
+    }
+    ok = (uint8_t)(fwrite(src, 1, len, f) == len);
+    fclose(f);
+    return ok ? HAL_OK : HAL_IO_ERROR;
 }
 
 void hal_error(const char *msg)
@@ -158,6 +183,8 @@ void apb_vm_trace(uint8_t car_no, uint16_t pc)
 
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static apb_character traveler;
+static apb_pass pass;
+static char stamp[APB_STAMP_BUF];
 
 static void print_receipt(const apb_receipt *r)
 {
@@ -166,6 +193,9 @@ static void print_receipt(const apb_receipt *r)
     printf("[receipt: departure %u, %s, xp %u, debt paid %u added %u",
            r->departure, r->outcome == APB_VM_COMPLETE ? "complete" : "failed",
            r->xp, r->debt_paid, r->debt_added);
+    if (r->ticket) {
+        printf(", ticket %lu", (unsigned long)r->ticket);
+    }
     printf(", gained");
     for (i = 0; i < r->gained_count; ++i) printf(" %u", r->gained[i]);
     printf(", lost");
@@ -173,6 +203,10 @@ static void print_receipt(const apb_receipt *r)
     printf(", echoes");
     for (i = 0; i < r->echo_count; ++i) printf(" %u=%u", r->echoes[i].id, r->echoes[i].state);
     printf("]\n");
+    if (r->ticket) {
+        apb_stamp_encode(r, stamp);
+        printf("[stamp: %s]\n", stamp);
+    }
 }
 
 int main(int argc, char **argv)
@@ -197,7 +231,19 @@ int main(int argc, char **argv)
     if (picks[0] == ':') {
         apb_desk_run(&traveler);
     }
-    if (apb_vm_board(&traveler, (uint16_t)atoi(argv[2])) != 0) {
+    if (strcmp(argv[2], "resume") == 0) {
+        result = apb_vm_resume();
+    } else if (strcmp(argv[2], "-") == 0) {
+        if (apb_vm_open() != 0) {
+            printf("[refused: %s]\n", apb_vm_error());
+            return 0;
+        }
+        result = apb_desk_pass(&traveler, apb_vm_departure(), &pass)
+                 ? apb_vm_board_pass(&traveler, &pass) : apb_vm_board(&traveler, 1);
+    } else {
+        result = apb_vm_board(&traveler, (uint16_t)atoi(argv[2]));
+    }
+    if (result != 0) {
         printf("[refused: %s]\n", apb_vm_error());
         return 0;
     }

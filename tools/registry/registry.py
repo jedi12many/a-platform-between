@@ -165,6 +165,7 @@ def load(root=ROOT):
             "id": eid, "name": name, "line": n,
             "kind": _one_of(p, n, f[2], ECHO_KINDS, "kind"),
             "departure": f[3],
+            "departure_id": _int(p, n, f[3], 0, 65535, "departure"),
             "states": clean,                  # state number = index + 1
             "default": defaults[0],
         }

@@ -18,6 +18,9 @@ Kestrel, Salvaged Warden, level 1. Debt
 > 1
 
 
+Your Boarding Pass, please, or a blank
+line to travel without one:
+> 20000000f-GC2683W26
 ~ The Static ~
 
 Static.
@@ -109,7 +112,7 @@ Kestrel  Lvl 1  HP 27  Debt 0
 2. Walk back to the platform edge
 3. Go into the Buffer Stop
 > 9
-Pick a number from 1 to 3.
+Pick a number from 1 to 3, or s to save.
 > 2
 
 The platform ends where the glass roof
@@ -257,5 +260,9 @@ Your receipt:
   5 XP
   50000 Debt added
 
-Take it to the Waystation to have it
-stamped into your Passport.
+Your Travel Stamp. Type it in at the
+Waystation to have this trip stamped
+into your Passport:
+
+  20000000FG800BRD800N
+  01R8Y1

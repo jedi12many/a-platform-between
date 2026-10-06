@@ -18,33 +18,38 @@
 
 #define APB_VM_DEPOT_MAX   4096
 #define APB_VM_CAR_MAX     16384
-#define APB_VM_RECEIPT_MAX 8        /* entries per list in a receipt */
+#define APB_VM_REWARD_SITES 32      /* XP, GIVE and DEBT instructions in one Departure */
+#define APB_VM_SAVE_MAX    768      /* the largest save file, in bytes */
 
-/* What apb_vm_run returns. */
+/* What apb_vm_run returns. The first two match the receipt's APB_OUTCOME_*. */
 enum {
-    APB_VM_COMPLETE = 0,    /* ~ end complete                        */
-    APB_VM_FAILED,          /* ~ end failed                          */
-    APB_VM_ERROR            /* the image is bad: see apb_vm_error()  */
+    APB_VM_COMPLETE = APB_OUTCOME_COMPLETE, /* ~ end complete                        */
+    APB_VM_FAILED = APB_OUTCOME_FAILED,     /* ~ end failed                          */
+    APB_VM_ERROR                            /* the image is bad: see apb_vm_error()  */
 };
 
-/* What a Departure hands back (docs/boarding.md). */
-typedef struct {
-    uint16_t departure;
-    uint8_t  outcome;                       /* APB_VM_COMPLETE or APB_VM_FAILED */
-    uint16_t xp;                            /* awarded, after the level band    */
-    uint16_t debt_paid;                     /* one of these two is 0            */
-    uint16_t debt_added;
-    uint8_t  gained_count;
-    uint16_t gained[APB_VM_RECEIPT_MAX];    /* item ids                         */
-    uint8_t  lost_count;
-    uint16_t lost[APB_VM_RECEIPT_MAX];
-    uint8_t  echo_count;
-    apb_echo echoes[APB_VM_RECEIPT_MAX];    /* Echoes set, latest state         */
-} apb_receipt;
+/* The receipt (apb_receipt, in apb.h) is what a Departure hands back. */
 
-/* Load and check the image, and board `snapshot` (copied). Returns 0, or
- * APB_VM_ERROR with apb_vm_error() set. `seed` seeds the dice. */
+/* Load and check the image's depot, so apb_vm_departure() can be asked before
+ * boarding (to check a Boarding Pass). Optional: boarding opens it if needed.
+ * Returns 0, or APB_VM_ERROR with apb_vm_error() set. */
+uint8_t  apb_vm_open(void);
+uint16_t apb_vm_departure(void);
+
+/* Board `snapshot` (copied) with a Boarding Pass: it must be for this Departure and
+ * this character as they are (apb_passport_check). The pass seeds the dice, and its
+ * ticket goes into the receipt. On a Rewind pass, the Echoes this Departure plants are
+ * forgotten before play. Returns 0, or APB_VM_ERROR with apb_vm_error() set. */
+uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass);
+
+/* Board without a pass (tests, and play that won't be stamped): `seed` seeds the
+ * dice and the receipt's ticket is 0. */
 uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed);
+
+/* Pick up a saved trip instead of boarding: loads "SAVE" through the HAL, checks it
+ * belongs to this image and isn't damaged, and shows the menu it was saved at when
+ * apb_vm_run is called. A save is made when hal_menu returns APB_MENU_SAVE. */
+uint8_t apb_vm_resume(void);
 
 /* Play until the Departure ends or the image turns out to be bad. */
 uint8_t apb_vm_run(void);

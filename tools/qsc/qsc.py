@@ -3,9 +3,11 @@
     python3 tools/qsc/qsc.py check FILE.qs                 report errors and warnings
     python3 tools/qsc/qsc.py build FILE.qs -o OUT.apd      compile to a Departure image
     python3 tools/qsc/qsc.py build FILE.qs --split DIR     ... as DEPOT, CAR00, ... files
+    python3 tools/qsc/qsc.py build FILE.qs --manifest M.json   ... and its reward manifest
     python3 tools/qsc/qsc.py dump FILE.apd                 verify and disassemble an image
 """
 
+import json
 import os
 import sys
 
@@ -16,6 +18,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "registry"))
 import registry  # noqa: E402
 from codegen import CompileError, compile_departure  # noqa: E402
 from image import BadImage, disassemble, verify  # noqa: E402
+from manifest import ManifestError, manifest  # noqa: E402
 from parse import parse  # noqa: E402
 
 
@@ -52,15 +55,20 @@ def check(path):
     return 0
 
 
-def build(path, out=None, split=None):
+def build(path, out=None, split=None, manifest_out=None):
     dep, reg, _ = load(path)
     if dep is None:
         return 1
     try:
         image = compile_departure(dep, reg)
-    except CompileError as e:
+        rewards = manifest(dep, reg)
+    except (CompileError, ManifestError) as e:
         print(f"{os.path.basename(path)}:{e.line}: error: {e}", file=sys.stderr)
         return 1
+    if manifest_out:
+        with open(manifest_out, "w") as f:
+            json.dump(rewards, f, indent=1)
+            f.write("\n")
     data = image.apd()
     verify(data, reg)       # never write an image the VM would refuse
     if out:
@@ -95,17 +103,19 @@ def main(argv):
     if len(args) == 2 and args[0] == "dump":
         return dump(args[1])
     if len(args) >= 2 and args[0] == "build":
-        out = split = None
+        out = split = manifest_out = None
         rest = args[2:]
         while rest:
             if rest[0] == "-o" and len(rest) > 1:
                 out, rest = rest[1], rest[2:]
             elif rest[0] == "--split" and len(rest) > 1:
                 split, rest = rest[1], rest[2:]
+            elif rest[0] == "--manifest" and len(rest) > 1:
+                manifest_out, rest = rest[1], rest[2:]
             else:
                 break
         if not rest:
-            return build(args[1], out, split)
+            return build(args[1], out, split, manifest_out)
     print(__doc__, file=sys.stderr)
     return 2
 

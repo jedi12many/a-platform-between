@@ -1,0 +1,38 @@
+* Your Passport, please: one line at a time, then a blank line.
+* Line 1:
+< 4PB794AR0A0105AM7HDT
+* Line 2:
+< 8V4000000000K60M2A4A
+* Line 3:
+< 50200810HJB
+* Line 4:
+< 
+Kestrel, Salvaged Warden, level 1. Debt 0.
+  1) Board
+  2) Start over
+> 1
+* Your Boarding Pass, please, or a blank line to travel without one:
+< 2007ZZZZZZW26802MS
+=== One
+[picture 0 hall]
++ This line starts with a plus and is plain text.
+First line of a paragraph, second line of the same paragraph.
+A new paragraph for Kestrel the Salvaged Warden, level 1, owing 0.
+FIXED LINE ONE
+FIXED  LINE TWO
+Back to prose.
+Armed, and alone.
+[check Tech: 27+22=49 vs 145: fail]
+Locked.
+  1) Once only
+  2) Leave
+> 1
+Gone after this.
+  1) Leave
+> 1
+=== Two
+Inside.
+[pause]
+[receipt: departure 7, complete, xp 10, debt paid 0 added 0, ticket 4294967295, gained, lost, echoes 4=3]
+[stamp: 2007ZZZZZZR00M00000K40K0SC4W]
+[level 1, xp 10, debt 0]

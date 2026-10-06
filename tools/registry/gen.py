@@ -143,6 +143,12 @@ def source(reg):
     out.append("    " + ", ".join(str(echoes[i]["default"]) if i in echoes else "0"
                                   for i in range(top + 1)))
     out.append("};")
+    out.append("")
+    out.append("/* The Departure that plants each Echo, indexed by id: a Rewind of it replaces them. */")
+    out.append("const uint16_t apb_echo_departures[APB_ECHO_COUNT] = {")
+    out.append("    " + ", ".join(str(echoes[i]["departure_id"]) if i in echoes else "0xFFFF"
+                                  for i in range(top + 1)))
+    out.append("};")
     return "\n".join(out) + "\n"
 
 

@@ -176,12 +176,15 @@ uint8_t hal_menu(const char *const *labels, uint8_t count)
     for (;;) {
         printf("> ");
         read_line(buf, sizeof(buf));
+        if (buf[0] == 's' || buf[0] == 'S') {
+            return APB_MENU_SAVE;
+        }
         pick = atoi(buf);
         if (pick >= 1 && pick <= count) {
             putchar('\n');
             return (uint8_t)(pick - 1);
         }
-        printf("Pick a number from 1 to %u.\n", count);
+        printf("Pick a number from 1 to %u, or s to save.\n", count);
     }
 }
 
@@ -260,14 +263,24 @@ static uint8_t load_from_apd(const char *name, uint8_t *dst, uint16_t max, uint1
     return HAL_OK;
 }
 
-uint8_t hal_load(const char *name, uint8_t *dst, uint16_t max, uint16_t *len)
+/* A save sits beside the Departure: GAME.apd.save, or SAVE in a directory of files. */
+static const char *file_path(const char *name)
 {
     static char path[512];
+
+    if (is_apd) snprintf(path, sizeof(path), "%s.save", source);
+    else snprintf(path, sizeof(path), "%s/%s", source, name);
+    return path;
+}
+
+uint8_t hal_load(const char *name, uint8_t *dst, uint16_t max, uint16_t *len)
+{
+    const char *path;
     FILE *f;
     size_t n;
 
-    if (is_apd) return load_from_apd(name, dst, max, len);
-    snprintf(path, sizeof(path), "%s/%s", source, name);
+    if (is_apd && strcmp(name, "SAVE") != 0) return load_from_apd(name, dst, max, len);
+    path = file_path(name);
     f = fopen(path, "rb");
     if (!f) return HAL_NOT_FOUND;
     n = fread(dst, 1, max, f);
@@ -282,11 +295,19 @@ uint8_t hal_load(const char *name, uint8_t *dst, uint16_t max, uint16_t *len)
 
 uint8_t hal_save(const char *name, const uint8_t *src, uint16_t len)
 {
-    (void)name; (void)src; (void)len;
-    return HAL_IO_ERROR;        /* saves arrive with E2 */
+    FILE *f;
+    size_t n;
+
+    f = fopen(file_path(name), "wb");
+    if (!f) return HAL_IO_ERROR;
+    n = fwrite(src, 1, len, f);
+    fclose(f);
+    return n == len ? HAL_OK : HAL_IO_ERROR;
 }
 
 /* --------------------------------------------------------------- the end */
+
+static char stamp[APB_STAMP_BUF];
 
 static void show_receipt(const apb_receipt *r)
 {
@@ -307,10 +328,20 @@ static void show_receipt(const apb_receipt *r)
     if (r->echo_count) printf("  %u Echo%s will follow you.\n", r->echo_count,
                               r->echo_count == 1 ? "" : "es");
     putchar('\n');
-    wrapped("Take it to the Waystation to have it stamped into your Passport.", "");
+    if (r->ticket && apb_stamp_encode(r, stamp) == APB_PP_OK) {
+        wrapped("Your Travel Stamp. Type it in at the Waystation to have this trip "
+                "stamped into your Passport:", "");
+        putchar('\n');
+        for (i = 0; stamp[i]; i = (uint8_t)(i + APB_PASSWORD_LINE)) {
+            printf("  %.*s\n", APB_PASSWORD_LINE, stamp + i);
+        }
+    } else {
+        wrapped("You travelled without a Boarding Pass, so this trip can't be stamped.", "");
+    }
 }
 
 static apb_character traveler;
+static apb_pass pass;
 
 int main(int argc, char **argv)
 {
@@ -318,6 +349,7 @@ int main(int argc, char **argv)
     unsigned seed = (unsigned)time(NULL);
     const char *choices = NULL;
     size_t n;
+    int resume = 0;
 
     for (i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--width") == 0 && i + 1 < argc) {
@@ -325,6 +357,8 @@ int main(int argc, char **argv)
             if (width < 20) width = 20;
         } else if (strcmp(argv[i], "--seed") == 0 && i + 1 < argc) {
             seed = (unsigned)atoi(argv[++i]);
+        } else if (strcmp(argv[i], "--resume") == 0) {
+            resume = 1;
         } else if (strcmp(argv[i], "--choices") == 0 && i + 1 < argc) {
             choices = argv[++i];
         } else if (argv[i][0] == '-') {
@@ -334,8 +368,10 @@ int main(int argc, char **argv)
         }
     }
     if (!source || i < argc) {
-        fprintf(stderr, "usage: apb [--width N] [--seed N] [--choices FILE] DEPARTURE\n"
-                        "  DEPARTURE is an .apd image or a directory of DEPOT/CARnn files\n");
+        fprintf(stderr, "usage: apb [--width N] [--seed N] [--choices FILE] [--resume] DEPARTURE\n"
+                        "  DEPARTURE is an .apd image or a directory of DEPOT/CARnn files\n"
+                        "  --seed sets the dice when travelling without a Boarding Pass\n"
+                        "  --resume picks up the trip saved with s at a menu\n");
         return 2;
     }
     n = strlen(source);
@@ -352,9 +388,28 @@ int main(int argc, char **argv)
 
     hal_init();
     printf("A PLATFORM BETWEEN\n\n");
+    if (resume) {
+        if (apb_vm_resume() != 0) {
+            printf("There's no trip to pick up: %s\n", apb_vm_error());
+            return 1;
+        }
+        printf("Picking up where you left off.\n\n");
+        if (apb_vm_run() == APB_VM_ERROR) {
+            return 1;
+        }
+        show_receipt(apb_vm_receipt());
+        hal_shutdown();
+        return 0;
+    }
     apb_desk_run(&traveler);
+    if (apb_vm_open() != 0) {
+        printf("This Departure can't be boarded: %s\n", apb_vm_error());
+        return 1;
+    }
     putchar('\n');
-    if (apb_vm_board(&traveler, (uint16_t)seed) != 0) {
+    if ((apb_desk_pass(&traveler, apb_vm_departure(), &pass)
+         ? apb_vm_board_pass(&traveler, &pass)
+         : apb_vm_board(&traveler, (uint16_t)seed)) != 0) {
         printf("This Departure can't be boarded: %s\n", apb_vm_error());
         return 1;
     }

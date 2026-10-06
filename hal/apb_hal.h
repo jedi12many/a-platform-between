@@ -63,7 +63,10 @@ void hal_status(const apb_character *ch);
 /* ------------------------------------------------------------ input */
 
 /* Show `count` (1..9) menu labels, numbered from 1, and return the index
- * (0-based) the player picked. Labels are ASCII, at most 37 characters. */
+ * (0-based) the player picked. Labels are ASCII, at most 37 characters.
+ * Return APB_MENU_SAVE instead to save the trip: the VM saves it ("SAVE", through
+ * hal_save), says so with hal_prompt, and shows the menu again. */
+#define APB_MENU_SAVE 0xFE
 uint8_t hal_menu(const char *const *labels, uint8_t count);
 
 /* Ask the player to type a line: up to `max` characters into `out`, NUL-terminated,

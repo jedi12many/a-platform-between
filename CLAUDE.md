@@ -21,11 +21,17 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   Together, the playthroughs of *The Fare* must run every instruction in it: a passage
   no case reaches fails the test, so a new route needs a new case. `@name` in a case
   boards a traveler from `tests/vm/travelers.txt`; every check is re-rolled from the
-  rules and that traveler's Passport.
+  rules and that traveler's Passport. Every receipt must fit its reward manifest. Each
+  playthrough is also saved at every menu and resumed, and must come out the same.
 - `make test-term`: the terminal front end's recorded playthrough must match
-  `tests/term/fare-edge.expected`, with nothing over 40 columns.
+  `tests/term/fare-edge.expected`, with nothing over 40 columns; and the round trip
+  (`tests/term/check_roundtrip.py`) must work: passes issued, trips played in the terminal,
+  Travel Stamps landed on the Passport.
+- `make test-receipts`: applying receipts (`core/src/receipt.c`) must agree with the
+  Python reference (`tools/passport/receipt.py`) on hand-worked and random cases,
+  natively and on sim65.
 
-Run all nine before pushing; CI runs them too. `make play` plays The Fare in a terminal.
+Run all ten before pushing; CI runs them too. `make play` plays The Fare in a terminal.
 
 ## Rules-core house rules
 
@@ -81,4 +87,8 @@ the image: every operand is checked when it's used, not only at load.
 the terminal (`build/apb`), which plays an `.apd` or a directory of split files.
 Characters are never made in a client; they're made at the Waystation website
 (`docs/waystation-web.md`). For tests,
-`python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM]` makes one.
+`python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM] [ECHO=STATE...]`
+makes one,
+and `python3 tools/passport/boarding.py issue "PASSPORT" DEPARTURE TICKET SEED` issues it a
+Boarding Pass. `tools/waystation/station.py` is a prototype of the website's side: it issues
+passes into a ticket ledger and lands Travel Stamps against it and the reward manifest.
