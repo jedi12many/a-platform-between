@@ -287,7 +287,7 @@ a test Departure; two receipts from overlapping Departures both land.
 | Step | What | Done when |
 |---|---|---|
 | **E3.1 Combat rules** (`core/`) | Dodge, defense TNs, damage with margin, stat bonus, crits, glancing hits and Soak; area attacks; terrain; fleeing. A Python reference written from combat.md. | C and Python agree on hand-worked and random attacks, on PC and 6502; the worked fight in combat.md is a test. *Done: `make test-combat`, 9,000 random attacks and 300 sheets. It caught the transcript dice check counting one total too many as a cost.* |
-| **E3.2 The battle** (`core/`) | Maps, movement and sight, the order of play, foe behaviors, rounds, the ways a fight ends. Deterministic, driven by a stream of actions. | Scripted battles give identical logs on PC and 6502. *Done: seven reviewed scenarios, every roll re-checked; 300 random battles under the sanitizers. Building it settled three rules in combat.md: a blast can't catch its thrower, shooters move only as far as they must, cover protects whoever stands in it.* |
+| **E3.2 The battle** (`core/`) | Maps, movement and sight, the order of play, foe behaviors, rounds, the ways a fight ends. Deterministic, driven by a stream of actions. | Scripted battles give identical logs on PC and 6502. *Done (6.3 KB of 6502 code): seven reviewed scenarios, every roll re-checked; 300 random battles under the sanitizers. Building it settled three rules in combat.md: a blast can't catch its thrower, shooters move only as far as they must, cover protects whoever stands in it.* |
 | **E3.3 Quest Script** | `foe`, `map` and `fight` with `won:`/`lost:`/`fled:` branches; the image format; the verifier. A warning for a fight with no way around. | The compiler's tests cover fights; damaged fight data is refused. |
 | **E3.4 VM and HAL** | The VM hands a fight to the battle engine; the HAL draws the map and asks for actions. Health carries over; `~ heal`. | A test image's fight plays through the harness on PC and 6502. |
 | **E3.5 Terminal battle map** | The map at 40 columns, the action menu, the round's results. | A fight is playable by hand. |
@@ -374,10 +374,11 @@ rewards, possibly becoming official.
   1.3 KB. Plan for E4: bank out BASIC ROM for 8 KB more RAM, size the depot buffer to the
   image, leave stdio and the Passport encoder out of the game itself, and look for code
   size savings in the VM.
-  *E3.2's battle engine is about 10.4 KB of 6502 code,* as much as the whole VM. Before
-  the VM can carry it (E3.4): rewrite it around one static battle (cc65 makes much
-  smaller code for static data than for access through struct pointers), and plan for it
-  to load from disk only when a fight starts, a classic C64 overlay.
+  *E3.2's battle engine was 10.4 KB of 6502 code,* as much as the whole VM. Rewritten
+  around one static battle kept as a table of bytes (cc65 makes much smaller code for
+  static arrays than for structs reached through pointers), it is 6.3 KB, with identical
+  results. Still to do for the C64 (E4): load it from disk only when a fight starts, a
+  classic overlay.
   *E2 adds about 2 KB to `passport.c`:* Boarding Pass decoding and Travel Stamp encoding,
   which a client needs, beside the Passport and pass encoders, which only tests and the
   website need. cc65 links whole files, so E4 should split them (`apb_receipt_apply` is

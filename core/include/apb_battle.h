@@ -5,8 +5,7 @@
  * plays the same on every machine and in tests. The rules arithmetic is in apb.h
  * (apb_hit_tn, apb_damage, the tiles); this is the board, the turns and the foes.
  *
- * Same house rules as the rest of the core; a battle is one static struct of about
- * 450 bytes.
+ * Same house rules as the rest of the core; the battle's state is about 400 bytes.
  */
 #ifndef APB_BATTLE_H
 #define APB_BATTLE_H
@@ -30,6 +29,7 @@ enum {
 /* A fighter's state. */
 enum { APB_IN_FIGHT = 0, APB_DOWN, APB_GONE };
 
+/* Every field is a byte, and battle.c relies on it: don't add a wider one. */
 typedef struct {
     uint8_t side;
     uint8_t state;
@@ -99,45 +99,42 @@ enum {
 /* Who acts first: nobody, or one side gets a free round (an ambush, a sneak attack). */
 enum { APB_SURPRISE_NONE = 0, APB_SURPRISE_FOES, APB_SURPRISE_TRAVELERS };
 
-typedef struct {
-    uint8_t w, h;
-    uint8_t tile[APB_MAP_H_MAX][APB_MAP_W_MAX];
-    uint8_t count;
-    apb_fighter f[APB_FIGHTERS_MAX];
-    uint8_t order[APB_FIGHTERS_MAX];
-    uint8_t round;            /* 0: the surprise round                         */
-    uint8_t next;             /* index into order                              */
-    uint8_t begun;            /* the traveler at `next` has started their turn  */
-    uint8_t surprise;
-    uint8_t result;
-    apb_rng *rng;
-    void (*on_event)(const apb_event *ev);
-} apb_battle;
+/* There is one battle at a time, kept inside battle.c as plain arrays: cc65 makes far
+ * smaller code for those than for a struct reached through a pointer. */
 
 /* Start an empty battle on a w x h map of open ground. */
-void apb_battle_init(apb_battle *b, uint8_t w, uint8_t h, apb_rng *rng,
-                     void (*on_event)(const apb_event *ev));
+void    apb_battle_init(uint8_t w, uint8_t h, apb_rng *rng,
+                        void (*on_event)(const apb_event *ev));
+void    apb_battle_set_tile(uint8_t x, uint8_t y, uint8_t tile);
+uint8_t apb_battle_tile(uint8_t x, uint8_t y);
+uint8_t apb_battle_width(void);
+uint8_t apb_battle_height(void);
+
 /* Add a fighter; returns its index, or APB_NOBODY if the battle is full or the square
  * can't hold it. */
-uint8_t apb_battle_add(apb_battle *b, const apb_fighter *f);
+uint8_t apb_battle_add(const apb_fighter *f);
+uint8_t apb_battle_count(void);
+/* A copy of a fighter as they are now. */
+void    apb_battle_fighter(uint8_t who, apb_fighter *out);
 /* A traveler's fighter, from their character and the weapon they fight with. */
-void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon_item);
+void    apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon_item);
+
 /* Work out the order of play and begin. */
-void apb_battle_start(apb_battle *b, uint8_t surprise);
+void    apb_battle_start(uint8_t surprise);
+uint8_t apb_battle_round(void);
+uint8_t apb_battle_result(void);   /* APB_BATTLE_* */
 
 /* Whose turn it is: plays foes' turns (and skips anyone out of the fight) until it is a
  * traveler's, and returns that traveler, or APB_NOBODY when the fight is over. */
-uint8_t apb_battle_next(apb_battle *b);
+uint8_t apb_battle_next(void);
 /* Play the traveler's turn. Returns 1, or 0 if the action isn't allowed (out of reach,
  * no line of sight, a square it can't get to): nothing happens, and it's still their
  * turn. */
-uint8_t apb_battle_act(apb_battle *b, uint8_t who, const apb_action *a);
+uint8_t apb_battle_act(uint8_t who, const apb_action *a);
 
 /* Helpers the front ends use to offer only what's possible. */
-uint8_t apb_battle_can_reach(apb_battle *b, uint8_t who, uint8_t x, uint8_t y);
-uint8_t apb_battle_can_attack(apb_battle *b, uint8_t who, uint8_t target, uint8_t from_x,
-                              uint8_t from_y);
-int16_t apb_battle_tn(const apb_battle *b, uint8_t attacker, uint8_t target,
-                      uint8_t from_x, uint8_t from_y);
+uint8_t apb_battle_can_reach(uint8_t who, uint8_t x, uint8_t y);
+uint8_t apb_battle_can_attack(uint8_t who, uint8_t target, uint8_t from_x, uint8_t from_y);
+int16_t apb_battle_tn(uint8_t attacker, uint8_t target);
 
 #endif

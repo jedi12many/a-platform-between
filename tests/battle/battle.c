@@ -25,7 +25,6 @@
 #include "apb_battle.h"
 
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
-static apb_battle b;
 static apb_rng rng;
 static apb_character ch;
 static apb_fighter f;
@@ -86,8 +85,8 @@ static uint8_t find(char c, uint8_t n, uint8_t *x, uint8_t *y)
     uint8_t i;
     uint8_t j;
 
-    for (j = 0; j < b.h; ++j) {
-        for (i = 0; i < b.w; ++i) {
+    for (j = 0; j < apb_battle_height(); ++j) {
+        for (i = 0; i < apb_battle_width(); ++i) {
             if (rows[j][i] == c && n-- == 0) {
                 *x = i;
                 *y = j;
@@ -122,9 +121,9 @@ int main(int argc, char **argv)
         if (in_map) {
             if (strcmp(line, "end") == 0) {
                 in_map = 0;
-                apb_battle_init(&b, w, h, &rng, on_event);
-                for (h = 0; h < b.h; ++h) {
-                    for (i = 0; i < b.w; ++i) b.tile[h][i] = tile_of(rows[h][i]);
+                apb_battle_init(w, h, &rng, on_event);
+                for (h = 0; h < apb_battle_height(); ++h) {
+                    for (i = 0; i < apb_battle_width(); ++i) apb_battle_set_tile(i, h, tile_of(rows[h][i]));
                 }
             } else if (h < APB_MAP_H_MAX) {
                 for (i = 0; i < APB_MAP_W_MAX && line[i]; ++i) rows[h][i] = line[i];
@@ -156,8 +155,8 @@ int main(int argc, char **argv)
             if (v[1] >= 0) f.health = (uint8_t)v[1];
             find('@', travelers++, &f.x, &f.y);
             printf("%u: traveler at %u,%u, health %u, attack %u, TN to hit %d\n",
-                   b.count, f.x, f.y, f.health, f.attack, apb_hit_tn(f.dodge, f.armor, 0, 0));
-            if (apb_battle_add(&b, &f) == APB_NOBODY) printf("couldn't place it\n");
+                   apb_battle_count(), f.x, f.y, f.health, f.attack, apb_hit_tn(f.dodge, f.armor, 0, 0));
+            if (apb_battle_add(&f) == APB_NOBODY) printf("couldn't place it\n");
         } else if (strcmp(word, "foe") == 0) {
             if (sscanf(line, "%*s %c %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", &letter,
                        &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7], &v[8], &v[9],
@@ -174,25 +173,25 @@ int main(int argc, char **argv)
             f.power = (uint8_t)v[10]; f.dmg_type = (uint8_t)v[11]; f.area = (uint8_t)v[12];
             f.weak_type = (uint8_t)v[13]; f.behavior = (uint8_t)v[14]; f.coward = (uint8_t)v[15];
             find(letter, 0, &f.x, &f.y);
-            printf("%u: foe %c at %u,%u, health %u\n", b.count, letter, f.x, f.y, f.health);
-            if (apb_battle_add(&b, &f) == APB_NOBODY) printf("couldn't place it\n");
+            printf("%u: foe %c at %u,%u, health %u\n", apb_battle_count(), letter, f.x, f.y, f.health);
+            if (apb_battle_add(&f) == APB_NOBODY) printf("couldn't place it\n");
         } else if (strcmp(word, "act") == 0) {
             if (!started) {
-                apb_battle_start(&b, surprise);
+                apb_battle_start(surprise);
                 started = 1;
             }
-            who = apb_battle_next(&b);
+            who = apb_battle_next();
             if (who == APB_NOBODY) break;
             sscanf(line, "%*s %d %d %d %d", &v[0], &v[1], &v[2], &v[3]);
             act.move_x = (uint8_t)v[0];
             act.move_y = (uint8_t)v[1];
             act.kind = (uint8_t)v[2];
             act.target = (uint8_t)v[3];
-            if (!apb_battle_act(&b, who, &act)) printf("  (not allowed: %s)\n", line);
+            if (!apb_battle_act(who, &act)) printf("  (not allowed: %s)\n", line);
         }
     }
     fclose(in);
-    if (!started) apb_battle_start(&b, surprise);
-    if (apb_battle_next(&b) != APB_NOBODY) printf("out of actions\n");
+    if (!started) apb_battle_start(surprise);
+    if (apb_battle_next() != APB_NOBODY) printf("out of actions\n");
     return 0;
 }
