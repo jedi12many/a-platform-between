@@ -67,3 +67,10 @@ authors, not programmers: say what's wrong in plain words, and suggest the fix.
 plays it, and fills in a receipt (`docs/boarding.md`). Game text is always ASCII; file
 names and error messages are C strings in the platform's own character set. Never trust
 the image: every operand is checked when it's used, not only at load.
+
+## Clients
+
+`client/` holds client code shared by every front end, on the HAL: the boarding desk
+(`desk.c`), where a player types their Passport. Characters are never made in a client;
+they're made at the Waystation website (`docs/waystation-web.md`). For tests,
+`python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM]` makes one.

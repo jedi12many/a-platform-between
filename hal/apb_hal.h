@@ -66,10 +66,13 @@ void hal_status(const apb_character *ch);
  * (0-based) the player picked. Labels are ASCII, at most 37 characters. */
 uint8_t hal_menu(const char *const *labels, uint8_t count);
 
-/* Ask for a name: up to `max` characters into `out`, NUL-terminated. Used by the
- * character creator, which is portable C built on this and hal_menu(); it
- * normalizes the name to the name alphabet afterwards. */
-void hal_ask_name(char *out, uint8_t max);
+/* Ask the player to type a line: up to `max` characters into `out`, NUL-terminated,
+ * in the platform's own character set. Used by the boarding desk for Passport lines. */
+void hal_ask_line(char *out, uint8_t max);
+
+/* A message from the client itself (the boarding desk), not from a Departure. Unlike
+ * game text, `msg` is a C string in the platform's own character set. */
+void hal_prompt(const char *msg);
 
 /* ------------------------------------------------------------ files */
 

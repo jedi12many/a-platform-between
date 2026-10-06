@@ -1,0 +1,24 @@
+* Your Passport, please: one line at a time, then a blank line.
+* Line 1:
+< 4PB794AR0A0105AM7HDT
+* Line 2:
+< 8V4000000000K60M2A4
+* Line 3:
+< 50200810HJB
+* Line 4:
+< 
+* Line 2 should have 20 letters. Type it again:
+< 8v40-0000-0000-k60m-2a4a
+Kestrel, Salvaged Warden, level 1. Debt 0.
+  1) Board
+  2) Start over
+> 1
+Hi Kestrel.
+  1) Stay
+> 1
+  1) Go
+  2) Stay
+> 1
+[check Tech: 67+22=89 vs 120: fail]
+[receipt: departure 901, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

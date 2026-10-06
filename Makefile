@@ -1,15 +1,15 @@
 CC      ?= cc
 CFLAGS  ?= -O2
 WARN    := -std=c99 -pedantic -Wall -Wextra -Werror -Wdeclaration-after-statement
-INC     := -Icore/include -Icore/src -Ihal -Ivm
+INC     := -Icore/include -Icore/src -Ihal -Ivm -Iclient
 CL65    ?= cl65
 SIM65   ?= sim65
 
 CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c core/src/registry.c \
             core/src/translate.c core/src/echo.c core/src/passport.c
 CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
-VM_SRC   := vm/vm.c
-VM_HDR   := vm/apb_vm.h
+VM_SRC   := vm/vm.c client/desk.c
+VM_HDR   := vm/apb_vm.h client/apb_desk.h
 
 .PHONY: all test test-6502 test-python test-vm c64 demo crosscheck registry check-registry check-content clean
 
