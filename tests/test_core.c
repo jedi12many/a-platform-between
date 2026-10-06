@@ -473,7 +473,7 @@ static void test_passport(void)
 
 /* Golden values from tools/passport/boarding.py, the Python reference:
  *   issue "<Kestrel's Passport>" 901 3141592653 7  ->  20W5QD0ECKC26800EW
- * and from the same fields with version 2, or with the trailing zero bit set. */
+ * and from the same fields with version 2, or as a Rewind (the last bit set). */
 static void test_boarding_pass(void)
 {
     make_kestrel(&traveler);
@@ -484,7 +484,10 @@ static void test_boarding_pass(void)
     pass.ticket = 3141592653UL;
     pass.check = 33330u;
     pass.seed = 7;
+    pass.rewind = 0;
     CHECK(apb_pass_encode(&pass, pw) == APB_PP_OK && strcmp(pw, "20W5QD0ECKC26800EW") == 0);
+    pass.rewind = 1;
+    CHECK(apb_pass_encode(&pass, pw) == APB_PP_OK && strcmp(pw, "20W5QD0ECKC26800FX") == 0);
 
     memset(&pass, 0, sizeof(pass));
     CHECK(apb_pass_decode("20w5-qd0e-ckc2-68oo-ew", &pass) == APB_PP_OK);
@@ -495,7 +498,9 @@ static void test_boarding_pass(void)
     CHECK(apb_pass_decode("20W5QD0ECKC26800EWW", &pass) == APB_PP_LENGTH);
     CHECK(apb_pass_decode("20W5QD0ECKC26800E!", &pass) == APB_PP_SYMBOL);
     CHECK(apb_pass_decode("40W5QD0ECKC26800EY", &pass) == APB_PP_VERSION);
-    CHECK(apb_pass_decode("20W5QD0ECKC26800FX", &pass) == APB_PP_CHECKSUM);
+    CHECK(apb_pass_decode("20W5QD0ECKC26800FX", &pass) == APB_PP_OK && pass.rewind == 1);
+    pass.rewind = 0;
+    CHECK(apb_pass_decode("20W5QD0ECKC26800EW", &pass) == APB_PP_OK && pass.rewind == 0);
 
     /* Anything about the character changing changes the check. */
     traveler.debt = 1;

@@ -46,17 +46,26 @@ def save(path, ledger):
         json.dump(ledger, f, indent=1)
 
 
+def played(ledger, character, departure):
+    """Has this character already brought a stamp home from this Departure?"""
+    return any(t["used"] and t["character"] == character and t["departure"] == departure
+               for t in ledger["tickets"].values())
+
+
 def issue(ledger, character, passport_text, departure, ticket=None, seed=None):
     """A Boarding Pass for this character as they are now. Tickets are random and never
-    reused, so a stamp can't be forged or borrowed without guessing a live one."""
+    reused, so a stamp can't be forged or borrowed without guessing a live one. A
+    Departure they've already played is a Rewind (docs/seasons.md)."""
     passport.decode(passport_text)                       # refuse a bad Passport now
     while ticket is None or ticket == 0 or str(ticket) in ledger["tickets"]:
         ticket = secrets.randbits(32)
     if seed is None:
         seed = secrets.randbits(16)
+    rewind = played(ledger, character, departure)
     ledger["tickets"][str(ticket)] = {"character": character, "departure": departure,
-                                      "boarded": passport_text, "used": False}
-    return boarding.issue(passport_text, departure, ticket, seed)
+                                      "boarded": passport_text, "used": False,
+                                      "rewind": rewind}
+    return boarding.issue(passport_text, departure, ticket, seed, rewind)
 
 
 def land(ledger, character, passport_text, stamp_text, manifest):
@@ -78,13 +87,16 @@ def land(ledger, character, passport_text, stamp_text, manifest):
     why = fits(manifest, r, boarded["debt"])
     if why:
         raise Refused(f"That stamp claims more than the Departure can give ({why}).")
-    after, report = receipt.apply(passport.decode(passport_text), r)
+    after, report = receipt.apply(passport.decode(passport_text), r, rewind=t["rewind"])
+    report["rewind"] = t["rewind"]
     t["used"] = True
     return passport.encode(after), report
 
 
 def describe(report):
     out = []
+    if report.get("rewind"):
+        out.append(f"A Rewind: half the XP, and {receipt.REWIND_FEE} Debt for the second ticket.")
     if report["levels"]:
         out.append(f"Level up! +{report['levels']}. Spend the points at the Waystation.")
     if report["stored"]:

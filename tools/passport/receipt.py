@@ -1,7 +1,7 @@
 """Reference implementation of applying a receipt to a character.
 
-Written from docs/boarding.md ("Applying a receipt") and docs/rules-v0.md (levels),
-independently of core/src/receipt.c, so the two can check each other. This is what the
+Written from docs/boarding.md ("Applying a receipt"), docs/seasons.md (Rewind) and
+docs/rules-v0.md (levels), independently of core/src/receipt.c, so the two can check each other. This is what the
 Waystation website will run when a receipt or Travel Stamp comes home.
 
 A character is a dict as tools/passport/passport.py decodes it. A receipt is a dict:
@@ -12,6 +12,11 @@ A character is a dict as tools/passport/passport.py decodes it. A receipt is a d
 """
 
 import copy
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import passport  # noqa: E402
 
 PACK_SLOTS = 6
 EQUIP_SLOTS = 6
@@ -19,6 +24,7 @@ ECHO_SLOTS = 8
 LEVEL_MAX = 100
 XP_PER_LEVEL = 100
 WITS = 3
+REWIND_FEE = 500
 
 
 def gain_xp(ch, amount):
@@ -47,13 +53,27 @@ def _remove(slots, item, count):
     return False
 
 
-def apply(character, receipt):
-    """Returns (the character after the receipt, a report of what happened)."""
+def planted_by(departure, reg):
+    """Echo ids the Departure plants, from the registry."""
+    return {e["id"] for e in reg["echoes"].values() if e["departure_id"] == departure}
+
+
+def apply(character, receipt, rewind=False, reg=None):
+    """Returns (the character after the receipt, a report of what happened).
+
+    A Rewind (docs/seasons.md) forgets the Echoes the Departure plants before the receipt
+    sets the new choices, pays half the XP and half the Debt paid down (rounded down), and
+    charges the Rewind fee."""
     ch = copy.deepcopy(character)
     report = {"levels": 0, "stored": [], "gone": 0, "shifted": [], "legend": []}
 
-    report["levels"] = gain_xp(ch, receipt["xp"])
-    ch["debt"] = max(0, min(65535, ch["debt"] - receipt["debt_paid"] + receipt["debt_added"]))
+    if rewind:
+        gone = planted_by(receipt["departure"], reg or passport._REG)
+        ch["echoes"] = [(e, s) for e, s in ch["echoes"] if e not in gone]
+    report["levels"] = gain_xp(ch, receipt["xp"] // 2 if rewind else receipt["xp"])
+    paid = receipt["debt_paid"] // 2 if rewind else receipt["debt_paid"]
+    fee = REWIND_FEE if rewind else 0
+    ch["debt"] = max(0, min(65535, ch["debt"] - paid + receipt["debt_added"] + fee))
 
     # Lost items go first, so they make room for gained ones; the pack is searched
     # before what's equipped. Something already gone (sold, traded) is just counted.

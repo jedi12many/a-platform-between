@@ -3,7 +3,7 @@
  * the receipt as a Travel Stamp (Departure 7, ticket 123456789), for
  * tests/receipts/check_apply.py to compare with the Python reference. Native and sim65.
  *
- *   apply PASSPORT XP PAID ADDED GAINED LOST ECHOES
+ *   apply PASSPORT XP PAID ADDED GAINED LOST ECHOES [rewind DEPARTURE]
  *
  * GAINED and LOST are item ids separated by commas, ECHOES is id:state:was entries
  * separated by commas; '-' is an empty list.
@@ -53,8 +53,8 @@ int main(int argc, char **argv)
 {
     uint8_t i;
 
-    if (argc != 8) {
-        printf("usage: apply PASSPORT XP PAID ADDED GAINED LOST ECHOES\n");
+    if (argc != 8 && argc != 10) {
+        printf("usage: apply PASSPORT XP PAID ADDED GAINED LOST ECHOES [rewind DEPARTURE]\n");
         return 2;
     }
     if (apb_passport_decode(argv[1], &ch, 0) != APB_PP_OK) {
@@ -68,7 +68,8 @@ int main(int argc, char **argv)
     r.lost_count = parse_list(argv[6], r.lost);
     parse_echoes(argv[7]);
 
-    apb_receipt_apply(&ch, &r, &out);
+    if (argc == 10) r.departure = (uint16_t)atoi(argv[9]);
+    apb_receipt_apply(&ch, &r, (uint8_t)(argc == 10), &out);
     if (apb_passport_encode(&ch, password) != APB_PP_OK) {
         printf("can't encode\n");
         return 1;
@@ -80,7 +81,7 @@ int main(int argc, char **argv)
     printf(" legend");
     for (i = 0; i < out.legend_count; ++i) printf(" %u=%u", out.legend[i].id, out.legend[i].state);
     printf("\n");
-    r.departure = 7;
+    r.departure = argc == 10 ? (uint16_t)atoi(argv[9]) : 7;
     r.ticket = 123456789UL;
     if (apb_stamp_encode(&r, stamp) != APB_PP_OK) {
         printf("can't stamp\n");

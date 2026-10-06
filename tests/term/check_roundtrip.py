@@ -6,6 +6,7 @@
 2. Her new Passport is issued a pass for a test Departure (tests/vm/loop.qs), which she
    plays and stamps too. Her Passport ends up with both trips on it.
 3. A stamp can't land twice; a pass from before her last trip is refused at the desk.
+   Playing the second Departure again is a Rewind: half the XP, and the fee.
 4. Two overlapping trips: two passes issued before either stamp comes home both land, in
    either order.
 
@@ -101,6 +102,17 @@ def main():
     stub = passport._REG["items"]["TICKET_STUB"]["id"]
     if (k["level"], k["xp"], k["debt"], list(k["pack"].values())) != (1, 15, 50100, [stub]):
         fail(f"after both trips: {k}")
+
+    # Played again, the loop is a Rewind: the Waystation marks the pass, and landing
+    # pays half its 10 XP and charges the fee (+100 from the loop, +500 for the Rewind).
+    again = station.issue(ledger, "kestrel", after_loop, 902, ticket=555, seed=5)
+    if not station.boarding.decode(again)["rewind"]:
+        fail("a pass for a Departure she has played wasn't marked as a Rewind")
+    out, s3 = play(loop, after_loop, again, LOOP_PICKS)
+    after_rewind, report = station.land(ledger, "kestrel", after_loop, s3, loop_m)
+    k = passport.decode(after_rewind)
+    if (k["xp"], k["debt"], report["rewind"]) != (20, 50700, True):
+        fail(f"after a Rewind of the loop: xp {k['xp']}, debt {k['debt']}, {report}")
 
     # A stamp edited to claim more than the Departure gives is refused, even on a live
     # ticket; one quoting a ticket that was never issued is refused too.

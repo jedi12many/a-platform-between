@@ -60,9 +60,14 @@ a second ticket on a train that already left.
   any later transformations of those Echoes (if you rewind the dire wolf pup and leave it
   this time, `WOLF_PUP: SWORN` is gone too). Time travel makes this canon: the timeline
   shifted.
-- First-clear rewards (XP, Debt reduction, unique loot) are paid **once per character**.
-  Rewinds pay a reduced amount, so replaying is for the story, not for farming.
-- A Rewind costs a small amount of Debt. The Stationmaster doesn't do favors.
+- First-clear rewards are paid **once per character**. A Rewind pays **half the XP and half
+  the Debt paid down** (rounded down), so replaying is for the story, not for farming.
+  Items and Echoes come as earned.
+- A Rewind costs **500 Debt** (`APB_REWIND_FEE`). The Stationmaster doesn't do favors.
+- The Waystation knows what each character has played, so it marks the Boarding Pass as
+  a Rewind; the train plays it as if for the first time (forgetting that Departure's
+  Echoes), and the rules core applies the Rewind when the receipt lands
+  (`apb_receipt_apply`, checked against `tools/passport/receipt.py`).
 - The hub notices. Regulars who remember the old timeline may comment.
 
 ## Money

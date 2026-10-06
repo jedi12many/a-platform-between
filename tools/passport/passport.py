@@ -5,10 +5,11 @@ two can check each other. Also the starting point for the character-sheet printe
 and the web Passport Office.
 
     python3 tools/passport/passport.py decode "<password>"
-    python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM]
+    python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM] [ECHO=STATE...]
 
 `new` makes a test character until the Waystation website exists (point-buy stats,
-before race and class bonuses), and prints its Passport in lines.
+before race and class bonuses), and prints its Passport in lines. ITEM is equipped (`-`
+for none); ECHO=STATE plants Echoes, as if earlier Departures had.
 """
 
 import json
@@ -268,14 +269,20 @@ def describe(ch):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) in (7, 8) and sys.argv[1] == "new":
-        _, _, name, race, cls, stats, tag, *item = sys.argv
+    if len(sys.argv) >= 7 and sys.argv[1] == "new":
+        _, _, name, race, cls, stats, tag, *rest = sys.argv
         values = [int(v) for v in stats.split(",")]
         if len(values) != 6 or not pointbuy_ok(values):
             sys.exit("stats must be six point-buy values: 25..70 each, 150 points spent")
         ch = create(name, race, cls, values, tag)
-        if item:
-            ch["equipped"] = {0: _REG["items"][item[0]]["id"]}
+        if rest and "=" not in rest[0]:
+            if rest[0] != "-":
+                ch["equipped"] = {0: _REG["items"][rest[0]]["id"]}
+            rest = rest[1:]
+        for planted in rest:
+            echo, _, state = planted.partition("=")
+            e = _REG["echoes"][echo]
+            ch["echoes"].append((e["id"], e["states"].index(state) + 1))
         print("\n".join(lines(encode(ch))))
     elif len(sys.argv) == 3 and sys.argv[1] == "decode":
         try:

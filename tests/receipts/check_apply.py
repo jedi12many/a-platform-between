@@ -36,19 +36,28 @@ def lst(xs):
 
 
 def args(ch, r):
-    return [passport.encode(ch), str(r["xp"]), str(r["debt_paid"]), str(r["debt_added"]),
-            lst(r["gained"]), lst(r["lost"]),
-            ",".join(f"{e}:{s}:{w}" for e, s, w in r["echoes"]) or "-"]
+    return ([passport.encode(ch), str(r["xp"]), str(r["debt_paid"]), str(r["debt_added"]),
+             lst(r["gained"]), lst(r["lost"]),
+             ",".join(f"{e}:{s}:{w}" for e, s, w in r["echoes"]) or "-"]
+            + (["rewind", str(r["departure"])] if r.get("rewind") else []))
+
+
+def as_stamped(r):
+    """The receipt build/apply stamps: Departure 7 (or the Rewind's), ticket 123456789."""
+    return {"departure": r["departure"] if r.get("rewind") else 7, "ticket": 123456789,
+            "outcome": 0, "xp": r["xp"], "debt_paid": r["debt_paid"],
+            "debt_added": r["debt_added"], "gained": r["gained"], "lost": r["lost"],
+            "echoes": r["echoes"]}
 
 
 def expected(ch, r):
-    after, rep = receipt.apply(ch, r)
+    after, rep = receipt.apply(ch, r, rewind=bool(r.get("rewind")))
     return (passport.encode(after) + "\n"
             + f"levels {rep['levels']} gone {rep['gone']} stored"
             + "".join(f" {i}" for i in rep["stored"]) + " shifted"
             + "".join(f" {i}" for i in rep["shifted"]) + " legend"
             + "".join(f" {e}={s}" for e, s in rep["legend"]) + "\n"
-            + stamp.encode(dict(r, departure=7, ticket=123456789, outcome=0)) + "\n")
+            + stamp.encode(as_stamped(r)) + "\n")
 
 
 def run(binary, ch, r):
@@ -80,7 +89,9 @@ def random_character(rng):
         for s in range(slots):
             if rng.random() < 0.5:
                 ch[key][s] = rng.randint(1, 1023)
-    ids = rng.sample(range(1, 1024), rng.randint(0, 8))
+    # Often Echoes from the registry (ids 1..9, planted by Departures 1..3), so a Rewind
+    # has something to forget.
+    ids = rng.sample(list(range(1, 10)) + rng.sample(range(10, 1024), 12), rng.randint(0, 8))
     ch["echoes"] = [(i, rng.randint(1, 3)) for i in ids]
     return ch
 
@@ -98,9 +109,13 @@ def random_receipt(rng, ch):
     for e in ids:
         was = held.get(e, 0) if rng.random() < 0.7 else rng.randint(0, 3)
         echoes.append((e, rng.randint(1, 3), was))
-    return {"xp": rng.choice([0, 5, 99, 100, 250, 9999, 65535, rng.randrange(400)]),
-            "debt_paid": paid, "debt_added": added,
-            "gained": gained, "lost": lost, "echoes": echoes}
+    r = {"xp": rng.choice([0, 5, 99, 100, 250, 9999, 65535, rng.randrange(400)]),
+         "debt_paid": paid, "debt_added": added,
+         "gained": gained, "lost": lost, "echoes": echoes, "departure": 7}
+    if rng.random() < 0.3:
+        r["rewind"] = True
+        r["departure"] = rng.randint(1, 3)
+    return r
 
 
 def hand_worked():
@@ -137,6 +152,28 @@ def hand_worked():
         fail(f"timeline shift: {after['echoes']} {rep}")
 
 
+def hand_worked_rewind():
+    """A Rewind of Departure 02, worked out from docs/seasons.md."""
+    ch = passport.create("Kestrel", "SALVAGED", "WARDEN", [70, 40, 60, 45, 35, 50], "ATHLETICS")
+    ch["debt"] = 50000
+    # MERIDIAN (planted by 01) FREED; WOLF_PUP (02) SWORN; JACE_CUTTER (02) SPARED.
+    ch["echoes"] = [(1, 1), (4, 3), (5, 1)]
+    # This time she left the pup (WOLF_PUP = LEFT, unset when she boarded: a Rewind
+    # forgets its own Echoes) and never met Jace. 101 XP and 1001 Debt paid down.
+    r = {"departure": 2, "xp": 101, "debt_paid": 1001, "debt_added": 0, "gained": [],
+         "lost": [], "echoes": [(4, 2, 0)], "rewind": True}
+    after, rep = receipt.apply(ch, r, rewind=True)
+    # Half of 101 XP is 50; half of 1001 paid is 500, and the fee adds 500: Debt 50000.
+    # MERIDIAN stays; WOLF_PUP is LEFT, not SWORN; JACE_CUTTER is unset again (so its
+    # canon default applies). Nothing changed elsewhere, so no timeline shift.
+    want = (1, 50, 50000, [(1, 1), (4, 2)], [])
+    got = (after["level"], after["xp"], after["debt"], after["echoes"], rep["shifted"])
+    if got != want:
+        fail(f"hand-worked Rewind: Python reference gives {got}, expected {want}")
+    if run("build/apply", ch, r) != expected(ch, r):
+        fail("hand-worked Rewind: the C core disagrees with the reference")
+
+
 def two_overlapping():
     """docs/engine-plan.md, E2: two receipts from overlapping Departures both land."""
     ch = passport.create("Kestrel", "SALVAGED", "WARDEN", [70, 40, 60, 45, 35, 50], "ATHLETICS")
@@ -158,6 +195,7 @@ def two_overlapping():
 
 def main():
     hand_worked()
+    hand_worked_rewind()
     two_overlapping()
     rng = random.Random(2026)
     count, sample = int(os.environ.get("APB_RECEIPT_RUNS", "400")), 25
@@ -169,7 +207,7 @@ def main():
             got = run(binary, ch, r)
             if got.splitlines()[-1:] and binary == "build/apply":
                 back = stamp.decode(got.splitlines()[-1])
-                if back != dict(r, departure=7, ticket=123456789, outcome=0):
+                if back != as_stamped(r):
                     fail(f"case {i}: the stamp decodes to {back}, not the receipt {r}")
             if got != want:
                 fail(f"case {i} on {binary}: {' '.join(args(ch, r))}\n"

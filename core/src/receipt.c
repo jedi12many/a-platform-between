@@ -35,7 +35,8 @@ static uint8_t add_item(uint16_t *slots, uint8_t count, uint16_t item)
     return 0;
 }
 
-void apb_receipt_apply(apb_character *ch, const apb_receipt *r, apb_applied *out)
+void apb_receipt_apply(apb_character *ch, const apb_receipt *r, uint8_t rewind,
+                       apb_applied *out)
 {
     uint8_t i;
     uint8_t now;
@@ -47,9 +48,13 @@ void apb_receipt_apply(apb_character *ch, const apb_receipt *r, apb_applied *out
     }
     memset(out, 0, sizeof(*out));
 
-    out->levels = apb_gain_xp(ch, r->xp);
+    if (rewind) {
+        apb_rewind_echoes(ch, r->departure);
+    }
+    out->levels = apb_gain_xp(ch, rewind ? (uint16_t)(r->xp / 2u) : r->xp);
 
-    debt = (long)ch->debt - (long)r->debt_paid + (long)r->debt_added;
+    debt = (long)ch->debt - (long)(rewind ? r->debt_paid / 2u : r->debt_paid)
+           + (long)r->debt_added + (rewind ? (long)APB_REWIND_FEE : 0L);
     ch->debt = (uint16_t)(debt < 0 ? 0 : debt > 65535L ? 65535u : debt);
 
     /* Lost before gained: whatever the Departure took makes room for what it gave. The

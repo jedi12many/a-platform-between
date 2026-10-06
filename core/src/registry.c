@@ -92,3 +92,8 @@ const char *const apb_item_names[APB_ITEM_COUNT] = {
 const uint8_t apb_echo_defaults[APB_ECHO_COUNT] = {
     0, 2, 2, 1, 2, 2, 1, 2, 1, 2
 };
+
+/* The Departure that plants each Echo, indexed by id: a Rewind of it replaces them. */
+const uint16_t apb_echo_departures[APB_ECHO_COUNT] = {
+    0xFFFF, 1, 1, 1, 2, 2, 2, 3, 3, 3
+};

@@ -8,7 +8,8 @@ issues passes; until it exists, this makes them for testing:
 
 A pass is one line of 18 symbols in the Passport alphabet: version (4 bits), Departure
 (16), ticket (32), the Passport's check of the character as boarded (16), the dice seed
-(16), a zero bit, then the line's check symbol.
+(16), a Rewind bit (1: a replay of a Departure they have played), then the line's check
+symbol.
 """
 
 import os
@@ -22,15 +23,16 @@ VERSION = 1
 LENGTH = 18
 
 
-def encode(departure, ticket, check, seed):
+def encode(departure, ticket, check, seed, rewind=False):
     bits = (to_bits(VERSION, 4) + to_bits(departure, 16) + to_bits(ticket, 32)
-            + to_bits(check, 16) + to_bits(seed, 16) + [0])
+            + to_bits(check, 16) + to_bits(seed, 16) + [int(rewind)])
     return passport.symbols(bits)
 
 
-def issue(passport_text, departure, ticket, seed):
+def issue(passport_text, departure, ticket, seed, rewind=False):
     """What the Waystation hands out: a pass for this character, as they are now."""
-    return encode(departure, ticket, passport.check(passport.decode(passport_text)), seed)
+    return encode(departure, ticket, passport.check(passport.decode(passport_text)), seed,
+                  rewind)
 
 
 def decode(text):
@@ -53,10 +55,8 @@ def decode(text):
 
     if field(0, 4) != VERSION:
         raise PassportError("made by a different version of the game")
-    if bits[84]:
-        raise PassportError("there's a typo")
     return {"departure": field(4, 16), "ticket": field(20, 32), "check": field(52, 16),
-            "seed": field(68, 16)}
+            "seed": field(68, 16), "rewind": bool(bits[84])}
 
 
 if __name__ == "__main__":

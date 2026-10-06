@@ -1037,6 +1037,9 @@ uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass)
     if (apb_vm_board(snapshot, pass->seed) != 0) {
         return APB_VM_ERROR;
     }
+    if (pass->rewind) {
+        apb_rewind_echoes(&ch, dep_id);     /* play it as if for the first time */
+    }
     receipt.ticket = pass->ticket;
     return 0;
 }

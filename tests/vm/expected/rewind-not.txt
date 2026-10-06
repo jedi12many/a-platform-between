@@ -1,0 +1,21 @@
+* Your Passport, please: one line at a time, then a blank line.
+* Line 1:
+< 436G0000004102V0P9DX
+* Line 2:
+< A4C000000000E64M4A33
+* Line 3:
+< 500102C0N0WFFGF
+* Line 4:
+< 
+Ash, Human Rogue, level 1. Debt 0.
+  1) Board
+  2) Start over
+> 1
+* Your Boarding Pass, please, or a blank line to travel without one:
+< 2002000005F3VW006C
+A grown dire wolf pads out of the ash and sits by your boot.
+  1) Pick it up
+> 1
+[receipt: departure 2, complete, xp 10, debt paid 0 added 0, ticket 21, gained, lost, echoes 4=1]
+[stamp: 2002000005800M00000K40HV404E]
+[level 1, xp 10, debt 0]

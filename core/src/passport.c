@@ -314,8 +314,8 @@ uint16_t apb_passport_check(const apb_character *ch)
 
 /* ------------------------------------------------------- Boarding Pass */
 
-/* Version 4, Departure 16, ticket 32, character check 16, seed 16: 84 bits, one zero
- * bit, 17 symbols and a check symbol. See docs/boarding.md. */
+/* Version 4, Departure 16, ticket 32, character check 16, seed 16, Rewind 1: 85 bits,
+ * 17 symbols and a check symbol. See docs/boarding.md. */
 #define PASS_SYMBOLS 17
 
 uint8_t apb_pass_encode(const apb_pass *pass, char *out)
@@ -329,7 +329,7 @@ uint8_t apb_pass_encode(const apb_pass *pass, char *out)
     put_bits(&b, (uint16_t)(pass->ticket & 0xFFFFu), 16);
     put_bits(&b, pass->check, 16);
     put_bits(&b, pass->seed, 16);
-    put_bits(&b, 0, 1);
+    put_bits(&b, pass->rewind ? 1 : 0, 1);
     write_symbols(&b, out);
     return APB_PP_OK;
 }
@@ -372,7 +372,8 @@ uint8_t apb_pass_decode(const char *in, apb_pass *pass)
     pass->ticket |= get_bits(&b, 16);
     pass->check = get_bits(&b, 16);
     pass->seed = get_bits(&b, 16);
-    return get_bits(&b, 1) ? APB_PP_CHECKSUM : APB_PP_OK;
+    pass->rewind = (uint8_t)get_bits(&b, 1);
+    return APB_PP_OK;
 }
 
 uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line)

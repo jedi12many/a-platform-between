@@ -253,6 +253,7 @@ typedef struct {
 extern const apb_item_def apb_items[APB_ITEM_COUNT];
 extern const char *const apb_item_names[APB_ITEM_COUNT];
 extern const uint8_t apb_echo_defaults[APB_ECHO_COUNT];
+extern const uint16_t apb_echo_departures[APB_ECHO_COUNT];
 
 /* supported: bitmask of archetypes the engine can present (1 << APB_ARCH_x). */
 void apb_translate(const apb_item_def *item, const apb_realm *realm,
@@ -278,6 +279,9 @@ uint8_t apb_echo_get_or(const apb_character *ch, uint16_t id, uint8_t canon_defa
  * *evicted (for the Legend) and 1 is returned; otherwise 0. */
 uint8_t apb_echo_set(apb_character *ch, uint16_t id, uint8_t state, apb_echo *evicted);
 void    apb_echo_clear(apb_character *ch, uint16_t id);
+/* Forget the Echoes `departure` plants (and what became of them): a Rewind of it plays
+ * as if for the first time, and its receipt sets the new choices. */
+void    apb_rewind_echoes(apb_character *ch, uint16_t departure);
 
 /* ---------------------------------------------------------- Receipts */
 
@@ -323,9 +327,16 @@ typedef struct {
     apb_echo legend[APB_RECEIPT_MAX];
 } apb_applied;
 
+/* A Rewind (docs/seasons.md): replaying a Departure the character has played. */
+#define APB_REWIND_FEE 500          /* Debt, charged on landing */
+
 /* Apply a receipt to a character as they are now (not as they boarded). Lost items go
- * first, so they make room for gained ones. `out` may be NULL. */
-void apb_receipt_apply(apb_character *ch, const apb_receipt *r, apb_applied *out);
+ * first, so they make room for gained ones. If `rewind`, the Echoes that Departure
+ * plants are forgotten first (the receipt sets the new choices), XP and Debt paid down
+ * are halved, and the Rewind fee is added to Debt. `out` may be NULL. */
+void apb_receipt_apply(apb_character *ch, const apb_receipt *r, uint8_t rewind,
+                       apb_applied *out);
+
 
 /* ---------------------------------------------------------- Passport */
 
@@ -366,6 +377,7 @@ typedef struct {
     uint32_t ticket;
     uint16_t check;      /* apb_passport_check of the character as boarded */
     uint16_t seed;       /* the dice for this trip                          */
+    uint8_t  rewind;     /* 1: a replay of a Departure they have played     */
 } apb_pass;
 
 uint8_t apb_pass_encode(const apb_pass *pass, char *out);
@@ -381,7 +393,7 @@ uint8_t apb_pass_encode(const apb_pass *pass, char *out);
 /* Returns APB_PP_OK, or APB_PP_RANGE if a field doesn't fit (an item or Echo id over
  * 1023, an Echo state over 3). */
 uint8_t apb_stamp_encode(const apb_receipt *r, char *out);
-/* Returns APB_PP_OK, _SYMBOL, _LENGTH, _LINE_CHECK, _VERSION or _CHECKSUM. */
+/* Returns APB_PP_OK, _SYMBOL, _LENGTH, _LINE_CHECK or _VERSION. */
 uint8_t apb_pass_decode(const char *in, apb_pass *pass);
 
 #endif

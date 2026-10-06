@@ -28,7 +28,10 @@ What a Departure hands back when it ends:
 | Items gained | |
 | Items lost | taken, used up, or given away in the story |
 | Echoes set | Echo id, new state, and its state at boarding |
-| Echoes cleared | by a Rewind |
+
+A Rewind's receipt looks like any other: the Waystation knows the ticket was a Rewind, and
+when it lands, the Echoes that Departure plants are cleared from the character before the
+receipt's are set (so a choice the replay never made goes back to its canon default).
 
 A receipt is **net**: an item given and taken back in the same trip appears in neither
 list, so the lists never overlap.
@@ -44,6 +47,7 @@ by `make test-receipts`.
 |---|---|
 | XP | Added. Level-ups happen now, and their stat and skill points are spent at the Waystation. |
 | Debt | Added, kept within 0..65535. |
+| On a Rewind | First the Departure's own Echoes are cleared; XP and Debt paid down are halved; the 500 Debt fee is added. |
 | Items gained | Into the pack; if it's full, the Waystation's lost-and-found keeps them. |
 | Items lost | Removed if still carried (the pack first, then what's equipped); if already gone (sold, traded), nothing happens. |
 | Echoes | Set to the receipt's state. If the Echo was changed elsewhere since boarding (it's now neither its state at boarding nor the receipt's), the receipt still wins and the character is told the timeline shifted. A full Passport pushes its oldest Echo to the Legend. |
@@ -92,7 +96,7 @@ one line: 17 data symbols and a check symbol.
 | ticket | 32 | random, drawn by the server |
 | character check | 16 | the Passport's own CRC-16 (`apb_passport_check`): any change to the character changes it |
 | seed | 16 | the dice for this trip, so the server can replay an online trip and a player can't re-roll by boarding again |
-| padding | 1 | zero |
+| Rewind | 1 | 1: a replay of a Departure the character has played ([seasons.md](seasons.md)); the train forgets that Departure's Echoes before play |
 
 `apb_pass_encode` / `apb_pass_decode` in the rules core; `tools/passport/boarding.py` is
 the reference and issues passes for testing until the website exists. A player can travel

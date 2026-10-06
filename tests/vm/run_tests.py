@@ -5,8 +5,8 @@
    (reviewed by hand against the script; dice checked against an independent
    xorshift16). The sim65 (6502) build must produce the same transcript. A pick of
    '@name' boards a traveler from tests/vm/travelers.txt at the boarding desk;
-   '@pass:NAME:DEPARTURE:TICKET:SEED' types a Boarding Pass issued to that traveler by
-   tools/passport/boarding.py. A seed of '-' asks for a pass at the desk.
+   '@pass:NAME:DEPARTURE:TICKET:SEED[:rewind]' types a Boarding Pass issued to that
+   traveler by tools/passport/boarding.py. A seed of '-' asks for a pass at the desk.
 2. Coverage: together, the playthroughs of each Departure in COVERED must run every
    instruction in it, so every route, check outcome and race or class passage has been
    played and reviewed. The only code exempt is the chapter-title preamble of a scene
@@ -98,9 +98,10 @@ def cases(with_traveler=False):
         who = None if picks.startswith(":") else "kestrel"
         for t in picks.split(","):
             if t.startswith("@pass:"):
-                _, who_for, dep, ticket, pass_seed = t.split(":")
+                _, who_for, dep, ticket, pass_seed, *rewind = t.split(":")
                 tokens.append(":" + boarding.issue("".join(known[who_for]), int(dep),
-                                                   int(ticket), int(pass_seed)))
+                                                   int(ticket), int(pass_seed),
+                                                   rewind == ["rewind"]))
             elif t.startswith("@"):
                 if t[1:] not in known:
                     fail(f"{name}: no traveler {t[1:]} in tests/vm/travelers.txt")
