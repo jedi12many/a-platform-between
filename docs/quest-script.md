@@ -162,7 +162,8 @@ Used in `{ }` on choices and after `if`.
 | `loops >= 3` | comparing a variable: `=` `!=` `<` `<=` `>` `>=` |
 | `has KEYCARD` | the character is carrying the item |
 | `echo WOLF_PUP = SAVED` | that Echo is in that state (`!=` works too) |
-| `MIGHT >= 5` | comparing a stat: `MIGHT` `GRACE` `GRIT` `WITS` `PRESENCE` `FATE` |
+| `MIGHT >= 50` | comparing a stat (0–100) |
+| `TECH >= 40` | comparing a skill's rating (0–100) |
 | `level >= 3` | comparing the character's level |
 | `race SALVAGED` | the character is that race |
 | `class WARDEN` | the character is that class |
@@ -200,11 +201,11 @@ else
 
 ## Checks
 
-A check rolls 2d6 + a stat (+ a bonus, − a difficulty) using the game's rules, then runs
-the branch for the result:
+A check rolls d100 against a stat or skill using the game's rules, then runs the branch
+for the result:
 
 ```
-check WITS + 1 vs 2
+check TECH - 10
     crit:    You find a keycard and the override code.
              ~ give KEYCARD ~ set knows_code
     success: You find a keycard. ~ give KEYCARD
@@ -213,14 +214,28 @@ check WITS + 1 vs 2
     fail:    Nothing. The voice says: "Seventeen minutes."
 ```
 
-| Result | Total |
-|---|---|
-| `crit` | 12 or more |
-| `success` | 9–11 |
-| `cost` | 6–8: it works, but at a price |
-| `fail` | 5 or less |
+- Check any **stat** (`MIGHT` `GRACE` `GRIT` `WITS` `PRESENCE` `FATE`) or **skill**
+  (`MELEE` `ATHLETICS` `RANGED` `STEALTH` `ENDURANCE` `SURVIVAL` `TECH` `MEDICINE` `LORE`
+  `PERSUADE` `CHANNEL` `INTUITION`). Prefer skills; they're what players invest in.
+- Adjust the target with a number (`+ 20`, `- 10`) or a word:
 
-- `+ N` and `vs N` are optional.
+| Word | Same as |
+|---|---|
+| `easy` | `+ 20` |
+| `routine` | `+ 10` |
+| `tricky` | `- 10` |
+| `hard` | `- 20` |
+| `very_hard` | `- 30` |
+
+  For example `check STEALTH hard`.
+
+| Result | Roll |
+|---|---|
+| `crit` | 01, or doubles (11, 22 …) at or under the target |
+| `success` | at or under the target |
+| `cost` | up to 20 over: it works, but at a price |
+| `fail` | more than 20 over, or 100 |
+
 - A branch can be on the same line after the colon, or indented below it.
 - Leave a branch out and nothing happens for that result, except that a missing `crit`
   uses your `success` branch.
@@ -245,9 +260,10 @@ Commands start with `~`. Several can share a line: `~ give KEYCARD ~ set alarm`.
 | `~ give KEYCARD` / `~ take KEYCARD` | add or remove an item |
 | `~ xp 10` | award experience |
 | `~ debt - 500` / `~ debt + 500` / `~ debt = 50000` | change Debt *(official only)* |
-| `~ race SALVAGED` / `~ class WARDEN` | set race or class *(official only)* |
-| `~ stat MIGHT + 1` / `~ stat MIGHT = 5` | change a stat *(official only)* |
-| `~ ask_name` | ask the player to type a name *(official only)* |
+
+Stories never create or rebuild characters. Name, race, class and stats come from the
+character creator, before the first Departure (see [rules-v0.md](rules-v0.md)). Stories
+can *read* all of them, in conditions and with `{name}`, `{race}` and `{class}`.
 
 ### Presentation
 
@@ -268,7 +284,7 @@ Commands start with `~`. Several can share a line: `~ give KEYCARD ~ set alarm`.
 Community Departures (`kind: branch`) use the same language, with these limits so they
 can't damage anyone's character or the main story:
 
-- No `~ echo`, `~ debt`, `~ race`, `~ class`, `~ stat` or `~ ask_name`.
+- No `~ echo` or `~ debt`.
 - `echo` *conditions* are allowed: your Branch Line can react to a player's choices in the
   main story; it just can't change them.
 - `~ give` only works for items of tier 3 or lower, a limited number per Departure.

@@ -46,7 +46,7 @@ What a Departure is made of:
 | **Car** | A loadable chunk, about one chapter. Only one car is in memory on the C64. |
 | **Scene** | A location or moment: text, an optional picture, and a menu of choices. |
 | **Choice** | A menu line, optionally gated (by a flag, stat, item, Echo or check). |
-| **Check** | A 2d6 roll from the rules core, branching on fail / cost / success / crit. |
+| **Check** | A d100 roll against a stat or skill, branching on fail / cost / success / crit. |
 | **Encounter** | A fight: enemy group, zones, win/lose/flee branches. |
 | **Flags and vars** | Story memory inside one Departure. |
 | **Echoes** | Story memory across Departures (plant, read with canon default, transform). |
@@ -121,6 +121,7 @@ side of a 1541 floppy (170 KB). One Departure per disk side is the target.
 | **sim65** (the 6502 simulator) | Running test playthroughs on a real 6502 instruction set | First |
 | **C64** (cc65) | First retro target. The toolchain is already working. | Second |
 | **Modern** (SDL2 desktop, plus a WebAssembly build for the browser) | The main commercial version; the browser build is for sharing, playtests and the community Workshop | Third |
+| **Tabletop** (Platform 0) | Printed character sheets from Passports; Departures compiled to gamebooks and Conductor modules. See [tabletop.md](tabletop.md). | Sheet printer soon; books after E1 |
 | **Apple II** | Shares the 6502 VM; new HAL only | Later |
 | **DOS** | New HAL; Open Watcom or DJGPP | Later |
 | **Amiga, SNES** | New HALs | Later |
@@ -145,7 +146,7 @@ Each one ends with something playable or testable.
 | # | Milestone | Done when |
 |---|---|---|
 | **E0** | **Specs**: Quest Script v0 (written as a public reference), bytecode and VM spec, HAL interface | Docs reviewed; one real scene written in Quest Script. *Drafted: [quest-script.md](quest-script.md), [vm-spec.md](vm-spec.md), `hal/apb_hal.h`, The Fare chapters 1–2. Awaiting review.* |
-| **E1** | **Text VM on the terminal**: compiler (scenes, text, choices, flags, gotos, checks, items, Echoes) with friendly errors, VM in C with a load-time image verifier, terminal front end | *Departure 00: The Fare* (the prologue at the Waystation) is playable in a terminal, and its transcripts match on sim65 |
+| **E1** | **Text VM on the terminal**: compiler (scenes, text, choices, flags, gotos, checks, items, Echoes) with friendly errors, VM in C with a load-time image verifier, the **character creator** (point-buy or roll, portable C on the HAL), terminal front end | a new character can be made and *Departure 00: The Fare* (the prologue at the Waystation) played in a terminal, and its transcripts match on sim65 |
 | **E2** | **Starting and ending a Departure**: Passport in, rewards and Echoes out, mid-Departure saves, Rewind | Play *The Fare*, get a Passport, carry it into a test Departure |
 | **E3** | **Combat**: zone-based, turn-based fights in the rules core, called from Quest Script | A fight in *The Fare*, covered by transcript tests |
 | **E4** | **C64 front end**: text window, menus, status bar, picture area, disk loading of cars, `.d64` disk images | *The Fare* playable on a C64 (VICE emulator) |
@@ -159,8 +160,8 @@ front ends, the full Departure 01, party support.
 ### Departure 00: The Fare
 
 A short prologue, about 20–30 minutes, built alongside the engine as its test content:
-you wake in the Waystation, meet the Stationmaster, learn what you owe, make your
-character (race, class, stats, name), and take your first ticket. It exercises every
+after the character creator, you wake in the Waystation, remember your death, meet the
+Stationmaster, learn what you owe, and take your first ticket. It exercises every
 engine feature, and it's the opening of the real game.
 
 ## Repository layout (planned)

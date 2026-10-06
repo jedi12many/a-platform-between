@@ -16,8 +16,10 @@ and mini-games that build your character. See [sidings.md](sidings.md).
 
 ## 2. One character, every world
 
-You make a character once and take them everywhere. Level, gear, Debt and Echoes travel
-in the **Passport**: a password on retro machines, a file or an account on modern ones.
+You make a character once and take them everywhere, for a long time: levels, stats,
+skills and powers all run to 100, across seasons. Level, gear, Debt and Echoes travel in
+the **Passport**: a password on retro machines, a file or an account on modern ones, a
+printed sheet at the table (see [tabletop.md](tabletop.md)).
 
 ## 3. Translation
 
@@ -35,9 +37,9 @@ See [echoes.md](echoes.md).
 
 ## 5. Rules that fit on a Commodore 64
 
-Whole numbers, every stat under 255, identical dice everywhere. If the rules run on a
-1 MHz 8-bit machine, they run on anything, and the same fight plays out the same way on
-every platform. See [rules-v0.md](rules-v0.md).
+Whole numbers, one d100 roll, every rating a plain percentage, identical dice everywhere.
+If the rules run on a 1 MHz 8-bit machine, they run on anything (including a kitchen table),
+and the same fight plays out the same way on every platform. See [rules-v0.md](rules-v0.md).
 
 ## Tone
 

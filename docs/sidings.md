@@ -6,7 +6,7 @@ and tinker. Some players will spend most of their time here, and that's fine.
 
 ## Rules for all Sidings
 
-1. **Your character benefits.** XP, materials, items, coin, perks, cosmetic marks.
+1. **Your character benefits.** XP, materials, items, coin, powers, cosmetic marks.
 2. **Sidings never replace the story.** They pay little or no Debt. Only Departures move
    you meaningfully toward going home.
 3. **They respect level bands.** Rewards scale down when you outlevel a Siding, and
@@ -37,7 +37,7 @@ Each mini-game feeds a part of your character:
 | **Fare** (a card game played with old tickets) | The bar | Coin, rumors, the occasional rare ticket |
 | **Handcar racing** | The freight lines | Grace training, racing titles |
 | **Salvage sorting** (a puzzle) | Lost-and-found | Crafting materials, odd items |
-| **Tinkering bench** (combine and re-Translate gear) | Traders' row | Custom items, Tinker perks |
+| **Tinkering bench** (combine and re-Translate gear) | Traders' row | Custom items, Tech training |
 | **Fishing the Between** | The edge of the platforms | Strange catches, Fate training, a very patient Stationmaster joke |
 
 Ideas, not commitments. Mini-games are cheap to test and cheap to cut.

@@ -1,6 +1,7 @@
 // Departure 00: The Fare
-// The prologue. You wake at the Waystation, remember how you died (which makes
-// your character), meet the Stationmaster, and learn what you owe.
+// The prologue. The character has just been made in the character creator.
+// They wake at the Waystation, remember how they died (written for their race
+// and class), meet the Stationmaster, and learn what they owe.
 //
 // Milestone E0: chapters 1 and 2. The ticket window and the first ticket
 // follow in E1.
@@ -59,64 +60,33 @@ You remember dying. You remember it very clearly.
 == memory_body
 It comes back in pieces. First, the body it happened to.
 
-+ [Flesh and bone]
+if race HUMAN
     Flesh and bone. Ordinary, right up until the end. You were human, and
     stubbornly, luckily alive for longer than anyone expected.
-    ~ race HUMAN ~ stat FATE + 1
-    -> memory_doing
-+ [Armor with nothing inside]
+else if race HOLLOWBORN
     Plate and rivets, and inside them nothing at all but a promise someone
-    made a long time ago. You were Hollowborn. Nothing in you could bleed,
-    so you were the one who stayed standing.
-    ~ race HOLLOWBORN ~ stat GRIT + 1
-    -> memory_doing
-+ [Crystal, full of light]
-    Crystal, clear as a held breath, every facet lit with a memory. You were
-    Glassfolk, and you remembered everything. Almost everything.
-    ~ race GLASSFOLK ~ stat WITS + 1
-    -> memory_doing
-+ [Bark, drinking a poisoned sun]
-    Bark and leaf, green against the glow of a ruined sky. You were a
-    Rad-Dryad, and the fallout that killed the world was the sun you grew in.
-    ~ race RAD_DRYAD ~ stat PRESENCE + 1
-    -> memory_doing
-+ [Small, quick, a heartbeat early]
-    Small and quick, and always a heartbeat ahead of everyone. You were a
-    Chronomite. You saw your death coming a moment before it came. It didn't
-    help.
-    ~ race CHRONOMITE ~ stat GRACE + 1
-    -> memory_doing
-+ [Iron, and a knight's oath]
+    made a long time ago. Nothing in you could bleed, so you were the one
+    who stayed standing.
+else if race GLASSFOLK
+    Crystal, clear as a held breath, every facet lit with a memory. You
+    remembered everything. Almost everything.
+else if race RAD_DRYAD
+    Bark and leaf, green against the glow of a ruined sky. The fallout that
+    killed the world was the sun you grew in.
+else if race CHRONOMITE
+    Small and quick, and always a heartbeat ahead of everyone. You saw your
+    death coming a moment before it came. It didn't help.
+else if race SALVAGED
     Iron joints, old code, and a vow you took from a book you found in a
-    scrapyard. You were Salvaged. You were a knight. You are still
-    technically correct about that.
-    ~ race SALVAGED ~ stat MIGHT + 1
-    -> memory_doing
-+ [Soft wings, drawn to light]
+    scrapyard. You were a knight. You are still technically correct about
+    that.
+else
     Soft grey wings and a hunger for light you were raised to call manners.
-    You were Moth-folk, of the Lantern Courts, and you flew toward the brightest
-    thing in the room. That was the problem.
-    ~ race MOTH_FOLK ~ stat PRESENCE + 1
-    -> memory_doing
+    You flew toward the brightest thing in the room. That was the problem.
 
-== memory_doing
 Then what you were doing, when it happened.
 
-+ [Holding the line]
-    ~ class WARDEN ~ stat MIGHT + 1
-    -> memory_end
-+ [Running with something not mine]
-    ~ class ROGUE ~ stat GRACE + 1
-    -> memory_end
-+ [Fixing what couldn't be fixed]
-    ~ class TINKER ~ stat WITS + 1
-    -> memory_end
-+ [Speaking words that bent the world]
-    ~ class CHANNELER ~ stat PRESENCE + 1
-    -> memory_end
-+ [Keeping someone else alive]
-    ~ class MEDIC ~ stat WITS + 1
-    -> memory_end
++ [Remember the rest] -> memory_end
 
 == memory_end
 if class WARDEN
@@ -224,7 +194,7 @@ else
         "Oil, I suppose," says Fen. "No. Don't tell me. Something with a
         little rust in it, for courage."
 + {not fen_told_you} [Ask Fen where you are]
-    check PRESENCE
+    check PERSUADE
         crit:    Fen leans in and lowers its voice. "You're at the
                  Waystation, love. You're dead. Everyone here is. The one in
                  the corner pulled you out, and you'll owe for it. Don't sign
@@ -249,7 +219,7 @@ and has never once been surprised.
 "Please, sit. You'll want to sit for this part."
 
 It opens the brass ledger and turns it toward you. On the page, in a
-careful hand, someone has begun to write your name, and stopped.
+careful hand, someone has begun to write your name, and stopped halfway.
 
 "We're a little behind on the paperwork," says the Stationmaster. "Would you
 mind?"
@@ -257,9 +227,10 @@ mind?"
 + [Say your name] -> say_name
 
 == say_name
-~ ask_name
-"{name}," says the Stationmaster, and the ink finishes the word on its own.
-"Of course. {class}. {race}. Yes, that all matches."
+"{name}," you say, and the ink finishes the word on its own.
+
+"Of course," says the Stationmaster. "{class}. {race}. Yes, that all
+matches."
 
 Below your name, a number writes itself into the ledger, digit by digit. It
 is a large number.

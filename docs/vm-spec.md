@@ -168,14 +168,14 @@ re-running the scene's entry text or commands.
 | `VAR` | 23 | u8 var | its value |
 | `HAS` | 24 | u16 item | 1 if carried |
 | `ECHO` | 25 | u16 echo, u8 default | its state, or `default` if unset |
-| `STAT` | 26 | u8 stat | the stat |
+| `RATING` | 26 | u8 rating | a stat (0–5) or a skill's rating (16–27, via `apb_skill`) |
 | `LEVEL` | 27 | — | character level |
 | `RACE` | 28 | — | race number |
 | `CLASS` | 29 | — | class number |
 | `EQ` `NE` `LT` `LE` `GT` `GE` | 30–35 | — | pop b, pop a, push a ⋄ b |
 | `AND` `OR` | 36–37 | — | pop b, pop a, push logical result |
 | `NOT` | 38 | — | pop a, push !a |
-| `CHECK` | 39 | u8 stat, s8 bonus, s8 difficulty | 0 fail, 1 cost, 2 success, 3 crit (via `apb_check`) |
+| `CHECK` | 39 | u8 rating, s8 modifier | d100 against the rating (numbered as for `RATING`) plus the modifier: pushes 0 fail, 1 cost, 2 success, 3 crit (via `apb_check`) |
 
 `visited` compiles to `FLAG` on the scene's compiler-allocated flag.
 
@@ -193,15 +193,12 @@ re-running the scene's entry text or commands.
 | `XP` | 4A | u8 n | `apb_gain_xp` | ignored above the level band |
 | `DEBT` | 4B | u8 mode, u16 n | mode 0 set, 1 add, 2 subtract (saturating) | refused |
 | `ECHO_SET` | 4C | u16 echo, u8 state | `apb_echo_set` | refused |
-| `SET_RACE` | 4D | u8 race | | refused |
-| `SET_CLASS` | 4E | u8 class | | refused |
-| `STAT_SET` | 4F | u8 stat, u8 mode, u8 n | mode 0 set, 1 add, 2 subtract; clamped 1..`APB_STAT_CAP` | refused |
-| `ASK_NAME` | 50 | — | ask for a name, store it normalized | refused |
 
 "Refused" means the VM stops with an error if a Branch Line image contains it; the
 verifier rejects such an image at load time, and the compiler never emits it.
 
-Unassigned opcodes are errors.
+Unassigned opcodes are errors. There are deliberately no opcodes that set name, race,
+class or stats: characters are made by the character creator, never by a Departure.
 
 ## Runtime checks
 

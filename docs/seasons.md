@@ -10,7 +10,7 @@ Each season brings:
 - **A new main story**: a run of Departures with a thread through them and a finale.
 - **A new home biome**, with its own Tech Level and Magic Level that shape the station
   and its Departures.
-- New races, classes, perks, items and Echoes, added to the shared registries.
+- New races, classes, powers, items and Echoes, added to the shared registries.
 
 | Season | Station | Stationmaster | Home TL / ML | Status |
 |---|---|---|---|---|
