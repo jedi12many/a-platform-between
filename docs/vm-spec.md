@@ -264,18 +264,32 @@ in Python.
 
 ## Saves
 
+A save is made at a menu: the front end's `hal_menu` returns `APB_MENU_SAVE`, the VM writes
+the file `SAVE` through `hal_save`, says "Saved." and shows the menu again.
+`apb_vm_resume` reads it back and shows that menu. *The Fare* saves in about 100 bytes; the
+most is 768 (`APB_VM_SAVE_MAX`). On the C64 a save is one small file on the Departure's
+disk. Little-endian, version 1:
+
 | Field | Size |
 |---|---|
-| departure id, image hash | 2 + 2 |
-| scene | 2 |
-| flags, vars | 64 + 128 |
+| magic, version | 3: `41 53 01` |
+| departure id, image hash | 2 + 2: a save only loads into the image that made it |
+| car, menu offset | 1 + 2: the `MENU` instruction to show again |
+| menu entries | 1 + 4 each: string id, target |
+| expression stack | 1 + 2 each |
+| flags | one byte per 8 of the image's flags |
+| vars | one byte per variable |
 | rng | 2 |
-| character | `apb_character` (the working copy) |
-| receipt so far | small |
-| reward counters, rewards already paid | small, 3 × 32 |
+| Debt at boarding, Branch Line gives | 2 + 1 |
+| rewards already paid | 1 + 3 each: car, offset |
+| receipt so far | departure 2, ticket 4, outcome 1, XP 2, Debt paid 2, added 2, items gained and lost (1 + 2 each), Echoes (1 + 4 each: id, state, state at boarding) |
+| character | 1 + the working copy as a Passport password |
+| CRC-16 | 2, over everything before it |
 
-A save made by one image only loads into an image with the same hash. On the C64 a save is
-one small file on the Departure's disk.
+Like an image, a save is never trusted. Its CRC, magic, image, every count, the car, the
+menu (it must be a `MENU` instruction, and under full checks an instruction boundary), each
+option's string and target, the dice state (never 0), and the character (a valid Passport)
+are all checked before play resumes; anything wrong refuses the save.
 
 ## Branch Line ledger
 

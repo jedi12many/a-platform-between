@@ -21,7 +21,8 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   Together, the playthroughs of *The Fare* must run every instruction in it: a passage
   no case reaches fails the test, so a new route needs a new case. `@name` in a case
   boards a traveler from `tests/vm/travelers.txt`; every check is re-rolled from the
-  rules and that traveler's Passport.
+  rules and that traveler's Passport. Every receipt must fit its reward manifest. Each
+  playthrough is also saved at every menu and resumed, and must come out the same.
 - `make test-term`: the terminal front end's recorded playthrough must match
   `tests/term/fare-edge.expected`, with nothing over 40 columns; and the round trip
   (`tests/term/check_roundtrip.py`) must work: passes issued, trips played in the terminal,

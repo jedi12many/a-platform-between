@@ -8,6 +8,9 @@
  * SEED '-' asks for a Boarding Pass at the desk (after the Passport, or for the built-in
  * traveler), which then seeds the dice; travelling without one uses seed 1.
  *
+ * A pick of 'S' saves the trip (DIR/SAVE) and quits when the menu comes back, the way a
+ * player would; SEED 'resume' picks the saved trip up again instead of boarding.
+ *
  * SCRIPT is a comma-separated list. A number picks from a menu (1-based); a token
  * starting with ':' is a typed line (':' alone is a blank line). If the script starts
  * with a typed line, the traveler boards at the boarding desk; otherwise the built-in
@@ -95,15 +98,25 @@ static void next_token(void)
     if (*picks == ',') ++picks;
 }
 
+static uint8_t quitting;
+
 uint8_t hal_menu(const char *const *labels, uint8_t count)
 {
     uint8_t i;
 
+    if (quitting) {
+        printf("[quit]\n");
+        exit(0);
+    }
     for (i = 0; i < count; ++i) {
         printf("  %u) %s\n", i + 1, labels[i]);
     }
     next_token();
     printf("> %s\n", tok);
+    if (tok[0] == 'S') {
+        quitting = 1;
+        return APB_MENU_SAVE;
+    }
     return (uint8_t)(atoi(tok) - 1);
 }
 
@@ -142,8 +155,17 @@ uint8_t hal_load(const char *name, uint8_t *dst, uint16_t max, uint16_t *len)
 
 uint8_t hal_save(const char *name, const uint8_t *src, uint16_t len)
 {
-    (void)name; (void)src; (void)len;
-    return HAL_IO_ERROR;
+    FILE *f;
+    uint8_t ok;
+
+    sprintf(path, "%s/%s", dir, name);
+    f = fopen(path, "wb");
+    if (!f) {
+        return HAL_IO_ERROR;
+    }
+    ok = (uint8_t)(fwrite(src, 1, len, f) == len);
+    fclose(f);
+    return ok ? HAL_OK : HAL_IO_ERROR;
 }
 
 void hal_error(const char *msg)
@@ -209,7 +231,9 @@ int main(int argc, char **argv)
     if (picks[0] == ':') {
         apb_desk_run(&traveler);
     }
-    if (strcmp(argv[2], "-") == 0) {
+    if (strcmp(argv[2], "resume") == 0) {
+        result = apb_vm_resume();
+    } else if (strcmp(argv[2], "-") == 0) {
         if (apb_vm_open() != 0) {
             printf("[refused: %s]\n", apb_vm_error());
             return 0;

@@ -563,7 +563,6 @@ static uint8_t load_car(uint8_t index)
     return verify_car(index);
 }
 
-#ifdef APB_VM_FULL_CHECKS
 static uint16_t crc_byte(uint16_t crc, uint8_t b)
 {
     uint8_t bit;
@@ -574,6 +573,8 @@ static uint16_t crc_byte(uint16_t crc, uint8_t b)
     }
     return crc;
 }
+
+#ifdef APB_VM_FULL_CHECKS
 
 /* Load every car once to check the whole-image hash. */
 static uint8_t check_hash(void)
@@ -729,6 +730,233 @@ static uint8_t first_pay(void)
     return 1;
 }
 
+/* ---------------------------------------------------------------- saves */
+
+/* A save is made at a menu and resumes by showing that menu again (docs/vm-spec.md,
+ * Saves). Everything in it is checked on the way back in, like an image: a damaged or
+ * edited save is refused, never trusted. The character is kept as its Passport. */
+#define SAVE_MAGIC_1 0x41   /* bytes, not characters: 'A' 'S' in ASCII */
+#define SAVE_MAGIC_2 0x53
+#define SAVE_VERSION 1
+
+static uint8_t save_buf[APB_VM_SAVE_MAX];
+static uint16_t sv_pos;
+static uint16_t sv_len;
+static uint8_t sv_bad;
+static char sv_passport[APB_PASSWORD_BUF];
+
+static void sv_put8(uint8_t v)
+{
+    if (sv_pos < APB_VM_SAVE_MAX) save_buf[sv_pos++] = v; else sv_bad = 1;
+}
+
+static void sv_put16(uint16_t v)
+{
+    sv_put8((uint8_t)(v & 0xFFu));
+    sv_put8((uint8_t)(v >> 8));
+}
+
+static uint8_t sv_get8(void)
+{
+    if (sv_pos < sv_len) return save_buf[sv_pos++];
+    sv_bad = 1;
+    return 0;
+}
+
+static uint16_t sv_get16(void)
+{
+    uint16_t lo = sv_get8();
+    return (uint16_t)(lo | ((uint16_t)sv_get8() << 8));
+}
+
+static uint16_t sv_crc(uint16_t len)
+{
+    uint16_t crc = 0xFFFFu;
+    uint16_t i;
+
+    for (i = 0; i < len; ++i) crc = crc_byte(crc, save_buf[i]);
+    return crc;
+}
+
+static void sv_items(const uint16_t *list, uint8_t count)
+{
+    uint8_t i;
+
+    sv_put8(count);
+    for (i = 0; i < count; ++i) sv_put16(list[i]);
+}
+
+static uint8_t sv_get_items(uint16_t *list, uint8_t *count)
+{
+    uint8_t i;
+
+    *count = sv_get8();
+    if (*count > APB_RECEIPT_MAX) return 0;
+    for (i = 0; i < *count; ++i) list[i] = sv_get16();
+    return 1;
+}
+
+/* Save the trip, as it stands at the menu starting at `menu_at`. */
+static uint8_t save_game(uint16_t menu_at)
+{
+    uint8_t i;
+    uint8_t n;
+
+    sv_pos = 0;
+    sv_bad = 0;
+    sv_put8(SAVE_MAGIC_1); sv_put8(SAVE_MAGIC_2); sv_put8(SAVE_VERSION);
+    sv_put16(dep_id);
+    sv_put16(rd16(depot + 18));             /* the image hash */
+    sv_put8(car_index);
+    sv_put16(menu_at);
+    sv_put8(menu_count);
+    for (i = 0; i < menu_count; ++i) {
+        sv_put16(menu_label[i]);
+        sv_put16(menu_target[i]);
+    }
+    sv_put8(sp);
+    for (i = 0; i < sp; ++i) sv_put16((uint16_t)stack[i]);
+    n = (uint8_t)((flag_count + 7u) / 8u);
+    for (i = 0; i < n; ++i) sv_put8(flags[i]);
+    for (i = 0; i < var_count; ++i) sv_put8(vars[i]);
+    sv_put16(rng.state);
+    sv_put16(boarded_debt);
+    sv_put8(gives);
+    sv_put8(paid_count);
+    for (i = 0; i < paid_count; ++i) {
+        sv_put8(paid_car[i]);
+        sv_put16(paid_at[i]);
+    }
+    sv_put16(receipt.departure);
+    sv_put16((uint16_t)(receipt.ticket >> 16));
+    sv_put16((uint16_t)(receipt.ticket & 0xFFFFu));
+    sv_put8(receipt.outcome);
+    sv_put16(receipt.xp);
+    sv_put16(receipt.debt_paid);
+    sv_put16(receipt.debt_added);
+    sv_items(receipt.gained, receipt.gained_count);
+    sv_items(receipt.lost, receipt.lost_count);
+    sv_put8(receipt.echo_count);
+    for (i = 0; i < receipt.echo_count; ++i) {
+        sv_put16(receipt.echoes[i].id);
+        sv_put8(receipt.echoes[i].state);
+        sv_put8(receipt.echoes[i].was);
+    }
+    if (apb_passport_encode(&ch, sv_passport) != APB_PP_OK) return 0;
+    n = (uint8_t)strlen(sv_passport);
+    sv_put8(n);
+    for (i = 0; i < n; ++i) sv_put8((uint8_t)sv_passport[i]);
+    sv_put16(sv_crc(sv_pos));
+    return (uint8_t)(!sv_bad && hal_save("SAVE", save_buf, sv_pos) == HAL_OK);
+}
+
+/* Read a save back in. Returns the menu's offset, or 0xFFFF (with the VM failed). */
+static uint16_t load_game(void)
+{
+    uint8_t i;
+    uint8_t n;
+    uint8_t c;
+    uint16_t at;
+    uint16_t hi;
+
+    if (hal_load("SAVE", save_buf, APB_VM_SAVE_MAX, &sv_len) != HAL_OK) {
+        fail("no saved trip", 0);
+        return 0xFFFFu;
+    }
+    if (sv_len < 2 || sv_crc((uint16_t)(sv_len - 2)) != rd16(save_buf + sv_len - 2)) {
+        fail("the save is damaged", 0);
+        return 0xFFFFu;
+    }
+    sv_len = (uint16_t)(sv_len - 2);
+    sv_pos = 0;
+    sv_bad = 0;
+    if (sv_get8() != SAVE_MAGIC_1 || sv_get8() != SAVE_MAGIC_2 || sv_get8() != SAVE_VERSION
+        || sv_get16() != dep_id || sv_get16() != rd16(depot + 18)) {
+        fail("the save is for another Departure", 0);
+        return 0xFFFFu;
+    }
+    c = sv_get8();
+    at = sv_get16();
+    menu_count = sv_get8();
+    if (menu_count == 0 || menu_count > MENU_MAX) sv_bad = 1;
+    for (i = 0; i < menu_count && !sv_bad; ++i) {
+        menu_label[i] = sv_get16();
+        menu_target[i] = sv_get16();
+    }
+    sp = sv_get8();
+    if (sp > STACK_MAX) sv_bad = 1;
+    for (i = 0; i < sp && !sv_bad; ++i) stack[i] = (int16_t)sv_get16();
+    memset(flags, 0, sizeof(flags));
+    n = (uint8_t)((flag_count + 7u) / 8u);
+    for (i = 0; i < n; ++i) flags[i] = sv_get8();
+    for (i = 0; i < var_count; ++i) vars[i] = sv_get8();
+    rng.state = sv_get16();
+    if (rng.state == 0) sv_bad = 1;         /* xorshift never reaches 0 */
+    boarded_debt = sv_get16();
+    gives = sv_get8();
+    paid_count = sv_get8();
+    if (paid_count > APB_VM_REWARD_SITES) sv_bad = 1;
+    for (i = 0; i < paid_count && !sv_bad; ++i) {
+        paid_car[i] = sv_get8();
+        paid_at[i] = sv_get16();
+    }
+    memset(&receipt, 0, sizeof(receipt));
+    receipt.departure = sv_get16();
+    hi = sv_get16();
+    receipt.ticket = ((uint32_t)hi << 16) | sv_get16();
+    receipt.outcome = sv_get8();
+    receipt.xp = sv_get16();
+    receipt.debt_paid = sv_get16();
+    receipt.debt_added = sv_get16();
+    if (receipt.departure != dep_id || !sv_get_items(receipt.gained, &receipt.gained_count)
+        || !sv_get_items(receipt.lost, &receipt.lost_count)) {
+        sv_bad = 1;
+    }
+    receipt.echo_count = sv_get8();
+    if (receipt.echo_count > APB_RECEIPT_MAX) sv_bad = 1;
+    for (i = 0; i < receipt.echo_count && !sv_bad; ++i) {
+        receipt.echoes[i].id = sv_get16();
+        receipt.echoes[i].state = sv_get8();
+        receipt.echoes[i].was = sv_get8();
+    }
+    n = sv_get8();
+    if (n > APB_PASSWORD_MAX) sv_bad = 1;
+    for (i = 0; i < n && !sv_bad; ++i) sv_passport[i] = (char)sv_get8();
+    sv_passport[sv_bad ? 0 : n] = '\0';
+    if (sv_bad || sv_pos != sv_len
+        || apb_passport_decode(sv_passport, &ch, 0) != APB_PP_OK) {
+        fail("the save is damaged", 0);
+        return 0xFFFFu;
+    }
+    /* Back into the car, and check the menu is a real one. */
+    if (!load_car(c)) {
+        return 0xFFFFu;
+    }
+    if (at >= code_len || car[CODE_AT + at] != OP_MENU) {
+        fail("the save is damaged", 0);
+        return 0xFFFFu;
+    }
+    for (i = 0; i < menu_count; ++i) {
+        if (menu_label[i] >= string_count || menu_target[i] >= code_len) {
+            fail("the save is damaged", 0);
+            return 0xFFFFu;
+        }
+#ifdef APB_VM_FULL_CHECKS
+        if (!marked(menu_target[i])) {
+            fail("the save is damaged", 0);
+            return 0xFFFFu;
+        }
+#endif
+    }
+#ifdef APB_VM_FULL_CHECKS
+    if (!marked(at)) {
+        fail("the save is damaged", 0);
+        return 0xFFFFu;
+    }
+#endif
+    return at;
+}
+
 /* -------------------------------------------------------------- running */
 
 static uint8_t push(int16_t v)
@@ -810,6 +1038,23 @@ uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass)
         return APB_VM_ERROR;
     }
     receipt.ticket = pass->ticket;
+    return 0;
+}
+
+uint8_t apb_vm_resume(void)
+{
+    uint16_t at;
+
+    if (!opened && apb_vm_open() != 0) {
+        return APB_VM_ERROR;
+    }
+    opened = 0;
+    car_index = 0xFF;
+    at = load_game();
+    if (at == 0xFFFFu) {
+        return APB_VM_ERROR;
+    }
+    pc = at;
     return 0;
 }
 
@@ -964,6 +1209,11 @@ uint8_t apb_vm_run(void)
             hal_status(&ch);
             steps = 0;
             i = hal_menu(label_ptrs, menu_count);
+            if (i == APB_MENU_SAVE) {
+                hal_prompt(save_game(op_at) ? "Saved." : "Couldn't save.");
+                pc = op_at;             /* and show the menu again */
+                break;
+            }
             if (i >= menu_count) { fail("menu pick out of range", pc); break; }
             pc = menu_target[i];
             break;

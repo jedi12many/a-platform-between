@@ -19,6 +19,7 @@
 #define APB_VM_DEPOT_MAX   4096
 #define APB_VM_CAR_MAX     16384
 #define APB_VM_REWARD_SITES 32      /* XP, GIVE and DEBT instructions in one Departure */
+#define APB_VM_SAVE_MAX    768      /* the largest save file, in bytes */
 
 /* What apb_vm_run returns. The first two match the receipt's APB_OUTCOME_*. */
 enum {
@@ -43,6 +44,11 @@ uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass);
 /* Board without a pass (tests, and play that won't be stamped): `seed` seeds the
  * dice and the receipt's ticket is 0. */
 uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed);
+
+/* Pick up a saved trip instead of boarding: loads "SAVE" through the HAL, checks it
+ * belongs to this image and isn't damaged, and shows the menu it was saved at when
+ * apb_vm_run is called. A save is made when hal_menu returns APB_MENU_SAVE. */
+uint8_t apb_vm_resume(void);
 
 /* Play until the Departure ends or the image turns out to be bad. */
 uint8_t apb_vm_run(void);
