@@ -13,10 +13,13 @@ One car per chapter. Each scene is laid out as:
 import struct
 
 import qs_ast as A
-from opcodes import (COMPARE, MAX_CAR, NO_MENU, NO_TITLE, OFFICIAL_ONLY, OPS,
+from opcodes import (COMPARE, MAP_TILES, MAX_CAR, MAX_DEPOT, MAX_ENCOUNTERS, NO_MENU,
+                     NO_TITLE,
+                     OFFICIAL_ONLY, OPS,
                      SKILL_RATING_BASE, STACK_DEPTH, TXT_CLASS, TXT_DEBT, TXT_LEVEL,
-                     TXT_NAME, TXT_NEWLINE, TXT_RACE, TXT_VAR)
+                     TXT_NAME, TXT_NEWLINE, TXT_RACE, TXT_VAR, WIDTH)
 from parse import terminates
+from registry import REACH
 from textpack import compress
 
 IMAGE_VERSION = 0
@@ -67,7 +70,7 @@ class Asm:
         for kind, arg in zip(kinds, args):
             if kind == "addr":
                 self.ref(arg)
-            elif kind in ("u8", "var", "pic", "rating"):
+            elif WIDTH[kind] == 1:
                 self.u8(arg)
             else:
                 self.u16(arg)
@@ -102,6 +105,7 @@ class Compiler:
         self.scene_offset = {}
         self.var_ids = {name: i for i, name in enumerate(dep.vars)}
         self.pictures = list(dep.pictures)
+        self.map_ids = {name: i for i, name in enumerate(dep.maps)}
         # Flags: declared ones first, then the compiler's own.
         self.flags = {name: i for i, name in enumerate(dep.flags)}
         self.visited_flags = {}
@@ -139,7 +143,7 @@ class Compiler:
                         if c is not None:
                             walk_cond(c)
                         walk(body)
-                elif isinstance(st, A.Check):
+                elif isinstance(st, (A.Check, A.Fight)):
                     for body in st.outcomes.values():
                         walk(body)
 
@@ -272,6 +276,26 @@ class Compiler:
                 if not terminates(body):
                     asm.op("JMP", end)
             asm.mark(end)
+        elif isinstance(st, A.Fight):
+            # FIGHT pushes 0 won, 1 lost, 2 fled. Losing with no lost: branch ends the
+            # Departure, failed.
+            end = Label()
+            labels = {k: Label() for k in st.outcomes}
+            lost = labels.get("lost") or Label()
+            asm.op("FIGHT", self.map_ids[st.map], st.surprise)
+            # The fourth slot is never taken; it points at a real instruction anyway.
+            asm.op("SWITCH4", labels.get("won", end), lost, labels.get("fled", end),
+                   labels.get("won", end))
+            for k, body in st.outcomes.items():
+                asm.mark(labels[k])
+                self.block(car, body, ctx)
+                if not terminates(body):
+                    asm.op("JMP", end)
+            if "lost" not in st.outcomes:
+                asm.mark(lost)
+                self.leave(car, ctx)
+                asm.op("END", 1)
+            asm.mark(end)
         else:
             raise AssertionError(st)
 
@@ -374,6 +398,9 @@ class Compiler:
             raise CompileError(1, f"{len(self.scenes)} scenes; the most is {MAX_SCENES}")
         if len(self.pictures) > MAX_PICTURES:
             raise CompileError(1, f"{len(self.pictures)} pictures; the most is {MAX_PICTURES}")
+        if len(self.dep.maps) > MAX_ENCOUNTERS:
+            raise CompileError(list(self.dep.maps.values())[MAX_ENCOUNTERS].line,
+                               f"{len(self.dep.maps)} battle maps; the most is {MAX_ENCOUNTERS}")
         for index, chapter in enumerate(self.dep.chapters):
             if index >= 64:
                 raise CompileError(chapter.line, "a Departure can have at most 64 chapters")
@@ -409,6 +436,10 @@ class Compiler:
                                             f"bytes; the most is {MAX_CAR}. Split it into "
                                             "two chapters.")
         depot = self.depot_bytes(pairs, hash_value=0)
+        if len(depot) > MAX_DEPOT:
+            raise CompileError(1, f"the depot (scenes, text pairs, pictures and battle maps) "
+                                  f"is {len(depot)} bytes; the most is {MAX_DEPOT}. Use "
+                                  "fewer or smaller battle maps.")
         h = crc16(depot + b"".join(car_bytes))
         depot = self.depot_bytes(pairs, hash_value=h)
         return Image(depot, car_bytes, pairs, self)
@@ -450,6 +481,35 @@ class Compiler:
         for p in self.pictures:
             name = p.encode("ascii")
             out += bytes([len(name)]) + name
+        out += bytes([len(self.dep.maps)])
+        for m in self.dep.maps.values():
+            blob = self.encounter_bytes(m)
+            out += struct.pack("<H", len(blob)) + blob
+        return bytes(out)
+
+    def encounter_bytes(self, m):
+        """A battle map and its foes (docs/vm-spec.md, Encounters). Each foe's numbers are
+        copied from the bestiary, so the image stands on its own."""
+        w, h = len(m.rows[0]), len(m.rows)
+        codes = [MAP_TILES.index(c) if c in MAP_TILES else 0 for r in m.rows for c in r]
+        if len(codes) % 2:
+            codes.append(0)
+        out = bytearray([w, h])
+        out += bytes((codes[i] << 4) | codes[i + 1] for i in range(0, len(codes), 2))
+        starts = [(x, y) for y, r in enumerate(m.rows) for x, c in enumerate(r) if c == "@"]
+        out += bytes([len(starts)])
+        for x, y in starts:
+            out += bytes([x, y])
+        foes = [(x, y, c) for y, r in enumerate(m.rows) for x, c in enumerate(r) if "a" <= c <= "z"]
+        out += bytes([len(foes)])
+        for x, y, c in foes:
+            f = self.reg["foes"][m.foes[c]]
+            reach = REACH[f["reach"]]
+            out += bytes([x, y, f["health"], f["grace"], f["grace"] // 5, f["armor"], f["ward"],
+                          f["soak"], f["speed"], f["attack"], f["damage"], f["type"],
+                          int(reach != "melee"), int(reach == "power"), f["area"],
+                          255 if f["weak"] is None else f["weak"], f["behavior"],
+                          int(f["coward"])])
         return bytes(out)
 
 

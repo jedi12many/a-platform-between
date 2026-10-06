@@ -37,3 +37,5 @@ stamp-echo      tests/qsc/ok/everything.qs                      -     @kestrel,@
 # pass's last bit), the Echoes Departure 2 plants are forgotten and the pup is a pup.
 rewind-not      tests/vm/rewind.qs                              -     @ash,@pass:ash:2:21:3,1
 rewind-yes      tests/vm/rewind.qs                              -     @ash,@pass:ash:2:22:3:rewind,1
+# Fights (E3.3: the image loads; the battle itself plays from E3.4).
+fight-yard      tests/qsc/ok/fight.qs                           3     1

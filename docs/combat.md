@@ -21,8 +21,10 @@ the foe card:
 | **Speed** | 4 + Grace ÷ 25 (4–8) | squares you can move in a round |
 | **Attack** | Melee, Ranged or Channel, by weapon | the skill you roll |
 
-A foe card prints its numbers directly, including its defense TNs, so nobody adds at the
-table:
+Foes live in the shared **bestiary**, `registry/foes.txt`, one line each, so any Departure
+(and any community author) can use them, and printed foe cards come from the same
+numbers. A foe card prints its numbers directly, including its defense TNs, so nobody adds
+at the table:
 
 ```
 RUST-GUARD          scrapyard automaton

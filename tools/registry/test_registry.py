@@ -59,5 +59,13 @@ broken("echoes.txt", "1 WOLF ally 02 SAVED* LEFT SWORN GONE\n", "at most 3 state
 broken("echoes.txt", "1 WOLF friend 02 SAVED* LEFT\n", "kind 'friend'")
 broken("skills.txt", "".join(f'{i} S{i} MIGHT "S{i}"\n' for i in range(13)), "id 12")
 
+check(reg["foes"]["RUST_GUARD"]["weak"] == 1 and reg["foes"]["ASH_RAT"]["coward"], "foes")
+FOE = '1 RAT 6 50 0 0 0 6 30 2 kinetic melee 0 - {} "Rat"\n'
+broken("foes.txt", FOE.format("charge+brave"), "+coward")
+broken("foes.txt", FOE.format("lurk"), "behavior 'lurk'")
+broken("foes.txt", FOE.format("charge").replace("melee", "thrown"), "reach 'thrown'")
+broken("foes.txt", FOE.format("charge").replace(" 6 50", " 0 50", 1), "health 0")
+broken("foes.txt", FOE.format("charge") + FOE.format("shoot"), "append-only")
+
 print(f"registry tests: {failures} failed")
 sys.exit(1 if failures else 0)

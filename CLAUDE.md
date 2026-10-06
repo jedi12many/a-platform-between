@@ -58,7 +58,7 @@ The core must build with cc65 for the 6502 and give identical results everywhere
 
 ## Registries
 
-Races, classes, skills, items and Echoes live in `registry/*.txt`, the single source of
+Races, classes, skills, items, Echoes and foes live in `registry/*.txt`, the single source of
 truth (see `registry/README.md`). After editing them, run `make registry` to regenerate
 `core/include/apb_registry.h` and `core/src/registry.c`; never edit those two by hand.
 Python tools read the registry through `tools/registry/registry.py`.

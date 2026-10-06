@@ -497,12 +497,12 @@ static void foe_turn(uint8_t who)
     uint8_t d;
     uint8_t best_d;
 
-    if (target == APB_NOBODY && f_behavior[who] == APB_FOE_SHOOT && f_ranged[who]
+    if (target == APB_NOBODY && f_behavior[who] == APB_AI_SHOOT && f_ranged[who]
         && find_shot(who)) {
         if (f_state[who] != APB_IN_FIGHT) return;
         target = nearest(who, f_x[who], f_y[who], 1);
     }
-    if (target == APB_NOBODY && f_behavior[who] != APB_FOE_GUARD) {
+    if (target == APB_NOBODY && f_behavior[who] != APB_AI_GUARD) {
         /* Close in: the reachable square nearest the nearest traveler (cheapest to get
          * to on a tie, then top-left first). */
         goal = nearest(who, f_x[who], f_y[who], 0);

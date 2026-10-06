@@ -21,9 +21,9 @@ enum { APB_SIDE_TRAVELER = 0, APB_SIDE_FOE };
 
 /* How a foe fights (printed on its card). */
 enum {
-    APB_FOE_CHARGE = 0,   /* close in and attack the nearest traveler          */
-    APB_FOE_SHOOT,        /* shoot whoever it can see; otherwise close in      */
-    APB_FOE_GUARD         /* stay put; attack anyone who comes next to it      */
+    APB_AI_CHARGE = 0,   /* close in and attack the nearest traveler          */
+    APB_AI_SHOOT,        /* shoot whoever it can see; otherwise close in      */
+    APB_AI_GUARD         /* stay put; attack anyone who comes next to it      */
 };
 
 /* A fighter's state. */

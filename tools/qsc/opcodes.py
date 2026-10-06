@@ -43,6 +43,7 @@ OPS = {
     "OR":         (0x37, []),
     "NOT":        (0x38, []),
     "CHECK":      (0x39, ["rating", "u8"]),
+    "FIGHT":      (0x3A, ["enc", "u8"]),
     # changing state
     "SET":        (0x40, ["flag"]),
     "CLR":        (0x41, ["flag"]),
@@ -58,7 +59,7 @@ OPS = {
 
 BY_CODE = {code: (name, operands) for name, (code, operands) in OPS.items()}
 
-WIDTH = {"u8": 1, "var": 1, "pic": 1, "rating": 1,
+WIDTH = {"u8": 1, "var": 1, "pic": 1, "rating": 1, "enc": 1,
          "u16": 2, "s16": 2, "addr": 2, "scene": 2, "str": 2, "flag": 2, "item": 2,
          "echo": 2}
 
@@ -73,6 +74,10 @@ NO_TITLE = 0xFFFF           # a car's title string when its chapter has none
 STACK_DEPTH = 16
 MAX_OPTIONS = 9
 MAX_CAR = 16384
+MAX_DEPOT = 4096                # vm/apb_vm.h, APB_VM_DEPOT_MAX
+MAX_ENCOUNTERS = 32
+MAP_TILES = ".#O~+^=>"          # tile codes 0..7, in order (core/include/apb.h, APB_TILE_*)
+ENCOUNTER_FOE_BYTES = 18        # x, y, then 16 numbers (docs/vm-spec.md)
 BPE_MAX_PAIRS = 128
 BPE_MAX_DEPTH = 16
 

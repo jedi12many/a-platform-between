@@ -12,6 +12,12 @@ straight from them, so they can never disagree.
 | `skills.txt` | Skills and the stat that governs each |
 | `items.txt` | Every item: archetype, tier, damage type, native Tech and Magic Levels |
 | `echoes.txt` | Every Echo: kind, the Departure that plants it, its states and canon default |
+| `foes.txt` | The bestiary: every foe a battle map can hold, with its numbers ([combat.md](../docs/combat.md)) |
+
+Foes are read by the Quest Script compiler and the Python tools, not the C engine: an
+image carries a copy of each foe's numbers, so a later change here never changes a
+Departure that has shipped. The bestiary is the easiest place to contribute: one line per
+foe, in the same 100-point scale as everything else.
 
 ## Editing
 
@@ -39,4 +45,4 @@ Races, classes and skills must have consecutive ids from 0. Items and Echoes may
 ## Limits
 
 Set by the Passport format: at most 32 races, 16 classes and 12 skills; item and Echo ids
-1–1023; 3 states per Echo.
+1–1023; 3 states per Echo. Foe ids are 1–1023.

@@ -397,8 +397,8 @@ def damaged(rng, files):
     return files
 
 
-def damage(count):
-    src_dir = os.path.join(BUILD, "fare-edge")
+def damage(count, case="fare-edge"):
+    src_dir = os.path.join(BUILD, case)
     files = {}
     for n in os.listdir(src_dir):
         with open(os.path.join(src_dir, n), "rb") as f:
@@ -428,7 +428,7 @@ def damage(count):
         last = p.stdout.strip().splitlines()[-1] if p.stdout.strip() else ""
         kind = last.split(":")[0].strip("[") if last.startswith("[") else "text"
         outcomes[kind] = outcomes.get(kind, 0) + 1
-    print(f"ok  damage: {count} corrupted images, none crashed: "
+    print(f"ok  damage: {count} corrupted copies of {case}, none crashed: "
           + ", ".join(f"{k} {v}" for k, v in sorted(outcomes.items())))
 
 
@@ -441,6 +441,7 @@ def main():
         saves()
         damaged_saves(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2)
     damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")))
+    damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2, "fight-yard")
     print(f"vm tests: {failures} failed")
     sys.exit(1 if failures else 0)
 

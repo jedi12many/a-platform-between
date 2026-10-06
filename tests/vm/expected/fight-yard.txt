@@ -1,0 +1,6 @@
+=== The Yard
+Two rust-guards and a gunner stand between you and the gate.
+  1) Fight your way through
+  2) Go round by the fence
+> 1
+[error: fights aren't playable yet 0:48]

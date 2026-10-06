@@ -29,7 +29,7 @@ enum {
     OP_PUSH8 = 0x20, OP_PUSH16 = 0x21, OP_FLAG = 0x22, OP_VAR = 0x23, OP_HAS = 0x24,
     OP_ECHO = 0x25, OP_RATING = 0x26, OP_LEVEL = 0x27, OP_RACE = 0x28, OP_CLASS = 0x29,
     OP_EQ = 0x30, OP_NE = 0x31, OP_LT = 0x32, OP_LE = 0x33, OP_GT = 0x34, OP_GE = 0x35,
-    OP_AND = 0x36, OP_OR = 0x37, OP_NOT = 0x38, OP_CHECK = 0x39,
+    OP_AND = 0x36, OP_OR = 0x37, OP_NOT = 0x38, OP_CHECK = 0x39, OP_FIGHT = 0x3A,
     OP_SET = 0x40, OP_CLR = 0x41, OP_LET = 0x42, OP_ADD = 0x43, OP_SUB = 0x44,
     OP_GIVE = 0x48, OP_TAKE = 0x49, OP_XP = 0x4A, OP_DEBT = 0x4B, OP_ECHO_SET = 0x4C,
     OP_LAST = 0x4C
@@ -37,12 +37,12 @@ enum {
 
 /* Operand kinds, one letter each:
  * a addr  s scene  t string  f flag  v var  i item  e echo  r rating  p picture
- * b u8    w u16    h s16 */
+ * n encounter  b u8  w u16  h s16 */
 static const char *const operands[OP_LAST + 1] = {
     "",  "a", "a", "s", "aaaa", "b", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,          /* 00 */
     "t", "p", "",  "",  0, 0, 0, 0, "", "ta", "", 0, 0, 0, 0, 0,          /* 10 */
     "b", "h", "f", "v", "i", "eb", "r", "", "", "", 0, 0, 0, 0, 0, 0,     /* 20 */
-    "", "", "", "", "", "", "", "", "", "rb", 0, 0, 0, 0, 0, 0,           /* 30 */
+    "", "", "", "", "", "", "", "", "", "rb", "nb", 0, 0, 0, 0, 0,        /* 30 */
     "f", "f", "v", "vb", "vb", 0, 0, 0, "i", "i", "b", "bw", "eb"        /* 40 */
 };
 
@@ -79,6 +79,8 @@ static uint8_t pair_count;
 static uint16_t pairs_at;
 static uint8_t picture_count;
 static uint16_t pictures_at;
+static uint8_t encounter_count;
+static uint16_t encounters_at;      /* the first encounter's length field */
 
 /* The loaded car. */
 static uint8_t car_index = 0xFF;
@@ -171,6 +173,75 @@ static void fail(const char *what, uint16_t at)
 
 /* ------------------------------------------------------- loading: depot */
 
+/* A battle map and its foes (docs/vm-spec.md, Encounters): `len` bytes at depot[at].
+ * Everything is checked here, at load, so the battle can trust it. */
+static uint8_t enc_tile(uint16_t tiles_at, uint8_t w, uint8_t x, uint8_t y)
+{
+    uint16_t n = (uint16_t)(y * w + x);
+    uint8_t b = depot[tiles_at + n / 2];
+
+    return (uint8_t)((n & 1) ? (b & 15) : (b >> 4));
+}
+
+static uint8_t encounter_ok(uint16_t at, uint16_t len)
+{
+    uint8_t w;
+    uint8_t h;
+    uint8_t i;
+    uint8_t j;
+    uint8_t starts;
+    uint8_t foes;
+    uint8_t x;
+    uint8_t y;
+    uint8_t t;
+    uint16_t end = (uint16_t)(at + len);
+    uint16_t tiles_at;
+    uint16_t p;
+    uint16_t q;
+    const uint8_t *s;
+
+    if (len < 2 || end > depot_len || end < at) return 0;
+    w = depot[at];
+    h = depot[at + 1];
+    if (w < 1 || w > 16 || h < 1 || h > 10) return 0;
+    tiles_at = (uint16_t)(at + 2);
+    p = (uint16_t)(tiles_at + (w * h + 1) / 2);
+    if (p >= end) return 0;
+    for (y = 0; y < h; ++y) {
+        for (x = 0; x < w; ++x) {
+            if (enc_tile(tiles_at, w, x, y) > 7) return 0;
+        }
+    }
+    starts = depot[p++];
+    if (starts < 1 || starts > 4 || (uint16_t)(p + 2u * starts) >= end) return 0;
+    q = p;                                   /* positions: starts, then each foe's */
+    p = (uint16_t)(p + 2u * starts);
+    foes = depot[p++];
+    if (foes < 1 || foes > 8 - starts || (uint16_t)(p + 18u * foes) != end) return 0;
+    for (i = 0; i < starts + foes; ++i) {
+        s = depot + (i < starts ? q + 2u * i : p + 18u * (i - starts));
+        x = s[0];
+        y = s[1];
+        if (x >= w || y >= h) return 0;
+        t = enc_tile(tiles_at, w, x, y);
+        if (t == 1 || t == 2) return 0;      /* a wall or a pit */
+        for (j = 0; j < i; ++j) {
+            if (x == (j < starts ? depot[q + 2u * j] : depot[p + 18u * (j - starts)])
+                && y == (j < starts ? depot[q + 2u * j + 1] : depot[p + 18u * (j - starts) + 1])) {
+                return 0;
+            }
+        }
+        if (i >= starts) {
+            /* health, then: 11 type, 12 ranged, 13 power, 14 area, 15 weak, 16 AI, 17 coward */
+            if (s[2] == 0 || s[11] > 4 || s[12] > 1 || s[13] > 1 || s[14] > 4
+                || (s[15] > 4 && s[15] != 255) || s[16] > 2 || s[17] > 1) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
+
 static uint8_t load_depot(void)
 {
     uint16_t at;
@@ -229,6 +300,24 @@ static uint8_t load_depot(void)
         }
         n = depot[at];
         at = (uint16_t)(at + 1 + n);
+    }
+    if (at >= depot_len) {
+        fail("bad picture list", 0);
+        return 0;
+    }
+    encounter_count = depot[at];
+    encounters_at = (uint16_t)(at + 1);
+    at = encounters_at;
+    if (encounter_count > 32) {
+        fail("bad encounter list", 0);
+        return 0;
+    }
+    for (i = 0; i < encounter_count; ++i) {
+        if ((uint16_t)(at + 2) > depot_len || !encounter_ok((uint16_t)(at + 2), rd16(depot + at))) {
+            fail("bad encounter", i);
+            return 0;
+        }
+        at = (uint16_t)(at + 2 + rd16(depot + at));
     }
     if (at != depot_len) {
         fail("depot has trailing bytes", 0);
@@ -462,7 +551,7 @@ static uint8_t verify_car(uint8_t index)
         }
         ++at;
         for (k = operands[op]; *k; ++k) {
-            if (*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p') {
+            if (*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p' || *k == 'n') {
                 if (at + 1 > code_len) break;
                 v = code[at];
                 at = (uint16_t)(at + 1);
@@ -474,6 +563,7 @@ static uint8_t verify_car(uint8_t index)
             if ((*k == 'a' && v >= code_len) || (*k == 's' && v >= scene_count)
                 || (*k == 't' && v >= string_count) || (*k == 'f' && v >= flag_count)
                 || (*k == 'v' && v >= var_count) || (*k == 'p' && v >= picture_count)
+                || (*k == 'n' && v >= encounter_count)
                 || (*k == 'r' && !valid_rating((uint8_t)v))
                 || (*k == 'i' && (v >= APB_ITEM_COUNT || apb_items[v].tier == 0))
                 || (*k == 'e' && (v >= APB_ECHO_COUNT || apb_echo_defaults[v] == 0))) {
@@ -514,7 +604,8 @@ static uint8_t verify_car(uint8_t index)
                 fail("jump into an instruction", at);
                 return 0;
             }
-            v = (uint16_t)(v + ((*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p') ? 1 : 2));
+            v = (uint16_t)(v + ((*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p' || *k == 'n')
+                                ? 1 : 2));
         }
     }
 #endif
@@ -1276,6 +1367,10 @@ uint8_t apb_vm_run(void)
             break;
         case OP_NOT:
             push(!pop());
+            break;
+        case OP_FIGHT:
+            /* The battle map arrives with milestone E3.4. */
+            fail("fights aren't playable yet", pc);
             break;
         case OP_CHECK:
             i = FETCH8();

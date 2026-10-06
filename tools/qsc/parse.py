@@ -28,6 +28,14 @@ MAX_CHOICES = 9
 MAX_LABEL = 37
 MAX_TITLE = 40
 MAX_FIXED_LINE = 38    # a | line on a 40-column screen
+# Battle maps (docs/combat.md).
+MAP_TILES = ".#O~+^=>"
+MAP_W_MAX = 16
+MAP_H_MAX = 10
+PARTY_MAX = 4
+FIGHTERS_MAX = 8
+FIGHT_OUTCOMES = ["won", "lost", "fled"]
+SURPRISE = {"ambush": 1, "sneak": 2}
 
 LOWER_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
 UPPER_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
@@ -282,6 +290,11 @@ class Parser:
             if ln.text.startswith("==") and ln.indent == 0:
                 break
             words = ln.text.split()
+            if words[0] == "map":
+                kids, nxt = self.children(lines, i, ln.indent)
+                self.parse_map(ln, kids)
+                i = nxt
+                continue
             if words[0] == "flag" and len(words) == 2:
                 self.declare(words[1], ln.no, None)
             elif words[0] == "var":
@@ -292,14 +305,87 @@ class Parser:
                     self.declare(m.group(1), ln.no,
                                  self.number(m.group(2), ln.no, 0, 255, "a variable's value"))
             else:
-                self.err(ln.no, "expected 'flag name', 'var name = 0', a '=== Chapter' or "
-                                "a '== scene' here")
+                self.err(ln.no, "expected 'flag name', 'var name = 0', 'map name', a "
+                                "'=== Chapter' or a '== scene' here")
             i += 1
         if len(self.dep.flags) > MAX_FLAGS:
             self.err(1, f"{len(self.dep.flags)} flags; the most is {MAX_FLAGS}")
         if len(self.dep.vars) > MAX_VARS:
             self.err(1, f"{len(self.dep.vars)} variables; the most is {MAX_VARS}")
         return i
+
+    def parse_map(self, ln, kids):
+        words = ln.text.split()
+        if len(words) != 2:
+            self.err(ln.no, "a battle map is declared like 'map scrapyard', with its rows "
+                            "indented underneath")
+            return
+        name = words[1]
+        if not self.lower_name(name, ln.no, "map name"):
+            return
+        if name in self.dep.maps:
+            self.err(ln.no, f"there's already a map called '{name}', on line "
+                            f"{self.dep.maps[name].line}")
+            return
+        rows, row_lines, foes = [], [], {}
+        for k in kids:
+            if k.blank:
+                continue
+            m = re.fullmatch(r"([a-z])\s*=\s*(\S+)", k.text)
+            if m:
+                letter, foe = m.groups()
+                if letter in foes:
+                    self.err(k.no, f"'{letter}' is already given a foe on this map")
+                elif foe not in self.reg["foes"]:
+                    self.err(k.no, f"there's no foe called '{foe}' in the bestiary "
+                                   f"(registry/foes.txt)." + suggest(foe, self.reg["foes"]))
+                foes[letter] = foe
+            elif foes:
+                self.err(k.no, "the map's rows come first, then a line like 'a = RUST_GUARD' "
+                               "for each letter")
+            else:
+                rows.append(k.text)
+                row_lines.append(k.no)
+        if not rows:
+            self.err(ln.no, f"map '{name}' has no rows: indent them under 'map {name}'")
+            return
+        if len(rows) > MAP_H_MAX:
+            self.err(row_lines[MAP_H_MAX], f"a map has at most {MAP_H_MAX} rows")
+        width = len(rows[0])
+        if width > MAP_W_MAX:
+            self.err(row_lines[0], f"this row is {width} squares; a map is at most "
+                                   f"{MAP_W_MAX} wide")
+        starts = 0
+        letters = []
+        for r, at in zip(rows, row_lines):
+            if len(r) != width:
+                self.err(at, f"every row of a map must be the same width: this one is "
+                             f"{len(r)} squares, the first is {width}")
+            for c in r:
+                if c == "@":
+                    starts += 1
+                elif "a" <= c <= "z":
+                    letters.append(c)
+                elif c not in MAP_TILES:
+                    self.err(at, f"'{c}' isn't a square on a battle map: use . # O ~ + ^ = >, "
+                                 "@ where travelers start, or a letter for a foe")
+        if starts == 0:
+            self.err(ln.no, f"map '{name}' needs at least one '@', where the travelers start")
+        elif starts > PARTY_MAX:
+            self.err(ln.no, f"map '{name}' has {starts} '@'s; a party is at most {PARTY_MAX}")
+        if not letters:
+            self.err(ln.no, f"map '{name}' has no foes: put a letter where each one starts")
+        if starts + len(letters) > FIGHTERS_MAX:
+            self.err(ln.no, f"map '{name}' has {starts} '@'s and {len(letters)} foes; a fight "
+                            f"holds at most {FIGHTERS_MAX} in all")
+        for c in sorted(set(letters)):
+            if c not in foes:
+                self.err(ln.no, f"'{c}' stands on map '{name}' but isn't given a foe: add a "
+                                f"line like '{c} = RUST_GUARD'")
+        for c in foes:
+            if c not in letters:
+                self.diag.warn(ln.no, f"'{c}' is given a foe but isn't on map '{name}'")
+        self.dep.maps[name] = A.Map(name, rows, foes, ln.no)
 
     def declare(self, name, line, value):
         if not self.lower_name(name, line, "flag or variable name"):
@@ -451,6 +537,11 @@ class Parser:
             if t == "check" or t.startswith("check "):
                 flush()
                 stmts.append(self.parse_check(ln, kids))
+                i = nxt
+                continue
+            if t == "fight" or t.startswith("fight "):
+                flush()
+                stmts.append(self.parse_fight(ln, kids))
                 i = nxt
                 continue
             if t.startswith("=="):
@@ -645,6 +736,52 @@ class Parser:
             outcomes[which] = self.parse_block(block, block[0].indent) if block else []
             j = nj
         return A.Check(rating, tn, outcomes, ln.no)
+
+    def parse_fight(self, ln, kids):
+        words = ln.text.split()
+        name, surprise = None, 0
+        if len(words) < 2 or len(words) > 3:
+            self.err(ln.no, "a fight is written like 'fight scrapyard', or 'fight scrapyard "
+                            "ambush' (the foes go first) or 'fight scrapyard sneak' (you do)")
+        else:
+            name = words[1]
+            if name not in self.dep.maps:
+                self.err(ln.no, f"there's no map called '{name}': declare it before the "
+                                "first chapter with 'map " + name + "'."
+                                + suggest(name, self.dep.maps))
+            if len(words) == 3:
+                if words[2] in SURPRISE:
+                    surprise = SURPRISE[words[2]]
+                else:
+                    self.err(ln.no, f"after the map, write 'ambush' or 'sneak', or nothing."
+                                    + suggest(words[2], list(SURPRISE)))
+        outcomes = {}
+        j = 0
+        while j < len(kids):
+            k = kids[j]
+            if k.blank:
+                j += 1
+                continue
+            sub, nj = self.children(kids, j, k.indent)
+            m = re.match(r"^([a-z_]+)\s*:\s*(.*)$", k.text)
+            if not m or m.group(1) not in FIGHT_OUTCOMES:
+                word = m.group(1) if m else k.text.split()[0]
+                self.err(k.no, "under a fight, each line starts with won:, lost: or fled:."
+                               + suggest(word, FIGHT_OUTCOMES))
+                j = nj
+                continue
+            which, inline = m.group(1), m.group(2)
+            if which in outcomes:
+                self.err(k.no, f"'{which}:' appears twice in this fight")
+            block = list(sub)
+            if inline:
+                at = block[0].indent if block else k.indent + 4
+                block.insert(0, Line(k.no, at, inline))
+            if not block:
+                self.err(k.no, f"'{which}:' is empty")
+            outcomes[which] = self.parse_block(block, block[0].indent) if block else []
+            j = nj
+        return A.Fight(name, surprise, outcomes, ln.no)
 
     # ------------------------------------------------------------ commands
 
@@ -871,6 +1008,12 @@ class Parser:
             import routes
             start_line = scenes[self.dep.start].line
             common, ends = routes.bottlenecks(self.dep)
+            on_every_route = set(common) | {self.dep.start} | (set(ends) if len(ends) == 1 else set())
+            for name in sorted(on_every_route & set(scenes), key=lambda n: scenes[n].line):
+                for f in unavoidable_fights(scenes[name]):
+                    self.diag.warn(f.line, "every road to the end goes through this fight: "
+                                           "give players a way around it (another route, a "
+                                           "check, a parley), like any roadblock")
             if not ends:
                 self.diag.warn(start_line, "no route from the start reaches '~ end complete'")
             elif common and not self.dep.linear:
@@ -904,7 +1047,31 @@ def terminates(stmts):
         crit = o.get("crit", o.get("success"))
         return all(terminates(b) if b is not None else False
                    for b in (crit, o.get("success"), o.get("cost"), o.get("fail")))
+    if isinstance(last, A.Fight):
+        # Losing with no lost: branch ends the Departure (failed).
+        o = last.outcomes
+        return all(terminates(o[k]) if k in o else k == "lost" for k in FIGHT_OUTCOMES)
     return False
+
+
+def fights_in(stmts):
+    for st in stmts:
+        if isinstance(st, A.Fight):
+            yield st
+        elif isinstance(st, A.If):
+            for _, body in st.branches:
+                yield from fights_in(body)
+        elif isinstance(st, A.Check):
+            for body in st.outcomes.values():
+                yield from fights_in(body)
+
+
+def unavoidable_fights(scene):
+    """Fights a player can't avoid once in this scene: in its own text, or behind its only
+    choice."""
+    yield from fights_in(scene.body)
+    if len(scene.choices) == 1:
+        yield from fights_in(scene.choices[0].body)
 
 
 def targets(stmts):
@@ -914,7 +1081,7 @@ def targets(stmts):
         elif isinstance(st, A.If):
             for _, body in st.branches:
                 yield from targets(body)
-        elif isinstance(st, A.Check):
+        elif isinstance(st, (A.Check, A.Fight)):
             for body in st.outcomes.values():
                 yield from targets(body)
 

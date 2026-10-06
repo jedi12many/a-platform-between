@@ -57,6 +57,20 @@ its own file (`DEPOT`, `CAR00`, `CAR01`, ...), so the loader stays trivial.
 | scene directory | 3 × scenes | per scene: car (1), offset into that car's code (2) |
 | BPE pair table | 1 + 2 × pairs | pair count (≤ 128), then two bytes per pair |
 | picture names | 1 + … | count, then length-prefixed names; index = picture id |
+| encounters | 1 + … | count (≤ 32), then each one's length (2) and record; index = encounter id |
+
+#### Encounters
+
+A battle map and its foes, everything a fight needs (rules: [combat.md](combat.md)). The
+whole record is checked when the depot loads: sizes, squares, positions (inside the map,
+on ground you can stand on, no two fighters on one square) and every number's range.
+
+| Field | Size | Notes |
+|---|---|---|
+| width, height | 1 + 1 | 1–16, 1–10 |
+| squares | (w × h + 1) / 2 | row by row, two to a byte, high nibble first: 0 open, 1 wall, 2 pit, 3 rough, 4 cover, 5 hazard, 6 high ground, 7 exit |
+| starts | 1 + 2 each | 1–4 travelers' squares: x, y |
+| foes | 1 + 18 each | 1 to 8 − starts. Each: x, y, health, grace, dodge, armor, ward, soak, speed, attack, damage, damage type (0–4), ranged (0/1), power (0/1), area (0–4), weakness (0–4, or 255 for none), behavior (0 charge, 1 shoot, 2 guard), coward (0/1) |
 
 ### Car
 
@@ -197,6 +211,7 @@ re-running the scene's entry text or commands.
 | `AND` `OR` | 36–37 | — | pop b, pop a, push logical result |
 | `NOT` | 38 | — | pop a, push !a |
 | `CHECK` | 39 | u8 rating, u8 tn | d100 + the rating (numbered as for `RATING`) against the TN (50–250): pushes 0 fail, 1 cost, 2 success, 3 crit (via `apb_check`) |
+| `FIGHT` | 3A | u8 encounter, u8 surprise | plays the encounter (surprise: 0 none, 1 the foes go first, 2 the travelers do): pushes 0 won, 1 lost, 2 fled. The compiler follows it with a `SWITCH4` whose fourth slot is never taken |
 
 `visited` compiles to `FLAG` on the scene's compiler-allocated flag.
 

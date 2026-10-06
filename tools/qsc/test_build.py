@@ -244,6 +244,28 @@ def test_verifier_never_crashes():
             fail(f"wrong reason: {e}")
 
 
+def test_encounters():
+    """An encounter record assembled by hand from docs/vm-spec.md."""
+    src = TINY.replace("flag f\n", "flag f\n\nmap pen\n    @.a\n    #.>\n    a = ASH_RAT\n") \
+        .replace("+ [Stay]\n    ~ set f", "+ [Stay]\n    ~ set f\n    fight pen ambush\n        won: Done.")
+    img = build(src)
+    # 3 x 2; squares @ . a / # . > are open open open / wall open exit: 0 0 0 1 0 7,
+    # two to a byte. One start at 0,0. One foe at 2,0: the ash rat's numbers from
+    # registry/foes.txt, Dodge = Grace 50 / 5 = 10, no weakness (255), charge, coward.
+    want = bytes([3, 2, 0x00, 0x01, 0x07, 1, 0, 0, 1, 2, 0,
+                  6, 50, 10, 0, 0, 0, 6, 30, 2, 0, 0, 0, 0, 255, 0, 1])
+    from image import read_depot
+    tail = img.depot[-(len(want) + 3):]
+    if tail != bytes([1]) + struct.pack("<H", len(want)) + want:
+        fail(f"encounter record: {tail.hex()} instead of 01 {len(want):02x}00 {want.hex()}")
+    code = bytes(img.cars[0])
+    if bytes([0x3A, 0, 1]) not in code:
+        fail("FIGHT 0, ambush (3A 00 01) isn't in the code")
+    e = read_depot(img.depot)["encounters"][0]
+    if (e["w"], e["h"], e["starts"], e["foes"][0]["x"]) != (3, 2, [(0, 0)], 2):
+        fail(f"encounter read back as {e}")
+
+
 def test_manifests():
     path = os.path.join(ROOT, "content", "s1", "00-the-fare", "the-fare.qs")
     with open(path, encoding="utf-8") as f:
@@ -288,6 +310,7 @@ def test_manifests():
 
 
 test_hand_assembled()
+test_encounters()
 test_manifests()
 for p in sorted(glob.glob(os.path.join(ROOT, "tests", "qsc", "ok", "*.qs")) +
                 glob.glob(os.path.join(ROOT, "content", "**", "*.qs"), recursive=True)):
