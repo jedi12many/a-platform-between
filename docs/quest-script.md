@@ -376,5 +376,17 @@ The compiler tells you when you hit one, and where.
 
 ## Not in v0
 
-Planned, not yet designed: fights (`fight`, milestone E3), random tables, reusable
+Planned, not yet designed: encounters (`fight`, milestone E3), which hand off to the battle
+map and come back with a result, for example:
+
+```
+== mountain_path
+The switchbacks narrow to a ledge. Snow, wind, and then the rocks start moving.
+fight ROCK_TROLLS ambush            // starting positions: the party strung out
+    won:  The last troll topples into the gorge. -> castle_gate
+    fled: You scramble back down to the treeline. -> forest_road
+    lost: -> waystation_return
+```
+
+Also planned: party voting options (vote, leader, personal choices), random tables, reusable
 "tunnel" scenes that return to where they were called from, and text styles.

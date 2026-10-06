@@ -47,7 +47,7 @@ What a Departure is made of:
 | **Scene** | A location or moment: text, an optional picture, and a menu of choices. |
 | **Choice** | A menu line, optionally gated (by a flag, stat, item, Echo or check). |
 | **Check** | d100 + a stat or skill against a target number, branching on fail / cost / success / crit. |
-| **Encounter** | A fight: enemy group, zones, win/lose/flee branches. |
+| **Encounter** | A fight on a battle map: terrain, enemies, starting positions (set by how the party arrived), and win/lose/flee branches. |
 | **Flags and vars** | Story memory inside one Departure. |
 | **Echoes** | Story memory across Departures (plant, read with canon default, transform). |
 | **Rewards** | XP, items, Debt changes, written to the Passport at the end. |
@@ -139,27 +139,63 @@ which produce a transcript of everything the game printed. Transcripts are check
 - Writers get this for free: "play the whole Departure in two seconds, every way we've
   recorded."
 
-## Turn-based, so every machine plays as equals
+## Two modes: story and encounters
 
-Co-op will mix machines: a modern PC next to a C64 Ultimate on a network link. If the game
-ran in real time, the fastest machine would set the pace and the C64 player would always
-be behind. So **nothing that affects the outcome is real-time**:
+A Departure plays like a session with a good game master. Most of it is **story mode**:
+the situation is described, the party talks it over and decides. When it comes to a
+fight, the map comes out: **encounter mode** is turn-based and tactical, like players
+putting their minis on a map the DM just drew.
 
-- **Exploration** is scene menus. The party picks a choice (leader or vote, set per
-  Departure).
-- **Combat is turn-based.** Each round, everyone **declares their action at once**, and the
-  round then resolves in initiative order. Nobody waits through other players' turns one by
-  one, and nobody is rewarded for clicking faster. Thinking speed matters; machine speed
-  doesn't.
-- **Turn timers are optional and generous**, set by the party. With no timer, a game can
-  even be played slowly, a turn a day, like the old play-by-mail games.
+### Story mode: the party decides
+
+- The **Stationmaster presents the ticket**, and the party decides how to tackle it. At a
+  table, the Conductor can take any plan the players invent. On a computer we can't be that
+  flexible, so each decision offers **a few good options**, written to be genuinely
+  different (the many-roads pillar).
+- **The party votes.** Every player picks an option; the votes are shown as they come in.
+  Majority wins. A tie goes to the party leader (or, if the party prefers, to a coin the
+  Stationmaster flips).
+- **Solo, you are the vote.**
+- **Some moments are personal.** A scene can ask every player to choose for their own
+  character (what you say to the Stationmaster, what you take from the vault) instead of
+  voting.
+- **Then the story delivers.** The choice leads into the scenes it implies: the party
+  chose the mountain path to the castle, so the narration follows them up the switchbacks,
+  through the snow, until the rocks start moving. That's the ambush, and the encounter.
+- Story mode isn't turn-based, and isn't timed by default. Voting can have an optional
+  timer the party sets.
+
+### Encounter mode: the map comes out
+
+- **Turn-based, on a battle map**: a small grid with terrain, cover and the party's
+  positions, drawn on screen the way a DM sketches one on a mat. The C64 has done this
+  before (the Gold Box games), and at the table it's literally a map and minis.
+- **How you got here shapes the fight.** An ambush on the mountain path starts with the
+  party strung out on a ledge; sneaking in by the river starts with them unseen. The story
+  choice sets the starting positions and who acts first.
+- **Each round, everyone declares an action at once**, then the round resolves in
+  initiative order. Nobody waits through other players' turns, and clicking faster never
+  helps.
+- **Retreat is always an option**, and every encounter ends with a result the story picks
+  up: won, lost, fled, or something the Departure defines (parleyed, captured).
+
+### Every machine plays as equals
+
+Co-op will mix machines: a modern PC next to a C64 Ultimate on a network link. Neither
+mode depends on machine speed:
+
+- Story mode waits for people (reading and voting), not processors.
+- Encounters are turn-based with simultaneous declaration: thinking speed matters,
+  machine speed doesn't.
+- **Turn timers are optional and generous**, set by the party. With none, a game can even
+  be played slowly, a turn a day, like the old play-by-mail games.
 - **Animations never hold up the game.** Each machine animates results at its own pace (or
-  skips them); the next round can start as soon as everyone has declared.
+  skips them).
 - **Real-time mini-games** (handcar racing, say) stay single-player, or compete through
   ghosts and leaderboards, never live against each other.
 
-This also keeps tabletop and digital play identical: a round of declare-then-resolve is
-exactly how it runs at a table.
+This also keeps tabletop and digital play identical: talk, vote, then put the minis on the
+map.
 
 ### How the network works
 
@@ -167,9 +203,9 @@ The whole game is **deterministic**: given the same image, the same starting cha
 the same random seed and the same list of choices, every machine produces the same result.
 So co-op never sends game state, only choices:
 
-- Each client sends its player's choices (a few bytes per turn) to the host.
-- The **host is authoritative**: it runs the same rules core, picks the random seed, and
-  sends every player the round's choices and seed.
+- Each client sends its player's votes and declared actions (a few bytes each) to the host.
+- The **host is authoritative**: it tallies votes, runs the same rules core, picks the
+  random seed, and sends every player the decided choice (or the round's actions) and seed.
 - Each client replays the round locally and shows it. Results match because the rules
   core is identical everywhere, which the 6502 test runs already prove.
 - A few bytes a turn works over anything, including a C64's WiFi modem at 2400 baud.
@@ -180,7 +216,7 @@ choices.** That one design gives us:
 | Feature | It's just… |
 |---|---|
 | Playthrough tests | a recorded list of choices, and the transcript it produces |
-| Co-op | choices from several players, merged by the host |
+| Co-op | votes and actions from several players, decided by the host into one choice stream |
 | Saves | (later) the starting state plus the choices so far, or a snapshot |
 | Bug reports | "here's my choice list" reproduces the bug exactly |
 
@@ -195,7 +231,7 @@ Each one ends with something playable or testable.
 | **E0** | **Specs**: Quest Script v0 (written as a public reference), bytecode and VM spec, HAL interface | Docs reviewed; one real scene written in Quest Script. *Drafted: [quest-script.md](quest-script.md), [vm-spec.md](vm-spec.md), `hal/apb_hal.h`, The Fare chapters 1–2. Awaiting review.* |
 | **E1** | **Text VM on the terminal**: compiler (scenes, text, choices, flags, gotos, checks, items, Echoes) with friendly errors and a route map that warns when a Departure has only one road to victory, VM in C with a load-time image verifier, the **character creator** (point-buy or roll, portable C on the HAL), terminal front end | a new character can be made and *Departure 00: The Fare* (the prologue at the Waystation) played in a terminal, and its transcripts match on sim65 |
 | **E2** | **Starting and ending a Departure**: Passport in, rewards and Echoes out, mid-Departure saves, Rewind | Play *The Fare*, get a Passport, carry it into a test Departure |
-| **E3** | **Combat**: zone-based, turn-based fights in the rules core, called from Quest Script | A fight in *The Fare*, covered by transcript tests |
+| **E3** | **Encounters**: turn-based fights on a battle map in the rules core, called from Quest Script; voting for co-op story choices is designed alongside | A fight in *The Fare*, covered by transcript tests |
 | **E4** | **C64 front end**: text window, menus, status bar, picture area, disk loading of cars, `.d64` disk images | *The Fare* playable on a C64 (VICE emulator) |
 | **E5** | **Vertical slice**: chapter 1 of *Eighteen Minutes* | Playable on terminal and C64 |
 | **E6** | **Modern front end**: SDL2 desktop and browser builds | *The Fare* and the slice playable in a browser |
