@@ -255,6 +255,8 @@ Defenses, buffs and items that use them arrive with combat.
 ## Combat (milestone E3)
 
 Turn-based, zone-based, designed table-first so it plays the same on paper and on a C64.
+Each round, everyone declares an action at once, then the round resolves in initiative
+order; that keeps co-op fair between fast and slow machines.
 Solo hero plus optional companions and Echo allies. Defenses work as above. At high
 levels, opposed rolls matter (both sides roll d100 + skill; the higher total wins), so a level-100
 traveler still meets equals.

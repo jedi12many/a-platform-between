@@ -25,6 +25,13 @@ Party Departures are written for 2–4 characters with party roles in mind.
   - mixed, filling empty slots from your roster.
 - Everyone who finishes gets XP, loot and their share of Debt reduction.
 
+### Playing together across machines
+
+Co-op is turn-based so a C64 and a modern PC play as equals: everyone declares at once,
+and machine speed never matters. Only choices travel over the network, so even a C64 on a
+WiFi modem keeps up. See *Turn-based, so every machine plays as equals* in
+[engine-plan.md](engine-plan.md).
+
 ### Choices in a party
 
 - Group decisions are made by the party (a vote, or the leader decides; set per Departure).

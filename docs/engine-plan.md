@@ -139,6 +139,53 @@ which produce a transcript of everything the game printed. Transcripts are check
 - Writers get this for free: "play the whole Departure in two seconds, every way we've
   recorded."
 
+## Turn-based, so every machine plays as equals
+
+Co-op will mix machines: a modern PC next to a C64 Ultimate on a network link. If the game
+ran in real time, the fastest machine would set the pace and the C64 player would always
+be behind. So **nothing that affects the outcome is real-time**:
+
+- **Exploration** is scene menus. The party picks a choice (leader or vote, set per
+  Departure).
+- **Combat is turn-based.** Each round, everyone **declares their action at once**, and the
+  round then resolves in initiative order. Nobody waits through other players' turns one by
+  one, and nobody is rewarded for clicking faster. Thinking speed matters; machine speed
+  doesn't.
+- **Turn timers are optional and generous**, set by the party. With no timer, a game can
+  even be played slowly, a turn a day, like the old play-by-mail games.
+- **Animations never hold up the game.** Each machine animates results at its own pace (or
+  skips them); the next round can start as soon as everyone has declared.
+- **Real-time mini-games** (handcar racing, say) stay single-player, or compete through
+  ghosts and leaderboards, never live against each other.
+
+This also keeps tabletop and digital play identical: a round of declare-then-resolve is
+exactly how it runs at a table.
+
+### How the network works
+
+The whole game is **deterministic**: given the same image, the same starting characters,
+the same random seed and the same list of choices, every machine produces the same result.
+So co-op never sends game state, only choices:
+
+- Each client sends its player's choices (a few bytes per turn) to the host.
+- The **host is authoritative**: it runs the same rules core, picks the random seed, and
+  sends every player the round's choices and seed.
+- Each client replays the round locally and shows it. Results match because the rules
+  core is identical everywhere, which the 6502 test runs already prove.
+- A few bytes a turn works over anything, including a C64's WiFi modem at 2400 baud.
+
+The same idea runs through the whole engine. **The only input to the VM is a stream of
+choices.** That one design gives us:
+
+| Feature | It's just… |
+|---|---|
+| Playthrough tests | a recorded list of choices, and the transcript it produces |
+| Co-op | choices from several players, merged by the host |
+| Saves | (later) the starting state plus the choices so far, or a snapshot |
+| Bug reports | "here's my choice list" reproduces the bug exactly |
+
+E1 is single-player, but it's built this way from the start.
+
 ## Milestones
 
 Each one ends with something playable or testable.
@@ -156,6 +203,27 @@ Each one ends with something playable or testable.
 
 After E7: the browser Workshop for community authors, Apple II, DOS, Amiga and SNES
 front ends, the full Departure 01, party support.
+
+### E1 in detail
+
+**Goal:** make a character and play *The Fare* start to finish in a terminal, with
+identical transcripts on the PC and the 6502.
+
+| Step | What | Done when |
+|---|---|---|
+| **E1.1 Registry as data** | Items, Echoes, skills, races and classes in one text file each, under `registry/`. A script generates `apb_registry.h` and the tables the compiler and Python tools use. | The header is generated and the build is unchanged |
+| **E1.2 Compiler front half** (`tools/qsc/`, Python) | Lexer and parser for Quest Script v0, name resolution, friendly errors with line numbers and "did you mean". | `the-fare.qs` parses; a test file of broken scripts gives the right messages |
+| **E1.3 Compiler back half** | Code generation per the VM spec, byte-pair text compression, the `.apd` writer, and the route map ("only one road to victory" warnings). | `the-fare.apd` builds under the size limits |
+| **E1.4 Story VM** (`vm/`, C) | Loader and verifier, the instruction loop, text decoding, menus. All input arrives as choices through the HAL. | A hand-made image runs; corrupt images are refused, not crashed |
+| **E1.5 Character creator** (C, on the HAL) | Point-buy or roll, race, class, extra tag, name, confirm, using only `hal_menu` and `hal_ask_name`. | A character can be made by menu, and by a choice list in tests |
+| **E1.6 Terminal front end** (`fe/term/`) | The stdio HAL: wrapping, menus, status line. A `--choices file` mode that reads choices and writes a transcript. | *The Fare* is playable by hand |
+| **E1.7 Playthrough tests** | Choice lists covering every route through *The Fare*, golden transcripts, run natively and on sim65. | Transcripts match on both; CI runs them |
+
+Order: E1.1, then E1.2–E1.3 (compiler) and E1.4–E1.5 (C) can proceed side by side, then
+E1.6 and E1.7.
+
+Out of scope for E1: combat (E3), saves and Passport hand-off (E2), pictures, the C64
+screen (E4).
 
 ### Departure 00: The Fare
 
