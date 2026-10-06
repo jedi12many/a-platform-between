@@ -22,9 +22,33 @@ machine speed, and neither changes the story engine much. The governing rule is 
 > declarations live in the client, so solo play, tests and party play run the same code,
 > and a party's trip is still one stream of choices that replays exactly.
 
-## Story votes
+## Story choices
 
-### How a vote goes
+### The leader, and how the party decides
+
+Every party has a **leader**, elected by the party, and a **way of deciding**, chosen
+when it forms:
+
+| Way of deciding | Story choices |
+|---|---|
+| **The leader decides** | The leader makes every story choice. Everyone else can suggest: suggestions show on every screen as they're made, but only the leader's pick counts. |
+| **Democracy** | Every seat votes, and the most votes wins. The leader breaks a tie. |
+
+Either way, the leader is one of the players, not a referee: they play their own travelers
+like everyone else. The way of deciding only covers **story choices**. In a fight each
+seat still declares for its own travelers, and personal moments are still each
+traveler's own.
+
+**Electing the leader.** When the party forms, every seat votes for a leader (itself
+included), one vote per seat. The most votes wins; a tie goes to the seat that formed
+the party. At any story menu, any seat can **call an election**, and the party votes
+again before the menu's choice. The leader changes only if someone else wins outright,
+so a tie keeps the current leader. Elections and the way of deciding can't change during
+a fight.
+
+**If the leader drops out**, the remaining seats elect a new one before the next choice.
+
+### How a vote goes (democracy)
 
 1. **The menu goes up on every screen.** Everyone reads the same scene and sees the same
    numbered options.
@@ -35,24 +59,18 @@ machine speed, and neither changes the story engine much. The governing rule is 
    can change its vote until the vote closes. At a table this is just talking it over.
 4. **The vote closes** when every seat has voted, or when the timer runs out (if the
    party set one). A seat that hasn't voted abstains.
-5. **The most votes wins.** For a tie between the leading options:
-   - by default the **party leader's** vote breaks it, if the leader voted for one of
-     them;
-   - otherwise (or if the party chose this when it formed) **the Stationmaster's coin**
-     picks among the tied options.
+5. **The most votes wins.** **The leader breaks a tie**: if the leader voted for one of
+   the tied options, that one wins; if not, the leader is asked to choose between them.
 6. **The decision is announced** ("The party takes the mountain path, 2 votes to 1"), and
    the story goes on.
 
+**With the leader deciding**, the menu goes up the same way, the others' suggestions show
+as they come in, and the choice is made when the leader picks.
+
 **Timers are optional, generous and set by the party** (off, 1, 5 or 30 minutes, or a
-day for play-by-mail). A timer doesn't start until the first vote is cast, so nobody can
-be timed out of reading. If it runs out with no votes at all, the leader decides; with no
-leader present, the vote stays open.
-
-The coin is the host's own random number, not the game's dice: the game only ever sees
-the decision, so the dice stay the same whatever happens in the vote.
-
-**Who leads.** The seat that formed the party, unless it hands the role to someone else.
-Leading only breaks ties and closes empty votes; it isn't a veto.
+day for play-by-mail). Under democracy a timer doesn't start until the first vote is cast,
+so nobody can be timed out of reading. If it runs out with no votes at all, the leader
+decides. With the leader deciding, there's no timer: the story waits for the leader.
 
 ### What's on the menu
 
@@ -78,7 +96,8 @@ A story `check` is rolled once, by one traveler, so the result is one branch, as
   You do it." They become the spotlight.
 - **`check STEALTH everyone`**: everyone rolls and the **worst** result counts, for
   things the whole party must get right at once (sneaking past a guard, holding a rope).
-- **`check PERSUADE pick`**: the party votes on who tries, like any choice.
+- **`check PERSUADE pick`**: the party chooses who tries, like any story choice (by vote
+  or by the leader).
 
 ### Personal moments
 
@@ -171,7 +190,9 @@ each a few bytes:
 
 | From | Message | Means |
 |---|---|---|
-| seat → host | `VOTE menu pick` | a vote, or a changed vote (`pick` 0 withdraws it) |
+| host → all | `PARTY rule leader` | how the party decides (the leader decides, or democracy) and who leads, at boarding and after every election |
+| seat → host | `ELECT seat` | a vote in a leader election, or the call for one |
+| seat → host | `VOTE menu pick` | a vote, a suggestion (the leader deciding), or a change (`pick` 0 withdraws it); with the leader deciding, the leader's `VOTE` decides |
 | host → all | `TALLY menu votes…` | the votes so far, to show |
 | host → all | `DECIDED menu pick` | the vote's result: every machine plays it |
 | seat → host | `PERSONAL menu traveler pick` | a personal choice |
@@ -190,8 +211,9 @@ each a few bytes:
 
 ## At the table
 
-The same, with talk instead of messages. The Conductor (the person running the
-Departure) reads the scene and the options, the table discusses, and hands go up. At a
+The same, with talk instead of messages. The table elects a leader first. The Conductor
+(the person running the Departure) reads the scene and the options, and the table talks
+it over; then the leader calls it, or hands go up and the leader settles a tie. At a
 fight, everyone says what their character does, the Conductor writes it on the
 initiative list, and works down it. When a target has fallen, it's "nearest foe you can
 reach"; nobody re-declares mid-round. Personal moments are written on scraps of paper
@@ -206,22 +228,22 @@ and revealed together.
 | Rules core | `apb_battle_intent(who, intention, &action)`: the "nearest" rules above, moved out of the terminal front end (where E3.5 put them) so every client and the table agree |
 | VM, party | (with party support) several travelers, the spotlight, party conditions and checks, `personal` menus |
 | Quest Script | `check X everyone`, `check X pick`, `== scene personal` |
-| Clients | voting, declaring and timers, on the HAL, shared by every front end like the boarding desk |
+| Clients | elections, voting, declaring and timers, on the HAL, shared by every front end like the boarding desk |
 | Tests | a recorded party trip is still one choice list. Votes and timers get tests of their own: a script of votes and timeouts in, the decisions out |
 
 ## Questions for review
 
-These are recommendations, not settled. Each one's alternative is noted.
+These are recommendations, not settled. Each one's alternative is noted. (Settled in
+review: an elected leader, and the party chooses "the leader decides" or democracy with
+the leader breaking ties.)
 
 1. **One vote per seat, not per traveler.** The alternative is one per traveler, which
    favors whoever brings the most characters.
-2. **The leader breaks ties by default; the coin is the party's option.** The
-   alternative is the coin by default, which is fairer but less in anyone's control.
-3. **Solo fights stay "choose at your turn".** The alternative is declaring at round
+2. **Solo fights stay "choose at your turn".** The alternative is declaring at round
    start even solo, so that solo and party play the same. That costs solo play
    information for no gain.
-4. **Declarations are visible to the party as they're made.** The alternative is hiding
+3. **Declarations are visible to the party as they're made.** The alternative is hiding
    them until the round closes, like personal choices. Visible is how a table plays, and
    it makes Help possible.
-5. **Story checks: the best at it rolls by default.** The alternative is a vote for who
+4. **Story checks: the best at it rolls by default.** The alternative is a vote for who
    rolls every time, which is slower.

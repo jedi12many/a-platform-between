@@ -152,9 +152,9 @@ putting their minis on a map the DM just drew.
   table, the Conductor can take any plan the players invent. On a computer we can't be that
   flexible, so each decision offers **a few good options**, written to be genuinely
   different (the many-roads pillar).
-- **The party votes.** Every player picks an option; the votes are shown as they come in.
-  Majority wins. A tie goes to the party leader (or, if the party prefers, to a coin the
-  Stationmaster flips).
+- **The party decides together.** It elects a leader, and either the leader makes the
+  call or the party votes: every player picks an option, the votes are shown as they come
+  in, most votes wins, and the leader breaks a tie ([party-play.md](party-play.md)).
 - **Solo, you are the vote.**
 - **Some moments are personal.** A scene can ask every player to choose for their own
   character (what you say to the Stationmaster, what you take from the vault) instead of
@@ -292,7 +292,7 @@ a test Departure; two receipts from overlapping Departures both land.
 | **E3.4 VM and HAL** | The VM hands a fight to the battle engine; the HAL draws the map and asks for actions. Health carries over; `~ heal`. | A test image's fight plays through the harness on PC and 6502. *Done: `FIGHT` runs the battle engine through four HAL calls; health carries over, `~ heal` restores it, saves keep it; five fight playthroughs (won, lost, fled by exit and by roll, an ambush, a sneak) match on PC and 6502 with every roll re-checked, and resume from any story menu. The 6502 harness needs a 4 KB car and 2 KB depot buffer to fit.* |
 | **E3.5 Terminal battle map** | The map at 40 columns, the action menu, the round's results. | A fight is playable by hand. *Done: the map two characters to a square with a key to its squares, a roster (health, the TN to hit each foe), and two menus a turn, "Where to?" (stay, next to or toward a foe, the exit, cover, high ground) and "Then?" (attack with its TN, defend, flee with its TN or take the exit, wait, back), offering only what's possible; events as sentences with every roll. Images now carry foe names. A recorded skirmish in `make test-term`, nothing over 40 columns.* |
 | **E3.6 A fight in *The Fare*** | Something worth fighting, and a road around it. Transcript tests, coverage, saves around fights. | Every route still covered; transcripts match on both. *Done: the Lost Property office off the concourse, its own chapter, keeps every car under 4 KB. Ash rats guard a porter's hook (a new item, id 8). Fight them, creep past (Stealth: a success skips the fight, a cost starts it on your terms, a fail in an ambush) or leave them be; a loss heals 10. Six new playthroughs run every instruction, saved and resumed at every menu, on PC and 6502. The image fuzzer found a menu offset that wrapped past 65535 and got through the verifier; it's fixed, with a regression test.* |
-| **E3.7 Voting (design)** | How a party votes on story choices and declares actions at once. | A reviewed design. *Drafted for review: [party-play.md](party-play.md). One vote per seat, ties to the leader or the coin, personal moments, party checks, fights declared as intentions worked out at each turn, and the network messages. The VM never sees a vote, only the decision.* |
+| **E3.7 Voting (design)** | How a party votes on story choices and declares actions at once. | A reviewed design. *Drafted for review: [party-play.md](party-play.md). An elected leader; the party chooses "the leader decides" or democracy (one vote per seat, the leader breaks ties); personal moments, party checks, fights declared as intentions worked out at each turn, and the network messages. The VM never sees a vote, only the decision.* |
 
 ### Departure 00: The Fare
 
