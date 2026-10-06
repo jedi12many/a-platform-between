@@ -3,16 +3,20 @@
  * menu picks from a list, and writes a plain transcript. Builds natively and for
  * sim65, so the same playthrough can be compared on both.
  *
- *   harness DIR SEED PICKS        e.g. harness build/vm/tiny 1985 2,1
+ *   harness DIR SEED SCRIPT       e.g. harness build/vm/tiny 1985 2,1
  *
- * PICKS are 1-based menu numbers, separated by commas. When they run out, the
- * transcript ends with "[out of picks]".
+ * SCRIPT is a comma-separated list. A number picks from a menu (1-based); a token
+ * starting with ':' is a typed line (':' alone is a blank line). If the script starts
+ * with a typed line, the traveler boards at the boarding desk; otherwise the built-in
+ * test traveler (Kestrel) is used. When the script runs out, the transcript ends with
+ * "[out of picks]".
  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "apb.h"
+#include "apb_desk.h"
 #include "apb_hal.h"
 #include "apb_vm.h"
 
@@ -72,29 +76,45 @@ void hal_check(uint8_t rating, const apb_roll *roll)
            results[roll->result]);
 }
 
-uint8_t hal_menu(const char *const *labels, uint8_t count)
-{
-    uint8_t i;
-    int pick;
+/* The next script token into `tok`; exits cleanly when the script runs out. */
+static char tok[64];
 
-    for (i = 0; i < count; ++i) {
-        printf("  %u) %s\n", i + 1, labels[i]);
-    }
+static void next_token(void)
+{
+    uint8_t n = 0;
+
     if (!picks || !*picks) {
         printf("[out of picks]\n");
         exit(0);
     }
-    pick = atoi(picks);
-    while (*picks && *picks != ',') ++picks;
+    while (*picks && *picks != ',' && (unsigned)n + 1u < sizeof(tok)) tok[n++] = *picks++;
+    tok[n] = '\0';
     if (*picks == ',') ++picks;
-    printf("> %d\n", pick);
-    return (uint8_t)(pick - 1);
 }
 
-void hal_ask_name(char *out, uint8_t max)
+uint8_t hal_menu(const char *const *labels, uint8_t count)
 {
-    (void)max;
-    out[0] = '\0';
+    uint8_t i;
+
+    for (i = 0; i < count; ++i) {
+        printf("  %u) %s\n", i + 1, labels[i]);
+    }
+    next_token();
+    printf("> %s\n", tok);
+    return (uint8_t)(atoi(tok) - 1);
+}
+
+void hal_ask_line(char *out, uint8_t max)
+{
+    next_token();
+    printf("< %s\n", tok + (tok[0] == ':'));
+    strncpy(out, tok + (tok[0] == ':'), max);
+    out[max - 1] = '\0';
+}
+
+void hal_prompt(const char *msg)
+{
+    printf("* %s\n", msg);
 }
 
 uint8_t hal_load(const char *name, uint8_t *dst, uint16_t max, uint16_t *len)
@@ -127,6 +147,14 @@ void hal_error(const char *msg)
 {
     printf("[error: %s]\n", msg);
 }
+
+#ifdef APB_VM_TRACE
+/* The coverage build lists every instruction it runs on stderr: "car offset". */
+void apb_vm_trace(uint8_t car_no, uint16_t pc)
+{
+    fprintf(stderr, "%u %u\n", car_no, pc);
+}
+#endif
 
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static apb_character traveler;
@@ -166,6 +194,9 @@ int main(int argc, char **argv)
                          APB_SK_ATHLETICS);
     traveler.equipped[0] = APB_ITEM_PULSE_RIFLE;
 
+    if (picks[0] == ':') {
+        apb_desk_run(&traveler);
+    }
     if (apb_vm_board(&traveler, (uint16_t)atoi(argv[2])) != 0) {
         printf("[refused: %s]\n", apb_vm_error());
         return 0;

@@ -49,6 +49,12 @@ uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed);
 /* Play until the Departure ends or the image turns out to be bad. */
 uint8_t apb_vm_run(void);
 
+#ifdef APB_VM_TRACE
+/* Coverage builds only: called with each instruction's car and offset before it runs.
+ * The front end (a test harness) defines it. */
+void apb_vm_trace(uint8_t car, uint16_t pc);
+#endif
+
 const apb_receipt   *apb_vm_receipt(void);
 const apb_character *apb_vm_character(void);   /* the working copy */
 const char          *apb_vm_error(void);       /* e.g. "car 1 at 233: bad jump" */

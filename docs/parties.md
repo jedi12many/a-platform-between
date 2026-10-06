@@ -27,6 +27,12 @@ Party Departures are written for 2–4 characters with party roles in mind.
   applied to their character as it is by then. A character in a weeks-long party game can
   keep playing elsewhere meanwhile, and nothing is lost. See [boarding.md](boarding.md).
 
+### Who can play together
+
+Order never gates ([lines.md](lines.md)): any traveler with the season can board any
+Departure on its Platforms, so a party forms around a Departure, not around who has played
+what. Members who have played it before take it as a Rewind; everyone else as a first trip.
+
 ### Playing together across machines
 
 Story choices are voted on; encounters are turn-based with everyone declaring at once.

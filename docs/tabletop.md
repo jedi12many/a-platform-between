@@ -2,7 +2,9 @@
 
 The oldest platform at the Waystation is **Platform 0**, where the trains are drawn in
 pencil. It's our name for the tabletop edition: the same characters, rules and stories,
-played in person with dice and paper.
+played in person with dice and paper. The other Platforms are lines of Departures
+([lines.md](lines.md)); Platform 0 isn't a line but the one where any line can be played
+by hand.
 
 Bring your character from any machine: print their sheet from the Passport, play at the
 table, then bring them home with everything they earned.

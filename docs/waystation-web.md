@@ -9,7 +9,7 @@ Departure, and come back with a receipt.
 
 | At the Waystation (browser) | On a train (a client) |
 |---|---|
-| Build a character | Enter a Passport (type it, scan it, or sign in) |
+| Build a character (its first trip is the Arrivals, [lines.md](lines.md)) | Enter a Passport (type it, scan it, or sign in) |
 | Spend stat and skill points from levelling up | Play Departures |
 | Buy seasons and Departures | Hand back a receipt (or a Travel Stamp) |
 | Download clients, and disk images for retro machines | |

@@ -1,5 +1,8 @@
 # Platforms & engines
 
+In this doc a *platform* is a machine we build for. In the game's fiction, machines are
+**gauges** and a Platform is a line of Departures (see [lines.md](lines.md)).
+
 ## Write once, play anywhere
 
 The Infocom/SCUMM approach:
@@ -27,7 +30,8 @@ everywhere. See [engine-plan.md](engine-plan.md).
 
 ## Lore
 
-Each platform is a platform at the Waystation. "The C64 train leaves from Platform 6."
+Each machine is a **gauge**: the width of track a train is built for. "The Kepler-Nine
+line runs on every gauge; the C64 is narrow gauge." See [lines.md](lines.md).
 
 ## Toolchain (to evaluate)
 

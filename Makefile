@@ -1,17 +1,17 @@
 CC      ?= cc
 CFLAGS  ?= -O2
 WARN    := -std=c99 -pedantic -Wall -Wextra -Werror -Wdeclaration-after-statement
-INC     := -Icore/include -Icore/src -Ihal -Ivm
+INC     := -Icore/include -Icore/src -Ihal -Ivm -Iclient
 CL65    ?= cl65
 SIM65   ?= sim65
 
 CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c core/src/registry.c \
             core/src/translate.c core/src/echo.c core/src/passport.c
 CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
-VM_SRC   := vm/vm.c
-VM_HDR   := vm/apb_vm.h
+VM_SRC   := vm/vm.c client/desk.c
+VM_HDR   := vm/apb_vm.h client/apb_desk.h
 
-.PHONY: all test test-6502 test-python test-vm c64 demo crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term c64 demo play crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -97,6 +97,27 @@ build/harness.asan: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HD
 	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
 		-o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
 
-# Story VM: playthroughs (native == expected, 6502 == native) and damaged images.
-test-vm: build/harness build/harness.sim build/harness.asan
+# The same harness, listing every instruction it runs: which code the playthroughs cover.
+build/harness.cov: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) -DAPB_VM_TRACE $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
+
+# Story VM: playthroughs (native == expected, 6502 == native), coverage, damaged images.
+test-vm: build/harness build/harness.sim build/harness.asan build/harness.cov
 	python3 tests/vm/run_tests.py
+
+# The terminal front end: `make play` compiles The Fare and plays it.
+build/apb: fe/term/term.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ fe/term/term.c $(VM_SRC) $(CORE_SRC)
+
+build/the-fare.apd: content/s1/00-the-fare/the-fare.qs | build
+	python3 tools/qsc/qsc.py build $< -o $@
+
+play: build/apb build/the-fare.apd
+	./build/apb build/the-fare.apd
+
+# A recorded terminal playthrough must match its reviewed transcript.
+test-term: build/apb build/the-fare.apd
+	./build/apb --seed 1985 --choices tests/term/fare-edge.choices build/the-fare.apd > build/term-fare-edge.txt
+	diff tests/term/fare-edge.expected build/term-fare-edge.txt
+	@awk 'length > 40 { print "line over 40 columns: " $$0; bad = 1 } END { exit bad }' build/term-fare-edge.txt
+	@echo "terminal: transcript matches, nothing over 40 columns"

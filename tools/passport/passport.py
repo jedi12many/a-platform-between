@@ -5,6 +5,10 @@ two can check each other. Also the starting point for the character-sheet printe
 and the web Passport Office.
 
     python3 tools/passport/passport.py decode "<password>"
+    python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM]
+
+`new` makes a test character until the Waystation website exists (point-buy stats,
+before race and class bonuses), and prints its Passport in lines.
 """
 
 import json
@@ -196,6 +200,38 @@ def decode(text):
     return ch
 
 
+def create(name, race, cls, stats, extra_tag, reg=None):
+    """A new level-1 character, by the creation rules in docs/rules-v0.md.
+
+    Written from the rules, independently of core/src/rules.c, so tests can check one
+    against the other. stats: six base values (bought or rolled and arranged).
+    """
+    reg = reg or _REG
+    if race not in reg["races"] or cls not in reg["classes"]:
+        raise PassportError("unknown race or class")
+    if extra_tag not in reg["skills"]:
+        raise PassportError("unknown skill")
+    c = reg["classes"][cls]
+    tag = reg["skills"][extra_tag]["id"]
+    if tag in c["tags"]:
+        raise PassportError("the extra tag repeats a class tag")
+    ch = new_character()
+    ch["name"] = name.upper()
+    ch["race"] = reg["races"][race]["id"]
+    ch["class"] = c["id"]
+    ch["stats"] = [min(100, v) for v in stats]
+    r = reg["races"][race]["bonus"]
+    ch["stats"][r] = min(100, ch["stats"][r] + 10)
+    ch["stats"][c["bonus"]] = min(100, ch["stats"][c["bonus"]] + 5)
+    ch["tags"] = sorted(c["tags"] + [tag])
+    ch["training"] = {s: 20 for s in ch["tags"]}
+    return ch
+
+
+def pointbuy_ok(stats):
+    return all(25 <= v <= 70 for v in stats) and sum(v - 25 for v in stats) == 150
+
+
 def describe(ch):
     out = dict(ch)
     out["race"] = RACES[ch["race"]] if ch["race"] < len(RACES) else ch["race"]
@@ -212,7 +248,16 @@ def describe(ch):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "decode":
+    if len(sys.argv) in (7, 8) and sys.argv[1] == "new":
+        _, _, name, race, cls, stats, tag, *item = sys.argv
+        values = [int(v) for v in stats.split(",")]
+        if len(values) != 6 or not pointbuy_ok(values):
+            sys.exit("stats must be six point-buy values: 25..70 each, 150 points spent")
+        ch = create(name, race, cls, values, tag)
+        if item:
+            ch["equipped"] = {0: _REG["items"][item[0]]["id"]}
+        print("\n".join(lines(encode(ch))))
+    elif len(sys.argv) == 3 and sys.argv[1] == "decode":
         try:
             print(json.dumps(describe(decode(sys.argv[2])), indent=2))
         except PassportError as e:

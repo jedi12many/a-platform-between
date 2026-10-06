@@ -1,3 +1,16 @@
+* Your Passport, please: one line at a time, then a blank line.
+* Line 1:
+< 4CB4W00006C101WPP9QH
+* Line 2:
+< NB400000003G074MMABZ
+* Line 3:
+< 50000CY1GE
+* Line 4:
+< 
+Fern, Rad-Dryad Channeler, level 1. Debt 0.
+  1) Board
+  2) Start over
+> 1
 === The Static
 [picture 0 static]
 Static.
@@ -5,7 +18,8 @@ Not the sound. The feeling: every part of you tuned to the wrong channel at once
 Then a hand. It reaches through the end of everything, takes hold of whatever is left of you, and pulls.
   1) Let it
   2) Fight it
-> 1
+> 2
+You fight. It is like fighting the tide with your teeth. The hand doesn't mind; it has done this before.
 [picture 1 platform_bench]
 You are sitting on a wooden bench, and you are breathing, and both of those things are wrong.
 The bench stands on a railway platform under a roof of green iron and cracked glass. Beyond the glass there is no sky, only a slow grey shimmer, like rain that has forgotten which way is down. A sign hangs from the ironwork:
@@ -14,12 +28,11 @@ You remember dying. You remember it very clearly.
   1) Remember it
 > 1
 It comes back in pieces. First, the body it happened to.
-Iron joints, old code, and a vow you took from a book you found in a scrapyard. You were a knight. You are still technically correct about that.
+Bark and leaf, green against the glow of a ruined sky. The fallout that killed the world was the sun you grew in.
 Then what you were doing, when it happened.
   1) Remember the rest
 > 1
-You were holding a door. Behind it, people you had promised to protect. In front of it, something that did not care about promises. You held it for a long time. Long enough.
-Somewhere in your memory banks, a log entry is still open: CAUSE OF DEATH, followed by nothing.
+You spoke, and the world bent, and then it bent back. The words are still in your mouth. You can taste them.
 That was the end. You are sure of it.
 The bench creaks. Somewhere down the platform, a train whistle sounds, mournful and far away.
   1) Stand up
@@ -31,16 +44,23 @@ Across the hall, warm light spills from a doorway under a painted sign: a rail t
   1) Read the departure board
   2) Walk back to the platform edge
   3) Go into the Buffer Stop
-> 2
+> 1
+The letters settle long enough to read:
+KEPLER-NINE    PLAT 1  DELAYED 18 MIN
+ASHMOUTH       PLAT 2  LAST TRAIN
+LANTERN COURTS PLAT 3  DRESS: FORMAL
+Then they flip again, into places you have never heard of, and some you have heard of and know to be gone.
+  1) Walk back to the platform edge
+  2) Go into the Buffer Stop
+> 1
 The platform ends where the glass roof ends, and past it there is only the grey shimmer. You reach into it.
-[check FATE: 45+50=95 vs 100: cost]
-Your hand goes in, and for a moment you can't remember your own face. It comes back. Most of it.
+[check FATE: 65+50=115 vs 100: success]
+Your hand goes in and comes back wet with something that isn't water. It's cold, and it's a little like being forgotten.
 Nobody leaves the Waystation that way. You understand that now.
 [picture 2 concourse]
 The great hall. The board clatters. The Buffer Stop glows.
-  1) Read the departure board
-  2) Go into the Buffer Stop
-> 2
+  1) Go into the Buffer Stop
+> 1
 [picture 3 buffer_stop]
 The Buffer Stop is warm, and crowded, and wrong in a dozen small ways that add up to cozy. A knight in rusted plate is arguing with a cloud of moths. Something made of glass is drinking something made of light.
 Behind the bar, a tree is wiping down glasses. Its bark glows faintly green, and the rag in its twig-hand keeps catching fire, and it keeps patting it out without looking.
@@ -48,13 +68,16 @@ In the corner booth, alone, sits a tall figure in a velvet coat. A brass ledger 
   1) Talk to the bartender
   2) Ask Fen where you are
   3) Go to the corner booth
-> 2
-[check Persuade: 56+17=73 vs 100: fail]
-Fen just points at the corner booth with a burning twig.
-  1) Talk to the bartender
-  2) Ask Fen where you are
-  3) Go to the corner booth
-> 3
+> 1
+"Fen," says the tree, before you can ask. "Bartender. Rad-Dryad, same as some of you, different as most. Drink?"
+Fen looks at your bark, then at the poisoned glow in it, and smiles like family. "Oh, you poor seedling. First one's on the house."
+  1) Ask Fen where you are
+  2) Go to the corner booth
+> 1
+[check Persuade: 49+62=111 vs 100: success]
+"The Waystation," says Fen. "You died. He pulled you out. He'll explain the rest; he always does." A nod toward the corner.
+  1) Go to the corner booth
+> 1
 [picture 4 stationmaster]
 The figure in the velvet coat rises as you approach. It is very tall. Its face is a polite arrangement of shadow, and its voice is warm, and patient, and has never once been surprised.
 "Please, sit. You'll want to sit for this part."
@@ -62,8 +85,8 @@ It opens the brass ledger and turns it toward you. On the page, in a careful han
 "We're a little behind on the paperwork," says the Stationmaster. "Would you mind?"
   1) Say your name
 > 1
-"Kestrel," you say, and the ink finishes the word on its own.
-"Of course," says the Stationmaster. "Warden. Salvaged. Yes, that all matches."
+"Fern," you say, and the ink finishes the word on its own.
+"Of course," says the Stationmaster. "Channeler. Rad-Dryad. Yes, that all matches."
 Below your name, a number writes itself into the ledger, digit by digit. It is a large number.
 "50000," says the Stationmaster, kindly. "Your fare."
   1) Listen
@@ -72,15 +95,24 @@ Below your name, a number writes itself into the ledger, digit by digit. It is a
 "You'll survive."
   1) Ask who it is
   2) Ask what happens if you refuse
+  3) Ask what Fen meant about signing
+  4) Accept the terms
+> 1
+"I keep the station," it says. "I keep the ledger. I keep the trains running on time, which is harder than you'd think, given that most of them run through it."
+  1) Ask what happens if you refuse
+  2) Ask what Fen meant about signing
   3) Accept the terms
-> 2
+> 1
 "Then you are free to go." It gestures at the shimmer beyond the glass roof. "I'd only point out that the last place you were going, you have already been."
 It glances at your hand. "Ah. You've tried the edge. Then you know."
-  1) Ask who it is
+  1) Ask what Fen meant about signing
   2) Accept the terms
-> 2
+> 1
+The shadows of its face rearrange into something like amusement. "Fen is a good bartender and a better friend. Read twice, by all means." It turns the ledger a little further toward you. "There is nothing on this page you didn't already agree to, the moment you let go."
+  1) Accept the terms
+> 1
 "Splendid." The Stationmaster closes the ledger. Somewhere far away, a whistle answers.
 "Your first ticket will be at the window in the morning. There is no morning here, of course, but you'll know it when it comes. Fen will find you a bed."
-"Welcome back to the living, Kestrel."
+"Welcome back to the living, Fern."
 [receipt: departure 0, complete, xp 5, debt paid 0 added 50000, gained, lost, echoes]
 [level 1, xp 5, debt 50000]
