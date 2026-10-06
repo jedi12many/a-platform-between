@@ -41,11 +41,12 @@ Whole numbers, one d100 roll, every rating a plain percentage, identical dice ev
 If the rules run on a 1 MHz 8-bit machine, they run on anything (including a kitchen table),
 and the same fight plays out the same way on every platform. See [rules-v0.md](rules-v0.md).
 
-## Preparation over balance
+## 6. Many roads to victory
 
-The world isn't scaled to you. Tough enemies are roadblocks: if you didn't prepare, you go
-another way, and you can come back when you're ready. Every Departure has more than one
-road. See *Roadblocks* in [rules-v0.md](rules-v0.md).
+Every Departure can be won more than one way: fight, sneak, talk, solve, or find another
+route entirely. The world isn't scaled to you. Tough enemies, hard puzzles, locked doors and
+stubborn gatekeepers are **roadblocks**: if you didn't prepare, you go another way, and you
+can come back when you're ready. See *Roadblocks* in [rules-v0.md](rules-v0.md).
 
 ## Tone
 

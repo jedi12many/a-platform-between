@@ -257,19 +257,35 @@ Design rules for combat:
 
 - **Tough enemies have answers, but you may not be carrying them.** Every roadblock
   should have at least two answers a *prepared* party might hold: a weakness, a debuff, a
-  tool. An unprepared party may have none of them. See *Roadblocks* below.
+  tool. An unprepared party may have none of them. See *Roadblocks and many roads* below.
 - **Every option is a number on the sheet or the card.** No hidden formulas.
 - **Items for the occasion matter.** Consumables and specialist gear (oils, scrolls,
   charges) are a core part of the loot, not filler.
 
-## Roadblocks
+## Roadblocks and many roads
 
-The world isn't scaled to you. Some enemies, doors and hazards are **roadblocks**: if you
-didn't prepare for them, you can't get through today, and the right move is to go another
-way.
+**Every Departure has more than one road to victory.** The world isn't scaled to you, so
+some obstacles are **roadblocks**: if you didn't prepare for them, you can't get through
+today, and the right move is to go another way.
+
+A roadblock can be anything that stops you:
+
+| Roadblock | Answers a prepared traveler might have |
+|---|---|
+| **An enemy** (the iron golem) | the right weapon or power, a debuff, a weakness, an ally |
+| **A puzzle** (the orrery lock) | work it out yourself; or a `TECH`/`LORE` check; or the key you found earlier; or a power that bypasses it |
+| **A locked or sealed way** | the key, the code, a `TECH` check, brute `MIGHT`, the right Translation |
+| **A hazard** (the radiation field, the drowned stair) | the right gear, `ENDURANCE`/`SURVIVAL`, a Rad-Dryad who drinks the glow |
+| **A gatekeeper** (the clerk, the guard captain) | `PERSUADE`, a bribe, a forged pass, an Echo they remember |
+
+**Puzzles reward the player and the character.** On screen and at the table, a puzzle can
+be solved by the player's own thinking. A character with the right skill can solve it
+with a check instead, and a character with neither can still go around. Nobody is locked
+out of the story because they can't solve a riddle, and nobody is robbed of the riddle
+because their character is clever.
 
 - **Not every path is open.** A Departure never promises that the road you're on
-  continues. It promises that *some* road does.
+  continues. It promises that *some* road does, and usually several.
 - **Preparation is the skill.** Tickets come with rumors ("iron guardians in the lower
   vaults"). The Waystation's traders sell answers. Six pack slots means you can't carry an
   answer to everything, so what you pack decides which roads open.
@@ -291,7 +307,8 @@ way.
   get there.
 
 At the tabletop, the Conductor plays it straight: don't fudge the golem down to the
-party's level. Telegraph it, let them scout, and leave the other road open.
+party's level, or hand out the puzzle's answer. Telegraph it, let them scout, and leave
+the other road open.
 
 ## Open questions
 

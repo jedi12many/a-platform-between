@@ -279,10 +279,15 @@ can *read* all of them, in conditions and with `{name}`, `{race}` and `{class}`.
 | `~ end complete` | the Departure succeeded: rewards are kept |
 | `~ end failed` | the Departure failed: the character returns to the Waystation |
 
-## Writing roadblocks
+## Writing roadblocks and many roads
 
-Departures are built for preparation, not balance (see *Roadblocks* in
-[rules-v0.md](rules-v0.md)). A roadblock scene looks like this:
+Every Departure needs **more than one road to victory**, and is built for preparation,
+not balance (see *Roadblocks and many roads* in [rules-v0.md](rules-v0.md)). Plan the
+roads before the prose: for each chapter, list the ways through (fight, sneak, talk,
+solve, go around) and make sure at least two reach the ending.
+
+A roadblock can be an enemy, a puzzle, a locked way, a hazard or a gatekeeper. An enemy
+roadblock looks like this:
 
 ```
 == vault_door
@@ -301,6 +306,25 @@ dented armor, none of it recent, all of it empty.
 + [Find another way] -> service_tunnels
 ```
 
+A puzzle roadblock lets the player solve it, the character solve it, or neither:
+
+```
+== orrery_lock
+Seven brass planets on seven rails. The door opens when they align, and the
+inscription says only: THE LAST SHALL LEAD THE FIRST.
+
++ [Turn the planets yourself] -> orrery_solve        // the player's answer
++ [Let your hands work it out]
+    check TECH tricky
+        success: The rails click home, one by one. ~ set orrery_open
+        cost:    It opens, and the eighth planet you didn't see falls on your foot.
+                 ~ set orrery_open
+        fail:    The planets spin back to where they started.
++ {has STAR_CHART} [Follow the star chart] -> orrery_open_scene
++ {orrery_open} [Go through] -> observatory
++ [Take the stairs instead] -> bell_tower
+```
+
 Rules for every roadblock:
 
 - **Telegraph it.** The player should be able to see it's dangerous before committing.
@@ -309,9 +333,19 @@ Rules for every roadblock:
   the rest stay hidden.
 - **Always offer the other road.** The compiler will warn about a scene with a fight
   and no exit that avoids it.
+- **Don't make the puzzle the only key.** A puzzle can always be passed by thinking, by a
+  check, by an item, or by going around.
 - **The other road must lead somewhere real**: another route to an ending, not a dead end.
 - **Leave it standing.** A roadblock the player skipped is still there on a Rewind or a
   later visit.
+
+### Compiler help (planned)
+
+The compiler maps every route from the start to each `~ end complete` and warns when:
+
+- only one route reaches an ending;
+- every route runs through the same roadblock;
+- a roadblock scene has no way to leave without passing it.
 
 ## Branch Lines: what's different
 
