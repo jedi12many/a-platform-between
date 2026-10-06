@@ -24,8 +24,11 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   rules and that traveler's Passport.
 - `make test-term`: the terminal front end's recorded playthrough must match
   `tests/term/fare-edge.expected`, with nothing over 40 columns.
+- `make test-receipts`: applying receipts (`core/src/receipt.c`) must agree with the
+  Python reference (`tools/passport/receipt.py`) on hand-worked and random cases,
+  natively and on sim65.
 
-Run all nine before pushing; CI runs them too. `make play` plays The Fare in a terminal.
+Run all ten before pushing; CI runs them too. `make play` plays The Fare in a terminal.
 
 ## Rules-core house rules
 

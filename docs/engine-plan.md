@@ -262,6 +262,23 @@ E1.6 and E1.7.
 Out of scope for E1: combat (E3), saves and Passport hand-off (E2), pictures, the C64
 screen (E4).
 
+### E2 in detail
+
+**Goal:** a Departure starts from a Boarding Pass and ends in a receipt that lands on the
+character, on any machine. *The Fare*'s receipt is applied to a Passport and carried into
+a test Departure; two receipts from overlapping Departures both land.
+
+| Step | What | Done when |
+|---|---|---|
+| **E2.1 Applying receipts** (`core/`) | The receipt moves into the rules core; `apb_receipt_apply` follows [boarding.md](boarding.md). Receipts are net, and record each Echo's state at boarding so a timeline shift can be told. A Python reference (`tools/passport/receipt.py`) for the website. | C and Python agree on hand-worked and random receipts, on PC and 6502; overlapping receipts both land in either order. *Done: `make test-receipts`; it found 16-bit XP overflow in `apb_gain_xp`.* |
+| **E2.2 Reward manifests** (`tools/qsc/`) | The compiler writes the most a Departure can give: XP, items, Echo states, Debt either way. Awarding XP where a scene can repeat is an error, so the bound is real. | Every playthrough's receipt fits its manifest; the manifest for *The Fare* is checked by hand. |
+| **E2.3 Boarding Pass** | Format: character hash, Departure, ticket number, server signature. A Python issuer (the server side); the desk takes the pass and checks it matches the Passport and the Departure. | A pass for another character or Departure is refused with a plain message. |
+| **E2.4 Travel Stamp** | Format: ticket number plus the receipt, with check symbols, typed at the website. Encoder in C, decoder in Python. | Every playthrough's receipt survives the round trip; typos are caught by line. |
+| **E2.5 The round trip** | Terminal: board with Passport and pass, play, print the stamp. `tools/passport` applies a stamp to a Passport, as the website will. | *The Fare*'s stamp lands on a Passport that then boards a test Departure. |
+| **E2.6 Saves** | Mid-Departure saves per [vm-spec.md](vm-spec.md), through `hal_save`/`hal_load`. | A playthrough saved and resumed at every menu gives the same transcript. |
+| **E2.7 Rewind** | Replaying a Departure: reduced rewards, the Rewind fee, Echoes it planted replaced. | A Rewind's receipt follows [seasons.md](seasons.md). |
+| **E2.8 Receipts that teach** | A receipt can add a tagged skill, for the Arrivals ([lines.md](lines.md)). Needs a Passport-compatible way to carry it. | A test Arrival grants a tag that lands on the Passport. |
+
 ### Departure 00: The Fare
 
 A short prologue, about 20–30 minutes, built alongside the engine as its test content:

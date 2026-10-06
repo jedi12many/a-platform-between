@@ -279,6 +279,53 @@ uint8_t apb_echo_get_or(const apb_character *ch, uint16_t id, uint8_t canon_defa
 uint8_t apb_echo_set(apb_character *ch, uint16_t id, uint8_t state, apb_echo *evicted);
 void    apb_echo_clear(apb_character *ch, uint16_t id);
 
+/* ---------------------------------------------------------- Receipts */
+
+/* What a Departure hands back: only what changed (docs/boarding.md). A receipt is net:
+ * an item given and taken back in the same trip appears in neither list. */
+#define APB_RECEIPT_MAX 8           /* entries per list */
+
+enum {
+    APB_OUTCOME_COMPLETE = 0,
+    APB_OUTCOME_FAILED
+};
+
+typedef struct {
+    uint16_t id;
+    uint8_t  state;  /* the state the Departure left it in            */
+    uint8_t  was;    /* its state when the character boarded (0 unset) */
+} apb_receipt_echo;
+
+typedef struct {
+    uint16_t departure;
+    uint8_t  outcome;                       /* APB_OUTCOME_*                    */
+    uint16_t xp;                            /* awarded, after the level band    */
+    uint16_t debt_paid;                     /* one of these two is 0            */
+    uint16_t debt_added;
+    uint8_t  gained_count;
+    uint16_t gained[APB_RECEIPT_MAX];       /* item ids                         */
+    uint8_t  lost_count;
+    uint16_t lost[APB_RECEIPT_MAX];
+    uint8_t  echo_count;
+    apb_receipt_echo echoes[APB_RECEIPT_MAX];
+} apb_receipt;
+
+/* What applying a receipt did, for the Waystation to tell the player. */
+typedef struct {
+    uint8_t  levels;                        /* levels gained                    */
+    uint8_t  stored_count;                  /* gained, but the pack was full:   */
+    uint16_t stored[APB_RECEIPT_MAX];       /*   kept at the lost-and-found     */
+    uint8_t  gone;                          /* lost, but no longer carried      */
+    uint8_t  shifted_count;                 /* Echoes changed elsewhere since   */
+    uint16_t shifted[APB_RECEIPT_MAX];      /*   boarding: "the timeline shifted" */
+    uint8_t  legend_count;                  /* Echoes pushed out to the Legend  */
+    apb_echo legend[APB_RECEIPT_MAX];
+} apb_applied;
+
+/* Apply a receipt to a character as they are now (not as they boarded). Lost items go
+ * first, so they make room for gained ones. `out` may be NULL. */
+void apb_receipt_apply(apb_character *ch, const apb_receipt *r, apb_applied *out);
+
 /* ---------------------------------------------------------- Passport */
 
 #define APB_PASSPORT_VERSION 2

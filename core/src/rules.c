@@ -183,7 +183,8 @@ uint8_t apb_gain_xp(apb_character *ch, uint16_t amount)
         ch->xp = 0;
         return 0;
     }
-    amount = (uint16_t)(amount + ch->xp);
+    /* Saturate rather than wrap: 65535 is far past level 100 from anywhere. */
+    amount = (uint16_t)(amount > 0xFFFFu - ch->xp ? 0xFFFFu : amount + ch->xp);
     while (amount >= APB_XP_PER_LEVEL && ch->level < APB_LEVEL_MAX) {
         amount = (uint16_t)(amount - APB_XP_PER_LEVEL);
         ++ch->level;

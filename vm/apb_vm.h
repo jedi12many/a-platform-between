@@ -18,29 +18,15 @@
 
 #define APB_VM_DEPOT_MAX   4096
 #define APB_VM_CAR_MAX     16384
-#define APB_VM_RECEIPT_MAX 8        /* entries per list in a receipt */
 
-/* What apb_vm_run returns. */
+/* What apb_vm_run returns. The first two match the receipt's APB_OUTCOME_*. */
 enum {
-    APB_VM_COMPLETE = 0,    /* ~ end complete                        */
-    APB_VM_FAILED,          /* ~ end failed                          */
-    APB_VM_ERROR            /* the image is bad: see apb_vm_error()  */
+    APB_VM_COMPLETE = APB_OUTCOME_COMPLETE, /* ~ end complete                        */
+    APB_VM_FAILED = APB_OUTCOME_FAILED,     /* ~ end failed                          */
+    APB_VM_ERROR                            /* the image is bad: see apb_vm_error()  */
 };
 
-/* What a Departure hands back (docs/boarding.md). */
-typedef struct {
-    uint16_t departure;
-    uint8_t  outcome;                       /* APB_VM_COMPLETE or APB_VM_FAILED */
-    uint16_t xp;                            /* awarded, after the level band    */
-    uint16_t debt_paid;                     /* one of these two is 0            */
-    uint16_t debt_added;
-    uint8_t  gained_count;
-    uint16_t gained[APB_VM_RECEIPT_MAX];    /* item ids                         */
-    uint8_t  lost_count;
-    uint16_t lost[APB_VM_RECEIPT_MAX];
-    uint8_t  echo_count;
-    apb_echo echoes[APB_VM_RECEIPT_MAX];    /* Echoes set, latest state         */
-} apb_receipt;
+/* The receipt (apb_receipt, in apb.h) is what a Departure hands back. */
 
 /* Load and check the image, and board `snapshot` (copied). Returns 0, or
  * APB_VM_ERROR with apb_vm_error() set. `seed` seeds the dice. */

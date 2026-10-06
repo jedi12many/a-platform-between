@@ -232,6 +232,12 @@ static void test_progression(void)
     ch.level = 99; ch.xp = 0;
     CHECK(apb_gain_xp(&ch, 1000) == 1 && ch.level == 100 && ch.xp == 0);
     CHECK(apb_gain_xp(&ch, 1000) == 0 && ch.level == 100);
+
+    /* The most XP a receipt can carry, on top of XP already earned, must not wrap
+     * around to nothing: 50 + 65535 is far past level 100. */
+    make_kestrel(&ch);
+    ch.xp = 50;
+    CHECK(apb_gain_xp(&ch, 65535u) == 99 && ch.level == 100 && ch.xp == 0);
     CHECK(apb_health_max(&ch) == 10 + 60 / 4 + 200);
     for (i = 0; i < APB_STAT_COUNT; ++i) ch.stat[i] = 100;
     CHECK(apb_health_max(&ch) == 235);

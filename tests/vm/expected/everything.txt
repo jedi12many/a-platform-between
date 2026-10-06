@@ -18,5 +18,5 @@ Gone after this.
 === Two
 Inside.
 [pause]
-[receipt: departure 7, complete, xp 10, debt paid 0 added 0, gained 1, lost 1, echoes 4=3]
+[receipt: departure 7, complete, xp 10, debt paid 0 added 0, gained, lost, echoes 4=3]
 [level 1, xp 10, debt 0]

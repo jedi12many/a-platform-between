@@ -37,6 +37,9 @@ jobs:
       - name: Terminal front end (recorded playthrough, 40 columns)
         run: make test-term
 
+      - name: Receipts (C core against the Python reference, PC and 6502)
+        run: make test-receipts
+
       - name: Build C64 demo
         run: make c64
 

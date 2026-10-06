@@ -7,11 +7,14 @@ SIM65   ?= sim65
 
 CORE_SRC := core/src/rng.c core/src/names.c core/src/rules.c core/src/registry.c \
             core/src/translate.c core/src/echo.c core/src/passport.c
+# Applying receipts happens at the Waystation, not in clients: kept out of CORE_SRC so
+# cc65 doesn't link it into C64 programs that never call it.
+APPLY_SRC := core/src/receipt.c
 CORE_HDR := core/include/apb.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
 VM_SRC   := vm/vm.c client/desk.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h
 
-.PHONY: all test test-6502 test-python test-vm test-term c64 demo play crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts c64 demo play crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -121,3 +124,14 @@ test-term: build/apb build/the-fare.apd
 	diff tests/term/fare-edge.expected build/term-fare-edge.txt
 	@awk 'length > 40 { print "line over 40 columns: " $$0; bad = 1 } END { exit bad }' build/term-fare-edge.txt
 	@echo "terminal: transcript matches, nothing over 40 columns"
+
+# Applying receipts: the C core must agree with the Python reference, natively and on
+# the 6502.
+build/apply: tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC)
+
+build/apply.sim: tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC) $(CORE_HDR) | build
+	$(CL65) -t sim6502 -O $(INC) -o $@ tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC)
+
+test-receipts: build/apply build/apply.sim
+	python3 tests/receipts/check_apply.py

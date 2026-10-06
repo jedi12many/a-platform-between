@@ -27,20 +27,26 @@ What a Departure hands back when it ends:
 | Debt change | signed: paid down, or added (a failed Departure, a death) |
 | Items gained | |
 | Items lost | taken, used up, or given away in the story |
-| Echoes set | Echo id and new state |
+| Echoes set | Echo id, new state, and its state at boarding |
 | Echoes cleared | by a Rewind |
+
+A receipt is **net**: an item given and taken back in the same trip appears in neither
+list, so the lists never overlap.
 
 ## Applying a receipt
 
-Receipts are applied to the character **as they are now**, not as they boarded:
+Receipts are applied to the character **as they are now**, not as they boarded. Lost
+items go before gained ones, so they make room in the pack. `apb_receipt_apply` in the
+rules core does this, and `tools/passport/receipt.py` is its reference, checked against it
+by `make test-receipts`.
 
 | Field | Rule |
 |---|---|
 | XP | Added. Level-ups happen now, and their stat and skill points are spent at the Waystation. |
 | Debt | Added, kept within 0..65535. |
 | Items gained | Into the pack; if it's full, the Waystation's lost-and-found keeps them. |
-| Items lost | Removed if still carried; if already gone (sold, traded), nothing happens. |
-| Echoes | Set to the receipt's state. If the Echo was changed elsewhere since boarding, the receipt still wins and the character is told the timeline shifted. |
+| Items lost | Removed if still carried (the pack first, then what's equipped); if already gone (sold, traded), nothing happens. |
+| Echoes | Set to the receipt's state. If the Echo was changed elsewhere since boarding (it's now neither its state at boarding nor the receipt's), the receipt still wins and the character is told the timeline shifted. A full Passport pushes its oldest Echo to the Legend. |
 
 Nothing else changes in a Departure. Stat and skill points are spent only at the
 Waystation, and name, race and class only change in the character creator, so they can

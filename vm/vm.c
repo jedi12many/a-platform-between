@@ -600,13 +600,26 @@ static uint8_t check_hash(void)
 
 /* -------------------------------------------------------------- receipt */
 
-static void receipt_item(uint16_t *list, uint8_t *count, uint16_t item)
+/* The receipt is net: an item taken back after it was given this trip (or given back
+ * after it was taken) cancels out instead of landing in both lists, so the lists can
+ * be applied in any order. */
+static void receipt_item(uint16_t *list, uint8_t *count, uint16_t *undo, uint8_t *undo_count,
+                         uint16_t item)
 {
-    if (*count < APB_VM_RECEIPT_MAX) {
+    uint8_t i;
+
+    for (i = 0; i < *undo_count; ++i) {
+        if (undo[i] == item) {
+            undo[i] = undo[--*undo_count];
+            return;
+        }
+    }
+    if (*count < APB_RECEIPT_MAX) {
         list[(*count)++] = item;
     }
 }
 
+/* Call before the Echo changes: the first change records its state at boarding. */
 static void receipt_echo(uint16_t id, uint8_t state)
 {
     uint8_t i;
@@ -617,9 +630,10 @@ static void receipt_echo(uint16_t id, uint8_t state)
             return;
         }
     }
-    if (receipt.echo_count < APB_VM_RECEIPT_MAX) {
+    if (receipt.echo_count < APB_RECEIPT_MAX) {
         receipt.echoes[receipt.echo_count].id = id;
         receipt.echoes[receipt.echo_count].state = state;
+        receipt.echoes[receipt.echo_count].was = apb_echo_get(&ch, id);
         ++receipt.echo_count;
     }
 }
@@ -650,7 +664,7 @@ static void give(uint16_t item)
         }
     }
     /* A full pack still earns the item: the lost-and-found keeps it. */
-    receipt_item(receipt.gained, &receipt.gained_count, item);
+    receipt_item(receipt.gained, &receipt.gained_count, receipt.lost, &receipt.lost_count, item);
 }
 
 static void take(uint16_t item)
@@ -660,14 +674,16 @@ static void take(uint16_t item)
     for (i = 0; i < APB_PACK_SLOTS; ++i) {
         if (ch.pack[i] == item) {
             ch.pack[i] = 0;
-            receipt_item(receipt.lost, &receipt.lost_count, item);
+            receipt_item(receipt.lost, &receipt.lost_count, receipt.gained,
+                         &receipt.gained_count, item);
             return;
         }
     }
     for (i = 0; i < APB_EQUIP_SLOTS; ++i) {
         if (ch.equipped[i] == item) {
             ch.equipped[i] = 0;
-            receipt_item(receipt.lost, &receipt.lost_count, item);
+            receipt_item(receipt.lost, &receipt.lost_count, receipt.gained,
+                         &receipt.gained_count, item);
             return;
         }
     }
@@ -1000,8 +1016,8 @@ uint8_t apb_vm_run(void)
                 fail("bad echo", pc);
                 break;
             }
-            apb_echo_set(&ch, a, i, 0);
             receipt_echo(a, i);
+            apb_echo_set(&ch, a, i, 0);
             break;
         default:
             fail("bad opcode", pc);
