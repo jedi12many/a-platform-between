@@ -46,8 +46,22 @@ Departures jump around in time, so payoffs can go any direction:
 - A **global Echo registry**, append-only like the item registry. Each entry: an ID, a kind,
   a realm, a short name, and its possible states (e.g. SPARED / KILLED / RECRUITED).
 - The Passport holds **8 active Echoes**: ID + state, about 12 bits each.
-- When slots are full, the oldest *resolved* Echo moves to your **Legend**. Modern builds
+- When slots are full, the oldest Echo moves to your **Legend**. (Rules core v0 evicts
+  the oldest; preferring resolved Echoes is a later refinement.) Modern builds
   and the hub keep the full Legend; retro builds keep only active Echoes.
+
+## Unset Echoes and canon defaults
+
+Every Echo in the registry has a **canon default** state. State 0 on the Passport means
+*unset*: you never played the Departure that plants it (a skipped season, say). When a
+Departure asks about an unset Echo, it uses the canon default, and the hub gossip says
+"someone" made that choice. Your real choice replaces the default if you later play it.
+
+## Rewinds
+
+Replaying a Departure (a **Rewind**, see [seasons.md](seasons.md)) replaces the Echoes it
+planted with your new choices, including later transformations of them. The timeline
+shifted; regulars who remember the old one may say so.
 
 ## In Quest Script
 

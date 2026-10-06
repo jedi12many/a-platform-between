@@ -2,15 +2,18 @@
 
 ## Phase 0: paper
 
-- Rules v0, Translation tables, Echoes, Passport spec (this repo).
+- Rules v0, Translation tables, Echoes, Passport spec, seasons, Sidings, parties (this repo).
 - Paper playtests of the core roll and combat.
 - One-page treatments for the first three solo Departures.
 
-## Phase 1: reference engine
+## Phase 1: rules core and reference engine
 
-- Headless rules core, reused later by the hub server.
+- **Rules core in portable C** (`core/`): dice, checks, characters, Translation,
+  Dissonance, Echoes, Passport passwords. Builds natively and for the C64; the same tests
+  pass on both. *Started.*
 - Quest Script v0 and its compiler.
 - A short test Departure, playable on modern PC.
+- A Deep Yards prototype: seeded procedural floors using the same rules core.
 
 ## Phase 2: first retro build
 
@@ -25,15 +28,17 @@
 
 ## Phase 4: the Waystation online
 
-- Social hub: profiles, lobby, trading. Retro players join by uploading Passports.
+- Social hub: profiles, lobby, trading, rosters. Retro players join by uploading Passports.
 - Server-authoritative rules using the Phase 1 core.
+- Daily Deep Yards seeds and leaderboards.
 
 ## Phase 5: party Departures
 
-- Co-op Departures for 2–4 players, built for party roles.
+- Party Departures for 2–4 characters: friends' imported characters, or four of your own.
 - Stretch: retro machines online (C64 WiFi modems, Amiga TCP/IP).
 
 ## Release model
 
-- Seasons of standalone Departures with a running thread.
+- **Season 1 (the Waystation)** is the base game. Later seasons are DLC: new station,
+  Stationmaster, main story, biome. See [seasons.md](seasons.md).
 - Steam and itch.io for modern; disk images plus limited physical runs for retro.
