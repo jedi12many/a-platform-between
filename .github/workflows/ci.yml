@@ -10,8 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cc65
-        run: sudo apt-get update && sudo apt-get install -y cc65
+      - name: Install cc65, and py65 (a 6502 emulator in Python, for the C64 tests)
+        run: sudo apt-get update && sudo apt-get install -y cc65 && python3 -m pip install --break-system-packages py65
 
       - name: Generated registry matches registry/*.txt
         run: make check-registry
@@ -40,10 +40,18 @@ jobs:
       - name: Receipts (C core against the Python reference, PC and 6502)
         run: make test-receipts
 
-      - name: Build C64 demo
+      - name: Combat rules (C core against the Python reference, PC and 6502)
+        run: make test-combat
+
+      - name: Build the C64 demo and The Fare's C64 disk
         run: make c64
+
+      - name: C64 game (overlays, playthroughs on the C64 program in a 6502 emulator)
+        run: make test-c64
 
       - uses: actions/upload-artifact@v4
         with:
-          name: c64-demo
-          path: build/demo.prg
+          name: c64
+          path: |
+            build/demo.prg
+            build/the-fare.d64

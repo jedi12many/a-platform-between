@@ -1,0 +1,205 @@
+A PLATFORM BETWEEN
+
+Your Passport, please: one line at a
+time, then a blank line.
+Line 1:
+> 4pb794ar0a0105am7hdt
+Line 2:
+> 8V40-0000-0000-K60M-2A4A
+Line 3:
+> 50200810HJB
+Line 4:
+> 
+Kestrel, Salvaged Warden, level 1. Debt
+0.
+
+1. Board
+2. Start over
+> 1
+
+
+Your Boarding Pass, please, or a blank
+line to travel without one:
+> 
+Without a pass, nothing you earn on this
+trip can be stamped.
+1. Travel without a pass
+2. Type a pass
+> 1
+
+The yard is quiet. Then it isn't.
+
+Kestrel  Lvl 1  HP 27/27  Debt 0
+1. Fight
+2. Walk away
+> 1
+
+-- A fight! --
+  . . . . # . . . . >
+  . @ . . + . . = . a
+  . . ~ . ^ . . # . .
+  . . . . O . . . . b
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  27/27
+ a Scrap gunner  15/15  TN 56
+ b Ash rat  6/6  TN 60
+
+-- Round 1 --
+Ash rat moves.
+
+  . . . . # . . . . >
+  . @ . b + . . = . a
+  . . ~ . ^ . . # . .
+  . . . . O . . . . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  27/27
+ a Scrap gunner  15/15  TN 56
+ b Ash rat  6/6  TN 60
+
+Where to?
+1. Stay here
+2. Toward Scrap gunner (a)
+3. Next to Ash rat (b)
+4. Toward the exit
+5. Into cover
+6. Wait: act at the end of the round
+7. Quick: the computer plays you
+> 1
+Then?
+1. Attack Ash rat (b): TN 60
+2. Guard: hit the first to come close
+3. Flee: TN 100
+4. Done
+5. Back
+> 2
+
+You stand guard.
+Scrap gunner moves.
+Scrap gunner attacks you: 66 + 40 = 106
+against 58, a crit: 16 damage.
+-- Round 2 --
+Ash rat moves.
+Free attack! You attack Ash rat: 81 + 20
+= 101 against 60, a hit: 24 damage.
+Ash rat is down.
+
+  . . x . # . . . . >
+  . @ . . + . . = . .
+  . . ~ . ^ . . # . .
+  . . . . O . . a . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  11/27
+ a Scrap gunner  15/15  TN 56
+ x Ash rat  down
+
+Where to?
+1. Stay here
+2. Next to Scrap gunner (a)
+3. Toward the exit
+4. Into cover
+5. Wait: act at the end of the round
+6. Quick: the computer plays you
+> 5
+
+You wait to see what happens.
+Scrap gunner attacks you: 62 + 40 = 102
+against 58, a hit: 8 damage.
+
+  . . x . # . . . . >
+  . @ . . + . . = . .
+  . . ~ . ^ . . # . .
+  . . . . O . . a . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  3/27
+ a Scrap gunner  15/15  TN 56
+ x Ash rat  down
+
+Where to?
+1. Stay here
+2. Next to Scrap gunner (a)
+3. Toward the exit
+4. Into cover
+5. Quick: the computer plays you
+> 4
+Then?
+1. Attack Scrap gunner (a): TN 56
+2. Guard: hit the first to come close
+3. Flee: TN 100
+4. Done
+5. Back
+> 5
+Where to?
+1. Stay here
+2. Next to Scrap gunner (a)
+3. Toward the exit
+4. Into cover
+5. Quick: the computer plays you
+> 4
+Then?
+1. Attack Scrap gunner (a): TN 56
+2. Guard: hit the first to come close
+3. Flee: TN 100
+4. Done
+5. Back
+> 1
+
+You move.
+You attack Scrap gunner: 2 + 20 = 22
+against 56, a miss.
+-- Round 3 --
+
+  . . x . # . . . . >
+  . . . . @ . . = . .
+  . . ~ . ^ . . # . .
+  . . . . O . . a . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  3/27
+ a Scrap gunner  15/15  TN 56
+ x Ash rat  down
+
+Where to?
+1. Stay here
+2. Next to Scrap gunner (a)
+3. To the exit
+4. Onto high ground
+5. Wait: act at the end of the round
+6. Quick: the computer plays you
+> 6
+
+You attack Scrap gunner: 33 + 20 = 53
+against 56, a glancing hit: 10 damage.
+Scrap gunner attacks you: 38 + 40 = 78
+against 78, a glancing hit: 2 damage.
+-- Round 4 --
+
+  . . x . # . . . . >
+  . . . . @ . . = . .
+  . . ~ . ^ . . # . .
+  . . . . O . . a . .
+ # wall  O pit  ~ rough  + cover
+ ^ hazard  = high ground  > exit
+ @ Kestrel  1/27
+ a Scrap gunner  5/15  TN 56
+ x Ash rat  down
+
+On quick: Enter, or t to take over.
+> 
+
+You attack Scrap gunner: 60 + 20 = 80
+against 56, a hit: 22 damage.
+Scrap gunner is down.
+You won the fight.
+
+The yard is quiet again.
+
+~ Departure complete ~
+
+Your receipt:
+
+You travelled without a Boarding Pass,
+so this trip can't be stamped.

@@ -130,7 +130,25 @@ class Check:
     line: int
 
 
-Stmt = Union[Text, Command, Goto, If, Check]
+@dataclass
+class Fight:
+    """`fight MAP [ambush|sneak]` with won:/lost:/fled: branches (docs/combat.md)."""
+    map: str
+    surprise: int         # 0 none, 1 ambush (foes first), 2 sneak (travelers first)
+    outcomes: dict        # 'won' | 'lost' | 'fled' -> [Stmt]
+    line: int
+
+
+Stmt = Union[Text, Command, Goto, If, Check, Fight]
+
+
+@dataclass
+class Map:
+    """A battle map: rows of squares, and the foe each letter stands for."""
+    name: str
+    rows: List[str]
+    foes: dict            # letter -> foe name in the bestiary
+    line: int
 
 
 @dataclass
@@ -175,6 +193,7 @@ class Departure:
     vars: dict = field(default_factory=dict)    # name -> (initial value, line)
     chapters: List[Chapter] = field(default_factory=list)
     pictures: List[str] = field(default_factory=list)
+    maps: dict = field(default_factory=dict)    # name -> Map
 
     def scenes(self):
         for ch in self.chapters:

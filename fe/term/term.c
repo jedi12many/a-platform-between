@@ -17,6 +17,7 @@
 #include "apb.h"
 #include "apb_desk.h"
 #include "apb_hal.h"
+#include "apb_view.h"
 #include "apb_vm.h"
 
 static unsigned width = 40;
@@ -123,17 +124,11 @@ void hal_picture(uint8_t id, const char *name)
     (void)name;             /* no pictures in a terminal */
 }
 
-static const char *const stat_names[] = { "Might", "Grace", "Grit", "Wits", "Presence", "Fate" };
-static const char *const results[] = { "fail", "success at a cost", "success", "critical success" };
-
 void hal_check(uint8_t rating, const apb_roll *roll)
 {
-    char line[96];
+    char line[APB_VIEW_LINE];
 
-    sprintf(line, "[%s check: rolled %u + %d = %d against %d: %s]",
-            rating < 6 ? stat_names[rating] : apb_skill_names[rating - 16],
-            roll->roll, roll->total - roll->roll, roll->total, roll->tn,
-            results[roll->result]);
+    apb_view_check(line, rating, roll);
     wrapped(line, "");
     putchar('\n');
 }
@@ -147,19 +142,10 @@ void hal_status(const apb_character *ch)
 
 static void show_status(void)
 {
-    const apb_character *ch = status_ch;
-    char line[96];
-    char name[APB_NAME_LEN + 1];
-    unsigned i;
+    char line[APB_VIEW_LINE];
 
-    if (!ch) return;
-    for (i = 0; ch->name[i]; ++i) {
-        name[i] = (char)((i == 0 || ch->name[i - 1] == ' ' || ch->name[i - 1] == '-')
-                         ? ch->name[i] : ch->name[i] + ('a' - 'A') * (ch->name[i] >= 'A' && ch->name[i] <= 'Z'));
-    }
-    name[i] = '\0';
-    sprintf(line, "%s  Lvl %u  HP %u  Debt %u", name, ch->level, apb_health_max(ch),
-            ch->debt);
+    if (!status_ch) return;
+    apb_view_status(line, status_ch, apb_vm_health());
     wrapped(line, "");
 }
 
@@ -305,6 +291,38 @@ uint8_t hal_save(const char *name, const uint8_t *src, uint16_t len)
     return n == len ? HAL_OK : HAL_IO_ERROR;
 }
 
+/* ----------------------------------------------------------- battles */
+
+/* The battle screen is client/battle_view.c; these are its three ways in and out. */
+void apb_view_out(const char *ascii, uint8_t wrap)
+{
+    if (wrap) wrapped(ascii, "");
+    else printf("%s\n", ascii);
+}
+
+uint8_t apb_view_pick(uint8_t count)
+{
+    char buf[64];
+    int pick;
+
+    for (;;) {
+        printf("> ");
+        read_line(buf, sizeof(buf));
+        pick = atoi(buf);
+        if (pick >= 1 && pick <= count) return (uint8_t)(pick - 1);
+        printf("Pick a number from 1 to %u.\n", count);
+    }
+}
+
+uint8_t apb_view_go_on(void)
+{
+    char buf[16];
+
+    printf("> ");
+    read_line(buf, sizeof(buf));
+    return (uint8_t)!(buf[0] == 't' || buf[0] == 'T');
+}
+
 /* --------------------------------------------------------------- the end */
 
 static char stamp[APB_STAMP_BUF];
@@ -312,31 +330,11 @@ static char stamp[APB_STAMP_BUF];
 static void show_receipt(const apb_receipt *r)
 {
     uint8_t i;
+    uint8_t stamped = (uint8_t)(r->ticket && apb_stamp_encode(r, stamp) == APB_PP_OK);
 
-    printf("%s\n", r->outcome == APB_VM_COMPLETE ? "~ Departure complete ~"
-                                                 : "~ Departure failed ~");
-    printf("\nYour receipt:\n");
-    if (r->xp) printf("  %u XP\n", r->xp);
-    if (r->debt_paid) printf("  %u Debt paid\n", r->debt_paid);
-    if (r->debt_added) printf("  %u Debt added\n", r->debt_added);
-    for (i = 0; i < r->gained_count; ++i) {
-        printf("  Gained: %s\n", r->gained[i] < APB_ITEM_COUNT ? apb_item_names[r->gained[i]] : "?");
-    }
-    for (i = 0; i < r->lost_count; ++i) {
-        printf("  Lost: %s\n", r->lost[i] < APB_ITEM_COUNT ? apb_item_names[r->lost[i]] : "?");
-    }
-    if (r->echo_count) printf("  %u Echo%s will follow you.\n", r->echo_count,
-                              r->echo_count == 1 ? "" : "es");
-    putchar('\n');
-    if (r->ticket && apb_stamp_encode(r, stamp) == APB_PP_OK) {
-        wrapped("Your Travel Stamp. Type it in at the Waystation to have this trip "
-                "stamped into your Passport:", "");
-        putchar('\n');
-        for (i = 0; stamp[i]; i = (uint8_t)(i + APB_PASSWORD_LINE)) {
-            printf("  %.*s\n", APB_PASSWORD_LINE, stamp + i);
-        }
-    } else {
-        wrapped("You travelled without a Boarding Pass, so this trip can't be stamped.", "");
+    apb_view_receipt(r, stamped);
+    for (i = 0; stamped && stamp[i]; i = (uint8_t)(i + APB_PASSWORD_LINE)) {
+        printf("  %.*s\n", APB_PASSWORD_LINE, stamp + i);
     }
 }
 

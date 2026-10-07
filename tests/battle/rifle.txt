@@ -1,0 +1,17 @@
+# The other answer: the pulse rifle (energy) against a rust-guard weak to energy, TN 54.
+# Kestrel isn't trained in Ranged (Grace / 2 = 20). The rust-guard closes in.
+seed 7
+map
+##########
+#@.......#
+#......a.#
+##########
+end
+traveler 4PB794AR0A0105AM7HDT8V4000000000K60M2A4A50601902804008ZT0A 1
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 20 20  4 20  0  2  4 45  6  0  0  0  0  1  0  0
+act 1 1 0 1
+act 1 1 0 1
+act 1 1 0 1
+act 1 1 0 1
+act 1 1 0 1

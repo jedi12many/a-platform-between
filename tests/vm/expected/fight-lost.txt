@@ -1,0 +1,30 @@
+Three doors.
+  1) The rat
+  2) The guard by the back door
+  3) The alley
+  4) Rest
+  5) Leave
+> 3
+[fight: 9 x 1, 2 fighters, health 27]
+  0.......1
+round 0: 1's turn
+  1 attacks 0: 65+40=105 vs 58: success, 8 damage
+round 1: 0's turn
+> 0.0.1.0
+  0 guards
+round 1: 1's turn
+  1 attacks 0: 49+40=89 vs 58: success, 7 damage
+round 2: 0's turn
+> 0.0.1.0
+  0 guards
+round 2: 1's turn
+  1 attacks 0: 24+40=64 vs 58: success, 4 damage
+round 3: 0's turn
+> 0.0.1.0
+  0 guards
+round 3: 1's turn
+  1 attacks 0: 91+40=131 vs 58: success, 11 damage
+  0 is down
+[the fight is lost; health 1]
+[receipt: departure 904, failed, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

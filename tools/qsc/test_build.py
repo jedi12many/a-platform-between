@@ -244,28 +244,59 @@ def test_verifier_never_crashes():
             fail(f"wrong reason: {e}")
 
 
+def test_encounters():
+    """An encounter record assembled by hand from docs/vm-spec.md."""
+    src = TINY.replace("flag f\n", "flag f\n\nmap pen\n    @.a\n    #.>\n    a = ASH_RAT\n") \
+        .replace("+ [Stay]\n    ~ set f", "+ [Stay]\n    ~ set f\n    fight pen ambush\n        won: Done.")
+    img = build(src)
+    # 3 x 2; squares @ . a / # . > are open open open / wall open exit: 0 0 0 1 0 7,
+    # two to a byte. One start at 0,0. One foe at 2,0: the ash rat's numbers from
+    # registry/foes.txt, Dodge = Grace 50 / 5 = 10, no weakness (255), charge, coward;
+    # then its name, "Ash rat", length first.
+    want = bytes([3, 2, 0x00, 0x01, 0x07, 1, 0, 0, 1, 2, 0,
+                  6, 50, 10, 0, 0, 0, 6, 30, 2, 0, 0, 0, 0, 255, 0, 1]) + b"\x07Ash rat"
+    from image import read_depot
+    tail = img.depot[-(len(want) + 3):]
+    if tail != bytes([1]) + struct.pack("<H", len(want)) + want:
+        fail(f"encounter record: {tail.hex()} instead of 01 {len(want):02x}00 {want.hex()}")
+    code = bytes(img.cars[0])
+    if bytes([0x3A, 0, 1]) not in code:
+        fail("FIGHT 0, ambush (3A 00 01) isn't in the code")
+    healed = bytes(build(TINY.replace("~ set f", "~ set f ~ heal full ~ heal 7")).cars[0])
+    if bytes([0x4D, 255, 0x4D, 7]) not in healed:
+        fail("~ heal full and ~ heal 7 aren't HEAL 255 and HEAL 7 (4D FF 4D 07)")
+    e = read_depot(img.depot)["encounters"][0]
+    if (e["w"], e["h"], e["starts"], e["foes"][0]["x"]) != (3, 2, [(0, 0)], 2):
+        fail(f"encounter read back as {e}")
+
+
 def test_manifests():
     path = os.path.join(ROOT, "content", "s1", "00-the-fare", "the-fare.qs")
     with open(path, encoding="utf-8") as f:
         dep, _ = parse(path, f.read(), REG)
     m = manifest(dep, REG)
     # Read off the script: `~ xp 5` once, `~ give TICKET_STUB` on the edge's crit,
-    # `~ debt = 50000` at the ledger, no Echoes.
+    # `~ give PORTERS_HOOK` in Lost Property, `~ debt = 50000` at the ledger, no Echoes.
     want = {"departure": 0, "title": "The Fare", "kind": "official", "levels": [1, 1],
             "xp": 5, "items": [{"id": REG["items"]["TICKET_STUB"]["id"], "name": "TICKET_STUB",
+                                "most": 1},
+                               {"id": REG["items"]["PORTERS_HOOK"]["id"], "name": "PORTERS_HOOK",
                                 "most": 1}],
             "echoes": [], "debt": {"set": [50000], "add": 0, "pay": 0}}
     if m != want:
         fail(f"The Fare's manifest: {m}")
     stub = REG["items"]["TICKET_STUB"]["id"]
-    ok = {"departure": 0, "xp": 5, "debt_paid": 0, "debt_added": 50000, "gained": [stub],
+    hook = REG["items"]["PORTERS_HOOK"]["id"]
+    sabre = REG["items"]["RUSTED_SABRE"]["id"]
+    ok = {"departure": 0, "xp": 5, "debt_paid": 0, "debt_added": 50000, "gained": [stub, hook],
           "lost": [], "echoes": []}
     if fits(m, ok, 0):
         fail(f"a fair receipt for The Fare was refused: {fits(m, ok, 0)}")
     for why, change, boarded in (
             ("more XP", {"xp": 6}, 0),
             ("a second stub", {"gained": [stub, stub]}, 0),
-            ("an item it never gives", {"gained": [stub + 1]}, 0),
+            ("a second hook", {"gained": [stub, hook, hook]}, 0),
+            ("an item it never gives", {"gained": [sabre]}, 0),
             ("an Echo it never sets", {"echoes": [(4, 1, 0)]}, 0),
             ("Debt paid it can't pay", {"debt_added": 0, "debt_paid": 100}, 50000),
             ("Debt beyond the ledger", {"debt_added": 50001}, 0),
@@ -288,6 +319,7 @@ def test_manifests():
 
 
 test_hand_assembled()
+test_encounters()
 test_manifests()
 for p in sorted(glob.glob(os.path.join(ROOT, "tests", "qsc", "ok", "*.qs")) +
                 glob.glob(os.path.join(ROOT, "content", "**", "*.qs"), recursive=True)):

@@ -6,7 +6,9 @@ compiler's output is checked against the spec independently of the code that wro
 
 import struct
 
-from opcodes import (BY_CODE, MAX_CAR, MAX_OPTIONS, NO_MENU, NO_TITLE, OFFICIAL_ONLY,
+from opcodes import (BY_CODE, ENCOUNTER_FOE_BYTES, FOE_NAME_MAX, MAP_TILES, MAX_CAR,
+                     MAX_ENCOUNTERS,
+                     MAX_OPTIONS, NO_MENU, NO_TITLE, OFFICIAL_ONLY,
                      SKILL_RATING_BASE, TXT_CLASS, TXT_DEBT, TXT_END, TXT_LEVEL, TXT_NAME,
                      TXT_NEWLINE, TXT_RACE, TXT_VAR, WIDTH)
 from textpack import expand
@@ -74,9 +76,61 @@ def read_depot(depot):
     d["pairs"] = [tuple(r.bytes(2)) for _ in range(r.take("<B"))]
     d["pictures"] = [ascii_name(r.bytes(r.take("<B")), "a picture name")
                      for _ in range(r.take("<B"))]
+    n = r.take("<B")
+    if n > MAX_ENCOUNTERS:
+        raise BadImage(f"{n} encounters")
+    d["encounters"] = [read_encounter(r.bytes(r.take("<H")), i) for i in range(n)]
     if r.pos != len(depot):
         raise BadImage("depot has trailing bytes")
     return d
+
+
+WALKABLE = {i for i, c in enumerate(MAP_TILES) if c not in "#O"}
+
+
+def read_encounter(blob, i):
+    """A battle map and its foes (docs/vm-spec.md, Encounters), checked like the VM does."""
+    where = f"encounter {i}"
+    r = Reader(blob, where)
+    w, h = r.take("<BB")
+    if not (1 <= w <= 16 and 1 <= h <= 10):
+        raise BadImage(f"{where}: map is {w} x {h}")
+    packed = r.bytes((w * h + 1) // 2)
+    tiles = [v for b in packed for v in (b >> 4, b & 15)][:w * h]
+    if any(t >= len(MAP_TILES) for t in tiles):
+        raise BadImage(f"{where}: unknown square")
+    taken = set()
+
+    def place(what):
+        x, y = r.take("<BB")
+        if x >= w or y >= h or tiles[y * w + x] not in WALKABLE or (x, y) in taken:
+            raise BadImage(f"{where}: {what} at {x},{y} can't stand there")
+        taken.add((x, y))
+        return x, y
+
+    starts = [place("a start") for _ in range(r.take("<B"))]
+    if not 1 <= len(starts) <= 4:
+        raise BadImage(f"{where}: {len(starts)} starts")
+    foes = []
+    nfoes = r.take("<B")
+    if not 1 <= nfoes <= 8 - len(starts):
+        raise BadImage(f"{where}: {nfoes} foes")
+    for _ in range(nfoes):
+        x, y = place("a foe")
+        v = list(r.bytes(ENCOUNTER_FOE_BYTES - 2))
+        dmg_type, ranged, power, area, weak, behavior, coward = v[9:16]
+        if (v[0] == 0 or dmg_type > 4 or ranged > 1 or power > 1 or area > 4
+                or not (weak <= 4 or weak == 255) or behavior > 2 or coward > 1):
+            raise BadImage(f"{where}: a foe's numbers are out of range")
+        foes.append({"x": x, "y": y, "stats": v})
+    for f in foes:
+        n = r.take("<B")
+        if not 1 <= n <= FOE_NAME_MAX:
+            raise BadImage(f"{where}: a foe's name is {n} characters")
+        f["name"] = ascii_name(r.bytes(n), f"{where}: a foe's name")
+    if r.pos != len(blob):
+        raise BadImage(f"{where}: trailing bytes")
+    return {"w": w, "h": h, "tiles": tiles, "starts": starts, "foes": foes}
 
 
 def read_car(data, index, pairs):
@@ -219,7 +273,8 @@ def verify_code(c, d, registry):
             raise BadImage(f"{name} in a Branch Line")
         for kind, v in args:
             limit = {"str": len(c["strings"]), "scene": d["scenes"], "flag": d["flags"],
-                     "var": d["vars"], "pic": len(d["pictures"])}.get(kind)
+                     "var": d["vars"], "pic": len(d["pictures"]),
+                     "enc": len(d["encounters"])}.get(kind)
             if limit is not None and v >= limit:
                 raise BadImage(f"{name}: {kind} {v} out of range (< {limit})")
             if kind == "addr":
@@ -250,6 +305,18 @@ def disassemble(data, registry=None):
              f" TL{d['tl']} ML{d['ml']} levels {d['level_min']}-{d['level_max']}",
              f"; {d['scenes']} scenes, {d['flags']} flags, {d['vars']} vars, "
              f"{len(d['pairs'])} text pairs, start scene {d['start']}, hash {d['hash']:04x}"]
+    for i, e in enumerate(d["encounters"]):
+        lines.append(f"; encounter {i}: {e['w']} x {e['h']}, {len(e['starts'])} start(s), "
+                     f"foes: " + ", ".join(f"{chr(97 + n)} {f['name']}" for n, f in enumerate(e['foes'])))
+        for y in range(e["h"]):
+            row = [MAP_TILES[t] for t in e["tiles"][y * e["w"]:(y + 1) * e["w"]]]
+            for x, (sx, sy) in enumerate(e["starts"]):
+                if sy == y:
+                    row[sx] = "@"
+            for n, f in enumerate(e["foes"]):
+                if f["y"] == y:
+                    row[f["x"]] = chr(ord("a") + n)
+            lines.append(";   " + "".join(row))
     scene_at = {(car, off): n for n, (car, off) in enumerate(d["directory"])}
     for c in cars:
         code = c["code"]

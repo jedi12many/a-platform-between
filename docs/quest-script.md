@@ -87,6 +87,40 @@ var loops = 0                // a whole number, 0..255, with a starting value
 
 A Departure can have up to 512 flags and 128 variables.
 
+### Battle maps
+
+A fight happens on a **battle map**, declared with the flags (rules: [combat.md](combat.md)).
+Draw it square by square, then say which foe each letter is, from the bestiary
+(`registry/foes.txt`):
+
+```
+map scrapyard
+    #########
+    #@.~~.a.#
+    #@..+.^b>
+    #==...a.#
+    #########
+    a = RUST_GUARD               // both a's are rust-guards
+    b = SCRAP_GUNNER
+```
+
+| Square | Means |
+|---|---|
+| `.` | open ground |
+| `#` | wall |
+| `O` | pit |
+| `~` | rough ground (costs 2 to cross) |
+| `+` | cover |
+| `^` | hazard |
+| `=` | high ground |
+| `>` | exit |
+| `@` | where a traveler starts (1 to 4) |
+| `a`–`z` | where a foe starts |
+
+Every row is the same width; a map is at most 16 × 10, and holds at most 8 fighters in all.
+The compiler copies each foe's numbers and name into the image, so a later change to the bestiary
+never changes a Departure that has shipped.
+
 ## Chapters and scenes
 
 ```
@@ -262,7 +296,25 @@ check TECH tricky
 - Leave a branch out and nothing happens for that result, except that a missing `crit`
   uses your `success` branch.
 
-## Commands
+## Fights
+
+`fight` puts the party on a battle map, plays the fight, and runs the branch for how it
+ended, like a check:
+
+```
+fight scrapyard                  // or: fight scrapyard ambush (the foes go first)
+    won:  The last of them clatters to the ground. -> gate      //  fight scrapyard sneak (you do)
+    fled: You back out through the gap in the fence. -> fence
+    lost: Something drags you clear of the scrap. -> waystation
+```
+
+- Each branch is optional. With no `lost:`, losing ends the Departure, failed. With no
+  `won:` or `fled:`, the story carries on after the fight.
+- Health carries over from one fight to the next.
+- **Always leave another road.** The compiler warns about a fight every route to an ending
+  has to go through, even in a `linear: yes` Departure: give players a way around it
+  (another route, a check, a parley). See *Writing roadblocks and many roads* below.
+
 
 Commands start with `~`. Several can share a line: `~ give KEYCARD ~ set alarm`.
 
@@ -281,6 +333,7 @@ Commands start with `~`. Several can share a line: `~ give KEYCARD ~ set alarm`.
 |---|---|
 | `~ give KEYCARD` / `~ take KEYCARD` | add or remove an item |
 | `~ xp 10` | award experience |
+| `~ heal 10` / `~ heal full` | restore health (it carries from fight to fight in a Departure) |
 | `~ debt - 500` / `~ debt + 500` / `~ debt = 50000` | change Debt *(official only)* |
 
 **Rewards pay once.** Each `~ xp`, `~ give` and `~ debt` command pays the first time the
@@ -399,7 +452,7 @@ can't damage anyone's character or the main story:
 | Choices per menu | 9 | one key each |
 | Choice label | 37 characters | fits a C64 line |
 | Flags / variables | 512 / 128 | memory on the C64 |
-| Chapter size (compiled) | 16 KB | one chapter in C64 memory at a time |
+| Chapter size (compiled) | 6 KB | one chapter in C64 memory at a time ([c64.md](c64.md)) |
 | Scenes per Departure | 1024 | |
 | `~ xp`, `~ give` and `~ debt` commands | 32 | the VM remembers which have paid |
 
@@ -407,17 +460,6 @@ The compiler tells you when you hit one, and where.
 
 ## Not in v0
 
-Planned, not yet designed: encounters (`fight`, milestone E3), which hand off to the battle
-map and come back with a result, for example:
-
-```
-== mountain_path
-The switchbacks narrow to a ledge. Snow, wind, and then the rocks start moving.
-fight ROCK_TROLLS ambush            // starting positions: the party strung out
-    won:  The last troll topples into the gorge. -> castle_gate
-    fled: You scramble back down to the treeline. -> forest_road
-    lost: -> waystation_return
-```
-
-Also planned: party voting options (vote, leader, personal choices), random tables, reusable
+Also planned: party play ([party-play.md](party-play.md): `== scene personal`,
+`check X everyone`, `check X pick`), random tables, reusable
 "tunnel" scenes that return to where they were called from, and text styles.

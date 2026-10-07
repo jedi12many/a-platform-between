@@ -26,7 +26,7 @@ def commands(dep):
             elif isinstance(st, A.If):
                 for _, body in st.branches:
                     yield from walk(body)
-            elif isinstance(st, A.Check):
+            elif isinstance(st, (A.Check, A.Fight)):
                 for body in st.outcomes.values():
                     yield from walk(body)
 

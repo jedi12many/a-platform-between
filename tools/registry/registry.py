@@ -1,4 +1,4 @@
-"""Load and check the registry: races, classes, skills, items and Echoes.
+"""Load and check the registry: races, classes, skills, items, Echoes and foes.
 
 The files in registry/ are the single source of truth. The C header and tables
 (tools/registry/gen.py), the Passport tools and the Quest Script compiler all
@@ -18,6 +18,8 @@ STATS = ["MIGHT", "GRACE", "GRIT", "WITS", "PRESENCE", "FATE"]
 ARCHETYPES = ["melee", "ranged", "armor", "tool", "focus", "vehicle"]
 DAMAGE = ["kinetic", "energy", "fire", "cold", "mind"]
 ECHO_KINDS = ["ally", "nemesis", "debt", "mark", "key"]
+REACH = ["melee", "ranged", "power"]
+BEHAVIORS = ["charge", "shoot", "guard"]
 
 # Limits set by the Passport format (docs/passport-spec.md).
 MAX_RACES = 32
@@ -26,6 +28,7 @@ MAX_SKILLS = 12
 MAX_ITEM_ID = 1023
 MAX_ECHO_ID = 1023
 MAX_ECHO_STATES = 3
+MAX_FOE_ID = 1023
 
 
 class RegistryError(ValueError):
@@ -170,8 +173,32 @@ def load(root=ROOT):
             "default": defaults[0],
         }
 
+    def foe_row(p, n, f):
+        behavior, _, coward = f[14].partition("+")
+        if coward not in ("", "coward"):
+            _fail(p, n, f"behavior '{f[14]}': add +coward, or nothing")
+        return {
+            "health": _int(p, n, f[2], 1, 255, "health"),
+            "grace": _int(p, n, f[3], 0, 100, "grace"),
+            "armor": _int(p, n, f[4], 0, 100, "armor"),
+            "ward": _int(p, n, f[5], 0, 100, "ward"),
+            "soak": _int(p, n, f[6], 0, 100, "soak"),
+            "speed": _int(p, n, f[7], 0, 12, "speed"),
+            "attack": _int(p, n, f[8], 0, 200, "attack"),
+            "damage": _int(p, n, f[9], 0, 99, "damage"),
+            "type": _one_of(p, n, f[10], DAMAGE, "damage type"),
+            "reach": _one_of(p, n, f[11], REACH, "reach"),
+            "area": _int(p, n, f[12], 0, 4, "area"),
+            "weak": None if f[13] == "-" else _one_of(p, n, f[13], DAMAGE, "weakness"),
+            "behavior": _one_of(p, n, behavior, BEHAVIORS, "behavior"),
+            "coward": coward == "coward",
+            "display": _display(p, n, f[15]),
+        }
+
+    foes = _table(path("foes.txt"), 16, foe_row, 1, MAX_FOE_ID, False)
+
     return {"skills": skills, "races": races, "classes": classes,
-            "items": items, "echoes": echoes}
+            "items": items, "echoes": echoes, "foes": foes}
 
 
 def by_id(table):

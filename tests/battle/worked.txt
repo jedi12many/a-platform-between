@@ -1,0 +1,16 @@
+# The worked fight in docs/combat.md: Kestrel (rusted sabre, ballistic weave) and a
+# rust-guard (Health 20, TN 74, TN 54 with energy, Soak 2, claws Melee 45 for 6).
+seed 1985
+map
+#########
+#@..a...#
+#########
+end
+# new Kestrel SALVAGED WARDEN 70,40,60,45,35,50 ATHLETICS RUSTED_SABRE,BALLISTIC_WEAVE,PULSE_RIFLE
+traveler 4PB794AR0A0105AM7HDT8V4000000000K60M2A4A50601902804008ZT0A 5
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 20 20  4 20  0  2  4 45  6  0  0  0  0  1  0  0
+act 3 1 0 1
+act 3 1 0 1
+act 3 1 0 1
+act 3 1 0 1

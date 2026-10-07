@@ -1,0 +1,18 @@
+# Fleeing. Fern (Athletics 15) is next to a guard: fleeing is d100 + 15 against TN 110
+# (100, +10 for the foe next to her). She fails, then gets away at a cost: the guard gets a
+# free attack as she goes. Kestrel steps onto the exit (>) and takes it: no roll.
+seed 5
+map
+#########
+#.......#
+#..@c.@>#
+#########
+end
+traveler 4CB4W00006C101WPP9QHNB400000003G074MMABZ50000CY1GE 0
+traveler 4PB794AR0A0105AM7HDT8V4000000000K60M2A4A50601902804008ZT0A 5
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe c 30 10  2  0  0  0  1 30  3  0  0  0  0 255 2  0
+act 3 2 3 0
+act 6 2 4 0
+act 3 2 3 0
+act 7 2 3 0

@@ -35,15 +35,18 @@ what. Members who have played it before take it as a Rewind; everyone else as a 
 
 ### Playing together across machines
 
-Story choices are voted on; encounters are turn-based with everyone declaring at once.
+Story choices are made by the leader or voted on; in fights each character takes its own
+turn, with a log of what happened.
 Neither depends on machine speed, so a C64 and a modern PC play as equals, and only votes
 and actions travel over the network. See *Two modes: story and encounters* in
 [engine-plan.md](engine-plan.md).
 
 ### Choices in a party
 
-- **Story decisions are voted on.** Every player picks; majority wins; a tie goes to the
-  party leader, or to the Stationmaster's coin if the party prefers.
+- **The party elects a leader**, and chooses how story decisions are made: **the leader
+  decides**, or **democracy** (one vote per character, most votes wins, the leader breaks
+  a tie). How elections, votes, checks,
+  personal moments and fights work in detail: [party-play.md](party-play.md).
 - **Personal moments** let each player choose for their own character instead.
 - Party Echoes are written to **every participating Passport**.
 - Each character's own Echoes are in play: your spared bandit and my rescued wolf can turn

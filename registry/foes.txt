@@ -1,0 +1,15 @@
+# The bestiary: foes any Departure can put on a battle map (docs/combat.md). Append only:
+# an id, once shipped, is never reused or changed. Ids are 1..1023. Community submissions
+# welcome; numbers are on the 100 scale like everything else.
+#
+# A foe's Dodge is Grace / 5, as for characters. Images copy a foe's numbers when they're
+# compiled, so changing one here never changes a Departure that has shipped.
+#
+# reach:    melee (next to it), ranged (anyone in sight), power (in sight, against Ward)
+# weak:     a damage type that ignores its Armor, or -
+# behavior: charge, shoot or guard, optionally +coward (runs off at a quarter health)
+#
+# id  NAME          health grace armor ward soak speed attack damage type     reach   area weak    behavior      "Shown as"
+1     RUST_GUARD    20     20    20    0    2    4     45     6      kinetic  melee   0    energy  charge        "Rust-guard"
+2     SCRAP_GUNNER  15     30    0     0    0    4     40     4      energy   ranged  0    -       shoot         "Scrap gunner"
+3     ASH_RAT       6      50    0     0    0    6     30     2      kinetic  melee   0    -       charge+coward "Ash rat"

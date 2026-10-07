@@ -17,7 +17,7 @@
    Every check in a playthrough is also re-rolled here, from the rules in
    docs/rules-v0.md and the traveler's Passport as tools/passport reads it: the die, the
    rating and the result must all agree.
-3. Saves: every playthrough by the built-in traveler is saved at each of its menus,
+3. Saves: every playthrough by the built-in traveler is saved at each of its story menus,
    quit, and resumed; the two halves must make exactly the uninterrupted transcript
    (all splits natively, a sample on sim65). Damaged saves must be refused or play on
    cleanly under the sanitizers, never crash.
@@ -135,7 +135,7 @@ def outcome(roll, total, tn):
         return "crit" if roll == 100 or (roll < 100 and roll % 11 == 0) else "success"
     if roll == 100:
         return "crit"
-    return "cost" if total >= tn - 20 else "fail"
+    return "cost" if total > tn - 20 else "fail"     # 81..100 against TN 100: 20 totals
 
 
 def ratings(who):
@@ -169,11 +169,28 @@ def pass_seed(picks, transcript):
 
 
 def dice(name, seed, transcript, who):
-    """Re-roll every check in a transcript; returns how many there were."""
+    """Re-roll every check in a transcript, and every roll in its fights (one roll for
+    all of an area attack); returns how many rolls there were."""
     rolls = d100s(int(seed))
     rated = ratings(who)
     n = 0
+    last = None
     for line in transcript.splitlines():
+        b = re.match(r"  (\d+) (?:attacks \d+|tries to flee): (\d+)\+(-?\d+)=(-?\d+) vs (\d+): (\w+)", line)
+        if b:
+            actor, roll, _, total, tn, result = b.groups()
+            if (actor, roll, total) != last or "flee" in line:
+                n += 1
+                want_roll = next(rolls)
+                if int(roll) != want_roll:
+                    fail(f"{name}: roll {n} in a fight is {roll}, the dice say {want_roll}")
+                    return n
+            last = (actor, roll, total)
+            if result != outcome(int(roll), int(total), int(tn)):
+                fail(f"{name}: {line.strip()}: the rules say {outcome(int(roll), int(total), int(tn))}")
+            continue
+        if line.startswith("round"):
+            last = None
         m = re.match(r"\[check (\S+): (\d+)\+(-?\d+)=(-?\d+) vs (\d+): (\w+)\]$", line)
         if not m:
             continue
@@ -245,7 +262,7 @@ def playthroughs(update):
             fail(f"{name}: the 6502 transcript differs from the native one")
         else:
             print(f"ok  {name}: native and 6502 transcripts match"
-                  + (f", {rerolled} check{'s' * (rerolled != 1)} re-rolled by the rules"
+                  + (f", {rerolled} roll{'s' * (rerolled != 1)} re-checked by the rules"
                      if rerolled else ""))
 
 
@@ -324,6 +341,8 @@ def saves():
             full = f.read()
         tokens = picks.split(",")
         for k in range(len(tokens)):
+            if "." in tokens[k] or tokens[k] == "q":         # a turn in a fight
+                continue                # a battle turn: saves are made at story menus
             for binary, sim in (("build/harness", False), ("build/harness.sim", True)):
                 if sim and not (name == "fare-edge" and k in (0, 5, len(tokens) - 1)):
                     continue
@@ -397,8 +416,45 @@ def damaged(rng, files):
     return files
 
 
-def damage(count):
-    src_dir = os.path.join(BUILD, "fare-edge")
+def wrapped_menu(case="fare-edge"):
+    """A scene whose menu offset wraps round 65536 back to the start of the car must be
+    refused (it once got past the verifier and read far beyond the car)."""
+    src_dir = os.path.join(BUILD, case)
+    files = {}
+    for n in os.listdir(src_dir):
+        with open(os.path.join(src_dir, n), "rb") as f:
+            files[n] = f.read()
+    d = read_depot(files["DEPOT"])
+    car, at = [e for e in d["directory"] if e[0] == 0][1]       # a scene past the start
+    data = bytearray(files["CAR00"])
+    struct.pack_into("<H", data, 9 + at, (0x10002 - at) & 0xFFFF)   # wraps to an instruction
+    files["CAR00"] = bytes(data)
+    depot = bytearray(files["DEPOT"])
+    struct.pack_into("<H", depot, d["hash_at"], 0)
+    cars = b"".join(files[k] for k in sorted(files) if k.startswith("CAR"))
+    struct.pack_into("<H", depot, d["hash_at"], crc16(bytes(depot) + cars))
+    files["DEPOT"] = bytes(depot)
+    out = os.path.join(BUILD, "damaged")
+    os.makedirs(out, exist_ok=True)
+    for n in os.listdir(out):
+        os.remove(os.path.join(out, n))
+    for n, data in files.items():
+        with open(os.path.join(out, n), "wb") as f:
+            f.write(data)
+    env = dict(os.environ, ASAN_OPTIONS="detect_leaks=0:abort_on_error=0",
+               UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1")
+    p = subprocess.run(["build/harness.asan", out, "7", "1,1,1"], capture_output=True,
+                       text=True, timeout=20, cwd=ROOT, env=env)
+    if p.returncode != 0 or "runtime error" in p.stderr or "Sanitizer" in p.stderr:
+        fail(f"wrapped menu offset: exit {p.returncode}\n{p.stderr[-2000:]}")
+    elif "bad menu offset" not in p.stdout:
+        fail("wrapped menu offset: not refused: " + p.stdout.strip().splitlines()[-1])
+    else:
+        print("ok  wrapped menu offset: refused")
+
+
+def damage(count, case="fare-edge"):
+    src_dir = os.path.join(BUILD, case)
     files = {}
     for n in os.listdir(src_dir):
         with open(os.path.join(src_dir, n), "rb") as f:
@@ -426,9 +482,9 @@ def damage(count):
             fail(f"damaged image {i}: exit {p.returncode}\n{p.stderr[-2000:]}")
             continue
         last = p.stdout.strip().splitlines()[-1] if p.stdout.strip() else ""
-        kind = last.split(":")[0].strip("[") if last.startswith("[") else "text"
+        kind = last.split(":")[0].strip("[]") if last.startswith("[") else "text"
         outcomes[kind] = outcomes.get(kind, 0) + 1
-    print(f"ok  damage: {count} corrupted images, none crashed: "
+    print(f"ok  damage: {count} corrupted copies of {case}, none crashed: "
           + ", ".join(f"{k} {v}" for k, v in sorted(outcomes.items())))
 
 
@@ -439,8 +495,10 @@ def main():
     coverage()
     if not update:
         saves()
-        damaged_saves(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2)
+        wrapped_menu()
+    damaged_saves(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2)
     damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")))
+    damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2, "fight-tour")
     print(f"vm tests: {failures} failed")
     sys.exit(1 if failures else 0)
 

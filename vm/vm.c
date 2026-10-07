@@ -11,6 +11,7 @@
 #include <string.h>
 
 #include "apb.h"
+#include "apb_battle.h"
 #include "apb_hal.h"
 #include "apb_vm.h"
 #include "names.h"
@@ -29,21 +30,22 @@ enum {
     OP_PUSH8 = 0x20, OP_PUSH16 = 0x21, OP_FLAG = 0x22, OP_VAR = 0x23, OP_HAS = 0x24,
     OP_ECHO = 0x25, OP_RATING = 0x26, OP_LEVEL = 0x27, OP_RACE = 0x28, OP_CLASS = 0x29,
     OP_EQ = 0x30, OP_NE = 0x31, OP_LT = 0x32, OP_LE = 0x33, OP_GT = 0x34, OP_GE = 0x35,
-    OP_AND = 0x36, OP_OR = 0x37, OP_NOT = 0x38, OP_CHECK = 0x39,
+    OP_AND = 0x36, OP_OR = 0x37, OP_NOT = 0x38, OP_CHECK = 0x39, OP_FIGHT = 0x3A,
     OP_SET = 0x40, OP_CLR = 0x41, OP_LET = 0x42, OP_ADD = 0x43, OP_SUB = 0x44,
     OP_GIVE = 0x48, OP_TAKE = 0x49, OP_XP = 0x4A, OP_DEBT = 0x4B, OP_ECHO_SET = 0x4C,
-    OP_LAST = 0x4C
+    OP_HEAL = 0x4D,
+    OP_LAST = 0x4D
 };
 
 /* Operand kinds, one letter each:
  * a addr  s scene  t string  f flag  v var  i item  e echo  r rating  p picture
- * b u8    w u16    h s16 */
+ * n encounter  b u8  w u16  h s16 */
 static const char *const operands[OP_LAST + 1] = {
     "",  "a", "a", "s", "aaaa", "b", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,          /* 00 */
     "t", "p", "",  "",  0, 0, 0, 0, "", "ta", "", 0, 0, 0, 0, 0,          /* 10 */
     "b", "h", "f", "v", "i", "eb", "r", "", "", "", 0, 0, 0, 0, 0, 0,     /* 20 */
-    "", "", "", "", "", "", "", "", "", "rb", 0, 0, 0, 0, 0, 0,           /* 30 */
-    "f", "f", "v", "vb", "vb", 0, 0, 0, "i", "i", "b", "bw", "eb"        /* 40 */
+    "", "", "", "", "", "", "", "", "", "rb", "nb", 0, 0, 0, 0, 0,        /* 30 */
+    "f", "f", "v", "vb", "vb", 0, 0, 0, "i", "i", "b", "bw", "eb", "b"   /* 40 */
 };
 
 #define SKILL_BASE   16
@@ -79,6 +81,8 @@ static uint8_t pair_count;
 static uint16_t pairs_at;
 static uint8_t picture_count;
 static uint16_t pictures_at;
+static uint8_t encounter_count;
+static uint16_t encounters_at;      /* the first encounter's length field */
 
 /* The loaded car. */
 static uint8_t car_index = 0xFF;
@@ -114,6 +118,7 @@ static apb_character ch;
 static apb_rng rng;
 static apb_receipt receipt;
 static uint16_t boarded_debt;
+static uint8_t health;              /* carries from fight to fight in a Departure */
 static uint8_t gives;
 
 static char error_buf[48];
@@ -170,6 +175,98 @@ static void fail(const char *what, uint16_t at)
 }
 
 /* ------------------------------------------------------- loading: depot */
+
+/* Square x, y of a battle map whose squares start at depot[tiles_at]: used when loading
+ * and in fights, so it stays in the main program on the C64. */
+static uint8_t enc_tile(uint16_t tiles_at, uint8_t w, uint8_t x, uint8_t y)
+{
+    uint16_t n = (uint16_t)(y * w + x);
+    uint8_t b = depot[tiles_at + n / 2];
+
+    return (uint8_t)((n & 1) ? (b & 15) : (b >> 4));
+}
+
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY1")
+#pragma rodata-name (push, "OVL1DATA")
+#endif
+
+/* A battle map and its foes (docs/vm-spec.md, Encounters): `len` bytes at depot[at].
+ * Everything is checked here, at load, so the battle can trust it. */
+
+static uint8_t encounter_ok(uint16_t at, uint16_t len)
+{
+    uint8_t w;
+    uint8_t h;
+    uint8_t i;
+    uint8_t j;
+    uint8_t starts;
+    uint8_t foes;
+    uint8_t x;
+    uint8_t y;
+    uint8_t t;
+    uint16_t end = (uint16_t)(at + len);
+    uint16_t tiles_at;
+    uint16_t p;
+    uint16_t q;
+    uint16_t names;
+    const uint8_t *s;
+
+    if (len < 2 || end > depot_len || end < at) return 0;
+    w = depot[at];
+    h = depot[at + 1];
+    if (w < 1 || w > 16 || h < 1 || h > 10) return 0;
+    tiles_at = (uint16_t)(at + 2);
+    p = (uint16_t)(tiles_at + (w * h + 1) / 2);
+    if (p >= end) return 0;
+    for (y = 0; y < h; ++y) {
+        for (x = 0; x < w; ++x) {
+            if (enc_tile(tiles_at, w, x, y) > 7) return 0;
+        }
+    }
+    starts = depot[p++];
+    if (starts < 1 || starts > 4 || (uint16_t)(p + 2u * starts) >= end) return 0;
+    q = p;                                   /* positions: starts, then each foe's */
+    p = (uint16_t)(p + 2u * starts);
+    foes = depot[p++];
+    if (foes < 1 || foes > 8 - starts || (uint16_t)(p + 18u * foes) >= end) return 0;
+    /* Each foe's name, after the numbers: 1 to 20 ASCII characters, length first. */
+    names = (uint16_t)(p + 18u * foes);
+    for (i = 0; i < foes; ++i) {
+        if (names >= end || depot[names] < 1 || depot[names] > APB_VM_FOE_NAME_MAX
+            || (uint16_t)(names + 1 + depot[names]) > end) {
+            return 0;
+        }
+        for (j = 0; j < depot[names]; ++j) {
+            t = depot[names + 1 + j];
+            if (t < 0x20 || t > 0x7E) return 0;
+        }
+        names = (uint16_t)(names + 1 + depot[names]);
+    }
+    if (names != end) return 0;
+    for (i = 0; i < starts + foes; ++i) {
+        s = depot + (i < starts ? q + 2u * i : p + 18u * (i - starts));
+        x = s[0];
+        y = s[1];
+        if (x >= w || y >= h) return 0;
+        t = enc_tile(tiles_at, w, x, y);
+        if (t == 1 || t == 2) return 0;      /* a wall or a pit */
+        for (j = 0; j < i; ++j) {
+            if (x == (j < starts ? depot[q + 2u * j] : depot[p + 18u * (j - starts)])
+                && y == (j < starts ? depot[q + 2u * j + 1] : depot[p + 18u * (j - starts) + 1])) {
+                return 0;
+            }
+        }
+        if (i >= starts) {
+            /* health, then: 11 type, 12 ranged, 13 power, 14 area, 15 weak, 16 AI, 17 coward */
+            if (s[2] == 0 || s[11] > 4 || s[12] > 1 || s[13] > 1 || s[14] > 4
+                || (s[15] > 4 && s[15] != 255) || s[16] > 2 || s[17] > 1) {
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
 
 static uint8_t load_depot(void)
 {
@@ -230,6 +327,24 @@ static uint8_t load_depot(void)
         n = depot[at];
         at = (uint16_t)(at + 1 + n);
     }
+    if (at >= depot_len) {
+        fail("bad picture list", 0);
+        return 0;
+    }
+    encounter_count = depot[at];
+    encounters_at = (uint16_t)(at + 1);
+    at = encounters_at;
+    if (encounter_count > 32) {
+        fail("bad encounter list", 0);
+        return 0;
+    }
+    for (i = 0; i < encounter_count; ++i) {
+        if ((uint16_t)(at + 2) > depot_len || !encounter_ok((uint16_t)(at + 2), rd16(depot + at))) {
+            fail("bad encounter", i);
+            return 0;
+        }
+        at = (uint16_t)(at + 2 + rd16(depot + at));
+    }
     if (at != depot_len) {
         fail("depot has trailing bytes", 0);
         return 0;
@@ -242,6 +357,11 @@ static uint8_t load_depot(void)
     }
     return 1;
 }
+
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
 
 static uint8_t dir_car(uint16_t scene)
 {
@@ -403,6 +523,11 @@ static uint8_t marked(uint16_t at)
 }
 #endif
 
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY1")
+#pragma rodata-name (push, "OVL1DATA")
+#endif
+
 /* Walk the code once: every opcode known, every operand in range. Scene starts
  * come from the directory, in increasing order within a car. */
 static uint8_t verify_car(uint8_t index)
@@ -430,7 +555,8 @@ static uint8_t verify_car(uint8_t index)
                 return 0;
             }
             menu = rd16(code + at);
-            if (menu != NO_MENU && (uint16_t)(at + menu) >= code_len) {
+            /* Compared with what's left, not added: a huge offset would wrap round. */
+            if (menu != NO_MENU && menu >= (uint16_t)(code_len - at)) {
                 fail("bad menu offset", at);
                 return 0;
             }
@@ -462,7 +588,7 @@ static uint8_t verify_car(uint8_t index)
         }
         ++at;
         for (k = operands[op]; *k; ++k) {
-            if (*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p') {
+            if (*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p' || *k == 'n') {
                 if (at + 1 > code_len) break;
                 v = code[at];
                 at = (uint16_t)(at + 1);
@@ -474,6 +600,7 @@ static uint8_t verify_car(uint8_t index)
             if ((*k == 'a' && v >= code_len) || (*k == 's' && v >= scene_count)
                 || (*k == 't' && v >= string_count) || (*k == 'f' && v >= flag_count)
                 || (*k == 'v' && v >= var_count) || (*k == 'p' && v >= picture_count)
+                || (*k == 'n' && v >= encounter_count)
                 || (*k == 'r' && !valid_rating((uint8_t)v))
                 || (*k == 'i' && (v >= APB_ITEM_COUNT || apb_items[v].tier == 0))
                 || (*k == 'e' && (v >= APB_ECHO_COUNT || apb_echo_defaults[v] == 0))) {
@@ -514,7 +641,8 @@ static uint8_t verify_car(uint8_t index)
                 fail("jump into an instruction", at);
                 return 0;
             }
-            v = (uint16_t)(v + ((*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p') ? 1 : 2));
+            v = (uint16_t)(v + ((*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p' || *k == 'n')
+                                ? 1 : 2));
         }
     }
 #endif
@@ -562,6 +690,11 @@ static uint8_t load_car(uint8_t index)
     strings_len = (uint16_t)(car_len - strings_at);
     return verify_car(index);
 }
+
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
 
 static uint16_t crc_byte(uint16_t crc, uint8_t b)
 {
@@ -730,6 +863,11 @@ static uint8_t first_pay(void)
     return 1;
 }
 
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY2")
+#pragma rodata-name (push, "OVL2DATA")
+#endif
+
 /* ---------------------------------------------------------------- saves */
 
 /* A save is made at a menu and resumes by showing that menu again (docs/vm-spec.md,
@@ -737,7 +875,7 @@ static uint8_t first_pay(void)
  * edited save is refused, never trusted. The character is kept as its Passport. */
 #define SAVE_MAGIC_1 0x41   /* bytes, not characters: 'A' 'S' in ASCII */
 #define SAVE_MAGIC_2 0x53
-#define SAVE_VERSION 1
+#define SAVE_VERSION 2      /* 2: health */
 
 static uint8_t save_buf[APB_VM_SAVE_MAX];
 static uint16_t sv_pos;
@@ -821,6 +959,7 @@ static uint8_t save_game(uint16_t menu_at)
     for (i = 0; i < var_count; ++i) sv_put8(vars[i]);
     sv_put16(rng.state);
     sv_put16(boarded_debt);
+    sv_put8(health);
     sv_put8(gives);
     sv_put8(paid_count);
     for (i = 0; i < paid_count; ++i) {
@@ -851,6 +990,18 @@ static uint8_t save_game(uint16_t menu_at)
 }
 
 /* Read a save back in. Returns the menu's offset, or 0xFFFF (with the VM failed). */
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
+
+static uint8_t sv_car;
+
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY2")
+#pragma rodata-name (push, "OVL2DATA")
+#endif
+
 static uint16_t load_game(void)
 {
     uint8_t i;
@@ -893,6 +1044,7 @@ static uint16_t load_game(void)
     rng.state = sv_get16();
     if (rng.state == 0) sv_bad = 1;         /* xorshift never reaches 0 */
     boarded_debt = sv_get16();
+    health = sv_get8();
     gives = sv_get8();
     paid_count = sv_get8();
     if (paid_count > APB_VM_REWARD_SITES) sv_bad = 1;
@@ -928,8 +1080,23 @@ static uint16_t load_game(void)
         fail("the save is damaged", 0);
         return 0xFFFFu;
     }
-    /* Back into the car, and check the menu is a real one. */
-    if (!load_car(c)) {
+    sv_car = c;
+    return at;
+}
+
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
+
+/* The rest of a resume, back in the main program: into the save's car (loading it
+ * needs the LOAD overlay), and check the menu is a real one. */
+static uint16_t resume_at(uint16_t at)
+{
+    uint8_t i;
+
+    APB_NEED(APB_OVL_LOAD);
+    if (!load_car(sv_car)) {
         return 0xFFFFu;
     }
     if (at >= code_len || car[CODE_AT + at] != OP_MENU) {
@@ -956,6 +1123,110 @@ static uint16_t load_game(void)
 #endif
     return at;
 }
+
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY3")
+#pragma rodata-name (push, "OVL3DATA")
+#endif
+
+/* -------------------------------------------------------------- fights */
+
+/* You fight with the first weapon you have equipped (a melee or ranged weapon, or a
+ * focus), or your bare hands. */
+static uint16_t weapon_of(void)
+{
+    uint8_t i;
+    uint16_t id;
+    uint8_t a;
+
+    for (i = 0; i < APB_EQUIP_SLOTS; ++i) {
+        id = ch.equipped[i];
+        if (id == 0 || id >= APB_ITEM_COUNT || apb_items[id].tier == 0) continue;
+        a = apb_items[id].archetype;
+        if (a == APB_ARCH_MELEE || a == APB_ARCH_RANGED || a == APB_ARCH_FOCUS) return id;
+    }
+    return 0;
+}
+
+static apb_fighter fighter;
+static apb_action action;
+static uint16_t foe_names_at;       /* the fight's first foe name, in the depot */
+static char foe_name[APB_VM_FOE_NAME_MAX + 1];
+
+static void battle_event(const apb_event *e)
+{
+    hal_battle_event(e);
+}
+
+/* Play encounter `n` (checked when the depot loaded). Returns 0 won, 1 lost, 2 fled. */
+static uint8_t fight(uint8_t n, uint8_t surprise)
+{
+    uint16_t at = encounters_at;
+    uint16_t tiles_at;
+    uint16_t p;
+    const uint8_t *s;
+    uint8_t w;
+    uint8_t h;
+    uint8_t x;
+    uint8_t y;
+    uint8_t i;
+    uint8_t foes;
+    uint8_t who;
+    uint8_t result;
+
+    while (n--) at = (uint16_t)(at + 2 + rd16(depot + at));
+    at = (uint16_t)(at + 2);
+    w = depot[at];
+    h = depot[at + 1];
+    tiles_at = (uint16_t)(at + 2);
+    apb_battle_init(w, h, &rng, battle_event);
+    for (y = 0; y < h; ++y) {
+        for (x = 0; x < w; ++x) apb_battle_set_tile(x, y, enc_tile(tiles_at, w, x, y));
+    }
+    p = (uint16_t)(tiles_at + (w * h + 1) / 2);
+    /* The traveler takes the first start (a party takes the rest, later). */
+    apb_fighter_from(&fighter, &ch, weapon_of());
+    fighter.health = health;
+    fighter.x = depot[p + 1];
+    fighter.y = depot[p + 2];
+    apb_battle_add(&fighter);
+    p = (uint16_t)(p + 1 + 2u * depot[p]);
+    foes = depot[p++];
+    foe_names_at = (uint16_t)(p + 18u * foes);
+    for (i = 0; i < foes; ++i) {
+        s = depot + p + 18u * i;
+        memset(&fighter, 0, sizeof(fighter));
+        fighter.side = APB_SIDE_FOE;
+        fighter.x = s[0];         fighter.y = s[1];
+        fighter.health = s[2];    fighter.health_max = s[2];
+        fighter.grace = s[3];     fighter.dodge = s[4];     fighter.armor = s[5];
+        fighter.ward = s[6];      fighter.soak = s[7];      fighter.speed = s[8];
+        fighter.attack = s[9];    fighter.weapon = s[10];   fighter.dmg_type = s[11];
+        fighter.ranged = s[12];   fighter.power = s[13];    fighter.area = s[14];
+        fighter.weak_type = s[15]; fighter.behavior = s[16]; fighter.coward = s[17];
+        apb_battle_add(&fighter);
+    }
+    apb_battle_start(surprise);
+    hal_battle_begin();
+    for (;;) {
+        who = apb_battle_next();
+        if (who == APB_NOBODY) break;
+        steps = 0;
+        hal_battle_turn(who, &action);
+        if (!apb_battle_act(who, &action)) hal_prompt("You can't do that.");
+    }
+    result = apb_battle_result();
+    apb_battle_fighter(0, &fighter);
+    /* Lose, and the story carries on with you on your feet, just. */
+    health = fighter.health ? fighter.health : 1;
+    hal_battle_end(result);
+    return (uint8_t)(result - 1);
+}
+
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
 
 /* -------------------------------------------------------------- running */
 
@@ -984,6 +1255,7 @@ static uint8_t enter(uint16_t scene)
         fail("bad scene", pc);
         return 0;
     }
+    if (dir_car(scene) != car_index) APB_NEED(APB_OVL_LOAD);
     if (dir_car(scene) != car_index && !load_car(dir_car(scene))) {
         return 0;
     }
@@ -1004,6 +1276,7 @@ uint8_t apb_vm_open(void)
     error_buf[0] = '\0';
     car_index = 0xFF;
     opened = 0;
+    APB_NEED(APB_OVL_LOAD);
     if (!load_depot()) {
         return APB_VM_ERROR;
     }
@@ -1030,6 +1303,7 @@ uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass)
         fail("pass is for another Departure", 0);
         return APB_VM_ERROR;
     }
+    APB_NEED(APB_OVL_PASS);
     if (pass->check != apb_passport_check(snapshot)) {
         fail("pass is for another character", 0);
         return APB_VM_ERROR;
@@ -1053,7 +1327,9 @@ uint8_t apb_vm_resume(void)
     }
     opened = 0;
     car_index = 0xFF;
+    APB_NEED(APB_OVL_PASS);
     at = load_game();
+    if (at != 0xFFFFu) at = resume_at(at);
     if (at == 0xFFFFu) {
         return APB_VM_ERROR;
     }
@@ -1070,6 +1346,7 @@ uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed)
     }
     opened = 0;                 /* the next board opens the image again */
     memcpy(&ch, snapshot, sizeof(ch));
+    health = apb_health_max(&ch);
     memset(flags, 0, sizeof(flags));
     for (i = 0; i < var_count; ++i) {
         vars[i] = depot[var_init_at + i];
@@ -1213,6 +1490,7 @@ uint8_t apb_vm_run(void)
             steps = 0;
             i = hal_menu(label_ptrs, menu_count);
             if (i == APB_MENU_SAVE) {
+                APB_NEED(APB_OVL_PASS);
                 hal_prompt(save_game(op_at) ? "Saved." : "Couldn't save.");
                 pc = op_at;             /* and show the menu again */
                 break;
@@ -1277,6 +1555,13 @@ uint8_t apb_vm_run(void)
         case OP_NOT:
             push(!pop());
             break;
+        case OP_FIGHT:
+            i = FETCH8();
+            a = FETCH8();
+            if (i >= encounter_count || a > 2) { fail("bad fight", pc); break; }
+            APB_NEED(APB_OVL_BATTLE);
+            push(fight(i, (uint8_t)a));
+            break;
         case OP_CHECK:
             i = FETCH8();
             a = FETCH8();
@@ -1331,6 +1616,11 @@ uint8_t apb_vm_run(void)
             else if (i == 1) ch.debt = (uint16_t)(ch.debt > 0xFFFFu - a ? 0xFFFFu : ch.debt + a);
             else ch.debt = (uint16_t)(ch.debt < a ? 0 : ch.debt - a);
             break;
+        case OP_HEAL:
+            i = FETCH8();
+            a = apb_health_max(&ch);
+            health = (uint8_t)(i == 255 || health + i > a ? a : health + i);
+            break;
         case OP_ECHO_SET:
             a = FETCH16();
             i = FETCH8();
@@ -1348,6 +1638,24 @@ uint8_t apb_vm_run(void)
     }
     hal_error(error_buf);
     return APB_VM_ERROR;
+}
+
+uint8_t apb_vm_health(void)
+{
+    return health;
+}
+
+const char *apb_vm_foe_name(uint8_t who)
+{
+    uint16_t at = foe_names_at;
+    uint8_t i;
+
+    foe_name[0] = '\0';
+    if (who == 0 || who >= apb_battle_count() || at == 0) return foe_name;
+    for (i = 1; i < who; ++i) at = (uint16_t)(at + 1 + depot[at]);
+    memcpy(foe_name, depot + at + 1, depot[at]);
+    foe_name[depot[at]] = '\0';
+    return foe_name;
 }
 
 const apb_receipt *apb_vm_receipt(void)

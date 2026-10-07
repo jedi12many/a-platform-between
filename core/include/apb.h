@@ -283,6 +283,55 @@ void    apb_echo_clear(apb_character *ch, uint16_t id);
  * as if for the first time, and its receipt sets the new choices. */
 void    apb_rewind_echoes(apb_character *ch, uint16_t departure);
 
+/* ------------------------------------------------------------ Combat */
+
+/* docs/combat.md. */
+#define APB_UNARMED_DAMAGE    2
+#define APB_COVER_BONUS       20   /* to the TN, against ranged attacks and powers */
+#define APB_HIGH_GROUND_BONUS 10   /* to your attacks from high ground            */
+#define APB_HAZARD_DAMAGE     5
+#define APB_FLEE_TN           100
+#define APB_FLEE_PER_FOE      10
+
+uint8_t apb_dodge(const apb_character *ch);        /* Grace / 5                     */
+uint8_t apb_speed(const apb_character *ch);        /* 4 + Grace / 25                */
+uint8_t apb_armor(const apb_character *ch);        /* 10 x the best worn armor tier */
+uint8_t apb_melee_bonus(const apb_character *ch);  /* Might / 20                    */
+/* 5 x the item's tier; bare hands (item 0) do APB_UNARMED_DAMAGE. */
+uint8_t apb_weapon_damage(uint16_t item);
+
+/* TN to hit: 50 + dodge + defense (Armor or Ward) + bonus (cover), less
+ * `reduce` (debuffs, pierce); never below 50. */
+int16_t apb_hit_tn(int16_t dodge, int16_t defense, int16_t bonus, int16_t reduce);
+
+/* Damage from a resolved attack roll: weapon + stat bonus + 1 per full 10 over the TN,
+ * doubled on a crit; half the weapon alone on a glancing hit; then less Soak. */
+uint16_t apb_damage(const apb_roll *roll, uint8_t weapon, uint8_t stat_bonus, uint8_t soak);
+/* Roll an attack and return its damage; `out` gets the roll. */
+uint16_t apb_attack(apb_rng *rng, uint8_t rating, int16_t bonus, int16_t tn, uint8_t weapon,
+                    uint8_t stat_bonus, uint8_t soak, apb_roll *out);
+
+/* Is a square dx, dy from an area attack's target inside an area of this size? */
+uint8_t apb_in_area(int8_t dx, int8_t dy, uint8_t area);
+/* TN to flee from anywhere but an exit. */
+int16_t apb_flee_tn(uint8_t adjacent_foes);
+
+/* Battle map squares. */
+enum {
+    APB_TILE_OPEN = 0,   /* .  */
+    APB_TILE_WALL,       /* #  blocks movement and sight     */
+    APB_TILE_PIT,        /* O  can't be entered on foot      */
+    APB_TILE_ROUGH,      /* ~  costs 2                        */
+    APB_TILE_COVER,      /* +  costs 2; cover against ranged  */
+    APB_TILE_HAZARD,     /* ^  APB_HAZARD_DAMAGE              */
+    APB_TILE_HIGH,       /* =  high ground                    */
+    APB_TILE_EXIT,       /* >  a way out                      */
+    APB_TILE_COUNT
+};
+
+uint8_t apb_tile_cost(uint8_t tile);           /* squares of movement; 0: can't enter */
+uint8_t apb_tile_blocks_sight(uint8_t tile);
+
 /* ---------------------------------------------------------- Receipts */
 
 /* What a Departure hands back: only what changed (docs/boarding.md). A receipt is net:

@@ -1,0 +1,15 @@
+0: traveler at 1,1, health 27, attack 62, TN to hit 88
+1: foe a at 4,1, health 20
+round 1: 0's turn
+  0 moves to 3,1
+  0 attacks 1: 45+62=107 vs 74: success, 10 damage
+round 1: 1's turn
+  1 attacks 0: 56+45=101 vs 88: success, 7 damage
+round 2: 0's turn
+  0 attacks 1: 27+62=89 vs 74: success, 8 damage
+round 2: 1's turn
+  1 attacks 0: 29+45=74 vs 88: cost, 3 damage
+round 3: 0's turn
+  0 attacks 1: 52+62=114 vs 74: success, 11 damage
+  1 is down
+the fight is won

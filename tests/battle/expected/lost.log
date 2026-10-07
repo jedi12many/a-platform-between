@@ -1,0 +1,6 @@
+0: traveler at 1,1, health 5, attack 62, TN to hit 88
+1: foe a at 2,1, health 40
+round 1: 1's turn
+  1 attacks 0: 71+70=141 vs 88: success, 15 damage
+  0 is down
+the fight is lost

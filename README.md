@@ -58,14 +58,17 @@ make demo        # build and run the native demo
 | [Seasons](docs/seasons.md) | Seasons as DLC, carrying over, skipping a season, replaying (Rewind) |
 | [Sidings](docs/sidings.md) | Non-story content: procedural Deep Yards, mini-games |
 | [Parties](docs/parties.md) | Solo vs. party Departures, rosters, bringing four of your own |
+| [Party play](docs/party-play.md) | The leader and votes, personal moments, checks in a party, turns and the combat log |
 | [Boarding](docs/boarding.md) | One character in several games at once: snapshots, receipts, Travel Stamps |
 | [Waystation on the web](docs/waystation-web.md) | The station is a website: build, shop, trade, meet; the clients are the trains |
 | [Tabletop](docs/tabletop.md) | Platform 0: printed sheets, gamebooks, Conductor modules, coming home |
+| [Combat](docs/combat.md) | Fights on a battle map: dodge, armor, soak, damage, terrain, fleeing (draft) |
 | [Rules v0](docs/rules-v0.md) | d100, the 100 scale, skills, powers, creation, levels |
 | [Passport spec](docs/passport-spec.md) | The portable character record: password, file, hub account |
 | [Platforms & engines](docs/platforms.md) | One script, many engines (machines are *gauges* in the story); build order |
 | [Engine plan](docs/engine-plan.md) | Story VM, Quest Script, C64 budget, milestones E0–E7 |
 | [Quest Script](docs/quest-script.md) | The language Departures are written in (public reference) |
 | [VM spec](docs/vm-spec.md) | Departure image format, bytecode, runtime checks, saves |
+| [The C64 build](docs/c64.md) | Memory map, overlays, the disk, playing it in VICE, testing without a C64 |
 | [Roadmap](docs/roadmap.md) | Phases from paper rules to multiplayer |
 | [Departures](docs/departures/) | One-page treatments of the first solo Departures |

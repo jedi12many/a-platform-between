@@ -4,8 +4,9 @@
 // They wake at the Waystation, remember how they died (written for their race
 // and class), meet the Stationmaster, and learn what they owe.
 //
-// Milestone E0: chapters 1 and 2. The ticket window and the first ticket
-// follow in E1.
+// Off the concourse, the Lost Property office holds the Fare's one fight (E3.6), with a
+// porter's hook for anyone who gets past the rats: fight them, creep past them, or leave
+// them be. It's its own chapter so every chapter stays small enough for the C64.
 
 title: The Fare
 id: 0
@@ -21,7 +22,18 @@ flag tried_to_leave
 flag fen_told_you
 flag asked_who
 flag asked_refuse
+flag got_hook
 var fen_rapport = 0
+
+// The Lost Property office: the Fare's one fight, and never the only way through.
+map lost_property
+    #########
+    >..+..~.#
+    #@.+..a.#
+    #..~~.+b#
+    #########
+    a = ASH_RAT
+    b = ASH_RAT
 
 === The Static
 
@@ -146,6 +158,7 @@ else
     have heard of and know to be gone.
 + {not tried_to_leave} [Walk back to the platform edge] -> platform_edge
 + [Go into the Buffer Stop] -> bar
++ {not got_hook} [Try the door marked LOST PROPERTY] -> lost_property
 
 == platform_edge
 ~ set tried_to_leave
@@ -277,3 +290,69 @@ a bed."
 
 ~ xp 5
 ~ end complete
+
+=== Lost Property
+
+// A side room off the concourse: a fight worth having, and two roads round it.
+== lost_property
+if not visited lost_property
+    Between a shuttered newsstand and a clock with no hands there is a narrow
+    door: LOST PROPERTY. It opens onto a little office drifted with luggage
+    nobody will ever come back for. Steamer trunks, hatboxes, a birdcage with
+    a sleeping cloud in it.
+
+    On the counter lies a porter's hook, long and brass and well kept, the
+    only thing in the room that looks like it is waiting for someone.
+else
+    The Lost Property office. The hook is still on the counter.
+
+Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash
+rats, nesting in a trunk, and they don't like visitors.
+
++ [Drive them out] -> lp_fight
++ [Creep in for the hook] -> lp_creep
++ [Leave them to it] -> concourse
+
+== lp_creep
+You keep low, and keep to the shadows of the trunks.
+
+check STEALTH
+    crit:    The rats never stir. You lift the hook from the counter and are
+             out of the door before the dust settles. -> lp_hook
+    success: A floorboard thinks about creaking and decides not to. You have
+             the hook, and the rats have their nest. -> lp_hook
+    cost:    You're halfway across when a hatbox slides. The rats turn, but
+             you're closer than they would like. -> lp_jump
+    fail:    A suitcase gives way under your foot with a noise like a
+             gunshot, and the rats come out of the trunk all at once. -> lp_ambush
+
+== lp_fight
+fight lost_property
+    won:  The last rat bolts into a hole behind the trunks, trailing sparks. -> lp_hook
+    fled: You slam the door on them and lean on it until the scrabbling stops. -> concourse
+    lost: The world goes grey at the edges. When it comes back, you are lying on the
+          tiles of the great hall, and something has wrapped your bites in a clean bar
+          towel. ~ heal 10 -> concourse
+
+== lp_jump
+fight lost_property sneak
+    won:  The rats scatter into the luggage and stay there. -> lp_hook
+    fled: You back out and pull the door to. -> concourse
+    lost: You wake on the tiles of the great hall, bitten, with a bar towel wrapped
+          round the worst of it. ~ heal 10 -> concourse
+
+== lp_ambush
+fight lost_property ambush
+    won:  The rats scatter into the luggage and stay there. -> lp_hook
+    fled: You stumble out and kick the door shut behind you. -> concourse
+    lost: You wake on the tiles of the great hall, bitten, with a bar towel wrapped
+          round the worst of it. ~ heal 10 -> concourse
+
+== lp_hook
+~ set got_hook
+The porter's hook is heavier than it looks, and fits your hand as if it
+had been made for it. A paper tag hangs from the handle: UNCLAIMED. Then,
+as you watch, the word fades, and in the same careful hand as the
+Stationmaster's ledger, your name writes itself in its place.
+~ give PORTERS_HOOK
+-> concourse

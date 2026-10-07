@@ -17,7 +17,7 @@ def edges(scene):
             elif isinstance(st, A.If):
                 for _, body in st.branches:
                     walk(body)
-            elif isinstance(st, A.Check):
+            elif isinstance(st, (A.Check, A.Fight)):
                 for body in st.outcomes.values():
                     walk(body)
 
@@ -36,7 +36,7 @@ def ends_complete(scene):
                 return True
             if isinstance(st, A.If) and any(walk(b) for _, b in st.branches):
                 return True
-            if isinstance(st, A.Check) and any(walk(b) for b in st.outcomes.values()):
+            if isinstance(st, (A.Check, A.Fight)) and any(walk(b) for b in st.outcomes.values()):
                 return True
         return False
 
@@ -46,11 +46,11 @@ def ends_complete(scene):
 def bottlenecks(dep):
     """Scenes (besides the start and the endings) on every route to an ending.
 
-    Returns (list of scene names, whether any ending is reachable).
+    Returns (list of scene names, the reachable scenes that end it complete).
     """
     scenes = {s.name: s for s in dep.scenes()}
     if dep.start not in scenes:
-        return [], True
+        return [], [dep.start]
     succ = {n: [t for t in edges(s) if t in scenes] for n, s in scenes.items()}
     reach = [dep.start]
     seen = {dep.start}
@@ -61,7 +61,7 @@ def bottlenecks(dep):
                 reach.append(t)
     endings = [n for n in reach if ends_complete(scenes[n])]
     if not endings:
-        return [], False
+        return [], []
     preds = {n: [] for n in reach}
     for n in reach:
         for t in succ[n]:
@@ -80,4 +80,4 @@ def bottlenecks(dep):
                 dom[n] = new
                 changed = True
     common = set.intersection(*(dom[e] for e in endings)) - {dep.start} - set(endings)
-    return [n for n in reach if n in common], True
+    return [n for n in reach if n in common], endings
