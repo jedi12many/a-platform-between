@@ -35,6 +35,23 @@ class Canvas:
     def __init__(self, background):
         self.px = [[background] * W for _ in range(H)]
 
+    @classmethod
+    def fitted(cls, path, box=None, dither="none", characters=256):
+        """Art from anywhere, fitted to the C64's rules by tools/c64fit.py (which needs
+        numpy), to paint over: a sign's words, a colour put right. Painting adds cells,
+        so leave room with fewer `characters`."""
+        import c64fit
+        c = cls(BLACK)
+        c.px, _ = c64fit.fit_pixels(path, dither, None, box, characters)
+        return c
+
+    def recolour(self, old, new, x0=0, y0=0, x1=W - 1, y1=H - 1):
+        """Every `old` pixel in the box becomes `new`."""
+        for y in range(max(0, y0), min(H, y1 + 1)):
+            for x in range(max(0, x0), min(W, x1 + 1)):
+                if self.px[y][x] == old:
+                    self.px[y][x] = new
+
     # ------------------------------------------------------------------ pixels
     def set(self, x, y, c):
         if 0 <= x < W and 0 <= y < H:

@@ -3,8 +3,9 @@
     python3 content/s1/01-eighteen-minutes/pictures/paint.py
 
 Like The Fare's (content/s1/00-the-fare/pictures/paint.py, whose Waystation pictures this
-one paints again: the concourse, the platform, the Static and the Stationmaster): one
-160x96 PNG per picture, in the C64's colours, each checked against the C64's rules.
+one makes again: the concourse, the platform, the Static and the Stationmaster, three of
+them Gemini's, fitted by tools/c64fit.py, so this needs numpy too): one 160x96 PNG per
+picture, in the C64's colours, each checked against the C64's rules.
 """
 
 import importlib.util

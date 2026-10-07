@@ -168,11 +168,19 @@ def limit_characters(rgb, px, shared, own, most=256):
     return out
 
 
-def fit(path, out_path, dither="ordered", shared=None, box=None):
+def fit_pixels(path, dither="ordered", shared=None, box=None, characters=256):
+    """The fitted picture as 96 rows of 160 colour numbers, and the shared three. With
+    fewer `characters`, it leaves room for words or details painted on afterwards."""
     rgb = shape(Image.open(path), box)
     shared = shared or choose_shared(rgb)
     own, _ = fit_cells(rgb, shared)
-    px = limit_characters(rgb, paint(rgb, shared, own, dither), shared, own)
+    px = limit_characters(rgb, paint(rgb, shared, own, dither), shared, own, characters)
+    return [[int(c) for c in row] for row in px], shared
+
+
+def fit(path, out_path, dither="ordered", shared=None, box=None):
+    px, shared = fit_pixels(path, dither, shared, box)
+    px = np.array(px)
     img = Image.new("RGB", (W, H))
     img.putdata([c64pic.PALETTE[c] for c in px.ravel()])
     img.save(out_path)
