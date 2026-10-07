@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 demo play crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 demo play play-e18 crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -51,7 +51,7 @@ build/demo.prg: demo/demo.c $(CORE_SRC) $(CORE_HDR) | build
 # loaded from disk when the VM asks (LOAD, PASS and BATTLE), on cc65's overlay memory
 # map (fe/c64/apb.cfg). The linker fails the build if anything doesn't fit.
 C64_DEFS   := -DAPB_OVERLAYS -DAPB_VM_DEPOT_MAX=2048 -g
-C64_MAIN   := fe/c64/c64.c vm/vm.c client/view.c core/src/rng.c core/src/names.c \
+C64_MAIN   := fe/c64/c64.c fe/c64/split.s vm/vm.c client/view.c core/src/rng.c core/src/names.c \
               core/src/rules.c core/src/registry.c core/src/translate.c core/src/echo.c
 C64_PASS   := client/desk.c core/src/passport.c client/receipt_view.c
 C64_BATTLE := core/src/battle.c core/src/combat.c client/battle_view.c
@@ -60,42 +60,66 @@ build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_PASS) $(C64_BATTLE) $(CORE_H
                    client/apb_view.h | build
 	@mkdir -p build/c64/obj
 	@for f in $(C64_MAIN); do \
-	    $(CL65) -t c64 -O $(INC) $(C64_DEFS) -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
+	    $(CL65) -t c64 -O $(INC) $(C64_DEFS) -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
 	@for f in $(C64_PASS); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY2 \
 	    --rodata-name OVL2DATA -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
 	@for f in $(C64_BATTLE); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY3 \
 	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
 	$(CL65) -t c64 -g -C fe/c64/apb.cfg -m build/c64/apb.map -Wl --dbgfile,build/c64/apb.dbg -o $@ \
-	    $(addprefix build/c64/obj/,$(notdir $(C64_MAIN:.c=.o) $(C64_PASS:.c=.o) $(C64_BATTLE:.c=.o))) c64.lib
+	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_PASS) $(C64_BATTLE))))) c64.lib
 
-# The Fare on a 1541 disk: LOAD"APB",8 and RUN.
-build/the-fare.d64: build/c64/apb.prg content/s1/00-the-fare/the-fare.qs tools/d64.py
-	@mkdir -p build/c64/fare
+# The Fare on a 1541 disk: LOAD"APB",8 and RUN. Its pictures (pic00, pic01, ...) come
+# from the PNGs in its pictures/ folder (tools/c64pic.py, which needs Pillow).
+FARE_PICS := $(wildcard content/s1/00-the-fare/pictures/*.png)
+
+build/the-fare.d64: build/c64/apb.prg content/s1/00-the-fare/the-fare.qs tools/d64.py tools/c64pic.py $(FARE_PICS)
+	@mkdir -p build/c64/fare build/c64/fare-pics
 	python3 tools/qsc/qsc.py build content/s1/00-the-fare/the-fare.qs -o build/c64/the-fare.apd --split build/c64/fare
+	python3 tools/c64pic.py disk build/c64/fare/DEPOT content/s1/00-the-fare/pictures build/c64/fare-pics
 	python3 tools/d64.py write $@ "the fare" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
-	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done)
+	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
+	    $$(for f in build/c64/fare-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
+
+# Eighteen Minutes, chapter 1 (milestone E5), on a disk of its own, the same way.
+E18_PICS := $(wildcard content/s1/01-eighteen-minutes/pictures/*.png)
+
+build/eighteen-minutes.d64: build/c64/apb.prg content/s1/01-eighteen-minutes/eighteen-minutes.qs \
+                            tools/d64.py tools/c64pic.py $(E18_PICS)
+	@mkdir -p build/c64/e18 build/c64/e18-pics
+	python3 tools/qsc/qsc.py build content/s1/01-eighteen-minutes/eighteen-minutes.qs \
+	    -o build/c64/eighteen-minutes.apd --split build/c64/e18
+	python3 tools/c64pic.py disk build/c64/e18/DEPOT content/s1/01-eighteen-minutes/pictures build/c64/e18-pics
+	python3 tools/d64.py write $@ "eighteen minutes" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
+	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
+	    $$(for f in build/c64/e18/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
+	    $$(for f in build/c64/e18-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
 # The C64 game played without a C64: the real program, from the .d64, on a 6502 emulator
 # (py65) with the KERNAL answered in Python (tests/c64/run_c64.py). The overlays must
 # never reach into each other; The Fare's edge route must match its reviewed transcript
 # and give the same Travel Stamp as the terminal; a fight, a save to disk and a resume
-# after switching off must match theirs; and nothing may pass 40 columns.
-test-c64: build/the-fare.d64 build/apb build/the-fare.apd
+# after switching off must match theirs; Eighteen Minutes' first loop must match its
+# own; and nothing may pass 40 columns.
+test-c64: build/the-fare.d64 build/eighteen-minutes.d64 build/apb build/the-fare.apd
 	python3 fe/c64/check_overlays.py build/c64/apb.dbg
-	python3 tests/c64/run_c64.py build/the-fare.d64 tests/c64/fare-edge.choices > build/c64-fare-edge.txt
+	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg tests/c64/fare-edge.choices > build/c64-fare-edge.txt
 	diff tests/c64/fare-edge.expected build/c64-fare-edge.txt
 	./build/apb --choices tests/term/fare-edge.choices build/the-fare.apd | grep -A2 "^  [0-9A-Z]\{20\}$$" > build/term-stamp.txt
 	grep -A2 "^  [0-9A-Z]\{20\}$$" build/c64-fare-edge.txt | grep -v "(press a key)" | diff build/term-stamp.txt -
-	python3 tests/c64/run_c64.py build/the-fare.d64 tests/c64/fare-fight.choices \
+	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg tests/c64/fare-fight.choices \
 	    --then tests/c64/fare-resume.choices > build/c64-fare-fight.txt
 	diff tests/c64/fare-fight.expected build/c64-fare-fight.txt
-	@awk 'length > 40 { print FILENAME ": line over 40 columns: " $$0; bad = 1 } END { exit bad }' build/c64-fare-edge.txt build/c64-fare-fight.txt
+	python3 tests/c64/run_c64.py build/eighteen-minutes.d64 build/c64/apb.dbg tests/c64/e18-loop.choices \
+	    > build/c64-e18-loop.txt
+	diff tests/c64/e18-loop.expected build/c64-e18-loop.txt
+	@awk 'length > 40 { print FILENAME ": line over 40 columns: " $$0; bad = 1 } END { exit bad }' \
+	    build/c64-fare-edge.txt build/c64-fare-fight.txt build/c64-e18-loop.txt
 	@echo "c64: no overlay reaches into another; transcripts match; same Travel Stamp as the terminal"
 
-c64: build/demo.prg build/the-fare.d64
+c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64
 	@echo "C64 demo: build/demo.prg ($$(wc -c < build/demo.prg) bytes)"
-	@echo "C64 game: build/the-fare.d64 (program $$(wc -c < build/c64/apb.prg) bytes;" \
+	@echo "C64 games: build/the-fare.d64, build/eighteen-minutes.d64 (program $$(wc -c < build/c64/apb.prg) bytes;" \
 	      "overlays $$(wc -c < build/c64/apb.prg.1), $$(wc -c < build/c64/apb.prg.2)," \
 	      "$$(wc -c < build/c64/apb.prg.3))"
 
@@ -179,6 +203,12 @@ build/skirmish.apd: tests/term/skirmish.qs | build
 
 play: build/apb build/the-fare.apd
 	./build/apb build/the-fare.apd
+
+build/eighteen-minutes.apd: content/s1/01-eighteen-minutes/eighteen-minutes.qs | build
+	python3 tools/qsc/qsc.py build $< -o $@
+
+play-e18: build/apb build/eighteen-minutes.apd
+	./build/apb build/eighteen-minutes.apd
 
 # A recorded terminal playthrough must match its reviewed transcript. It boards with a
 # Boarding Pass (seed 1985) from tools/passport/boarding.py issue "<Kestrel's Passport>"

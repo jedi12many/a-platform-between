@@ -122,6 +122,7 @@ static void show_battle(void)
 
 void hal_battle_begin(void)
 {
+    apb_view_fight(1);
     apb_view_out("-- A fight! --", 0);
     last_round = 0xFF;
     free_next = on_quick = 0;
@@ -480,4 +481,5 @@ void hal_battle_end(uint8_t result)
 
     apb_view_out(endings[result & 3], 0);
     apb_view_out("", 0);
+    apb_view_fight(0);
 }

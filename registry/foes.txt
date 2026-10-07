@@ -13,3 +13,4 @@
 1     RUST_GUARD    20     20    20    0    2    4     45     6      kinetic  melee   0    energy  charge        "Rust-guard"
 2     SCRAP_GUNNER  15     30    0     0    0    4     40     4      energy   ranged  0    -       shoot         "Scrap gunner"
 3     ASH_RAT       6      50    0     0    0    6     30     2      kinetic  melee   0    -       charge+coward "Ash rat"
+4     MAINT_DRONE   18     20    30    0    2    3     40     6      energy   melee   0    kinetic guard         "Maintenance drone"

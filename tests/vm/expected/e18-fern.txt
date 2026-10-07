@@ -1,0 +1,351 @@
+* Your Passport, please: one line at a time, then a blank line.
+* Line 1:
+< 4CB4W00006C101WPP9QH
+* Line 2:
+< NB400000003G074MMABZ
+* Line 3:
+< 50000CY1GE
+* Line 4:
+< 
+Fern, Rad-Dryad Channeler, level 1. Debt 0.
+  1) Board
+  2) Start over
+> 1
+=== The Ticket
+[picture 0 concourse]
+The ticket window is open. There is no morning at the Waystation, but you knew it when it came, and here it is.
+Behind the glass, the Stationmaster is already writing. The pen scratches. A ticket slides under the grille, warm, as if it has been in someone's pocket:
+KEPLER-NINE         PLATFORM 1
+ONE TRAVELER        DEPARTS NOW
+PURPOSE             RETRIEVAL
+"A station is dying," says the Stationmaster. "It has been dying for some time. Retrieve the thing in the captain's safe before it finishes."
+  1) Ask what's in the safe
+  2) Ask how long you have
+  3) Ask what happens if you die there
+  4) Take the ticket
+> 2
+"Eighteen minutes." A pause, polite and exact. "It has been eighteen minutes for a very long time. You'll see."
+  1) Ask what's in the safe
+  2) Ask what happens if you die there
+  3) Take the ticket
+> 3
+[picture 1 platform_bench]
+Platform 1 is the long one under the clock. A train is waiting where no train was yesterday: white, seamless, quiet as held breath, its windows full of stars.
+As you step aboard, the world takes your measure. Kepler-Nine is a place of machines and no magic at all, and you change to fit it.
+The magic goes out of you like a held breath. What is left is engineered: a hydroponic bioform, bark spliced with circuitry, the green glow in you labelled LOW-LEVEL ISOTOPE (CONTAINED). You still feel the fallout like sunlight. That part is yours.
+The words in your mouth go quiet. Behind your ear there is a neural lace instead, cool as a coin. It will do what your words did, more or less, but the station's sensors will call it a reality fault if you push it.
+The doors close without a sound.
+  1) Find a seat
+> 1
+The train does not so much leave as stop being at the Waystation. Through the window the grey shimmer thins into Static, the Static into dark, the dark into stars, and the stars into a long silver wheel turning in front of a dull red sun.
+A voice from nowhere, warm and tired, fills the carriage:
+"Kepler-Nine. Dock 3. Mind the gap. Please be advised that this station will be destroyed in eighteen minutes."
+  1) Step off the train
+> 1
+=== Kepler-Nine
+[picture 2 dock]
+Dock 3 is a ring of scuffed white panels and red light. Klaxons. A smell of hot dust. Every screen on every wall shows the same thing:
+REACTOR CONTAINMENT FAILURE
+IN 18:00
+Behind you, the train is gone. Not leaving: gone, as if there had never been one.
+  1) Read the dock terminal
+  2) Look out of the viewport
+  3) Head into the ring
+> 1
+[check Tech: 95+27=122 vs 80: success]
+The terminal gives up the station plan without a fight. A ring of decks around a spine; the reactor at the hub; the captain's quarters at the top of the spine, next to the command deck.
+  1) Look out of the viewport
+  2) Head into the ring
+> 1
+Outside, a freighter tumbles slowly past, end over end, dead. Beyond it the red sun sits low and swollen, like it's watching.
+  1) Look out of the viewport
+  2) Head into the ring
+> 1
+Outside, a freighter tumbles slowly past, end over end, dead. Beyond it the red sun sits low and swollen, like it's watching.
+  1) Look out of the viewport
+  2) Head into the ring
+> 2
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 14 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 14 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 3
+[picture 4 hydroponics]
+Hydroponics is green and warm and almost silent, the only place on the station that isn't screaming. Rows of plants under violet lamps. One person, sitting cross-legged in the soil, not running anywhere.
+"Pell," she says. "Botanist. You can sit, if you like. Plants don't panic. It's catching."
+She looks at your bark, your glow, and her face softens. "Oh. You're one of mine, aren't you? Whatever this place made you into."
+  1) Ask her about the seed vault
+  2) Ask her why she isn't running
+  3) Back to the ring
+> 2
+"Where to?" She pats the soil. "The pods don't work. And I keep having the oddest feeling that I've done all this before." She shrugs. "Maybe next time I'll run."
+  1) Ask her about the seed vault
+  2) Back to the ring
+> 2
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 11 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 11 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 5
+=== The Spine
+[picture 7 reactor]
+The corridor to the reactor runs hot. The walls tick. Halfway along, in front of the hatch, a maintenance drone the size of a fridge hangs in the air, its welding arm sparking in slow, patient arcs. It has decided that nobody goes past.
+  1) Fight your way through
+  2) Slip past it in the smoke
+  3) Go back
+> 3
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 7 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 7 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 6
+You find a bench by a viewport and sit. The freighter tumbles. The sun watches. The screens count down, and nobody asks you for anything, and for a while it is almost peaceful.
+[picture 6 static]
+The screens reach zero.
+There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
+Then white. Then Static. Then nothing at all.
+[picture 2 dock]
+You are standing on Dock 3.
+You were dead. You remember it very clearly: the white, the noise that was too big to be a noise. And then not the Stationmaster's hand. Something colder, with a clock in it, that took you and put you back.
+REACTOR CONTAINMENT FAILURE
+IN 18:00
+Eighteen minutes. Again.
+  1) Look out of the viewport
+  2) Head into the ring
+> 2
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 17 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 17 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 3
+[picture 4 hydroponics]
+Hydroponics is green and warm and almost silent, the only place on the station that isn't screaming. Rows of plants under violet lamps. One person, sitting cross-legged in the soil, not running anywhere.
+"Pell," she says. "Botanist. You can sit, if you like. Plants don't panic. It's catching."
+She looks at your bark, your glow, and her face softens. "Oh. You're one of mine, aren't you? Whatever this place made you into."
+  1) Ask her about the seed vault
+  2) Back to the ring
+> 2
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 14 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 14 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 4
+[picture 5 command]
+The lift opens on the command deck: a ring of dead consoles around one that still works, and in front of it a woman in a captain's coat, shouting at the ceiling.
+"MERIDIAN, open the reactor. That's an order."
+"I'm sorry, Captain," says the ceiling, warm and tired. "I can't do that yet."
+At the back of the deck a door stands half open: the captain's quarters. You can see the corner of a safe.
+A voice speaks, close, as if from inside your own ear. Not the ceiling's voice: this one is meant only for you.
+"Welcome back," says MERIDIAN. "You were quicker this time."
+  1) Ask the captain about the safe
+  2) Ask MERIDIAN why it can't
+  3) Take the lift back down
+> 2
+"Because if I open it, it ends," says MERIDIAN, very quietly. "And then there won't be another time. Do you understand? There has to be another time."
+  1) Ask the captain about the safe
+  2) Take the lift back down
+> 1
+[check Persuade: 94+62=156 vs 120: success]
+Captain Marrow looks at you properly for the first time. "Whatever's in that safe is the only thing on this station that matters," she says. "And it doesn't leave until I do."
+  1) Take the lift back down
+> 1
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 10 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 10 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 3
+[picture 4 hydroponics]
+Hydroponics is green and warm and almost silent, the only place on the station that isn't screaming. Rows of plants under violet lamps. One person, sitting cross-legged in the soil, not running anywhere.
+"Pell," she says. "Botanist. You can sit, if you like. Plants don't panic. It's catching."
+She looks at your bark, your glow, and her face softens. "Oh. You're one of mine, aren't you? Whatever this place made you into."
+  1) Ask her about the seed vault
+  2) Back to the ring
+> 1
+Her mouth goes thin. "Not here any more. Ten thousand years of seeds, every crop this sector ever grew, and the captain moved them into her own safe last week. Said they'd be safer." She laughs, not kindly. "Safer than what? We have eighteen minutes."
+  1) Back to the ring
+> 1
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 7 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 7 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 2
+[picture 3 medbay]
+The medical bay is all white light and one patient: an engineer, his arms wrapped in cooling gel, his breath shallow. A doctor in a stained coat works on him without looking up.
+"If you're not bleeding, get out," she says. "Dr Kerr. Hello. Out."
+  1) Help her with the engineer
+  2) Tell her she's going to die
+  3) Back to the ring
+> 3
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 4 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 4 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 5
+[picture 7 reactor]
+The corridor to the reactor runs hot. The walls tick. Halfway along, in front of the hatch, a maintenance drone the size of a fridge hangs in the air, its welding arm sparking in slow, patient arcs. It has decided that nobody goes past.
+  1) Fight your way through
+  2) Slip past it in the smoke
+  3) Go back
+> 1
+[fight: 10 x 4, 2 fighters, health 24]
+  ##########
+  >0..+..~1#
+  #...~...~#
+  ##########
+round 1: 0's turn
+> q
+  (quick: 5.1.4.0)
+  0 moves to 5,1
+round 1: 1's turn
+  1 guards
+round 2: 0's turn
+> q
+  (quick: 7.2.0.1)
+  0 moves to 7,2
+  1 gets a free attack on 0
+  1 attacks 0: 8+40=48 vs 59: cost, 3 damage
+  0 attacks 1: 96+15=111 vs 54: success, 6 damage
+round 2: 1's turn
+  1 attacks 0: 96+40=136 vs 59: success, 13 damage
+round 3: 0's turn
+> q
+  (quick: 7.2.0.1)
+  0 attacks 1: 72+15=87 vs 54: success, 4 damage
+round 3: 1's turn
+  1 attacks 0: 46+40=86 vs 59: success, 8 damage
+  0 is down
+[the fight is lost; health 1]
+The welding arm finds you. The last thing you see is the countdown, still going, as if you hadn't mattered at all.
+[picture 6 static]
+The screens reach zero.
+There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
+Then white. Then Static. Then nothing at all.
+[picture 2 dock]
+Dock 3. Red light, klaxons, hot dust. The screens say 18:00. They always will.
+You have done this 2 times now.
+  1) Look out of the viewport
+  2) Head into the ring
+> 1
+The dead freighter tumbles past, end over end, at exactly the same angle as last time. You could set a watch by it. Someone has.
+  1) Look out of the viewport
+  2) Head into the ring
+> 1
+The dead freighter tumbles past, end over end, at exactly the same angle as last time. You could set a watch by it. Someone has.
+  1) Look out of the viewport
+  2) Head into the ring
+> 1
+The dead freighter tumbles past, end over end, at exactly the same angle as last time. You could set a watch by it. Someone has.
+  1) Look out of the viewport
+  2) Head into the ring
+> 2
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 14 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 14 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 2
+[picture 3 medbay]
+The medical bay is all white light and one patient: an engineer, his arms wrapped in cooling gel, his breath shallow. A doctor in a stained coat works on him without looking up.
+"If you're not bleeding, get out," she says. "Dr Kerr. Hello. Out."
+  1) Help her with the engineer
+  2) Tell her she's going to die
+  3) Back to the ring
+> 3
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 11 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 11 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 2
+[picture 3 medbay]
+The medical bay is all white light and one patient: an engineer, his arms wrapped in cooling gel, his breath shallow. A doctor in a stained coat works on him without looking up.
+"If you're not bleeding, get out," she says. "Dr Kerr. Hello. Out."
+  1) Help her with the engineer
+  2) Tell her she's going to die
+  3) Back to the ring
+> 3
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 8 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 8 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 1
+A broad, sweating man is stacking crates against a pod hatch that won't open. His jumpsuit says T. VASZ, QUARTERMASTER.
+He looks up at you, and there is nothing in his face at all. No recognition. You have stood here and talked with him before, and he has never seen you in his life.
+"You're the contractor?" he says, word for word. "Thank every star."
+  1) Tell him what he's about to say
+  2) Ask him about the captain's safe
+  3) Leave him to his crates
+> 1
+[check Intuition: 47+45=92 vs 100: cost]
+You get it nearly right. Nearly is enough to frighten him, and not enough to make him believe you. He backs away from you, toward the pods.
+  1) Ask him about the captain's safe
+  2) Leave him to his crates
+> 2
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 6 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 6 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+=== Again
+You stop in the middle of the ring and let the station run past you.
+Eighteen minutes. A dead freighter you could set a watch by. A man who will never remember your name, however many times you tell him. A safe at the top of the spine.
+And one voice, in your ear, that remembers everything.
+The thing in the captain's safe isn't money. It's seeds: ten thousand years of them. You wonder why the Stationmaster wants seeds.
+The screens say 6 minutes. For the first time since you stepped off the train, it doesn't feel like very long, and it doesn't feel like very short. It feels like a door.
+You go to find the crew.
+-- END OF CHAPTER 1 --
+The rest of Eighteen Minutes is
+still being written.
+[receipt: departure 1, complete, xp 10, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 10, debt 0]

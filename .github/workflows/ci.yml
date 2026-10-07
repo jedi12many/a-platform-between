@@ -10,8 +10,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cc65, and py65 (a 6502 emulator in Python, for the C64 tests)
-        run: sudo apt-get update && sudo apt-get install -y cc65 && python3 -m pip install --break-system-packages py65
+      - name: Install cc65, py65 (a 6502 emulator in Python) and Pillow (C64 pictures)
+        run: sudo apt-get update && sudo apt-get install -y cc65 && python3 -m pip install --break-system-packages py65 pillow
 
       - name: Generated registry matches registry/*.txt
         run: make check-registry

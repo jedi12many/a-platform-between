@@ -8,8 +8,8 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-6502`: the same tests on the sim65 6502 simulator. Needs cc65
   (`apt-get install cc65`).
 - `make crosscheck`: the demo's native and 6502 output must be byte-identical.
-- `make c64`: build `build/demo.prg` and The Fare's C64 disk, `build/the-fare.d64`
-  (`LOAD"APB",8` in VICE; see `docs/c64.md`).
+- `make c64`: build `build/demo.prg` and the C64 disks, `build/the-fare.d64` and
+  `build/eighteen-minutes.d64` (`LOAD"APB",8` in VICE; see `docs/c64.md`).
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
   C engine's password; the registry and Quest Script parser tests must pass.
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
@@ -19,8 +19,9 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   transcripts natively and on sim65, and damaged images must never crash the VM under
   AddressSanitizer/UBSan. After a deliberate change, `python3 tests/vm/run_tests.py
   --update` rewrites the expected transcripts: read the diff before committing it.
-  Together, the playthroughs of *The Fare* must run every instruction in it: a passage
-  no case reaches fails the test, so a new route needs a new case. `@name` in a case
+  Together, the playthroughs of *The Fare* must run every instruction in it, and so must
+  those of *Eighteen Minutes* (`COVERED` in `run_tests.py`): a passage no case reaches
+  fails the test, so a new route needs a new case. `@name` in a case
   boards a traveler from `tests/vm/travelers.txt`; every check is re-rolled from the
   rules and that traveler's Passport. Every receipt must fit its reward manifest. Each
   playthrough is also saved at every menu and resumed, and must come out the same.
@@ -37,13 +38,18 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   in `core/src/battle.c`) must match their reviewed logs on both, with every roll
   re-checked, and random battles must never crash under the sanitizers.
   `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff.
-- `make test-c64`: the C64 program from the `.d64` must play The Fare on a 6502 emulator
-  (py65: `pip install py65`) with the KERNAL answered in Python
-  (`tests/c64/run_c64.py`): transcripts match `tests/c64/*.expected`, the Travel Stamp is
-  the terminal's, a save survives switching off; and no overlay may use another's code
-  or data (`fe/c64/check_overlays.py`).
+- `make test-c64`: the C64 program from the `.d64` must play The Fare and Eighteen
+  Minutes on a 6502 emulator
+  (py65: `pip install py65`; the disk's pictures need Pillow) with the KERNAL answered
+  in Python (`tests/c64/run_c64.py`): transcripts match `tests/c64/*.expected`, the
+  Travel Stamp is the terminal's, a save survives switching off, the C stack stays
+  under 384 bytes; and no overlay may use another's code or data
+  (`fe/c64/check_overlays.py`). `--shots DIR` saves pictures of the screen to look at.
 
-Run all twelve before pushing; CI runs them too. `make play` plays The Fare in a terminal.
+Run all twelve before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+`make play-e18` plays chapter 1 of Eighteen Minutes. The 6502 test harness holds a 4 KB
+car, so keep each chapter of a covered Departure under that (`qsc.py build` prints the
+sizes).
 
 ## Rules-core house rules
 

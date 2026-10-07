@@ -314,6 +314,11 @@ uint8_t apb_view_pick(uint8_t count)
     }
 }
 
+void apb_view_fight(uint8_t on)
+{
+    (void)on;               /* the terminal has room for anything */
+}
+
 uint8_t apb_view_go_on(void)
 {
     char buf[16];

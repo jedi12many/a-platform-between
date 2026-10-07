@@ -51,7 +51,8 @@ from manifest import fits, manifest  # noqa: E402
 from parse import parse  # noqa: E402
 
 # Departures whose playthroughs must, together, run every instruction.
-COVERED = ["content/s1/00-the-fare/the-fare.qs"]
+COVERED = ["content/s1/00-the-fare/the-fare.qs",
+           "content/s1/01-eighteen-minutes/eighteen-minutes.qs"]
 
 BUILD = os.path.join(ROOT, "build", "vm")
 failures = 0

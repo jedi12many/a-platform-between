@@ -104,14 +104,14 @@ The C64 is the tightest target, so it sets the budget for everyone. Measured at 
 
 | Region | Size |
 |---|---|
-| Main program: the VM's interpreter, rules core, C64 front end | 21 KB |
+| Main program: the VM's interpreter, rules core, C64 front end | 22 KB |
 | Buffers: one car (6 KB at most), the depot (2 KB), battle state, saves | 13 KB |
-| C stack | 1.5 KB |
+| C stack | 0.5 KB |
 | Overlay area: LOAD (4 KB), PASS (12.5 KB) or BATTLE (15 KB), one at a time | 15 KB |
-| **Total** | **about 50.5 KB** of the 51 KB below $D000 with BASIC switched out |
+| **Total** | **about 50.8 KB** of the 51 KB below $D000 with BASIC switched out |
+| Picture, in the RAM under the KERNAL ROM ($E000) | 3.5 KB of 8 KB |
 
-There's no room left for a picture (a character set and screen, about 6 KB): pictures
-will have to share the overlay area, or live under the I/O and KERNAL ROMs.
+The 4 KB of RAM under the I/O chips ($D000) is still unused.
 
 A 4–6 hour Departure is maybe 150 KB of raw text. Compressed, that's 75–100 KB, about one
 side of a 1541 floppy (170 KB). One Departure per disk side is the target.
@@ -309,7 +309,40 @@ a test Departure; two receipts from overlapping Departures both land.
 | **E4.3 The disk** | `.d64` images from the build | `make c64` writes *The Fare*'s disk. *Done: `tools/d64.py`, checked against VICE's c1541.* |
 | **E4.4 Play it without a C64** | The real program on a 6502 emulator, the KERNAL answered in Python, from the disk image | `make test-c64`: transcripts match; the Travel Stamp is the terminal's. *Done: it also proved a save survives switching off, and found a function left in the wrong overlay; `fe/c64/check_overlays.py` now refuses any overlay that reaches into another.* |
 | **E4.5 Real hardware** | VICE on a PC, then a real C64 | You play *The Fare* from the disk. |
-| **E4.6 Pictures and a status bar** | The picture area and a fixed status bar | A picture shows at the bench. |
+| **E4.6 Pictures and a status bar** | The picture area and a fixed status bar | A picture shows at the bench. *Done: pictures live in the RAM under the KERNAL and show on rows 1-12 through a raster split, under a status bar on row 0, over a 12-row text window the front end now draws itself; a fight takes the whole screen. `tools/c64pic.py` makes them from PNGs (placeholders for The Fare, for now). The C stack went from 1.5 KB to 512 bytes, measured: the deepest route uses about 115.* |
+
+### E5 in detail
+
+**Goal:** chapter 1 of *Eighteen Minutes* ([01-eighteen-minutes.md](departures/01-eighteen-minutes.md)),
+"Arrival", playable on the terminal and the C64: the ticket, the Translation, the station,
+the countdown, the first death and the crew who don't remember you.
+
+*Done:* `content/s1/01-eighteen-minutes/eighteen-minutes.qs`, `make play-e18`, and
+`build/eighteen-minutes.d64`.
+
+- **The loop.** Every move on Kepler-Nine costs minutes (`~ sub minutes`). The ring is the
+  hub, and it checks the clock. At zero the reactor goes, you wake on Dock 3, and the
+  station resets: three flags are cleared and `minutes` goes back to 18. What you learned
+  stays: flags that are never cleared, and `visited`. The dock heals you fully: you wake
+  whole.
+- **The rest of chapter 1.** Teodor Vasz forgets you; MERIDIAN says "welcome back". When
+  you've seen both, the chapter ends, on what you've found out (MERIDIAN locked the
+  reactor; the safe holds seeds).
+- **Translation and checks.** Each race and class has its own Translation. There are
+  seven checks, from easy to hard, and a fight with the maintenance drone, a new foe
+  (id 4, a guard). You can go around it by Stealth, or by Tech if your Tech is 30 or more.
+- **Four chapters.** The largest car is 3.7 KB. The 6502 test harness has room for 4 KB,
+  so the command deck went into "The Spine" with the reactor.
+- **Tests.** Nine playthroughs run every instruction (544), on PC and 6502, each saved
+  and resumed at every menu. A random search found them: it plays random routes and
+  keeps the fewest that cover what the others miss. On the C64, a recorded route plays
+  from the disk: board, beat the drone, die, wake, MERIDIAN, Teo, the end.
+- **A compiler bug.** cc65 miscompiled the VM's flag clear: on the 6502, flags 8 and up
+  stayed set. It's rewritten, with a regression case (`tests/vm/flags.qs`).
+- **Pictures.** Eight placeholders (`pictures/sketch.py`).
+
+*Not yet:* chapters 2-5 and the Echoes the ending plants. This slice ends at "you go to
+find the crew".
 
 ### Departure 00: The Fare
 

@@ -1,0 +1,8 @@
+Five flags are set.
+  1) Clear three
+> 1
+Flag 7 is set, as it should be.
+Flag 8 is set, as it should be.
+The rest were never set.
+[receipt: departure 902, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

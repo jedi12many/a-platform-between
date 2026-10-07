@@ -1574,8 +1574,13 @@ uint8_t apb_vm_run(void)
         case OP_CLR:
             a = FETCH16();
             if (a >= flag_count) { fail("bad flag", pc); break; }
-            if (op == OP_SET) flags[a >> 3] |= (uint8_t)(1u << (a & 7));
-            else flags[a >> 3] &= (uint8_t)~(1u << (a & 7));
+            /* cc65 2.19 got `flags[a >> 3] &= (uint8_t)~(1u << (a & 7))` wrong on the
+             * 6502: clearing a flag past the first byte left it set. The mask goes in
+             * a byte first, and the clear is an exclusive or of a set bit. */
+            i = (uint8_t)(1u << (a & 7));
+            a >>= 3;
+            flags[a] |= i;
+            if (op == OP_CLR) flags[a] ^= i;
             break;
         case OP_LET:
             i = FETCH8();

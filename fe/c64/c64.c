@@ -4,10 +4,11 @@
  * and BATTLE) that load from disk when the VM asks for them, and the Departure's own
  * files, DEPOT and CAR00, CAR01, ..., on the same disk.
  *
- * Text goes out through the KERNAL (CHROUT) in upper/lower case mode, word-wrapped at 40
- * columns, and waits with "-- more --" before anything scrolls off unread. Game text
- * arrives in ASCII and is turned into PETSCII here; the client's own messages are C
- * strings, which cc65 has already made PETSCII.
+ * Text is written straight to the screen in upper/lower case, word-wrapped at 40
+ * columns, into a window under the status bar (and the picture, when there is one), and
+ * waits with "-- more --" before anything scrolls off unread. Game text arrives in ASCII
+ * and is turned into PETSCII here; the client's own messages are C strings, which cc65
+ * has already made PETSCII.
  */
 #include <cbm.h>
 #include <conio.h>
@@ -21,64 +22,88 @@
 
 #define COLS 40
 #define ROWS 25
+#define LAST_ROW (ROWS - 1)
 
+#define SCREEN     ((uint8_t *)0x0400)
+#define COLORS     ((uint8_t *)0xD800)
 #define BORDER     (*(volatile uint8_t *)0xD020)
 #define BACKGROUND (*(volatile uint8_t *)0xD021)
-#define TEXT_COLOR (*(volatile uint8_t *)0x0286)
+#define VIC_MEMORY (*(volatile uint8_t *)0xD018)
+#define CASE_LOCK  (*(volatile uint8_t *)0x0291)
 #define JIFFY_LO   (*(volatile uint8_t *)0x00A2)
 #define JIFFY_MID  (*(volatile uint8_t *)0x00A1)
 
 #define PET_RETURN  0x0D
 #define PET_DEL     0x14
-#define PET_RVS_ON  0x12
-#define PET_RVS_OFF 0x92
-#define PET_LOWER   0x0E        /* upper/lower case character set */
-#define PET_LOCK    0x08        /* and keep it: C= + SHIFT can't switch it back */
-#define PET_CLEAR   0x93
 
 #define INK_BLACK  0
 #define INK_GREEN  5
-#define INK_LGREEN 13
-#define INK_GRAY   12
 #define INK_YELLOW 7
+#define INK_GRAY   12
+#define INK_LGREEN 13
+
+/* The screen (docs/c64.md): row 0 is the status bar; under it, the picture (rows 1-12)
+ * when there is one; the rest is the text window, written at the bottom row and
+ * scrolled up a row at a time. Only the window scrolls, so the picture's colours and
+ * the status bar stay put. */
+#define PICTURE_TOP 1
+#define PICTURE_ROWS 12
+
+/* fe/c64/split.s: the raster split, and putting a loaded picture on screen. */
+void split_on(void);
+void split_off(void);
+void pic_show(void);
 
 /* ----------------------------------------------------------------- text */
 
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
-static uint8_t col;             /* where the cursor is on its row              */
-static uint8_t wrapped_row;     /* the last character filled the row           */
+static uint8_t col;             /* where the cursor is on the bottom row          */
+static uint8_t top;             /* the text window's first row                    */
 static uint8_t rows_shown;      /* rows printed since the player last pressed a key */
+static uint8_t reverse;         /* 0x80: characters in reverse                    */
+static uint8_t ink = INK_LGREEN;
 static uint8_t word[COLS];
 static uint8_t word_len;
 static uint8_t spaces;          /* spaces waiting to go before the next word   */
 
 static void more(void);
 
-static void raw(uint8_t c)
+/* PETSCII to the screen's own codes (upper/lower case set). */
+static uint8_t screen_code(uint8_t c)
 {
-    cbm_k_bsout(c);
+    if (c < 0x20) return 0x20;
+    if (c < 0x40) return c;
+    if (c < 0x60) return (uint8_t)(c - 0x40);
+    if (c < 0x80) return (uint8_t)(c - 0x20);
+    if (c < 0xA0) return 0x20;
+    if (c < 0xC0) return (uint8_t)(c - 0x40);
+    if (c == 0xFF) return 0x5E;
+    return (uint8_t)(c - 0x80);
 }
 
+static void clear_row(uint8_t row)
+{
+    memset(SCREEN + row * COLS, 0x20, COLS);
+    memset(COLORS + row * COLS, ink, COLS);
+}
+
+/* The end of a row: scroll the window up one. tests/c64/run_c64.py reads the bottom
+ * row as this function starts, so don't rename it. */
 static void newline(void)
 {
-    if (wrapped_row) {
-        wrapped_row = 0;        /* the cursor already moved down */
-        return;
-    }
-    raw(PET_RETURN);
+    memmove(SCREEN + top * COLS, SCREEN + (top + 1) * COLS, (LAST_ROW - top) * COLS);
+    memmove(COLORS + top * COLS, COLORS + (top + 1) * COLS, (LAST_ROW - top) * COLS);
+    clear_row(LAST_ROW);
     col = 0;
     more();
 }
 
 static void put(uint8_t c)
 {
-    raw(c);
-    wrapped_row = 0;
-    if (++col == COLS) {
-        col = 0;
-        wrapped_row = 1;
-        more();
-    }
+    if (col == COLS) newline();
+    SCREEN[LAST_ROW * COLS + col] = (uint8_t)(screen_code(c) | reverse);
+    COLORS[LAST_ROW * COLS + col] = ink;
+    ++col;
 }
 
 /* Before anything scrolls off unread. */
@@ -87,12 +112,16 @@ static void more(void)
     static const char msg[] = "-- more --";
     uint8_t i;
 
-    if (++rows_shown < ROWS - 2) return;
-    raw(PET_RVS_ON);
-    for (i = 0; msg[i]; ++i) raw((uint8_t)msg[i]);
-    raw(PET_RVS_OFF);
+    if (++rows_shown < LAST_ROW - top) return;
+    reverse = 0x80;
+    for (i = 0; msg[i]; ++i) put((uint8_t)msg[i]);
+    reverse = 0;
+    gotoxy(col, LAST_ROW);
+    cursor(1);
     cgetc();
-    for (i = 0; msg[i]; ++i) raw(PET_DEL);
+    cursor(0);
+    clear_row(LAST_ROW);
+    col = 0;
     rows_shown = 0;
 }
 
@@ -143,11 +172,7 @@ static void end_line(void)
 {
     flush_word();
     spaces = 0;
-    if (col || wrapped_row) newline();
-    else {
-        raw(PET_RETURN);
-        more();
-    }
+    newline();
 }
 
 /* Game text is ASCII; the screen, in upper/lower case mode, wants PETSCII. These are
@@ -175,6 +200,7 @@ static uint8_t key(void)
 {
     uint8_t k;
 
+    gotoxy(col, LAST_ROW);
     cursor(1);
     k = (uint8_t)cgetc();
     cursor(0);
@@ -182,15 +208,20 @@ static uint8_t key(void)
     return k;
 }
 
+static void draw_status(void);
+
 void hal_init(void)
 {
+    uint8_t row;
+
     BORDER = INK_BLACK;
     BACKGROUND = INK_BLACK;
-    TEXT_COLOR = INK_LGREEN;
-    raw(PET_LOWER);
-    raw(PET_LOCK);
-    raw(PET_CLEAR);
+    VIC_MEMORY = 0x17;          /* screen at $0400, the upper/lower case characters */
+    CASE_LOCK = 0x80;           /* and C= + SHIFT can't switch them back            */
+    for (row = 0; row < ROWS; ++row) clear_row(row);
+    top = 1;
     col = rows_shown = 0;
+    draw_status();
 }
 
 void hal_shutdown(void) {}
@@ -226,10 +257,32 @@ void hal_pause(void)
     key();
 }
 
+/* Pictures are files pic00, pic01, ... on the disk (tools/c64pic.py), loaded into the
+ * RAM under the KERNAL at $E000, where the VIC can show it but nothing else lives. A
+ * missing picture just leaves the last one up. */
+static uint8_t picture_up;      /* a picture is loaded at $E000 */
+
 void hal_picture(uint8_t id, const char *name)
 {
-    (void)id;
-    (void)name;             /* pictures come later (docs/c64.md) */
+    static char pic[] = "pic00";
+    uint8_t row;
+
+    (void)name;
+    pic[3] = (char)('0' + id / 10);
+    pic[4] = (char)('0' + id % 10);
+    BORDER = INK_GRAY;
+    if (cbm_load(pic, 8, 0) != 0) {
+        picture_up = 1;
+        pic_show();
+        if (top != PICTURE_TOP + PICTURE_ROWS) {
+            /* The text window shrinks to the rows under the picture. */
+            for (row = PICTURE_TOP; row < PICTURE_TOP + PICTURE_ROWS; ++row) clear_row(row);
+            top = PICTURE_TOP + PICTURE_ROWS;
+            rows_shown = 0;
+            split_on();
+        }
+    }
+    BORDER = INK_BLACK;
 }
 
 static char line[APB_VIEW_LINE];
@@ -247,16 +300,29 @@ static const apb_character *status_ch;
 void hal_status(const apb_character *ch)
 {
     status_ch = ch;
+    draw_status();
 }
 
-static void show_status(void)
+/* Row 0, in reverse: "Kestrel  Lvl 1  HP 27/27  Debt 0", or the game's name. */
+static void draw_status(void)
 {
-    if (!status_ch) return;
-    apb_view_status(line, status_ch, apb_vm_health());
-    TEXT_COLOR = INK_YELLOW;
-    ascii_out(line);
-    end_line();
-    TEXT_COLOR = INK_LGREEN;
+    static const char title[] = "A PLATFORM BETWEEN";
+    uint8_t i;
+    uint8_t c;
+
+    for (i = 0; i < COLS; ++i) {
+        SCREEN[i] = 0xA0;
+        COLORS[i] = INK_YELLOW;
+    }
+    if (status_ch) {
+        apb_view_status(line, status_ch, apb_vm_health());
+        for (i = 0; line[i] && i < COLS - 1; ++i) {
+            c = screen_code(petscii((uint8_t)line[i]));
+            SCREEN[i + 1] = (uint8_t)(c | 0x80);
+        }
+    } else {
+        for (i = 0; title[i]; ++i) SCREEN[i + 1] = (uint8_t)(screen_code((uint8_t)title[i]) | 0x80);
+    }
 }
 
 /* "> 3": the key the player pressed, shown. */
@@ -281,7 +347,7 @@ uint8_t hal_menu(const char *const *labels, uint8_t count)
     uint8_t i;
     uint8_t k;
 
-    show_status();
+    draw_status();
     for (i = 0; i < count; ++i) numbered(i, labels[i]);
     for (;;) {
         k = key();
@@ -310,8 +376,8 @@ void hal_ask_line(char *out, uint8_t max)
         if (k == PET_DEL) {
             if (n) {
                 --n;
-                raw(PET_DEL);
                 --col;
+                SCREEN[LAST_ROW * COLS + col] = 0x20;
             }
         } else if (n < max && col < COLS - 1
                    && ((k >= 0x20 && k < 0x60) || (k >= 0xC1 && k <= 0xDA))) {
@@ -362,6 +428,25 @@ uint8_t apb_view_pick(uint8_t count)
             return (uint8_t)(k - '1');
         }
     }
+}
+
+/* A fight needs the whole screen for its map and menus: the picture goes, and comes
+ * back when the fight's over. */
+void apb_view_fight(uint8_t on)
+{
+    uint8_t row;
+
+    if (!picture_up) return;
+    if (on) {
+        split_off();
+        top = PICTURE_TOP;
+    } else {
+        for (row = PICTURE_TOP; row < PICTURE_TOP + PICTURE_ROWS; ++row) clear_row(row);
+        pic_show();
+        top = PICTURE_TOP + PICTURE_ROWS;
+        split_on();
+    }
+    rows_shown = 0;
 }
 
 uint8_t apb_view_go_on(void)
@@ -504,9 +589,6 @@ static uint8_t board(void)
 int main(void)
 {
     hal_init();
-    plat_out("A PLATFORM BETWEEN");
-    end_line();
-    end_line();
     for (;;) {
         if (hal_menu(start_labels, 2) == 1) {
             if (apb_vm_resume() == 0) {
@@ -524,10 +606,12 @@ int main(void)
         }
     }
     if (apb_vm_run() != APB_VM_ERROR) {
+        draw_status();
         show_receipt(apb_vm_receipt());
     }
     plat_out("(press a key)");
     end_line();
     key();
+    split_off();
     return 0;
 }

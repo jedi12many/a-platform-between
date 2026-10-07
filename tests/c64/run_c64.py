@@ -6,12 +6,20 @@ answers instead, from the disk image: the screen (CHROUT), the keyboard (GETIN a
 key buffer that conio's cgetc reads), and the 1541 (SETLFS, SETNAM, OPEN, CHKIN, CHRIN,
 READST, CHKOUT, CLOSE, CLRCHN, LOAD). Any other ROM call stops the run, loudly.
 
+The front end writes text straight into screen memory, at the bottom row of its
+window, and scrolls the window up in newline(). So the transcript is the bottom row,
+read each time newline() starts (its address comes from the linker's debug file,
+SYMBOLS). Loading a picture adds a line "[picture picNN]".
+
 Keys come from a choices file like the terminal's (tests/term/*.choices), one line per
 answer: at a "> " prompt (a typed line) the whole line and RETURN; at a menu the line's
-first character; at "-- more --" a space, without using a line. The 40-column screen
-is written out as the transcript.
+first character; at "-- more --" a space, without using a line.
 
-    python3 tests/c64/run_c64.py DISK.d64 CHOICES [--then CHOICES2] [--max-steps N]
+The C stack is watched too: a run that uses more than STACK_LIMIT bytes of it fails,
+as the memory map (fe/c64/apb.cfg) only has room for 512.
+
+    python3 tests/c64/run_c64.py DISK.d64 SYMBOLS CHOICES [--then CHOICES2] [--max-steps N]
+        [--shots DIR]           a PNG of the screen each time it waits for a key
 
 With --then, the machine is switched off and on again after the first run, with the
 disk as the first run left it (a save, say), and plays CHOICES2.
@@ -42,33 +50,53 @@ def to_ascii(c):
     return "?"
 
 
-class Screen:
-    def __init__(self):
-        self.lines = [""]
+SCREEN = 0x0400
+COLS = 40
+LAST_ROW = 24
+STACK_TOP = None            # the C stack starts where the overlays do: from the map
+STACK_LIMIT = 384
 
-    def put(self, c):
-        if c == 0x0D:
-            self.lines.append("")
-        elif c == 0x14:
-            self.lines[-1] = self.lines[-1][:-1]
-        elif c in (0x93, 0x0E, 0x08, 0x12, 0x92) or c < 0x20 or 0x80 <= c < 0xA0:
-            pass                                            # control codes and colours
-        else:
-            if len(self.lines[-1]) == COLS:
-                self.lines.append("")
-            self.lines[-1] += to_ascii(c)
-            if len(self.lines[-1]) == COLS:
-                self.lines.append("")                       # the cursor wraps
 
-    def text(self):
-        return "\n".join(line.rstrip() for line in self.lines).rstrip() + "\n"
+def screen_ascii(code):
+    code &= 0x7F                                            # reverse or not
+    if 1 <= code <= 26:
+        return chr(code + 0x60)
+    if 0x41 <= code <= 0x5A:
+        return chr(code)
+    if 0x20 <= code < 0x40:
+        return chr(code)
+    return {0x00: "@", 0x1B: "[", 0x1C: "\\", 0x1D: "]", 0x1E: "^", 0x1F: "-"}.get(code, "?")
+
+
+def segment_start(dbg, name):
+    for line in open(dbg):
+        if line.startswith("seg") and f'name="{name}"' in line:
+            for field in line.split(","):
+                if field.startswith("start="):
+                    return int(field[6:], 16)
+    raise RuntimeError(f"no segment {name} in {dbg}")
+
+
+def symbol(dbg, name):
+    """A symbol's address from ld65's debug file."""
+    for line in open(dbg):
+        if line.startswith("sym") and f'name="{name}"' in line:
+            for field in line.split(","):
+                if field.startswith("val="):
+                    return int(field[4:], 16)
+    raise RuntimeError(f"{name} isn't in {dbg}")
 
 
 class C64:
-    def __init__(self, image, choices):
+    def __init__(self, image, choices, dbg):
         self.files = {name: data for name, (kind, data) in d64.read_files(image).items()}
         self.choices = list(choices)
-        self.screen = Screen()
+        self.lines = []
+        self.shot_dir = None
+        self.shots = 0
+        self.newline_at = symbol(dbg, "_newline")
+        self.stack_top = segment_start(dbg, "OVERLAY1")    # the stack ends where they start
+        self.stack_low = self.stack_top
         self.keys = []
         self.mem = ObservableMemory()
         self.mem.subscribe_to_read([KEY_COUNT], self.key_count)
@@ -84,16 +112,50 @@ class C64:
 
     # ------------------------------------------------------------ keyboard
 
+    def bottom_row(self):
+        at = SCREEN + LAST_ROW * COLS
+        return "".join(screen_ascii(self.mem[at + i]) for i in range(COLS)).rstrip()
+
+    def shot(self):
+        """What the screen shows now: the status bar, the picture (when the raster split
+        is on) and the text window, as a PNG, for a person to look at. The C64's own
+        characters are in its ROM, which isn't here, so text is drawn with a stand-in."""
+        from PIL import Image, ImageDraw
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools"))
+        import c64pic
+        img = Image.new("RGB", (320, 200))
+        draw = ImageDraw.Draw(img)
+        split = self.mem[0xD01A] & 1
+        if split:
+            pic = b"\x00\xE0" + bytes(self.mem[0xE000 + i] for i in range(0xC00 + 480))
+            img.paste(c64pic.render(pic), (0, 8))
+        for row in range(25):
+            if split and 1 <= row <= 12:
+                continue
+            for x in range(40):
+                code = self.mem[SCREEN + row * COLS + x]
+                ink = c64pic.PALETTE[self.mem[0xD800 + row * COLS + x] & 15]
+                back = (0, 0, 0)
+                if code & 0x80:
+                    ink, back = back, ink
+                draw.rectangle((x * 8, row * 8, x * 8 + 7, row * 8 + 7), fill=back)
+                draw.text((x * 8 + 1, row * 8 - 2), screen_ascii(code), fill=ink)
+        img = img.resize((640, 400), Image.NEAREST)
+        self.shots += 1
+        img.save(os.path.join(self.shot_dir, f"screen{self.shots:03d}.png"))
+
     def next_answer(self):
         """The keys for whatever the program is waiting for now."""
-        line = self.screen.lines[-1]
+        if self.shot_dir:
+            self.shot()
+        line = self.bottom_row()
         if line.endswith("-- more --"):
             return [0x20]
         if not self.choices:
             self.ended = "[end of input]"
             return []
         answer = self.choices.pop(0)
-        if line == "> ":
+        if line == ">":
             return [self.petscii(ch) for ch in answer] + [0x0D]
         return [self.petscii(answer[0]) if answer else 0x0D]
 
@@ -136,14 +198,28 @@ class C64:
             write = True
         return d64.ascii_name(parts[0]), write
 
+    def line_pointers(self):
+        at = SCREEN + self.mem[0xD6] * COLS
+        self.mem[0xD1], self.mem[0xD2] = at & 0xFF, at >> 8
+        self.mem[0xF3], self.mem[0xF4] = at & 0xFF, (at >> 8 & 0x03) | 0xD8
+
     def kernal(self, pc):
         m = self.mpu
         if pc == 0xFFD2:                                    # CHROUT
-            if self.chan_out is None:
-                self.screen.put(m.a)
-            else:
+            if self.chan_out is not None:
                 self.open[self.chan_out]["data"].append(m.a)
             self.carry(False)
+        elif pc in (0xFFF0, 0xE50A):                        # PLOT: the cursor
+            if self.mpu.p & self.mpu.CARRY:
+                m.x, m.y = self.mem[0xD6], self.mem[0xD3]
+            else:
+                self.mem[0xD6], self.mem[0xD3] = m.x, m.y
+                self.line_pointers()
+        elif pc == 0xE56C:                                  # the cursor's line pointers
+            self.line_pointers()
+        elif pc == 0xEA24:                                  # the colour pointer, likewise
+            self.mem[0xF3] = self.mem[0xD1]
+            self.mem[0xF4] = (self.mem[0xD2] & 0x03) | 0xD8
         elif pc == KBDREAD or pc == 0xFFE4:                 # take a key
             if not self.keys:
                 self.keys = self.next_answer()
@@ -204,6 +280,8 @@ class C64:
                 end = at + len(data) - 2
                 m.x, m.y = end & 0xFF, end >> 8
                 self.overlays += 1
+                if name.startswith("pic"):
+                    self.lines.append(f"[picture {name}]")
                 self.carry(False)
         else:
             raise RuntimeError(f"the program called ${pc:04X} in the ROM, which isn't emulated")
@@ -234,10 +312,15 @@ class C64:
             if pc == STOP_AT:
                 self.ended = "[the program ended]"
                 break
+            if pc == self.newline_at:
+                self.lines.append(self.bottom_row())
             if pc >= 0xE000:
                 self.kernal(pc)
             else:
                 m.step()
+                sp = self.mem[2] | (self.mem[3] << 8)
+                if self.stack_top - 0x400 < sp < self.stack_low:
+                    self.stack_low = sp
             steps += 1
         if not self.ended:
             self.ended = f"[still running after {steps} steps]"
@@ -245,7 +328,7 @@ class C64:
 
 
 def main(argv):
-    if len(argv) < 3:
+    if len(argv) < 4:
         print(__doc__)
         return 2
     max_steps = 400_000_000
@@ -253,15 +336,21 @@ def main(argv):
         max_steps = int(argv[argv.index("--max-steps") + 1])
     with open(argv[1], "rb") as f:
         image = f.read()
-    with open(argv[2]) as f:
+    dbg = argv[2]
+    with open(argv[3]) as f:
         choices = [line.rstrip("\n") for line in f]
     runs = [choices]
     if "--then" in argv:
         with open(argv[argv.index("--then") + 1]) as f:
             runs.append([line.rstrip("\n") for line in f])
     files = None
+    failed = False
     for n, script in enumerate(runs):
-        c64 = C64(image, script)
+        c64 = C64(image, script, dbg)
+        if "--shots" in argv:
+            c64.shot_dir = argv[argv.index("--shots") + 1]
+            os.makedirs(c64.shot_dir, exist_ok=True)
+            c64.shots = 100 * n
         if files is not None:
             c64.files = files                               # the same disk, as it was left
         c64.boot()
@@ -272,11 +361,17 @@ def main(argv):
             steps, tail = 0, f"[stopped: {e}]"
         if n:
             print("[switched off and on again]")
-        sys.stdout.write(c64.screen.text())
+        for line in c64.lines:
+            print(line)
         print(tail)
-        print(f"[{steps} 6502 steps, {c64.overlays} files loaded with LOAD]", file=sys.stderr)
+        used = c64.stack_top - c64.stack_low
+        print(f"[{steps} 6502 steps, {c64.overlays} files loaded with LOAD, "
+              f"{used} bytes of C stack]", file=sys.stderr)
+        if used > STACK_LIMIT:
+            print(f"[the C stack went {used} bytes deep, over {STACK_LIMIT}]")
+            failed = True
         files = c64.files
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":
