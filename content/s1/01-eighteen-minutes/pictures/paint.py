@@ -119,8 +119,8 @@ def medbay():
 
 def hydroponics():
     """Hydroponics: rows of plants under violet lamps, and Pell, sitting in the soil.
-    Shared: black, green, brown (the soil). Own: purple (lamps), yellow (new leaves),
-    white, red."""
+    Shared: black, green, brown (the soil, her hair). Own: purple (lamps), yellow (new
+    leaves, her face in the lamplight), white."""
     c = Canvas(BLACK)
     # Violet lamps and their light.
     for x in range(10, W, 36):
@@ -149,7 +149,7 @@ def hydroponics():
     c.line(90, 66, 94, 84, GREEN, width=2)
     c.rect(64, 84, 67, 86, YELLOW)                            # hands
     c.rect(93, 84, 96, 86, YELLOW)
-    c.ellipse(80, 55, 16, 8, RED)                             # her hair
+    c.ellipse(80, 55, 16, 8, BROWN)                           # her hair
     c.ellipse(80, 58, 10, 5, YELLOW)                          # her face, in the lamp light
     c.set(78, 57, BLACK)
     c.set(82, 57, BLACK)

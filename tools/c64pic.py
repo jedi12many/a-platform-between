@@ -9,9 +9,10 @@
 The picture is 40 x 12 cells of 4 x 8 multicolour pixels (each pixel twice as wide as
 it is tall on the screen, so draw at 160 x 96 and let it stretch). Each cell can use
 four colours: three shared by the whole picture (the background and two more) and one
-of its own, from the first eight colours (a C64 rule). The converter picks the shared
-three by how much they're used, each cell's own colour likewise, then the nearest of
-the four for every pixel. Cells that come out the same share a character; with more
+of its own, from the first eight colours (a C64 rule). The converter shares the three
+used most (or, if those leave a cell with two colours of its own, the first three that
+don't), picks each cell's own colour by how much it's used, then the nearest of the
+four for every pixel. Cells that come out the same share a character; with more
 than 256 different ones, the rarest are drawn with the nearest one kept.
 
 The file loads at $E000 (the RAM under the KERNAL): 2048 bytes of characters, the
@@ -19,6 +20,7 @@ screen at $E800 (rows 1-12 used), the shared colours at $EBE8, each cell's colou
 $EC00.
 """
 
+import itertools
 import os
 import sys
 
@@ -53,12 +55,38 @@ def load(path):
     return px
 
 
+def choose_shared(px, counts):
+    """The three colours every cell shares: the three used most, unless that leaves some
+    cell needing two colours of its own (or one past the first eight) and another three
+    don't; then the first such three, taking colours in order of use."""
+    used = sorted((c for c in range(16) if counts[c]), key=lambda c: -counts[c])
+    top = (used + [c for c in range(16) if c not in used])[:3]
+    own = []
+    for cy in range(ROWS):
+        for cx in range(COLS):
+            own.append({px[cy * 8 + y][cx * 4 + x] for y in range(8) for x in range(4)})
+
+    def fits(trio):
+        for colours in own:
+            extra = colours - set(trio)
+            if len(extra) > 1 or any(c >= 8 for c in extra):
+                return False
+        return True
+
+    if len(used) <= 3 or fits(top):
+        return top
+    for trio in itertools.combinations(used, 3):
+        if fits(trio):
+            return list(trio)
+    return top
+
+
 def convert(px):
     counts = [0] * 16
     for row in px:
         for c in row:
             counts[c] += 1
-    shared = sorted(range(16), key=lambda c: -counts[c])[:3]
+    shared = choose_shared(px, counts)
     back, multi1, multi2 = shared
     cells = []
     for cy in range(ROWS):
