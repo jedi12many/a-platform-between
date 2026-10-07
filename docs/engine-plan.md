@@ -456,7 +456,11 @@ no engine changes: everything it needed, Quest Script already had.
 - **The Echoes.** `MERIDIAN`, `KEPLER_CREW` and `SEED_VAULT` are planted from what you
   did, and handing the seeds to the Stationmaster takes 5,000 off your Debt.
 - **Nine chapters.** The largest car is still 3.7 KB (chapter 1's station). Two more
-  placeholder pictures: the safe, and the Stationmaster from The Fare.
+  pictures: the safe, and the Stationmaster from The Fare.
+- **The pictures, painted.** All thirteen pictures (The Fare's five, six more for
+  Kepler-Nine, the Deep Yards' two) are painted in code with `tools/paint.py` in place of
+  the first placeholders, each checked to come through the C64's colour rules unchanged
+  ([c64.md](c64.md), "Pictures").
 - **Tests.** Eleven playthroughs run every instruction (1,085, from 544), every one to the
   end, on PC and 6502, saved and resumed at every menu. Each starts with one of chapter
   1's routes, and a random search found the rest of the way; it prefers choices it
@@ -464,7 +468,7 @@ no engine changes: everything it needed, Quest Script already had.
   browser, to the same transcript) the test route now plays the whole Departure: the
   pods launched, the seeds taken, MERIDIAN let go, and the seeds handed over.
 
-*Not yet:* real art. A Boarding Pass for the C64 route, so its Travel Stamp can be
+*Not yet:* art drawn by hand. A Boarding Pass for the C64 route, so its Travel Stamp can be
 compared with the terminal's as The Fare's is.
 
 ### Departure 00: The Fare
