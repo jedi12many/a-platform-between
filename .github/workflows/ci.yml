@@ -49,9 +49,24 @@ jobs:
       - name: C64 game (overlays, playthroughs on the C64 program in a 6502 emulator)
         run: make test-c64
 
+      - name: Install SDL2, Emscripten and Playwright's Chromium (the modern front end)
+        run: |
+          sudo apt-get install -y libsdl2-dev emscripten
+          npm install -g playwright@1.56
+          npx playwright install --with-deps chromium
+
+      - name: Modern front end (desktop and browser play as the C64 does)
+        run: make test-modern
+
       - uses: actions/upload-artifact@v4
         with:
           name: c64
           path: |
             build/demo.prg
             build/the-fare.d64
+            build/eighteen-minutes.d64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: build/web

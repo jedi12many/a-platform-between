@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 demo play play-e18 crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern demo play play-e18 modern web crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -209,6 +209,60 @@ build/eighteen-minutes.apd: content/s1/01-eighteen-minutes/eighteen-minutes.qs |
 
 play-e18: build/apb build/eighteen-minutes.apd
 	./build/apb build/eighteen-minutes.apd
+
+# The modern front end (E6, fe/modern/): SDL2 on a desktop. Each Departure is a directory
+# of its files and its pictures in full colour (tools/apic.py).
+MODERN_SRC := fe/modern/screen.c fe/modern/render.c
+MODERN_HDR := fe/modern/modern.h fe/modern/font8x8.h
+
+build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(VIEW_SRC) client/apb_view.h \
+                  $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) $$(sdl2-config --cflags) -o $@ fe/modern/sdl.c $(MODERN_SRC) \
+	    $(VIEW_SRC) $(VM_SRC) $(CORE_SRC) $$(sdl2-config --libs)
+
+# $(1) the .qs, $(2) its pictures, $(3) the directory to fill
+define modern_departure
+	@mkdir -p $(3)
+	python3 tools/qsc/qsc.py build $(1) -o $(3).apd --split $(3)
+	python3 tools/apic.py dir $(3)/DEPOT $(2) $(3)
+endef
+
+build/modern/the-fare/DEPOT: content/s1/00-the-fare/the-fare.qs $(FARE_PICS) tools/apic.py
+	$(call modern_departure,content/s1/00-the-fare/the-fare.qs,content/s1/00-the-fare/pictures,build/modern/the-fare)
+
+build/modern/eighteen-minutes/DEPOT: content/s1/01-eighteen-minutes/eighteen-minutes.qs $(E18_PICS) tools/apic.py
+	$(call modern_departure,content/s1/01-eighteen-minutes/eighteen-minutes.qs,content/s1/01-eighteen-minutes/pictures,build/modern/eighteen-minutes)
+
+MODERN_DEPARTURES := build/modern/the-fare/DEPOT build/modern/eighteen-minutes/DEPOT
+
+# The same game in a browser: WebAssembly with Emscripten (fe/modern/web.c), the page in
+# fe/modern/web/, and both Departures bundled. Serve build/web/ and open it.
+EMCC ?= emcc
+WEB_FLAGS := -O2 -sASYNCIFY -sASYNCIFY_STACK_SIZE=65536 -sALLOW_MEMORY_GROWTH \
+             -sEXPORTED_RUNTIME_METHODS=FS,ccall,UTF8ToString \
+             -sEXPORTED_FUNCTIONS=_web_start,_web_screen_row -sFORCE_FILESYSTEM -lidbfs.js
+
+build/web/apb.js: fe/modern/web.c fe/modern/web/index.html $(MODERN_SRC) $(MODERN_HDR) \
+                  $(VIEW_SRC) client/apb_view.h $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) \
+                  $(MODERN_DEPARTURES)
+	@mkdir -p build/web
+	$(EMCC) $(WEB_FLAGS) $(INC) -o $@ fe/modern/web.c $(MODERN_SRC) $(VIEW_SRC) $(VM_SRC) \
+	    $(CORE_SRC) --preload-file build/modern/the-fare@/departures/the-fare \
+	    --preload-file build/modern/eighteen-minutes@/departures/eighteen-minutes \
+	    --exclude-file '*.apd'
+	cp fe/modern/web/index.html build/web/index.html
+
+web: build/web/apb.js
+	@echo "Browser: serve build/web/ (python3 -m http.server -d build/web) and open it"
+
+# The desktop must play the C64's routes as the C64 does (Travel Stamps and all), and the
+# browser as the desktop does; a save survives a restart on both. Needs SDL2, Emscripten,
+# and Node with Playwright (tests/modern/check_modern.py).
+test-modern: build/apb-modern $(MODERN_DEPARTURES) build/web/apb.js
+	NODE_PATH=$$(npm root -g) python3 tests/modern/check_modern.py --web
+
+modern: build/apb-modern $(MODERN_DEPARTURES)
+	@echo "Desktop: ./build/apb-modern build/modern/the-fare (or build/modern/eighteen-minutes)"
 
 # A recorded terminal playthrough must match its reviewed transcript. It boards with a
 # Boarding Pass (seed 1985) from tools/passport/boarding.py issue "<Kestrel's Passport>"

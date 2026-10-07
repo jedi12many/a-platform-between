@@ -45,9 +45,16 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   Travel Stamp is the terminal's, a save survives switching off, the C stack stays
   under 384 bytes; and no overlay may use another's code or data
   (`fe/c64/check_overlays.py`). `--shots DIR` saves pictures of the screen to look at.
+- `make test-modern`: the modern front end (`fe/modern/`, `docs/modern.md`) must play the
+  C64's test routes as the C64 does (`tests/modern/check_modern.py`), on the desktop
+  (SDL2, `build/apb-modern`) and in a browser (`build/web/`, headless Chromium through
+  Playwright), and a save must survive a restart on both. Needs `libsdl2-dev`,
+  `emscripten`, and Node with Playwright.
 
-Run all twelve before pushing; CI runs them too. `make play` plays The Fare in a terminal;
-`make play-e18` plays chapter 1 of Eighteen Minutes. The 6502 test harness holds a 4 KB
+Run all thirteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+`make play-e18` plays chapter 1 of Eighteen Minutes. `make modern` builds the desktop game
+(`./build/apb-modern build/modern/the-fare`); `make web` builds the browser one
+(serve `build/web/`). The 6502 test harness holds a 4 KB
 car, so keep each chapter of a covered Departure under that (`qsc.py build` prints the
 sizes).
 
@@ -109,7 +116,8 @@ the image: every operand is checked when it's used, not only at load.
 `client/` holds client code shared by every front end, on the HAL: the boarding desk
 (`desk.c`), where a player types their Passport. Front ends live in `fe/`: `fe/term/` is
 the terminal (`build/apb`), which plays an `.apd` or a directory of split files;
-`fe/c64/` is the Commodore 64 (`docs/c64.md`).
+`fe/c64/` is the Commodore 64 (`docs/c64.md`); `fe/modern/` is the desktop and browser
+(`docs/modern.md`), plain C99, one screen for both.
 Characters are never made in a client; they're made at the Waystation website
 (`docs/waystation-web.md`). For tests,
 `python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM] [ECHO=STATE...]`

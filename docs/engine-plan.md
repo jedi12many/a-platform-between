@@ -344,6 +344,32 @@ the countdown, the first death and the crew who don't remember you.
 *Not yet:* chapters 2-5 and the Echoes the ending plants. This slice ends at "you go to
 find the crew".
 
+### E6 in detail
+
+**Goal:** *The Fare* and the slice, playable in a browser and on a desktop, from the same
+C ([modern.md](modern.md)).
+
+*Done:* `fe/modern/`. `make modern` builds the desktop (SDL2), and `make web` builds the
+browser (WebAssembly, with Emscripten). One screen module implements the whole HAL on
+the C64's 40 x 25 layout, drawn at 640 x 400 with full-colour pictures (`tools/apic.py`).
+Each platform adds only a window, the keys and clicks, and where saves go: a directory on
+a desktop, IndexedDB in a browser.
+
+**Tests.** `make test-modern` plays the C64's three test routes on the desktop. Its
+transcripts must be the C64's reviewed ones, except where the machines are meant to
+differ (`~`, picture names), so the Travel Stamps match. The browser must then give the
+desktop's transcripts, line for line, and its saves survive a page reload. Real keys
+and clicks are checked in headless Chromium.
+
+**Two things learned.**
+- In a browser the VM can't block waiting for a key, so the build uses Asyncify to
+  sleep until there is one.
+- Debian's Emscripten drops `main` when the page decides when to start, so the page
+  calls an exported `web_start` instead.
+
+*Not yet:* a look of its own (a wider column, a proportional font, sound), and a
+keyboard for phones.
+
 ### Departure 00: The Fare
 
 A short prologue, about 20–30 minutes, built alongside the engine as its test content:
