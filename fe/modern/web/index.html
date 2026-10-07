@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Platform Between</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; background: #000; color: #959595; height: 100%; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center;
+         font: 16px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+  canvas { width: min(100vw, 160vh); aspect-ratio: 640 / 400; image-rendering: pixelated;
+           display: none; cursor: pointer; }
+  #pick { text-align: center; padding: 16px; }
+  #pick h1 { color: #b8c76f; font-size: 1.4em; letter-spacing: 0.1em; margin: 0 0 1em; }
+  #pick button { display: block; width: 100%; margin: 0.5em 0; padding: 0.7em 1.2em;
+                 font: inherit; color: #000; background: #9ad284; border: 0; cursor: pointer; }
+  #pick button:focus-visible { outline: 3px solid #fff; }
+  #pick p { max-width: 32em; margin: 1.5em auto 0; font-size: 0.85em; }
+  #status { margin-top: 1em; font-size: 0.85em; min-height: 1.5em; }
+</style>
+</head>
+<body>
+<div id="pick">
+  <h1>A PLATFORM BETWEEN</h1>
+  <button data-departure="the-fare">Departure 00: The Fare</button>
+  <button data-departure="eighteen-minutes">Departure 01: Eighteen Minutes (chapter 1)</button>
+  <p>Board with a Passport from the Waystation. Press a number, or click a line, to choose;
+     S saves at a menu, and "Pick up a saved trip" carries on. Saves stay in this browser.</p>
+</div>
+<canvas id="screen" width="640" height="400" tabindex="0"
+        aria-label="The game screen. Type to play."></canvas>
+<div id="status">Loading...</div>
+<script>
+  var canvas = document.getElementById("screen");
+  var ctx = canvas.getContext("2d");
+  var image = ctx.createImageData(640, 400);
+  var statusLine = document.getElementById("status");
+
+  var Module = {
+    keys: [],
+    transcript: [],
+    print: function (line) { Module.transcript.push(line); console.log(line); },
+    printErr: function (line) { console.warn(line); },
+    drawScreen: function (pixels) {
+      image.data.set(pixels);
+      ctx.putImageData(image, 0, 0);
+    },
+    preRun: [function () {
+      FS.mkdir("/saves");
+      FS.mount(IDBFS, {}, "/saves");
+      Module.addRunDependency("saves");
+      FS.syncfs(true, function () { Module.removeRunDependency("saves"); });
+    }],
+    onRuntimeInitialized: function () {
+      statusLine.textContent = "";
+      document.querySelectorAll("#pick button").forEach(function (b) { b.disabled = false; });
+      if (Module.onReady) Module.onReady();
+    },
+    onTripOver: function () {
+      statusLine.textContent = "The trip is over. Reload the page to travel again.";
+    },
+    /* Start a trip: from the buttons, or from a test with a choices file. */
+    start: function (departure, choices) {
+      var seed = Date.now() % 65536;
+      var file = "";
+      if (choices !== undefined) {
+        FS.writeFile("/choices.txt", choices);
+        seed = 0;
+        file = "/choices.txt";
+      }
+      document.getElementById("pick").style.display = "none";
+      canvas.style.display = "block";
+      canvas.focus();
+      /* A choices file that runs out ends the game with exit(): that's the end, too. */
+      var ended = function (e) {
+        if (!e || e.name !== "ExitStatus") throw e;
+        Module.onTripOver();
+      };
+      try {
+        Promise.resolve(Module.ccall("web_start", null, ["string", "number", "string"],
+                                     [departure, seed, file], { async: true })).catch(ended);
+      } catch (e) {
+        ended(e);
+      }
+    }
+  };
+
+  document.querySelectorAll("#pick button").forEach(function (b) {
+    b.disabled = true;
+    b.addEventListener("click", function () { Module.start(b.dataset.departure); });
+  });
+
+  window.addEventListener("keydown", function (e) {
+    if (canvas.style.display !== "block" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "Enter") Module.keys.push(13);
+    else if (e.key === "Backspace") Module.keys.push(8);
+    else if (e.key.length === 1 && e.key.charCodeAt(0) >= 32 && e.key.charCodeAt(0) < 127)
+      Module.keys.push(e.key.charCodeAt(0));
+    else return;
+    e.preventDefault();
+  });
+
+  canvas.addEventListener("click", function (e) {
+    var r = canvas.getBoundingClientRect();
+    Module.keys.push(0x100 | Math.floor((e.clientY - r.top) / r.height * 25));
+  });
+</script>
+<script src="apb.js"></script>
+</body>
+</html>

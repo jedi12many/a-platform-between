@@ -442,6 +442,10 @@ uint8_t apb_pass_encode(const apb_pass *pass, char *out);
 /* Returns APB_PP_OK, or APB_PP_RANGE if a field doesn't fit (an item or Echo id over
  * 1023, an Echo state over 3). */
 uint8_t apb_stamp_encode(const apb_receipt *r, char *out);
+/* The receipt in a stamp, for the Waystation (W1; built with APB_WAYSTATION): APB_PP_OK, _SYMBOL, _LENGTH,
+ * _LINE_CHECK (bad_line receives the 1-based line; may be NULL), _CHECKSUM or
+ * _VERSION. */
+uint8_t apb_stamp_decode(const char *in, apb_receipt *r, uint8_t *bad_line);
 /* Returns APB_PP_OK, _SYMBOL, _LENGTH, _LINE_CHECK or _VERSION. */
 uint8_t apb_pass_decode(const char *in, apb_pass *pass);
 
