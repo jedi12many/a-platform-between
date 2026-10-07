@@ -10,7 +10,7 @@ from opcodes import (BY_CODE, ENCOUNTER_FOE_BYTES, FOE_NAME_MAX, MAP_TILES, MAX_
                      MAX_ENCOUNTERS,
                      MAX_OPTIONS, NO_MENU, NO_TITLE, OFFICIAL_ONLY,
                      SKILL_RATING_BASE, TXT_CLASS, TXT_DEBT, TXT_END, TXT_LEVEL, TXT_NAME,
-                     TXT_NEWLINE, TXT_RACE, TXT_VAR, WIDTH)
+                     TXT_NEWLINE, TXT_RACE, TXT_VAR, TXT_YARD, WIDTH, NO_KEY)
 from textpack import expand
 
 
@@ -70,6 +70,8 @@ def read_depot(depot):
      d["level_max"], d["flags"], d["vars"], d["scenes"], d["start"], d["hash"]) = \
         r.take("<BBHBBBBBHBHHH")
     d["hash_at"] = 2 + struct.calcsize("<BBHBBBBBHBHH")
+    if d["kind"] > 2:
+        raise BadImage(f"depot kind {d['kind']}")
     d["title"] = ascii_name(r.bytes(r.take("<B")), "the title")
     d["var_init"] = list(r.bytes(d["vars"]))
     d["directory"] = [r.take("<BH") for _ in range(d["scenes"])]
@@ -169,6 +171,8 @@ def show_text(s):
             out.append("{debt}")
         elif b == TXT_LEVEL:
             out.append("{level}")
+        elif b == TXT_YARD:
+            out.append("{yard}")
         elif b == TXT_NEWLINE:
             out.append("\\n")
         elif b == TXT_VAR:
@@ -244,7 +248,7 @@ def verify_string(s, d, where):
             if i >= len(s) or not 1 <= s[i] <= d["vars"]:
                 raise BadImage(f"{where}: variable insert out of range")
         elif not (0x20 <= b <= 0x7E or b in (TXT_NAME, TXT_RACE, TXT_CLASS, TXT_DEBT,
-                                               TXT_LEVEL, TXT_NEWLINE)):
+                                               TXT_LEVEL, TXT_YARD, TXT_NEWLINE)):
             raise BadImage(f"{where}: byte 0x{b:02x} isn't text")
         i += 1
 
@@ -269,12 +273,16 @@ def verify_code(c, d, registry):
             continue
         boundaries.add(pos)
         name, args, pos = decode(code, pos)
-        if d["kind"] == 1 and name in OFFICIAL_ONLY:
-            raise BadImage(f"{name} in a Branch Line")
+        if d["kind"] != 0 and name in OFFICIAL_ONLY:
+            raise BadImage(f"{name} in a {'Siding' if d['kind'] == 2 else 'Branch Line'}")
+        if name == "PICK" and args[1][1] == 0:
+            raise BadImage("PICK from 0")
         for kind, v in args:
             limit = {"str": len(c["strings"]), "scene": d["scenes"], "flag": d["flags"],
                      "var": d["vars"], "pic": len(d["pictures"]),
                      "enc": len(d["encounters"])}.get(kind)
+            if kind == "key" and v != NO_KEY and v >= d["vars"]:
+                raise BadImage(f"{name}: key variable {v} out of range")
             if limit is not None and v >= limit:
                 raise BadImage(f"{name}: {kind} {v} out of range (< {limit})")
             if kind == "addr":
@@ -301,7 +309,7 @@ def disassemble(data, registry=None):
     if registry:
         names["item"] = {e["id"]: n for n, e in registry["items"].items()}
         names["echo"] = {e["id"]: n for n, e in registry["echoes"].items()}
-    lines = [f"; '{d['title']}' id {d['id']} {'official' if d['kind'] == 0 else 'branch'}"
+    lines = [f"; '{d['title']}' id {d['id']} {['official', 'branch', 'siding'][d['kind']] if d['kind'] < 3 else d['kind']}"
              f" TL{d['tl']} ML{d['ml']} levels {d['level_min']}-{d['level_max']}",
              f"; {d['scenes']} scenes, {d['flags']} flags, {d['vars']} vars, "
              f"{len(d['pairs'])} text pairs, start scene {d['start']}, hash {d['hash']:04x}"]

@@ -42,7 +42,7 @@ its own file (`DEPOT`, `CAR00`, `CAR01`, ...), so the loader stays trivial.
 |---|---|---|
 | magic | 2 | `DP` |
 | image version | 1 | `0` for v0 |
-| kind | 1 | `0` official, `1` branch |
+| kind | 1 | `0` official, `1` branch, `2` siding ([deep-yards.md](deep-yards.md)) |
 | departure id | 2 | |
 | season | 1 | 0 for branch |
 | realm TL, ML | 1 + 1 | |
@@ -101,6 +101,7 @@ Strings are ASCII `0x20`–`0x7E`, plus:
 | `0x04` | insert Debt |
 | `0x05` *n* + 1 | insert variable *n* (stored plus one, so it's never `0x00`) |
 | `0x06` | insert level |
+| `0x07` | insert the yard number (the trip's seed, [deep-yards.md](deep-yards.md)) |
 | `0x0A` | line break inside a paragraph (from `|` lines) |
 | `0x80`–`0xFF` | a byte pair (see below) |
 
@@ -125,6 +126,7 @@ C64) when drawing; string literals in C are not used for game text.
 | character | `apb_character` | a working copy of the boarding snapshot; the VM never writes a Passport |
 | receipt | small | every change made to the character (XP, Debt, items, Echoes), handed to the front end at `END`; see [boarding.md](boarding.md) |
 | rng | 2 | `apb_rng` |
+| yard | 2 | the trip's seed, kept: `PICK` and `FIGHT_YARD` build from it ([deep-yards.md](deep-yards.md)) |
 | rewards this Departure | 3 × 32 + 2 | (car, offset) of each reward instruction already paid; items given count, for Branch Line limits |
 
 ## Instructions
@@ -214,6 +216,8 @@ re-running the scene's entry text or commands.
 | `CHECK` | 39 | u8 rating, u8 tn | d100 + the rating (numbered as for `RATING`) against the TN (50–250): pushes 0 fail, 1 cost, 2 success, 3 crit (via `apb_check`) |
 | `FIGHT` | 3A | u8 encounter, u8 surprise | plays the encounter (surprise: 0 none, 1 the foes go first, 2 the travelers do) with the battle engine (`core/src/battle.c`): the traveler takes the first start, with their health now and the first weapon they have equipped; the HAL shows the map and events and asks for each turn (`hal_battle_begin`, `_event`, `_turn`, `_end`). Pushes 0 won, 1 lost, 2 fled; health carries on, and a lost fight the story carries on from leaves 1. The compiler follows it with a `SWITCH4` whose fourth slot is never taken |
 
+| `FIGHT_YARD` | 3B | u8 encounter, u8 surprise, u8 var | the Deep Yards ([deep-yards.md](deep-yards.md)): builds the floor's map (the var's value) from the yard and encounter `encounter`, a pool of foes, into the free space after the depot (it needs 314 bytes: `depot + 314 ≤ 2048` on a C64), checks it like an image's, and plays it as `FIGHT` does |
+
 `visited` compiles to `FLAG` on the scene's compiler-allocated flag.
 
 ### Changing state
@@ -225,6 +229,7 @@ re-running the scene's entry text or commands.
 | `LET` | 42 | u8 var | pop into var (clamped 0..255) | yes |
 | `ADD` | 43 | u8 var, u8 n | add, saturating at 255 | yes |
 | `SUB` | 44 | u8 var, u8 n | subtract, saturating at 0 | yes |
+| `PICK` | 45 | u8 var, u8 n, u8 key, u8 salt | var = 1 + mix(yard, k × 256 + salt) mod n, where k is var `key`'s value (0 if `key` is `0xFF`); n ≥ 1 ([deep-yards.md](deep-yards.md), *Mixing*) | yes |
 | `GIVE` | 48 | u16 item | add to pack (no room: lost-and-found message); pays once per trip | tier ≤ 3, limited count |
 | `TAKE` | 49 | u16 item | remove if carried | yes |
 | `XP` | 4A | u8 n | `apb_gain_xp`; pays once per trip | ignored above the level band |
@@ -237,6 +242,8 @@ has run since boarding, up to 32 (`APB_VM_REWARD_SITES`), and passes over one it
 before. The compiler allows at most 32 per Departure, so the list never fills; if a
 damaged image has more, the extras pay nothing. This is what makes the compiler's reward
 manifest a true bound.
+
+Sidings (kind 2) refuse `DEBT` and `ECHO_SET` the same way as Branch Lines.
 
 "Refused" means the VM stops with an error if a Branch Line image contains it; the
 verifier rejects such an image at load time, and the compiler never emits it.
@@ -289,7 +296,7 @@ disk. Little-endian, version 1:
 
 | Field | Size |
 |---|---|
-| magic, version | 3: `41 53 02` (version 2 added health) |
+| magic, version | 3: `41 53 03` (version 2 added health; 3, the yard) |
 | departure id, image hash | 2 + 2: a save only loads into the image that made it |
 | car, menu offset | 1 + 2: the `MENU` instruction to show again |
 | menu entries | 1 + 4 each: string id, target |
@@ -297,6 +304,7 @@ disk. Little-endian, version 1:
 | flags | one byte per 8 of the image's flags |
 | vars | one byte per variable |
 | rng | 2 |
+| yard | 2 |
 | Debt at boarding, health now, Branch Line gives | 2 + 1 + 1 |
 | rewards already paid | 1 + 3 each: car, offset |
 | receipt so far | departure 2, ticket 4, outcome 1, XP 2, Debt paid 2, added 2, items gained and lost (1 + 2 each), Echoes (1 + 4 each: id, state, state at boarding) |

@@ -32,6 +32,7 @@ ROUTES = [
     ("fare-edge", "the-fare", "fare-edge.choices", None, "fare-edge.expected"),
     ("fare-fight", "the-fare", "fare-fight.choices", "fare-resume.choices", "fare-fight.expected"),
     ("e18-loop", "eighteen-minutes", "e18-loop.choices", None, "e18-loop.expected"),
+    ("yards", "deep-yards", "yards.choices", None, "yards.expected"),
 ]
 failures = 0
 

@@ -61,6 +61,9 @@ jobs:
       - name: The Waystation website (made in the browser, boarded in the terminal)
         run: make test-waystation
 
+      - name: The Deep Yards' generator (C against the reference, PC and 6502)
+        run: make test-yards
+
       - uses: actions/upload-artifact@v4
         with:
           name: c64
@@ -68,6 +71,7 @@ jobs:
             build/demo.prg
             build/the-fare.d64
             build/eighteen-minutes.d64
+            build/deep-yards.d64
 
       - uses: actions/upload-artifact@v4
         with:

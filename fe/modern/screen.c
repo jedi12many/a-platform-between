@@ -564,6 +564,8 @@ static void show_receipt(const apb_receipt *r)
 
 static uint8_t board(uint16_t seed)
 {
+    uint8_t with_pass;
+
     apb_desk_run(&traveler);
     if (apb_vm_open() != 0) {
         out("This Departure can't be boarded: ");
@@ -572,9 +574,9 @@ static uint8_t board(uint16_t seed)
         return 1;
     }
     end_line();
-    if ((apb_desk_pass(&traveler, apb_vm_departure(), &pass)
-         ? apb_vm_board_pass(&traveler, &pass)
-         : apb_vm_board(&traveler, seed)) != 0) {
+    with_pass = apb_desk_pass(&traveler, apb_vm_departure(), &pass);
+    if (!with_pass && apb_vm_siding()) seed = apb_desk_yard(seed);   /* a Siding's yard */
+    if ((with_pass ? apb_vm_board_pass(&traveler, &pass) : apb_vm_board(&traveler, seed)) != 0) {
         out("This Departure can't be boarded: ");
         out(apb_vm_error());
         end_line();

@@ -387,6 +387,27 @@ void apb_receipt_apply(apb_character *ch, const apb_receipt *r, uint8_t rewind,
                        apb_applied *out);
 
 
+/* ------------------------------------------------------ the Deep Yards */
+/* docs/deep-yards.md: floors generated from a yard number, the same everywhere. */
+
+#define APB_YARD_W          12
+#define APB_YARD_H          8
+#define APB_YARD_FOES_MAX   4
+#define APB_YARD_RECORD_MAX 210     /* the longest map record a floor can need */
+#define APB_YARD_WORK       104     /* the space the generator borrows: W x H + 8 */
+
+/* mix(yard, key): three rounds of an xorshift16 step then x * 0x9E37 + key, and one more
+ * step (docs/deep-yards.md, "Mixing"). A pick of 1..n is
+ * 1 + apb_yard_mix(yard, key * 256 + salt) % n. */
+uint16_t apb_yard_mix(uint16_t yard, uint16_t key);
+
+/* Build floor `floor`'s battle map into `out` (APB_YARD_RECORD_MAX bytes), an encounter
+ * record as in the depot, from the foes in `pool` (an encounter record, `pool_len`
+ * bytes, already checked), working in `work` (APB_YARD_WORK bytes, lent by the caller).
+ * Returns its length, or 0 if the pool has no foes. */
+uint16_t apb_yard_build(uint16_t yard, uint8_t floor, const uint8_t *pool, uint16_t pool_len,
+                        uint8_t *out, uint8_t *work);
+
 /* ---------------------------------------------------------- Passport */
 
 #define APB_PASSPORT_VERSION 2

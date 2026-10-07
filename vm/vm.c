@@ -31,7 +31,8 @@ enum {
     OP_ECHO = 0x25, OP_RATING = 0x26, OP_LEVEL = 0x27, OP_RACE = 0x28, OP_CLASS = 0x29,
     OP_EQ = 0x30, OP_NE = 0x31, OP_LT = 0x32, OP_LE = 0x33, OP_GT = 0x34, OP_GE = 0x35,
     OP_AND = 0x36, OP_OR = 0x37, OP_NOT = 0x38, OP_CHECK = 0x39, OP_FIGHT = 0x3A,
-    OP_SET = 0x40, OP_CLR = 0x41, OP_LET = 0x42, OP_ADD = 0x43, OP_SUB = 0x44,
+    OP_FIGHT_YARD = 0x3B,
+    OP_SET = 0x40, OP_CLR = 0x41, OP_LET = 0x42, OP_ADD = 0x43, OP_SUB = 0x44, OP_PICK = 0x45,
     OP_GIVE = 0x48, OP_TAKE = 0x49, OP_XP = 0x4A, OP_DEBT = 0x4B, OP_ECHO_SET = 0x4C,
     OP_HEAL = 0x4D,
     OP_LAST = 0x4D
@@ -39,13 +40,13 @@ enum {
 
 /* Operand kinds, one letter each:
  * a addr  s scene  t string  f flag  v var  i item  e echo  r rating  p picture
- * n encounter  b u8  w u16  h s16 */
+ * n encounter  b u8  w u16  h s16  k a var or 0xFF (none) */
 static const char *const operands[OP_LAST + 1] = {
     "",  "a", "a", "s", "aaaa", "b", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,          /* 00 */
     "t", "p", "",  "",  0, 0, 0, 0, "", "ta", "", 0, 0, 0, 0, 0,          /* 10 */
     "b", "h", "f", "v", "i", "eb", "r", "", "", "", 0, 0, 0, 0, 0, 0,     /* 20 */
-    "", "", "", "", "", "", "", "", "", "rb", "nb", 0, 0, 0, 0, 0,        /* 30 */
-    "f", "f", "v", "vb", "vb", 0, 0, 0, "i", "i", "b", "bw", "eb", "b"   /* 40 */
+    "", "", "", "", "", "", "", "", "", "rb", "nb", "nbv", 0, 0, 0, 0,    /* 30 */
+    "f", "f", "v", "vb", "vb", "vbkb", 0, 0, "i", "i", "b", "bw", "eb", "b"  /* 40 */
 };
 
 #define SKILL_BASE   16
@@ -116,6 +117,7 @@ static const char *label_ptrs[MENU_MAX];
 static char title_buf[LABEL_MAX + 4];
 static apb_character ch;
 static apb_rng rng;
+static uint16_t yard;               /* the trip's seed: the Deep Yards' floors come from it */
 static apb_receipt receipt;
 static uint16_t boarded_debt;
 static uint8_t health;              /* carries from fight to fight in a Departure */
@@ -191,10 +193,11 @@ static uint8_t enc_tile(uint16_t tiles_at, uint8_t w, uint8_t x, uint8_t y)
 #pragma rodata-name (push, "OVL1DATA")
 #endif
 
-/* A battle map and its foes (docs/vm-spec.md, Encounters): `len` bytes at depot[at].
- * Everything is checked here, at load, so the battle can trust it. */
+/* A battle map and its foes (docs/vm-spec.md, Encounters): `len` bytes at depot[at],
+ * ending by `limit`. Everything is checked here, at load (or as a yard's floor is
+ * built), so the battle can trust it. */
 
-static uint8_t encounter_ok(uint16_t at, uint16_t len)
+static uint8_t encounter_ok(uint16_t at, uint16_t len, uint16_t limit)
 {
     uint8_t w;
     uint8_t h;
@@ -212,7 +215,7 @@ static uint8_t encounter_ok(uint16_t at, uint16_t len)
     uint16_t names;
     const uint8_t *s;
 
-    if (len < 2 || end > depot_len || end < at) return 0;
+    if (len < 2 || end > limit || end < at) return 0;
     w = depot[at];
     h = depot[at + 1];
     if (w < 1 || w > 16 || h < 1 || h > 10) return 0;
@@ -289,7 +292,7 @@ static uint8_t load_depot(void)
     var_count = depot[13];
     scene_count = rd16(depot + 14);
     start_scene = rd16(depot + 16);
-    if (kind > 1 || flag_count > 512 || var_count > 128 || scene_count == 0
+    if (kind > 2 || flag_count > 512 || var_count > 128 || scene_count == 0
         || scene_count > 1024 || start_scene >= scene_count || depot[20] > 40) {
         fail("bad depot header", 0);
         return 0;
@@ -339,7 +342,7 @@ static uint8_t load_depot(void)
         return 0;
     }
     for (i = 0; i < encounter_count; ++i) {
-        if ((uint16_t)(at + 2) > depot_len || !encounter_ok((uint16_t)(at + 2), rd16(depot + at))) {
+        if ((uint16_t)(at + 2) > depot_len || !encounter_ok((uint16_t)(at + 2), rd16(depot + at), depot_len)) {
             fail("bad encounter", i);
             return 0;
         }
@@ -357,6 +360,44 @@ static uint8_t load_depot(void)
     }
     return 1;
 }
+
+#ifndef APB_VM_NO_YARDS
+/* The Deep Yards (docs/deep-yards.md): build floor `floor`'s map from pool `n` into the
+ * free space after the depot, and check it like any map from an image. Returns 1, or 0
+ * with the VM failed. */
+static uint8_t build_yard(uint8_t n, uint8_t floor)
+{
+    uint16_t at = encounters_at;
+    uint16_t len;
+
+    if ((uint16_t)(depot_len + APB_YARD_RECORD_MAX + APB_YARD_WORK) > APB_VM_DEPOT_MAX) {
+        fail("no room to build the yard", pc);
+        return 0;
+    }
+    while (n--) at = (uint16_t)(at + 2 + rd16(depot + at));
+    len = apb_yard_build(yard, floor, depot + at + 2, rd16(depot + at), depot + depot_len,
+                         depot + depot_len + APB_YARD_RECORD_MAX);
+    if (!len || !encounter_ok(depot_len, len, (uint16_t)(depot_len + len))) {
+        fail("bad yard", pc);
+        return 0;
+    }
+    return 1;
+}
+
+/* PICK var, n, key, salt (docs/deep-yards.md): var = 1..n, from the yard and the key
+ * variable's value (none: 0), never from the dice. */
+static void pick(const uint8_t *op)
+{
+    uint8_t key = op[2];
+
+    if (op[0] >= var_count || op[1] == 0 || (key != 0xFF && key >= var_count)) {
+        fail("bad pick", pc);
+        return;
+    }
+    vars[op[0]] = (uint8_t)(1 + apb_yard_mix(yard, (uint16_t)(((key == 0xFF ? 0 : vars[key]) << 8)
+                                                          | op[3])) % op[1]);
+}
+#endif
 
 #ifdef APB_OVERLAYS
 #pragma code-name (pop)
@@ -467,6 +508,9 @@ static uint8_t expand(uint16_t id, char *to, uint8_t max, uint8_t check_only)
                 ins = num;
             } else if (c == 0x06) {
                 put_num(num, ch.level);
+                ins = num;
+            } else if (c == 0x07) {
+                put_num(num, yard);
                 ins = num;
             } else if (c != 0x0A && (c < 0x20 || c > 0x7E)) {
                 return 0;
@@ -582,13 +626,13 @@ static uint8_t verify_car(uint8_t index)
             fail("unknown opcode", at);
             return 0;
         }
-        if (kind == 1 && (op == OP_DEBT || op == OP_ECHO_SET)) {
-            fail("not allowed in a Branch Line", at);
+        if (kind != 0 && (op == OP_DEBT || op == OP_ECHO_SET)) {
+            fail("only for official Departures", at);
             return 0;
         }
         ++at;
         for (k = operands[op]; *k; ++k) {
-            if (*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p' || *k == 'n') {
+            if (*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p' || *k == 'n' || *k == 'k') {
                 if (at + 1 > code_len) break;
                 v = code[at];
                 at = (uint16_t)(at + 1);
@@ -600,6 +644,7 @@ static uint8_t verify_car(uint8_t index)
             if ((*k == 'a' && v >= code_len) || (*k == 's' && v >= scene_count)
                 || (*k == 't' && v >= string_count) || (*k == 'f' && v >= flag_count)
                 || (*k == 'v' && v >= var_count) || (*k == 'p' && v >= picture_count)
+                || (*k == 'k' && v != 0xFF && v >= var_count)
                 || (*k == 'n' && v >= encounter_count)
                 || (*k == 'r' && !valid_rating((uint8_t)v))
                 || (*k == 'i' && (v >= APB_ITEM_COUNT || apb_items[v].tier == 0))
@@ -875,7 +920,7 @@ static uint8_t first_pay(void)
  * edited save is refused, never trusted. The character is kept as its Passport. */
 #define SAVE_MAGIC_1 0x41   /* bytes, not characters: 'A' 'S' in ASCII */
 #define SAVE_MAGIC_2 0x53
-#define SAVE_VERSION 2      /* 2: health */
+#define SAVE_VERSION 3      /* 2: health; 3: the yard */
 
 static uint8_t save_buf[APB_VM_SAVE_MAX];
 static uint16_t sv_pos;
@@ -958,6 +1003,7 @@ static uint8_t save_game(uint16_t menu_at)
     for (i = 0; i < n; ++i) sv_put8(flags[i]);
     for (i = 0; i < var_count; ++i) sv_put8(vars[i]);
     sv_put16(rng.state);
+    sv_put16(yard);
     sv_put16(boarded_debt);
     sv_put8(health);
     sv_put8(gives);
@@ -1043,6 +1089,7 @@ static uint16_t load_game(void)
     for (i = 0; i < var_count; ++i) vars[i] = sv_get8();
     rng.state = sv_get16();
     if (rng.state == 0) sv_bad = 1;         /* xorshift never reaches 0 */
+    yard = sv_get16();
     boarded_debt = sv_get16();
     health = sv_get8();
     gives = sv_get8();
@@ -1158,7 +1205,9 @@ static void battle_event(const apb_event *e)
     hal_battle_event(e);
 }
 
-/* Play encounter `n` (checked when the depot loaded). Returns 0 won, 1 lost, 2 fled. */
+/* Play encounter `n` (checked when the depot loaded), or YARD_MAP, the floor build_yard
+ * has just made. Returns 0 won, 1 lost, 2 fled. */
+#define YARD_MAP 0xFF
 static uint8_t fight(uint8_t n, uint8_t surprise)
 {
     uint16_t at = encounters_at;
@@ -1174,8 +1223,12 @@ static uint8_t fight(uint8_t n, uint8_t surprise)
     uint8_t who;
     uint8_t result;
 
-    while (n--) at = (uint16_t)(at + 2 + rd16(depot + at));
-    at = (uint16_t)(at + 2);
+    if (n == YARD_MAP) {
+        at = depot_len;
+    } else {
+        while (n--) at = (uint16_t)(at + 2 + rd16(depot + at));
+        at = (uint16_t)(at + 2);
+    }
     w = depot[at];
     h = depot[at + 1];
     tiles_at = (uint16_t)(at + 2);
@@ -1294,6 +1347,11 @@ uint16_t apb_vm_departure(void)
     return dep_id;
 }
 
+uint8_t apb_vm_siding(void)
+{
+    return (uint8_t)(kind == 2);
+}
+
 uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass)
 {
     if (!opened && apb_vm_open() != 0) {
@@ -1359,6 +1417,7 @@ uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed)
     sp = 0;
     menu_count = 0;
     apb_rng_seed(&rng, seed);
+    yard = seed;
     car_index = 0xFF;
     if (!enter(start_scene)) {
         return APB_VM_ERROR;
@@ -1562,6 +1621,32 @@ uint8_t apb_vm_run(void)
             APB_NEED(APB_OVL_BATTLE);
             push(fight(i, (uint8_t)a));
             break;
+#ifdef APB_VM_NO_YARDS
+        /* A build without the Deep Yards (the 6502 test harness has no room for both
+         * them and the boarding desk: tests/vm/harness.c). */
+        case OP_FIGHT_YARD:
+        case OP_PICK:
+            fail("no yards in this build", pc);
+            break;
+#else
+        case OP_FIGHT_YARD:
+            i = FETCH8();
+            a = FETCH8();
+            b = FETCH8();
+            if (i >= encounter_count || a > 2 || b >= var_count) { fail("bad fight", pc); break; }
+            APB_NEED(APB_OVL_LOAD);
+            if (!build_yard(i, vars[b])) break;
+            APB_NEED(APB_OVL_BATTLE);
+            push(fight(YARD_MAP, (uint8_t)a));
+            break;
+        case OP_PICK:
+            /* The Deep Yards (docs/deep-yards.md): 1..n from the yard and a key, the
+             * same every time, never from the dice. */
+            APB_NEED(APB_OVL_LOAD);     /* the arithmetic is there, beside the maps */
+            pick(code + pc);
+            pc = (uint16_t)(pc + 4);
+            break;
+#endif
         case OP_CHECK:
             i = FETCH8();
             a = FETCH8();
@@ -1615,7 +1700,7 @@ uint8_t apb_vm_run(void)
         case OP_DEBT:
             i = FETCH8();
             a = FETCH16();
-            if (kind == 1 || i > 2) { fail("bad debt", pc); break; }
+            if (kind != 0 || i > 2) { fail("bad debt", pc); break; }
             if (!first_pay()) break;
             if (i == 0) ch.debt = a;
             else if (i == 1) ch.debt = (uint16_t)(ch.debt > 0xFFFFu - a ? 0xFFFFu : ch.debt + a);
@@ -1629,7 +1714,7 @@ uint8_t apb_vm_run(void)
         case OP_ECHO_SET:
             a = FETCH16();
             i = FETCH8();
-            if (kind == 1 || a >= APB_ECHO_COUNT || apb_echo_defaults[a] == 0 || i < 1 || i > 3) {
+            if (kind != 0 || a >= APB_ECHO_COUNT || apb_echo_defaults[a] == 0 || i < 1 || i > 3) {
                 fail("bad echo", pc);
                 break;
             }

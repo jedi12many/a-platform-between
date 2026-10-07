@@ -99,16 +99,16 @@ The airlock cycles. Somewhere above you, a calm voice says:
 
 ## C64 memory budget
 
-The C64 is the tightest target, so it sets the budget for everyone. Measured at E4
+The C64 is the tightest target, so it sets the budget for everyone. Measured at E7
 (the details: [c64.md](c64.md)):
 
 | Region | Size |
 |---|---|
-| Main program: the VM's interpreter, rules core, C64 front end | 22 KB |
-| Buffers: one car (6 KB at most), the depot (2 KB), battle state, saves | 13 KB |
-| C stack | 0.5 KB |
-| Overlay area: LOAD (4 KB), PASS (12.5 KB) or BATTLE (15 KB), one at a time | 15 KB |
-| **Total** | **about 50.8 KB** of the 51 KB below $D000 with BASIC switched out |
+| Main program: the VM's interpreter, rules core, C64 front end | 22.6 KB |
+| Buffers: one car (6 KB at most), the depot (2 KB), battle state, saves | 11.9 KB |
+| C stack | 0.4 KB |
+| Overlay area: LOAD (7.4 KB, with the Deep Yards' generator), PASS (14.5 KB, with its own buffers) or BATTLE (15.1 KB), one at a time | 15 KB |
+| **Total** | **about 50.2 KB** of the 51 KB below $D000 with BASIC switched out: 0.8 KB free |
 | Picture, in the RAM under the KERNAL ROM ($E000) | 3.5 KB of 8 KB |
 
 The 4 KB of RAM under the I/O chips ($D000) is still unused.
@@ -394,6 +394,44 @@ stats and refusing typos.
 
 *Not yet:* the Arrivals as a character's first trip, and the server (W2): accounts,
 Boarding Passes, the ticket ledger, checked stamps.
+
+### E7 in detail
+
+**Goal:** a 10-floor descent of the Deep Yards ([deep-yards.md](deep-yards.md)), the first
+Siding, built from a seed, playable on the terminal and the C64.
+
+*Done:* `content/sidings/deep-yards/deep-yards.qs`. Play it with `make play-yards`, on
+`build/deep-yards.d64`, or with `make modern` / `make web`.
+
+**The language.** Quest Script gained three things, and the rest is ordinary story:
+- `kind: siding`: it asks for a yard number at boarding, and pays no Debt and plants no
+  Echoes.
+- `~ pick VAR N on KEY`: a choice made by the yard and the floor, never by the dice.
+- `yard POOL` with `fight yard POOL on FLOOR`: maps built for each floor.
+
+**The generator.** The maps come from `core/src/yard.c`, specified in
+[deep-yards.md](deep-yards.md) closely enough that `tools/yards/yard.py`, written from the
+page, gives the same bytes on thousands of maps. On the C64 it runs in the LOAD overlay
+and builds each floor's map in the free space after the depot, so it costs the main
+program nothing but its two new instructions.
+
+**Making room.** The C64's main program had about 150 bytes free.
+- The PASS overlay's buffers moved into the overlay (`OVL2BSS`, 1 KB).
+- The C stack went from 512 to 384 bytes (the deepest route uses 115).
+- The 6502 test harness no longer holds everything at once: one build has the yards,
+  the other the boarding desk.
+
+**Two mistakes found by testing, fixed.** The first mixing function was linear, so a
+floor's picks came in fixed pairs: `make test-yards` now checks picks are independent.
+The first foe numbers were too steep for anyone to reach the bottom.
+
+**Tests.** `make test-yards` checks the generator against the reference. Twelve VM
+playthroughs cover every instruction, on PC and 6502, saved and resumed at every menu,
+and 150 damaged copies play under the sanitizers. On the C64 a descent plays from the
+disk, and the desktop and the browser play the same yard to the same transcript.
+
+*Not yet:* Translation per floor (it needs the VM to carry a realm), daily yards with
+leaderboards (W2), and party yards.
 
 ### Departure 00: The Fare
 

@@ -5,6 +5,9 @@
  *
  *   harness DIR SEED SCRIPT       e.g. harness build/vm/tiny 1985 2,1
  *
+ * SEED+LEVEL (e.g. 48213+8) boards the built-in traveler at that level: a veteran, for
+ * the Deep Yards' deep floors.
+ *
  * SEED '-' asks for a Boarding Pass at the desk (after the Passport, or for the built-in
  * traveler), which then seeds the dice; travelling without one uses seed 1.
  *
@@ -27,6 +30,11 @@
 
 #include "apb.h"
 #include "apb_desk.h"
+
+/* The 6502 has no room for the whole engine in one test program, so it's built twice
+ * (Makefile): build/harness.sim without the Deep Yards (APB_VM_NO_YARDS), and
+ * build/harness-yards.sim without the boarding desk (APB_HARNESS_NO_DESK): the yards'
+ * playthroughs board the built-in traveler. */
 #include "apb_hal.h"
 #include "apb_vm.h"
 
@@ -313,19 +321,27 @@ int main(int argc, char **argv)
     apb_character_create(&traveler, "Kestrel", APB_SALVAGED, APB_WARDEN, base,
                          APB_SK_ATHLETICS);
     traveler.equipped[0] = APB_ITEM_PULSE_RIFLE;
+    if (strchr(argv[2], '+')) traveler.level = (uint8_t)atoi(strchr(argv[2], '+') + 1);
 
+#ifndef APB_HARNESS_NO_DESK
     if (picks[0] == ':') {
         apb_desk_run(&traveler);
     }
+#endif
     if (strcmp(argv[2], "resume") == 0) {
         result = apb_vm_resume();
+#ifndef APB_HARNESS_NO_DESK
     } else if (strcmp(argv[2], "-") == 0) {
         if (apb_vm_open() != 0) {
             printf("[refused: %s]\n", apb_vm_error());
             return 0;
         }
-        result = apb_desk_pass(&traveler, apb_vm_departure(), &pass)
-                 ? apb_vm_board_pass(&traveler, &pass) : apb_vm_board(&traveler, 1);
+        if (apb_desk_pass(&traveler, apb_vm_departure(), &pass)) {
+            result = apb_vm_board_pass(&traveler, &pass);
+        } else {
+            result = apb_vm_board(&traveler, apb_vm_siding() ? apb_desk_yard(1) : 1);
+        }
+#endif
     } else {
         result = apb_vm_board(&traveler, (uint16_t)atoi(argv[2]));
     }

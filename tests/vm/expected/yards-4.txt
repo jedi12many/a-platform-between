@@ -1,0 +1,10 @@
+=== The Deep Yards
+[picture 0 yards]
+At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft that goes down further than the Waystation does. A brass plate on the gate says YARD 2486. Someone has scratched a number under it: 10.
+The operator, a man made mostly of rust and patience, doesn't look up. "Ten floors," he says. "Every one a different place. Come back up when you like. If you can."
+  1) Step into the cage
+  2) Not today
+> 2
+You leave the lift to someone braver. It will be here. It always is.
+[receipt: departure 1000, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 3, xp 0, debt 0]

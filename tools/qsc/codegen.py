@@ -13,8 +13,8 @@ One car per chapter. Each scene is laid out as:
 import struct
 
 import qs_ast as A
-from opcodes import (COMPARE, FOE_NAME_MAX, MAP_TILES, MAX_CAR, MAX_DEPOT, MAX_ENCOUNTERS,
-                     NO_MENU,
+from opcodes import (COMPARE, FOE_NAME_MAX, KINDS, MAP_TILES, MAX_CAR, MAX_DEPOT,
+                     MAX_ENCOUNTERS, NO_KEY, NO_MENU, TXT_YARD, YARD_DEPOT_MAX,
                      NO_TITLE,
                      OFFICIAL_ONLY, OPS,
                      SKILL_RATING_BASE, STACK_DEPTH, TXT_CLASS, TXT_DEBT, TXT_LEVEL,
@@ -168,7 +168,7 @@ class Compiler:
                 out += bytes([TXT_VAR, self.var_ids[p.var] + 1])
             else:
                 out.append({"name": TXT_NAME, "race": TXT_RACE, "class": TXT_CLASS,
-                            "debt": TXT_DEBT, "level": TXT_LEVEL}[p.what])
+                            "debt": TXT_DEBT, "level": TXT_LEVEL, "yard": TXT_YARD}[p.what])
         return bytes(out)
 
     # ---------------------------------------------------------- conditions
@@ -283,7 +283,10 @@ class Compiler:
             end = Label()
             labels = {k: Label() for k in st.outcomes}
             lost = labels.get("lost") or Label()
-            asm.op("FIGHT", self.map_ids[st.map], st.surprise)
+            if st.floor is None:
+                asm.op("FIGHT", self.map_ids[st.map], st.surprise)
+            else:
+                asm.op("FIGHT_YARD", self.map_ids[st.map], st.surprise, self.var_ids[st.floor])
             # The fourth slot is never taken; it points at a real instruction anyway.
             asm.op("SWITCH4", labels.get("won", end), lost, labels.get("fled", end),
                    labels.get("won", end))
@@ -304,7 +307,8 @@ class Compiler:
         asm = car.asm
         a = cmd.args
         if cmd.name in OFFICIAL_ONLY_COMMANDS and self.dep.kind != "official":
-            raise CompileError(cmd.line, f"'~ {cmd.name}' isn't allowed in a Branch Line")
+            raise CompileError(cmd.line, f"'~ {cmd.name}' isn't allowed in a "
+                                         f"{'Siding' if self.dep.kind == 'siding' else 'Branch Line'}")
         if cmd.name == "set":
             asm.op("SET", self.flags[a[0]])
         elif cmd.name == "clear":
@@ -327,6 +331,9 @@ class Compiler:
             asm.op("XP", a[0])
         elif cmd.name == "heal":
             asm.op("HEAL", a[0])
+        elif cmd.name == "pick":
+            asm.op("PICK", self.var_ids[a[0]], a[1],
+                   NO_KEY if a[2] is None else self.var_ids[a[2]], a[3])
         elif cmd.name == "debt":
             asm.op("DEBT", {"set": 0, "add": 1, "sub": 2}[a[0]], a[1])
         elif cmd.name == "picture":
@@ -443,6 +450,11 @@ class Compiler:
             raise CompileError(1, f"the depot (scenes, text pairs, pictures and battle maps) "
                                   f"is {len(depot)} bytes; the most is {MAX_DEPOT}. Use "
                                   "fewer or smaller battle maps.")
+        if any(m.yard for m in self.dep.maps.values()) and len(depot) > YARD_DEPOT_MAX:
+            raise CompileError(1, f"the depot (scenes, text pairs, pictures and battle maps) "
+                                  f"is {len(depot)} bytes; a Departure with a yard needs it at "
+                                  f"most {YARD_DEPOT_MAX}, to leave room for each floor's map. "
+                                  "Use fewer pictures or battle maps.")
         h = crc16(depot + b"".join(car_bytes))
         depot = self.depot_bytes(pairs, hash_value=h)
         return Image(depot, car_bytes, pairs, self)
@@ -468,7 +480,7 @@ class Compiler:
         flag_count = len(self.flags) + len(self.visited_flags) + len(self.chapter_flags) + \
             len(self.once_flags)
         out += struct.pack("<BBHBBBBBHBHHH", IMAGE_VERSION,
-                           0 if d.kind == "official" else 1, d.id,
+                           KINDS[d.kind], d.id,
                            d.season if d.kind == "official" else 0, d.tl, d.ml,
                            d.level_min, d.level_max, flag_count, len(self.var_ids),
                            len(self.scenes), self.scene_ids[d.start], hash_value)
@@ -491,32 +503,47 @@ class Compiler:
         return bytes(out)
 
     def encounter_bytes(self, m):
-        """A battle map and its foes (docs/vm-spec.md, Encounters). Each foe's numbers are
-        copied from the bestiary, so the image stands on its own."""
-        w, h = len(m.rows[0]), len(m.rows)
-        codes = [MAP_TILES.index(c) if c in MAP_TILES else 0 for r in m.rows for c in r]
-        if len(codes) % 2:
-            codes.append(0)
-        out = bytearray([w, h])
-        out += bytes((codes[i] << 4) | codes[i + 1] for i in range(0, len(codes), 2))
-        starts = [(x, y) for y, r in enumerate(m.rows) for x, c in enumerate(r) if c == "@"]
-        out += bytes([len(starts)])
-        for x, y in starts:
-            out += bytes([x, y])
-        foes = [(x, y, c) for y, r in enumerate(m.rows) for x, c in enumerate(r) if "a" <= c <= "z"]
-        out += bytes([len(foes)])
-        for x, y, c in foes:
-            f = self.reg["foes"][m.foes[c]]
-            reach = REACH[f["reach"]]
-            out += bytes([x, y, f["health"], f["grace"], f["grace"] // 5, f["armor"], f["ward"],
-                          f["soak"], f["speed"], f["attack"], f["damage"], f["type"],
-                          int(reach != "melee"), int(reach == "power"), f["area"],
-                          255 if f["weak"] is None else f["weak"], f["behavior"],
-                          int(f["coward"])])
-        for x, y, c in foes:
-            name = self.reg["foes"][m.foes[c]]["display"].encode("ascii")[:FOE_NAME_MAX]
-            out += bytes([len(name)]) + name
-        return bytes(out)
+        return encounter_record(m.rows, m.foes, self.reg)
+
+
+def encounter_record(rows, foes_by_letter, reg):
+    """A battle map and its foes (docs/vm-spec.md, Encounters). Each foe's numbers are
+    copied from the bestiary, so the image stands on its own."""
+    w, h = len(rows[0]), len(rows)
+    codes = [MAP_TILES.index(c) if c in MAP_TILES else 0 for r in rows for c in r]
+    if len(codes) % 2:
+        codes.append(0)
+    out = bytearray([w, h])
+    out += bytes((codes[i] << 4) | codes[i + 1] for i in range(0, len(codes), 2))
+    starts = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c == "@"]
+    out += bytes([len(starts)])
+    for x, y in starts:
+        out += bytes([x, y])
+    foes = [(x, y, c) for y, r in enumerate(rows) for x, c in enumerate(r) if "a" <= c <= "z"]
+    out += bytes([len(foes)])
+    for x, y, c in foes:
+        f = reg["foes"][foes_by_letter[c]]
+        reach = REACH[f["reach"]]
+        out += bytes([x, y, f["health"], f["grace"], f["grace"] // 5, f["armor"], f["ward"],
+                      f["soak"], f["speed"], f["attack"], f["damage"], f["type"],
+                      int(reach != "melee"), int(reach == "power"), f["area"],
+                      255 if f["weak"] is None else f["weak"], f["behavior"],
+                      int(f["coward"])])
+    for x, y, c in foes:
+        name = reg["foes"][foes_by_letter[c]]["display"].encode("ascii")[:FOE_NAME_MAX]
+        out += bytes([len(name)]) + name
+    return bytes(out)
+
+
+def pool_rows(names):
+    """A yard's pool as a map (docs/deep-yards.md): the foes in a row, weakest first."""
+    letters = "abcdefg"[:len(names)]
+    return ["@" + letters], dict(zip(letters, names))
+
+
+def pool_bytes(names, reg):
+    rows, foes = pool_rows(names)
+    return encounter_record(rows, foes, reg)
 
 
 OFFICIAL_ONLY_COMMANDS = {"echo", "debt"}

@@ -20,9 +20,9 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   AddressSanitizer/UBSan. After a deliberate change, `python3 tests/vm/run_tests.py
   --update` rewrites the expected transcripts: read the diff before committing it.
   Together, the playthroughs of *The Fare* must run every instruction in it, and so must
-  those of *Eighteen Minutes* (`COVERED` in `run_tests.py`): a passage no case reaches
-  fails the test, so a new route needs a new case. `@name` in a case
-  boards a traveler from `tests/vm/travelers.txt`; every check is re-rolled from the
+  those of *Eighteen Minutes* and *the Deep Yards* (`COVERED` in `run_tests.py`): a
+  passage no case reaches fails the test, so a new route needs a new case. `@name` in a
+  case boards a traveler from `tests/vm/travelers.txt`; every check is re-rolled from the
   rules and that traveler's Passport. Every receipt must fit its reward manifest. Each
   playthrough is also saved at every menu and resumed, and must come out the same.
 - `make test-term`: the terminal front end's recorded playthrough must match
@@ -50,17 +50,23 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   (SDL2, `build/apb-modern`) and in a browser (`build/web/`, headless Chromium through
   Playwright), and a save must survive a restart on both. Needs `libsdl2-dev`,
   `emscripten`, and Node with Playwright.
+- `make test-yards`: the Deep Yards' generator (`core/src/yard.c`, `docs/deep-yards.md`)
+  must build the same maps as the reference written from the doc (`tools/yards/yard.py`),
+  natively and on sim65; every map valid with every foe reachable; picks even and
+  independent.
 - `make test-waystation`: the Waystation website (`waystation/`, W1 in
   `docs/waystation-web.md`), in headless Chromium: a traveler made there has the Python
   reference's Passport and boards The Fare in the terminal; Travel Stamps land, points
   are spent and stats rolled as the references say (`tests/waystation/check_site.py`).
 
-Run all fourteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
-`make play-e18` plays chapter 1 of Eighteen Minutes. `make modern` builds the desktop game
-(`./build/apb-modern build/modern/the-fare`); `make web` builds the browser one (serve
-`build/web/`); `make waystation` builds the website (serve `build/waystation/`). The 6502
-test harness holds a 4 KB car, so keep each chapter of a covered Departure under that
-(`qsc.py build` prints the sizes).
+Run all fifteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+`make play-e18` plays chapter 1 of Eighteen Minutes; `make play-yards` the Deep Yards.
+`make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
+web` builds the browser one (serve `build/web/`); `make waystation` builds the website
+(serve `build/waystation/`). The 6502 test harness holds a 4 KB car, so keep each chapter of a covered Departure under that
+(`qsc.py build` prints the sizes). It has no room for the whole engine: `build/harness.sim`
+leaves out the Deep Yards, and `build/harness-yards.sim` the boarding desk, so the yards'
+cases board the built-in traveler (`SEED+LEVEL` makes it a veteran).
 
 ## Rules-core house rules
 

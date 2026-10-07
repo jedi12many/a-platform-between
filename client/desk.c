@@ -211,3 +211,31 @@ uint8_t apb_desk_pass(const apb_character *ch, uint16_t departure, apb_pass *out
         }
     }
 }
+
+uint16_t apb_desk_yard(uint16_t fresh)
+{
+    const char *p;
+    uint32_t v;
+    uint8_t n;
+
+    for (;;) {
+        hal_prompt("Which yard? Type a yard's number to go down one someone shared, or a "
+                   "blank line for a new one.");
+        hal_ask_line(lines[0], APB_DESK_TYPED);
+        if (lines[0][0] == '\0') {
+            return fresh;
+        }
+        /* Digits are the same in ASCII and PETSCII, so comparing with '0'..'9' is safe. */
+        v = 0;
+        n = 0;
+        for (p = lines[0]; *p; ++p) {
+            if (*p == ' ') continue;
+            if (*p < '0' || *p > '9' || ++n > 5) break;
+            v = v * 10 + (uint32_t)(*p - '0');
+        }
+        if (!*p && n && v <= 65535UL) {
+            return (uint16_t)v;
+        }
+        hal_prompt("A yard's number is a whole number from 0 to 65535. Type it again.");
+    }
+}

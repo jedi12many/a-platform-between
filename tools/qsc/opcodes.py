@@ -44,12 +44,14 @@ OPS = {
     "NOT":        (0x38, []),
     "CHECK":      (0x39, ["rating", "u8"]),
     "FIGHT":      (0x3A, ["enc", "u8"]),
+    "FIGHT_YARD": (0x3B, ["enc", "u8", "var"]),
     # changing state
     "SET":        (0x40, ["flag"]),
     "CLR":        (0x41, ["flag"]),
     "LET":        (0x42, ["var"]),
     "ADD":        (0x43, ["var", "u8"]),
     "SUB":        (0x44, ["var", "u8"]),
+    "PICK":       (0x45, ["var", "u8", "key", "u8"]),
     "GIVE":       (0x48, ["item"]),
     "TAKE":       (0x49, ["item"]),
     "XP":         (0x4A, ["u8"]),
@@ -60,7 +62,7 @@ OPS = {
 
 BY_CODE = {code: (name, operands) for name, (code, operands) in OPS.items()}
 
-WIDTH = {"u8": 1, "var": 1, "pic": 1, "rating": 1, "enc": 1,
+WIDTH = {"u8": 1, "var": 1, "key": 1, "pic": 1, "rating": 1, "enc": 1,
          "u16": 2, "s16": 2, "addr": 2, "scene": 2, "str": 2, "flag": 2, "item": 2,
          "echo": 2}
 
@@ -77,6 +79,10 @@ MAX_OPTIONS = 9
 MAX_CAR = 6144          # a C64 holds one car at a time (docs/c64.md)
 MAX_DEPOT = 4096                # vm/apb_vm.h, APB_VM_DEPOT_MAX
 MAX_ENCOUNTERS = 32
+NO_KEY = 0xFF                   # PICK with no 'on VAR'
+MAX_PICKS = 255                 # salts 0..254 (255 is the yard maps')
+YARD_DEPOT_MAX = 2048 - 2 - 210 - 104   # room after the depot for a floor's map and its work
+KINDS = {"official": 0, "branch": 1, "siding": 2}
 MAP_TILES = ".#O~+^=>"          # tile codes 0..7, in order (core/include/apb.h, APB_TILE_*)
 ENCOUNTER_FOE_BYTES = 18        # x, y, then 16 numbers (docs/vm-spec.md)
 FOE_NAME_MAX = 20               # each foe's display name, after the numbers
@@ -91,4 +97,5 @@ TXT_CLASS = 0x03
 TXT_DEBT = 0x04
 TXT_VAR = 0x05              # followed by the variable's index + 1 (never 0x00)
 TXT_LEVEL = 0x06
+TXT_YARD = 0x07             # the yard number (docs/deep-yards.md)
 TXT_NEWLINE = 0x0A

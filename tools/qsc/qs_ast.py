@@ -137,6 +137,7 @@ class Fight:
     surprise: int         # 0 none, 1 ambush (foes first), 2 sneak (travelers first)
     outcomes: dict        # 'won' | 'lost' | 'fled' -> [Stmt]
     line: int
+    floor: Optional[str] = None   # `fight yard POOL on VAR`: the variable holding the floor
 
 
 Stmt = Union[Text, Command, Goto, If, Check, Fight]
@@ -149,6 +150,7 @@ class Map:
     rows: List[str]
     foes: dict            # letter -> foe name in the bestiary
     line: int
+    yard: bool = False    # a Deep Yards pool (docs/deep-yards.md): foes for generated maps
 
 
 @dataclass

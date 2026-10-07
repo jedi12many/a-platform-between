@@ -1,0 +1,25 @@
+=== The Deep Yards
+[picture 0 yards]
+At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft that goes down further than the Waystation does. A brass plate on the gate says YARD 3910. Someone has scratched a number under it: 10.
+The operator, a man made mostly of rust and patience, doesn't look up. "Ten floors," he says. "Every one a different place. Come back up when you like. If you can."
+  1) Step into the cage
+  2) Not today
+> 1
+The cage grinds down and stops. Floor 1.
+A cathedral of bone where trains are worshipped. A choir hums the timetable.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A wagon with its doors sealed
+  2) Take the stairs down
+  3) Ride the cage back up
+> 1
+The wagon's seal is old. It gives with a sigh.
+A medic's scanner, still blinking.
+The cage grinds down and stops. Floor 1.
+A cathedral of bone where trains are worshipped. A choir hums the timetable.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) Take the stairs down
+  2) Ride the cage back up
+> 2
+The cage rattles up through the floors you've seen. At the top, the operator nods. "Floor 1. Not bad. The yard'll keep."
+[receipt: departure 1000, complete, xp 0, debt paid 0 added 0, gained 3, lost, echoes]
+[level 3, xp 0, debt 0]
