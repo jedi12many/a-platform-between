@@ -84,7 +84,7 @@ build/the-fare.d64: build/c64/apb.prg content/s1/00-the-fare/the-fare.qs tools/d
 	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/fare-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
-# Eighteen Minutes, chapter 1 (milestone E5), on a disk of its own, the same way.
+# Eighteen Minutes (Departure 01), on a disk of its own, the same way.
 E18_PICS := $(wildcard content/s1/01-eighteen-minutes/pictures/*.png)
 
 build/eighteen-minutes.d64: build/c64/apb.prg content/s1/01-eighteen-minutes/eighteen-minutes.qs \
@@ -116,8 +116,8 @@ build/deep-yards.d64: build/c64/apb.prg content/sidings/deep-yards/deep-yards.qs
 # (py65) with the KERNAL answered in Python (tests/c64/run_c64.py). The overlays must
 # never reach into each other; The Fare's edge route must match its reviewed transcript
 # and give the same Travel Stamp as the terminal; a fight, a save to disk and a resume
-# after switching off must match theirs; Eighteen Minutes' first loop must match its
-# own; and nothing may pass 40 columns.
+# after switching off must match theirs; a trip through all of Eighteen Minutes must
+# match its own; and nothing may pass 40 columns.
 test-c64: build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yards.d64 build/apb build/the-fare.apd
 	python3 fe/c64/check_overlays.py build/c64/apb.dbg
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg tests/c64/fare-edge.choices > build/c64-fare-edge.txt

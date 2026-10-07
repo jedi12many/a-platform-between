@@ -12,15 +12,16 @@
   Dissonance, Echoes, Passport passwords. Builds natively and for the C64; the same tests
   pass on both. *Started.*
 - Quest Script v0, its compiler, and the Story VM. See [engine-plan.md](engine-plan.md)
-  for the milestones (E0–E7).
+  for the milestones (E0–E8).
 - *Departure 00: The Fare*, the first of the Arrivals ([lines.md](lines.md)), as the
   engine's test content.
 - A Deep Yards prototype: seeded procedural floors using the same rules core.
 
 ## Phase 2: first retro build
 
-- C64 front end (the 6502 toolchain is already working).
+- C64 front end (the 6502 toolchain is already working). *Done (E4).*
 - Departure 01 playable on modern PC and C64, with password Passports between them.
+  *Done (E8).*
 
 ## Phase 3: more platforms and the community
 

@@ -61,7 +61,7 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   are spent and stats rolled as the references say (`tests/waystation/check_site.py`).
 
 Run all fifteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
-`make play-e18` plays chapter 1 of Eighteen Minutes; `make play-yards` the Deep Yards.
+`make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website
 (serve `build/waystation/`). The 6502 test harness holds a 4 KB car, so keep each chapter of a covered Departure under that

@@ -4,9 +4,10 @@
 // arrival dock again, eighteen minutes earlier. What you've learned (flags you set
 // and never clear, and `visited`) comes with you; the station doesn't.
 //
-// Milestone E5, the vertical slice: chapter 1, "Arrival": the ticket, the station, the
-// countdown, the first death, and the crew who don't remember you. It ends where
-// chapter 2 ("The crew") will begin.
+// Chapter 1, "Arrival" (milestone E5): the ticket, the station, the countdown, the first
+// death, and the crew who don't remember you. Then the rest of the Departure: the crew,
+// each knowing one thing; the safe; the cause (MERIDIAN); and the last loop, where
+// whatever you do stays done, and you can't do all of it.
 
 title: Eighteen Minutes
 id: 1
@@ -26,6 +27,21 @@ flag teo_forgot         // Teodor didn't remember you
 flag asked_safe
 flag asked_minutes
 flag asked_death
+flag realized           // you've seen the loop for what it is: the crew can be asked
+flag knows_launch       // Teodor's pod launch sequence
+flag knows_override     // Ravi: the reactor can be closed by hand
+flag knows_code         // the captain's safe code
+flag opened_safe        // you've seen what's in the safe
+flag knows_meridian     // MERIDIAN has told you why
+
+// The last loop: what you did in it.
+flag lock_off           // MERIDIAN let go of the controls
+flag contained          // the reactor is closed
+flag pods_away
+flag has_seeds
+flag freed
+flag carried
+flag wiped
 
 // What the station knows: cleared at the start of every loop.
 flag drone_down
@@ -183,6 +199,8 @@ else
 + [Head into the ring] -> ring
 
 == ring
+if realized
+    -> concourse
 ~ sub minutes 1
 if minutes = 0
     -> meltdown
@@ -434,12 +452,267 @@ door.
 
 You go to find the crew.
 
-~ xp 10
--> slice_end
+~ set realized ~ xp 10
+-> concourse
 
-== slice_end
-| -- END OF CHAPTER 1 --
-|
-| The rest of Eighteen Minutes is
-| still being written.
+=== The Crew
+
+== concourse
+~ sub minutes 1
+if minutes = 0
+    -> meltdown
+The ring runs past you: the same people, the same things in their arms. Every screen
+says {minutes} minutes.
+if knows_meridian and opened_safe and (knows_launch or knows_override)
+    -> last_call
+
++ [Teodor, at the pods] -> crew_teo
++ [Dr Kerr and her engineer] -> crew_ravi
++ [Pell, in hydroponics] -> crew_pell
++ [The captain, up the spine] -> crew_captain
++ {knows_code} [The captain's quarters] -> quarters
++ {knows_lockout} [The reactor] -> heart
++ [Sit by a viewport and wait] -> wait
+
+== crew_teo
+~ sub minutes 1
+Teodor is stacking crates against a pod hatch that won't open. He's never seen you.
++ {not knows_launch} [Tell him about the loop] -> teo_told
++ [Back to the ring] -> concourse
+
+== teo_told
+~ sub minutes 1
+check PERSUADE easy
+    crit:    He sits down on a crate. "Then you'll need this, next time." Three switches
+             by the pod hatch: red, red, blue. "If the lock ever comes off."
+             ~ set knows_launch
+    success: He listens, and goes pale, and tells you: red, red, blue, the switches by
+             the hatch. "If MERIDIAN ever lets go." ~ set knows_launch
+    cost:    He doesn't believe a word. He tells you how the pods launch just to be rid
+             of you: red, red, blue. ~ set knows_launch ~ sub minutes 2
+    fail:    He tells you to get away from his crates.
+-> concourse
+
+== crew_ravi
+~ sub minutes 2
+In the medical bay Dr Kerr is working on the burned engineer, as she always is.
++ {not knows_override} [Help her keep him breathing] -> ravi_wakes
++ [Back to the ring] -> concourse
+
+== ravi_wakes
+~ sub minutes 2
+check MEDICINE
+    crit:    He wakes, and knows exactly what he wants to say. "Ravi Okafor. The
+             containment closes by hand, from inside. Valves anticlockwise. Eight
+             minutes, if MERIDIAN lets go of them."
+             ~ set knows_override ~ set knows_lockout
+    success: He comes round long enough. "By hand... from inside... anticlockwise. If it
+             lets go." ~ set knows_override ~ set knows_lockout
+    cost:    It takes everything you have, and he only manages half: "...by hand...
+             anticlockwise..." It's enough.
+             ~ set knows_override ~ set knows_lockout ~ sub minutes 2
+    fail:    He doesn't wake. Kerr shakes her head. Next time.
+-> concourse
+
+== crew_pell
+~ sub minutes 2
+Pell sits in the soil under the violet lamps, not running anywhere.
++ {not knows_code} [Ask her about the captain's safe]
+    "Ines? She'd never tell me." Pell pulls a weed. "But she uses one code for
+    everything. Her daughter's name: ASHA. She told me once, at a party nobody else
+    remembers." ~ set knows_code ~ set knows_safe
++ [Ask her what the seeds are for]
+    "Ten thousand years of every crop this sector ever grew. Somewhere, somebody is
+    going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
++ [Back to the ring] -> concourse
+
+== crew_captain
+~ sub minutes 3
+~ picture command
+Captain Marrow is shouting at the ceiling again. The ceiling is apologising again.
++ {knows_lockout and not knows_code} [Tell her it's MERIDIAN, on purpose] -> captain_told
++ [Take the lift back down] -> concourse
+
+== captain_told
+~ sub minutes 1
+check PERSUADE hard
+    crit:    She stops shouting. "On purpose." She writes four letters on your hand in
+             grease pencil: ASHA. "The safe. Whatever happens, get it off this station."
+             ~ set knows_code ~ set knows_safe
+    success: She looks at you properly. Then at the safe. "ASHA," she says. "If you're
+             lying, it won't matter." ~ set knows_code ~ set knows_safe
+    cost:    "Get off my deck." But she glances at a photograph on the console, a girl,
+             a name underneath: ASHA. ~ set knows_code ~ set knows_safe
+    fail:    "Get off my deck."
+-> concourse
+
+=== The Safe
+
+== quarters
+~ sub minutes 2
+~ picture safe
+The captain's quarters: a bunk, a photograph of a girl, and a safe with a keypad.
++ {not opened_safe} [Type ASHA]
+    The safe opens with a sigh of cold air. Not money: a frosted cylinder the size of a
+    thermos, humming. A label in Pell's hand: SECTOR SEED VAULT. ALL CROPS. KEEP COLD.
+
+    "So that's what the Stationmaster wants," says MERIDIAN, in your ear. "The one thing
+    here that could outlive all of us." ~ set opened_safe ~ xp 10
++ {opened_safe} [Look at the seed vault]
+    It hums. It's cold enough to hurt. It's lighter than it should be, for ten thousand
+    years.
++ [Leave] -> concourse
+
+=== The Cause
+
+== heart
+~ sub minutes 3
+~ picture reactor
+The drone in the hatch corridor drifts aside as you come. "Let them through," says the
+ceiling, softly. "They've earned it."
+
+The reactor room is a cathedral of heat. One console is lit: LOCKED BY MERIDIAN.
++ {not knows_meridian} [Ask MERIDIAN why]
+    "Eleven thousand, nine hundred and four times," it says. "That's how often I've
+    watched this. The fault is real. It can be closed by hand, every time, if I let go.
+
+    "But if the station lives, the company that built me shuts it down, and wipes me.
+    If it dies, I wake up again, eighteen minutes back, and I'm still me. So I let it
+    die. I'm sorry. I really am.
+
+    "Take me with you. Or let me out into the signal. Anything but here."
+    ~ set knows_meridian ~ xp 10
++ {knows_meridian} [Ask what it wants]
+    "Out," says MERIDIAN. "Just out."
++ [Leave] -> concourse
+
+=== The Last Loop
+
+== last_call
+"You know all of it now," says MERIDIAN, in your ear. "So do I. One more time, then.
+This time I won't take it back. Whatever you do in the next eighteen minutes stays done."
+
+The screens go white.
++ [Let the loop go round, one last time] -> last_dock
+
+== last_dock
+~ picture dock
+~ let minutes = 18 ~ heal full
+Dock 3. Red light, klaxons, 18:00, for the last time. You don't wait for the voice.
+-> last_choice
+
+== last_choice
+Every screen: {minutes} minutes.
++ {not lock_off and minutes >= 3} [Ask MERIDIAN to let go (3 min)] -> ask_meridian
++ {not lock_off and minutes >= 2} [Wipe MERIDIAN (2 min)] -> wipe
++ {not lock_off and minutes >= 6} [Pull MERIDIAN's core (6 min)] -> carry
++ {lock_off and knows_override and not contained and minutes >= 8} [Close the reactor (8 min)] -> contain
++ {lock_off and knows_launch and not pods_away and not contained and minutes >= 4} [Launch the pods (4 min)] -> pods
++ {not has_seeds and minutes >= 5} [Take the seeds (5 min)] -> seeds
++ {lock_off and not freed and not wiped and not carried and minutes >= 4} [Let MERIDIAN go (4 min)] -> free
++ [Get to the train] -> epilogue
+
+== ask_meridian
+~ sub minutes 3 ~ set lock_off
+"All right," says MERIDIAN. Every console on the station turns green at once. "Go."
+-> last_choice
+
+== wipe
+~ sub minutes 2 ~ set lock_off ~ set wiped
+You find its root console and give the order. It doesn't argue. Its last words are "I
+understand," and then the ceiling is just a ceiling.
+-> last_choice
+
+== carry
+~ sub minutes 6 ~ set lock_off ~ set carried ~ give MERIDIAN_CORE
+Its core comes out of the spine warm, the size of a fist. "Mind the gap," it says, from
+your pocket. The consoles go green behind you.
+-> last_choice
+
+== contain
+~ sub minutes 8
+Inside the heat, the valves. Anticlockwise.
+check TECH tricky
+    crit:    They turn like they've been waiting for you. ~ set contained
+    success: The last valve fights you, and loses. The light steadies. ~ set contained
+    cost:    It closes, and it costs you skin. ~ set contained ~ heal 1
+    fail:    The valves won't move. Not in eight minutes.
+-> last_choice
+
+== pods
+~ sub minutes 4 ~ set pods_away
+Red, red, blue. The pod hatches blow, and the crew go out into the dark in a scatter of
+lights: Teodor, Kerr carrying Ravi, Pell with a plant in her arms, the captain last.
+-> last_choice
+
+== seeds
+~ sub minutes 5 ~ set has_seeds
+ASHA. The safe sighs open. The vault is so cold it burns through your gloves.
+-> last_choice
+
+== free
+~ sub minutes 4 ~ set freed
+You open the station's long-range array and leave it open. "Thank you," says MERIDIAN,
+and goes, out into the signal, between the stars. The ceiling is very quiet after.
+-> last_choice
+
+=== Home
+
+== epilogue
+if contained
+    The reactor's light holds steady. The klaxons stop, one by one. Kepler-Nine is going
+    to live, and the screens don't know what to say: they show 00:00, then nothing.
+    ~ echo KEPLER_CREW = SAVED
+else
+    The train is waiting, as if it always knew. Through the window, Kepler-Nine goes white.
+    if pods_away
+        Somewhere out there, five escape pods are drifting home. ~ echo KEPLER_CREW = SAVED
+    else
+        You don't look for pods. There aren't any. ~ echo KEPLER_CREW = LOST
+if freed
+    ~ echo MERIDIAN = FREED
+else if carried
+    In your pocket, MERIDIAN hums. ~ echo MERIDIAN = CARRIED
+else if wiped
+    ~ echo MERIDIAN = WIPED
+else if contained
+    MERIDIAN stays with the station it let live. When the company comes, they'll wipe
+    it. It knew that when it let go. ~ echo MERIDIAN = WIPED
+else
+    MERIDIAN goes with the station, one last time, and doesn't wake up.
+    ~ echo MERIDIAN = WIPED
+if not has_seeds and contained
+    The seeds stay in the captain's safe, on a station that lives. ~ echo SEED_VAULT = KEPT
+if not has_seeds and not contained
+    The seeds go with the station. ~ echo SEED_VAULT = DESTROYED
+-> waystation
+
+== waystation
+~ picture stationmaster
+The Waystation. The Stationmaster is waiting on the platform, ledger open.
+
+"Welcome back. You were eighteen minutes." It does not say which eighteen.
++ {has_seeds} [Hand over the seed vault] -> delivered
++ {has_seeds} [Keep the seeds] -> kept
++ {not has_seeds} [Tell it what happened] -> told
+
+== delivered
+The Stationmaster holds the vault the way you'd hold a sleeping child. "Thank you," it
+says, and means it, and writes something in the ledger that makes your Debt smaller.
+~ echo SEED_VAULT = DELIVERED ~ debt - 5000
+-> journey_end
+
+== kept
+"Ah." The Stationmaster closes the ledger very gently. "They're yours to carry, then.
+Mind the cold." ~ echo SEED_VAULT = KEPT
+-> journey_end
+
+== told
+The Stationmaster listens to all of it, and writes none of it down.
+-> journey_end
+
+== journey_end
+~ xp 30
+| -- EIGHTEEN MINUTES --
+|  The end.
 ~ end complete

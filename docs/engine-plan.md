@@ -240,9 +240,10 @@ Each one ends with something playable or testable.
 | **E6** | **Modern front end**: SDL2 desktop and browser builds | *The Fare* and the slice playable in a browser |
 | **W1** | **The Waystation, static site**: creator, Passport editing and level-ups, tabletop sheets, with the rules core as WebAssembly. Can start any time after E1. See [waystation-web.md](waystation-web.md). | A character made in the browser boards *The Fare* in the terminal |
 | **E7** | **Deep Yards prototype**: seeded procedural floors | A 10-floor descent playable on terminal and C64 |
+| **E8** | **Departure 01, whole**: *Eighteen Minutes*, chapters 2–5 and its Echoes | Playable start to end on terminal, C64, desktop and browser |
 
-After E7: the browser Workshop for community authors, Apple II, DOS, Amiga and SNES
-front ends, the full Departure 01, party support.
+After E8: the browser Workshop for community authors, Apple II, DOS, Amiga and SNES
+front ends, party support.
 
 ### E1 in detail
 
@@ -432,6 +433,39 @@ disk, and the desktop and the browser play the same yard to the same transcript.
 
 *Not yet:* Translation per floor (it needs the VM to carry a realm), daily yards with
 leaderboards (W2), and party yards.
+
+### E8 in detail
+
+**Goal:** all of *Eighteen Minutes* ([01-eighteen-minutes.md](departures/01-eighteen-minutes.md)),
+the first Departure of Platform 1, playable from the ticket to the Stationmaster's ledger
+on every front end, planting its three Echoes.
+
+*Done:* five more chapters in `content/s1/01-eighteen-minutes/eighteen-minutes.qs`, and
+no engine changes: everything it needed, Quest Script already had.
+
+- **The crew.** After chapter 1, the ring becomes a concourse. Four of the crew know one
+  thing each: Teodor the pod launch, Ravi the manual override, and Pell and the captain
+  the safe's code. A failed check costs minutes, so a try can always wait for another
+  loop.
+- **The safe and the cause.** The code opens the seed vault, and in the reactor room
+  MERIDIAN says why it lets the station die.
+- **The last loop.** When you know enough, MERIDIAN agrees to one loop that stays done:
+  eighteen minutes, and seven acts with prices. Closing the reactor, launching the pods,
+  taking the seeds and MERIDIAN's fate (let go, wiped, or carried out as
+  `MERIDIAN_CORE`) don't all fit.
+- **The Echoes.** `MERIDIAN`, `KEPLER_CREW` and `SEED_VAULT` are planted from what you
+  did, and handing the seeds to the Stationmaster takes 5,000 off your Debt.
+- **Nine chapters.** The largest car is still 3.7 KB (chapter 1's station). Two more
+  placeholder pictures: the safe, and the Stationmaster from The Fare.
+- **Tests.** Eleven playthroughs run every instruction (1,085, from 544), every one to the
+  end, on PC and 6502, saved and resumed at every menu. Each starts with one of chapter
+  1's routes, and a random search found the rest of the way; it prefers choices it
+  hasn't made, which keeps the trips short. On the C64 (and on the desktop and in the
+  browser, to the same transcript) the test route now plays the whole Departure: the
+  pods launched, the seeds taken, MERIDIAN let go, and the seeds handed over.
+
+*Not yet:* real art. A Boarding Pass for the C64 route, so its Travel Stamp can be
+compared with the terminal's as The Fare's is.
 
 ### Departure 00: The Fare
 
