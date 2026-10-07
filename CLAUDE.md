@@ -12,7 +12,9 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   `build/eighteen-minutes.d64` and `build/deep-yards.d64` (`LOAD"APB",8` in VICE; see
   `docs/c64.md`).
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
-  C engine's password; the registry and Quest Script parser tests must pass.
+  C engine's password; the registry and Quest Script parser tests must pass; and every
+  picture in `content/` must come through the C64's rules unchanged
+  (`tools/test_pictures.py`; needs Pillow and numpy).
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
 - `make check-content`: every `.qs` file in `content/` must compile to an image the
   verifier accepts.

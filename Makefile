@@ -165,6 +165,7 @@ test-python: build/demo
 	python3 tools/registry/test_registry.py
 	python3 tools/qsc/test_qsc.py
 	python3 tools/qsc/test_build.py
+	python3 tools/test_pictures.py
 
 # Regenerate the C registry from registry/*.txt after editing them.
 registry:
