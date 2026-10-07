@@ -1,5 +1,3 @@
-A PLATFORM BETWEEN
-
 1. Board
 2. Pick up a saved trip
 > 1
@@ -33,6 +31,7 @@ trip can be stamped.
 
 - The Static -
 
+[picture pic00]
 Static.
 
 Not the sound. The feeling: every part
@@ -43,11 +42,11 @@ Then a hand. It reaches through the end
 of everything, takes hold of whatever is
 left of you, and pulls.
 
-Kestrel  Lvl 1  HP 27/27  Debt 0
 1. Let it
 2. Fight it
 > 1
 
+[picture pic01]
 You are sitting on a wooden bench, and
 you are breathing, and both of those
 things are wrong.
@@ -64,7 +63,6 @@ ARRIVALS -- ALL LINES
 You remember dying. You remember it very
 clearly.
 
-Kestrel  Lvl 1  HP 27/27  Debt 0
 1. Remember it
 > 1
 
@@ -79,7 +77,6 @@ still technically correct about that.
 Then what you were doing, when it
 happened.
 
-Kestrel  Lvl 1  HP 27/27  Debt 0
 1. Remember the rest
 > 1
 
@@ -99,12 +96,12 @@ The bench creaks. Somewhere down the
 platform, a train whistle sounds,
 mournful and far away.
 
-Kestrel  Lvl 1  HP 27/27  Debt 0
 1. Stand up
 > 1
 
 - The Buffer Stop -
 
+[picture pic02]
 The platform opens into a great hall.
 Iron arches, a tiled floor worn into
 paths by more feet than you can imagine,
@@ -117,7 +114,6 @@ a doorway under a painted sign: a rail
 track ending in a cheerful red barrier.
 THE BUFFER STOP.
 
-Kestrel  Lvl 1  HP 27/27  Debt 0
 1. Read the departure board
 2. Walk back to the platform edge
 3. Go into the Buffer Stop
@@ -144,7 +140,6 @@ pairs of eyes, red as banked coals: ash
 rats, nesting in a trunk, and they don't
 like visitors.
 
-Kestrel  Lvl 1  HP 27/27  Debt 0
 1. Drive them out
 2. Creep in for the hook
 3. Leave them to it
@@ -275,35 +270,32 @@ careful hand as the Stationmaster's
 ledger, your name writes itself in its
 place.
 
+[picture pic02]
 The great hall. The board clatters. The
 Buffer Stop glows.
 
-Kestrel  Lvl 1  HP 15/27  Debt 0
 1. Read the departure board
 2. Walk back to the platform edge
 3. Go into the Buffer Stop
 > s
 Saved.
-Kestrel  Lvl 1  HP 15/27  Debt 0
 1. Read the departure board
 2. Walk back to the platform edge
 3. Go into the Buffer Stop
 [end of input]
 [switched off and on again]
-A PLATFORM BETWEEN
-
 1. Board
 2. Pick up a saved trip
 > 2
 
 Picking up where you left off.
 
-Kestrel  Lvl 1  HP 15/27  Debt 0
 1. Read the departure board
 2. Walk back to the platform edge
 3. Go into the Buffer Stop
 > 3
 
+[picture pic03]
 The Buffer Stop is warm, and crowded,
 and wrong in a dozen small ways that add
 up to cozy. A knight in rusted plate is
@@ -323,12 +315,12 @@ lies closed on the table in front of it.
 It is watching you the way a
 stationmaster watches a clock.
 
-Kestrel  Lvl 1  HP 15/27  Debt 0
 1. Talk to the bartender
 2. Ask Fen where you are
 3. Go to the corner booth
 > 3
 
+[picture pic04]
 The figure in the velvet coat rises as
 you approach. It is very tall. Its face
 is a polite arrangement of shadow, and
@@ -347,7 +339,6 @@ name, and stopped halfway.
 paperwork," says the Stationmaster.
 "Would you mind?"
 
-Kestrel  Lvl 1  HP 15/27  Debt 0
 1. Say your name
 > 1
 
@@ -365,7 +356,6 @@ large number.
 "50000," says the Stationmaster, kindly.
 "Your fare."
 
-Kestrel  Lvl 1  HP 15/27  Debt 50000
 1. Listen
 > 1
 
@@ -379,7 +369,6 @@ small change."
 
 "You'll survive."
 
-Kestrel  Lvl 1  HP 15/27  Debt 50000
 1. Ask who it is
 2. Ask what happens if you refuse
 3. Accept the terms

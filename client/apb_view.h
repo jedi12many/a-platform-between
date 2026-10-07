@@ -20,6 +20,8 @@
 void    apb_view_out(const char *ascii, uint8_t wrap);  /* a line; wrap: word-wrap it */
 uint8_t apb_view_pick(uint8_t count);   /* ask for 1..count; returns 0..count-1     */
 uint8_t apb_view_go_on(void);           /* on quick: 1 to go on, 0 to take over      */
+void    apb_view_fight(uint8_t on);     /* a fight starts (1) or ends (0): room for the
+                                           map (the C64 puts its picture away)        */
 
 /* "Kestrel  Lvl 1  HP 27/27  Debt 0" */
 void apb_view_status(char *out, const apb_character *ch, uint8_t health);

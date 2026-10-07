@@ -38,10 +38,11 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   re-checked, and random battles must never crash under the sanitizers.
   `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff.
 - `make test-c64`: the C64 program from the `.d64` must play The Fare on a 6502 emulator
-  (py65: `pip install py65`) with the KERNAL answered in Python
-  (`tests/c64/run_c64.py`): transcripts match `tests/c64/*.expected`, the Travel Stamp is
-  the terminal's, a save survives switching off; and no overlay may use another's code
-  or data (`fe/c64/check_overlays.py`).
+  (py65: `pip install py65`; the disk's pictures need Pillow) with the KERNAL answered
+  in Python (`tests/c64/run_c64.py`): transcripts match `tests/c64/*.expected`, the
+  Travel Stamp is the terminal's, a save survives switching off, the C stack stays
+  under 384 bytes; and no overlay may use another's code or data
+  (`fe/c64/check_overlays.py`). `--shots DIR` saves pictures of the screen to look at.
 
 Run all twelve before pushing; CI runs them too. `make play` plays The Fare in a terminal.
 
