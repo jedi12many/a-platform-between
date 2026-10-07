@@ -90,7 +90,21 @@ def fitting():
             check(Image.open(out).size == (c64pic.W, c64pic.H), "c64fit: wrong size")
             check(changed == 0 and distinct <= 256,
                   f"c64fit --dither {dither}: the C64 changes {changed} pixels ({distinct} cells)")
-    print("ok  c64fit makes a soft painting into a picture the C64 shows unchanged")
+        # Busy art (noise everywhere, like an image model's dithering) needs more than 256
+        # different cells: the fitter must merge them, and keep a light grey grey.
+        rng = __import__("random").Random(3)
+        busy = Image.new("RGB", (1600, 900))
+        busy.putdata([(v, v, v) for v in (rng.choice((40, 70, 120, 200)) for _ in range(1600 * 900))])
+        ImageDraw.Draw(busy).rectangle((0, 300, 1600, 420), fill=(200, 200, 200))
+        busy.save(src)
+        c64fit.fit(src, out, "none", None, [0, 0.1, 1, 0.9])
+        changed, distinct = paint.check(out)
+        check(changed == 0 and distinct <= 256,
+              f"c64fit on busy art: the C64 changes {changed} pixels ({distinct} cells)")
+        greys = {c64pic.PALETTE[i] for i in (0, 1, 11, 12, 15)}
+        band = {Image.open(out).getpixel((x, 38)) for x in range(0, 160, 7)}
+        check(band <= greys, f"c64fit: a light grey band came out in colour {band - greys}")
+    print("ok  c64fit makes a soft painting, and busy art, into pictures the C64 shows unchanged")
 
 
 def main():
