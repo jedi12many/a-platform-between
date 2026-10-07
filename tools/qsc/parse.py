@@ -781,7 +781,11 @@ class Parser:
     def parse_fight(self, ln, kids):
         words = ln.text.split()
         name, surprise, floor = None, 0, None
-        in_yard = len(words) >= 2 and words[1] == "yard"
+        # `fight yard POOL on VAR`; but `fight yard` alone, or `fight yard ambush`, is an
+        # ordinary map that happens to be called yard.
+        in_yard = (len(words) >= 3 and words[1] == "yard"
+                   and ("on" in words or (words[2] in self.dep.maps
+                                          and self.dep.maps[words[2]].yard)))
         if in_yard:
             # fight yard POOL on VAR [ambush|sneak]
             if len(words) not in (5, 6) or words[3] != "on":

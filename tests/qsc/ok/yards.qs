@@ -11,6 +11,11 @@ var floor = 1
 var room = 0
 var mood = 0
 
+// An ordinary map may still be called yard: `fight yard` alone is a fight on it.
+map yard
+    @.a
+    a = ASH_RAT
+
 yard pit
     ASH_RAT
     RUST_GUARD, MAINT_DRONE
@@ -21,6 +26,7 @@ Yard {yard}, floor {floor}.
 if room = 1
     A quiet room.
 + [Fight] -> brawl
++ [Spar] -> spar
 + [Leave] -> out
 
 == brawl
@@ -28,6 +34,12 @@ fight yard pit on floor ambush
     won:  Won. ~ add floor 1 -> down
     fled: Fled. -> down
     lost: Lost. -> out
+
+== spar
+fight yard
+    won: -> down
+    fled: -> down
+    lost: -> out
 
 == out
 ~ xp 5

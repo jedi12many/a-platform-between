@@ -8,8 +8,9 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-6502`: the same tests on the sim65 6502 simulator. Needs cc65
   (`apt-get install cc65`).
 - `make crosscheck`: the demo's native and 6502 output must be byte-identical.
-- `make c64`: build `build/demo.prg` and the C64 disks, `build/the-fare.d64` and
-  `build/eighteen-minutes.d64` (`LOAD"APB",8` in VICE; see `docs/c64.md`).
+- `make c64`: build `build/demo.prg` and the C64 disks, `build/the-fare.d64`,
+  `build/eighteen-minutes.d64` and `build/deep-yards.d64` (`LOAD"APB",8` in VICE; see
+  `docs/c64.md`).
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
   C engine's password; the registry and Quest Script parser tests must pass.
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
@@ -38,8 +39,8 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   in `core/src/battle.c`) must match their reviewed logs on both, with every roll
   re-checked, and random battles must never crash under the sanitizers.
   `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff.
-- `make test-c64`: the C64 program from the `.d64` must play The Fare and Eighteen
-  Minutes on a 6502 emulator
+- `make test-c64`: the C64 program from the `.d64` must play The Fare, Eighteen Minutes
+  and the Deep Yards on a 6502 emulator
   (py65: `pip install py65`; the disk's pictures need Pillow) with the KERNAL answered
   in Python (`tests/c64/run_c64.py`): transcripts match `tests/c64/*.expected`, the
   Travel Stamp is the terminal's, a save survives switching off, the C stack stays
