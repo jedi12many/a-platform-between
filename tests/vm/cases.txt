@@ -31,6 +31,8 @@ fare-hook-jump  content/s1/00-the-fare/the-fare.qs              1     1,1,1,1,4,
 fare-hook-lost  content/s1/00-the-fare/the-fare.qs              22    1,1,1,1,4,1,1.2.4.0,1.2.4.0,4,2,4,2,1.2.4.0,1.2.4.0,4,3,3,3,1,1,3
 # Rewards pay once: the bell is rung three times, but pays 10 XP and one stub.
 loop            tests/vm/loop.qs                                5     1,1,2
+# Clearing flags in the second byte (a cc65 miscompile, caught by Eighteen Minutes).
+flags           tests/vm/flags.qs                               1     1
 # Boarding Passes (seed '-': the desk asks for one, and it seeds the dice). Passes come
 # from tools/passport/boarding.py; the typo is that tool's pass for Kestrel with one
 # symbol changed (20W5QD0ECKC26800EW -> ...FW).
@@ -60,3 +62,16 @@ fight-flee      tests/vm/fights.qs                              5     1,0.0.3.0,
 # Quick (q): the computer plays Kestrel by the rule her rifle suggests (shoot), in the
 # alley ambush; she loses, and with no lost: branch the Departure ends.
 fight-quick     tests/vm/fights.qs                              7     3,q,q
+# Eighteen Minutes, chapter 1 (milestone E5): nine trips around the loop that, together,
+# run every instruction: every race's and class's Translation, every outcome of every
+# check, the drone fight won, fled and lost, and the first, second and later loops. Found
+# by a random search for routes that cover what the others don't (each ends the chapter).
+e18-prism       content/s1/01-eighteen-minutes/eighteen-minutes.qs 834   @prism,1,1,1,1,1,1,1,1,1,2,1,2,1,1,1,3,2,2,2,1,1,4,2,1,1,1,2,5,4,6,2,6,2,5,3,2,1,1,5,1,q,q,q,1,1,2,4,1,5,4,4,1,6,2,2,1,1,2,1,3,2,3,1,1,6,1,1,2,6,2,3,1,1,1,1
+e18-tick        content/s1/01-eighteen-minutes/eighteen-minutes.qs 1647  @tick,4,1,1,3,5,3,1,1,5,1,1,2,1,1,1,1,1,2,2,3,5,2,1,4,1,1,2,5,2,q,q,q,3,4,2,4,2,6,1,2,6,1,2,2,3,2,1,2,6,1,2,3,3,4,2,2,1,1,2,1,3,1,2,1,2,5,4,6,2,4,2,1,1,1
+e18-kestrel     content/s1/01-eighteen-minutes/eighteen-minutes.qs 2182  @kestrel,4,1,1,3,2,1,1,5,3,4,3,2,2,6,3,5,2,q,q,1,1,1,3,5,1,2,2,2,1,1,2,6,2,4,2
+e18-prism2      content/s1/01-eighteen-minutes/eighteen-minutes.qs 3823  @prism,1,3,1,1,3,5,3,0.1.3.0,6,2,3,2,2,2,5,3,2,0.1.3.0,2,2,4,2,2,3,3,3,2,1,1,3,1,2,6,3,6,1,1,1,1,1,2,4,1,1,5,2,0.1.3.0,5,3,1,1,1,2,1,1,2
+e18-fern        content/s1/01-eighteen-minutes/eighteen-minutes.qs 2882  @fern,2,3,1,1,1,1,1,2,3,2,2,5,3,6,2,3,2,4,2,1,1,3,1,1,2,3,5,1,q,q,q,1,1,1,2,2,3,2,3,1,1,2
+e18-ash         content/s1/01-eighteen-minutes/eighteen-minutes.qs 427   @ash,4,1,1,2,2,1,1,2,1,2,3,3,3,1,2,6,2,3,2,1,2,1,1,4,1,1,1
+e18-lumen       content/s1/01-eighteen-minutes/eighteen-minutes.qs 1423  @lumen,2,2,1,1,1,1,3,6,1,2,4,3,1,2,2
+e18-bolt        content/s1/01-eighteen-minutes/eighteen-minutes.qs 3520  @bolt,3,2,1,1,1,1,3,6,3,5,3,1,2,2,4,3
+e18-prism3      content/s1/01-eighteen-minutes/eighteen-minutes.qs 1350  @prism,4,1,1,3,5,2,1,1,1,1,1,1,1,3,1,2,3,1,1,1,1,2,2,2,3,2,1,2,1,2,3,1,6,2,3,4,4

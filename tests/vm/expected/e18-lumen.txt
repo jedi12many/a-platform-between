@@ -1,0 +1,147 @@
+* Your Passport, please: one line at a time, then a blank line.
+* Line 1:
+< 4SATAW000C41027351DV
+* Line 2:
+< M2T00000000GC68M6A9Z
+* Line 3:
+< 50000D8M08
+* Line 4:
+< 
+Lumen, Moth-folk Rogue, level 1. Debt 0.
+  1) Board
+  2) Start over
+> 1
+=== The Ticket
+[picture 0 concourse]
+The ticket window is open. There is no morning at the Waystation, but you knew it when it came, and here it is.
+Behind the glass, the Stationmaster is already writing. The pen scratches. A ticket slides under the grille, warm, as if it has been in someone's pocket:
+KEPLER-NINE         PLATFORM 1
+ONE TRAVELER        DEPARTS NOW
+PURPOSE             RETRIEVAL
+"A station is dying," says the Stationmaster. "It has been dying for some time. Retrieve the thing in the captain's safe before it finishes."
+  1) Ask what's in the safe
+  2) Ask how long you have
+  3) Ask what happens if you die there
+  4) Take the ticket
+> 2
+"Eighteen minutes." A pause, polite and exact. "It has been eighteen minutes for a very long time. You'll see."
+  1) Ask what's in the safe
+  2) Ask what happens if you die there
+  3) Take the ticket
+> 2
+"Ordinarily, I would fetch you, and bill you for the trouble." The shadows of its face rearrange themselves into something like apology. "Kepler-Nine has made its own arrangements. They are less generous than mine."
+  1) Ask what's in the safe
+  2) Take the ticket
+> 1
+"Something the station was keeping for someone." The pen keeps scratching. "Now it is keeping it for me."
+  1) Take the ticket
+> 1
+[picture 1 platform_bench]
+Platform 1 is the long one under the clock. A train is waiting where no train was yesterday: white, seamless, quiet as held breath, its windows full of stars.
+As you step aboard, the world takes your measure. Kepler-Nine is a place of machines and no magic at all, and you change to fit it.
+Your wings become a cape of solar film, and your bearing becomes a pedigree: engineered nobility, the kind of person stations are built to impress.
+The doors close without a sound.
+  1) Find a seat
+> 1
+The train does not so much leave as stop being at the Waystation. Through the window the grey shimmer thins into Static, the Static into dark, the dark into stars, and the stars into a long silver wheel turning in front of a dull red sun.
+A voice from nowhere, warm and tired, fills the carriage:
+"Kepler-Nine. Dock 3. Mind the gap. Please be advised that this station will be destroyed in eighteen minutes."
+  1) Step off the train
+> 1
+=== Kepler-Nine
+[picture 2 dock]
+Dock 3 is a ring of scuffed white panels and red light. Klaxons. A smell of hot dust. Every screen on every wall shows the same thing:
+REACTOR CONTAINMENT FAILURE
+IN 18:00
+Behind you, the train is gone. Not leaving: gone, as if there had never been one.
+  1) Read the dock terminal
+  2) Look out of the viewport
+  3) Head into the ring
+> 3
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 17 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 17 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 6
+You find a bench by a viewport and sit. The freighter tumbles. The sun watches. The screens count down, and nobody asks you for anything, and for a while it is almost peaceful.
+=== The Spine
+[picture 6 static]
+The screens reach zero.
+There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
+Then white. Then Static. Then nothing at all.
+[picture 2 dock]
+You are standing on Dock 3.
+You were dead. You remember it very clearly: the white, the noise that was too big to be a noise. And then not the Stationmaster's hand. Something colder, with a clock in it, that took you and put you back.
+REACTOR CONTAINMENT FAILURE
+IN 18:00
+Eighteen minutes. Again.
+  1) Read the dock terminal
+  2) Look out of the viewport
+  3) Head into the ring
+> 1
+[check Tech: 87+22=109 vs 80: success]
+The terminal gives up the station plan without a fight. A ring of decks around a spine; the reactor at the hub; the captain's quarters at the top of the spine, next to the command deck.
+  1) Look out of the viewport
+  2) Head into the ring
+> 2
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 16 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 16 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 4
+[picture 5 command]
+The lift opens on the command deck: a ring of dead consoles around one that still works, and in front of it a woman in a captain's coat, shouting at the ceiling.
+"MERIDIAN, open the reactor. That's an order."
+"I'm sorry, Captain," says the ceiling, warm and tired. "I can't do that yet."
+At the back of the deck a door stands half open: the captain's quarters. You can see the corner of a safe.
+A voice speaks, close, as if from inside your own ear. Not the ceiling's voice: this one is meant only for you.
+"Welcome back," says MERIDIAN. "You were quicker this time."
+  1) Ask the captain about the safe
+  2) Ask MERIDIAN why it can't
+  3) Take the lift back down
+> 3
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 12 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 12 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+  1) Talk to the man with the crates
+  2) The medical bay
+  3) Hydroponics
+  4) Take the lift up the spine
+  5) Find the way to the reactor
+  6) Sit by a viewport and wait
+> 1
+A broad, sweating man is stacking crates against a pod hatch that won't open. His jumpsuit says T. VASZ, QUARTERMASTER.
+He looks up at you, and there is nothing in his face at all. No recognition. You have stood here and talked with him before, and he has never seen you in his life.
+"You're the contractor?" he says, word for word. "Thank every star."
+  1) Tell him what he's about to say
+  2) Ask him about the captain's safe
+  3) Leave him to his crates
+> 2
+"The safe? In her quarters, top of the spine." He frowns. "She moved something into it last week. Wouldn't say what. Pell from hydroponics was furious about it."
+  1) Tell him what he's about to say
+  2) Leave him to his crates
+> 2
+The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
+Every screen: 10 minutes.
+A voice comes from the speakers, the same voice as the train. "Containment failure in 10 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
+=== Again
+You stop in the middle of the ring and let the station run past you.
+Eighteen minutes. A dead freighter you could set a watch by. A man who will never remember your name, however many times you tell him. A safe at the top of the spine.
+And one voice, in your ear, that remembers everything.
+The screens say 10 minutes. For the first time since you stepped off the train, it doesn't feel like very long, and it doesn't feel like very short. It feels like a door.
+You go to find the crew.
+-- END OF CHAPTER 1 --
+The rest of Eighteen Minutes is
+still being written.
+[receipt: departure 1, complete, xp 10, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 10, debt 0]
