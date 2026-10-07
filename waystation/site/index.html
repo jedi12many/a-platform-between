@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Waystation</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="station">
+  <div class="board">
+    <h1>The Waystation</h1>
+    <p>Arrivals, all lines. Make a traveler, look after them, and board a train with
+       their Passport.</p>
+  </div>
+  <nav aria-label="The Waystation">
+    <button class="tab" data-tab="create" aria-selected="true">Make a traveler</button>
+    <button class="tab" data-tab="passport">Your Passport</button>
+    <button class="tab" data-tab="sheet">Tabletop sheet</button>
+    <button class="tab" data-tab="stamp">Travel Stamp</button>
+  </nav>
+</header>
+
+<main>
+  <p id="loading" class="note">Waking the Stationmaster...</p>
+
+  <!-- ------------------------------------------------------------ create -->
+  <section id="create" class="panel" hidden>
+    <h2>Make a traveler</h2>
+    <form id="creator" autocomplete="off">
+      <div class="grid two">
+        <label>Name <small>(up to 8 letters)</small>
+          <input id="c-name" maxlength="8" required pattern="[A-Za-z0-9 ]+">
+        </label>
+        <label>Race
+          <select id="c-race"></select>
+        </label>
+        <label>Class
+          <select id="c-class"></select>
+        </label>
+        <label>One more tagged skill <small>(starts at 20, learns twice as fast)</small>
+          <select id="c-tag"></select>
+        </label>
+      </div>
+
+      <fieldset>
+        <legend>Stats</legend>
+        <div class="choice">
+          <label><input type="radio" name="c-mode" value="buy" checked> Buy them</label>
+          <label><input type="radio" name="c-mode" value="roll"> Roll them</label>
+        </div>
+        <p class="note" id="c-mode-note"></p>
+        <div id="c-roll" hidden>
+          <button type="button" id="c-roll-button">Roll a set</button>
+          <span id="c-rolls-left" class="note"></span>
+          <p class="note" id="c-rolled"></p>
+        </div>
+        <table class="stats" id="c-stats"></table>
+      </fieldset>
+
+      <div id="c-preview" class="preview" aria-live="polite"></div>
+      <p id="c-error" class="error" role="alert"></p>
+      <button type="submit" class="primary">Issue the Passport</button>
+    </form>
+  </section>
+
+  <!-- ---------------------------------------------------------- passport -->
+  <section id="passport" class="panel" hidden>
+    <h2>Your Passport</h2>
+    <label>Type or paste a Passport
+      <textarea id="p-text" rows="5" spellcheck="false" autocapitalize="characters"></textarea>
+    </label>
+    <button type="button" id="p-load">Read it</button>
+    <p id="p-error" class="error" role="alert"></p>
+    <div id="p-view" hidden>
+      <div id="p-summary" class="summary"></div>
+      <p class="note" id="p-points"></p>
+      <div class="grid two">
+        <table class="stats" id="p-stats"></table>
+        <table class="skills" id="p-skills"></table>
+      </div>
+      <h3>The Passport, as it is now</h3>
+      <p class="note">Type this in when you board a train. It changes whenever you spend
+         points or land a Travel Stamp, so take the new one with you.</p>
+      <pre id="p-out" class="password"></pre>
+      <button type="button" class="copy" data-copy="p-out">Copy</button>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------- sheet -->
+  <section id="sheet" class="panel" hidden>
+    <h2>Tabletop sheet</h2>
+    <p class="note no-print">Your traveler on paper, for Platform 0: everything a table needs,
+       worked out by the same rules the trains use. Read a Passport first.</p>
+    <button type="button" id="s-print" class="no-print">Print it</button>
+    <div id="s-sheet" class="sheet"></div>
+  </section>
+
+  <!-- ------------------------------------------------------------- stamp -->
+  <section id="stamp" class="panel" hidden>
+    <h2>Land a Travel Stamp</h2>
+    <p class="note">A train without a connection ends a trip with a Travel Stamp. Type it in
+       here and it's stamped into your Passport. This version of the Waystation keeps no
+       ledger of the tickets it issued, so it takes stamps on trust.</p>
+    <p id="t-who" class="note"></p>
+    <label>The Travel Stamp
+      <textarea id="t-text" rows="3" spellcheck="false" autocapitalize="characters"></textarea>
+    </label>
+    <label class="inline"><input type="checkbox" id="t-rewind"> This trip was a Rewind
+      (a Departure played before)</label>
+    <button type="button" id="t-apply">Stamp it</button>
+    <p id="t-error" class="error" role="alert"></p>
+    <div id="t-result" class="preview" aria-live="polite"></div>
+  </section>
+</main>
+
+<footer class="no-print">
+  <p>A Platform Between. The rules on this page are the game's own, compiled to WebAssembly.</p>
+</footer>
+
+<script src="app.js"></script>
+<script src="ws.js"></script>
+</body>
+</html>

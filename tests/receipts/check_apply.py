@@ -4,7 +4,9 @@ Random characters (made with tools/passport/passport.py, then aged: levels, debt
 Echoes) get random receipts. build/apply (core/src/receipt.c) and
 tools/passport/receipt.py must produce the same Passport and the same report, natively
 for every case and on sim65 for a sample. A few hand-worked cases pin the rules down. The C core's Travel Stamp
-of each receipt must match tools/passport/stamp.py's, and decode back to the receipt.
+of each receipt must match tools/passport/stamp.py's, and decode back to the receipt. And
+the C core's stamp decoder (apb_stamp_decode, for the Waystation) must read every stamp
+the reference writes the way the reference does, and refuse the same damaged ones.
 
     python3 tests/receipts/check_apply.py
 """
@@ -193,6 +195,57 @@ def two_overlapping():
         fail("overlapping receipts: the C core disagrees with the reference")
 
 
+def described(r):
+    """A receipt as build/apply decode prints it."""
+    return (f"departure {r['departure']} ticket {r['ticket']} outcome {r['outcome']} xp {r['xp']} "
+            f"paid {r['debt_paid']} added {r['debt_added']} gained {lst(r['gained'])} "
+            f"lost {lst(r['lost'])} echoes "
+            + (",".join(f"{e}:{s}:{w}" for e, s, w in r["echoes"]) or "-"))
+
+
+def decoded(binary, text):
+    cmd = (["sim65", binary] if binary.endswith(".sim") else [binary]) + ["decode", text]
+    return subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, timeout=120).stdout.strip()
+
+
+def stamps(rng, count, sample):
+    """Random receipts as stamps, whole and damaged: the C decoder against the reference."""
+    damaged = refused = 0
+    for i in range(count):
+        ch = random_character(rng)
+        r = as_stamped(random_receipt(rng, ch))
+        r.update(departure=rng.randrange(65536), ticket=rng.randrange(1 << 32),
+                 outcome=rng.randrange(2))
+        text = stamp.encode(r)
+        tries = [text]
+        for _ in range(3):
+            pos = rng.randrange(len(text))
+            kind = rng.randrange(3)
+            if kind == 0:
+                bad = text[:pos] + rng.choice(passport.SYMBOLS) + text[pos + 1:]
+            elif kind == 1:
+                bad = text[:pos] + text[pos + 1:]
+            else:
+                bad = text[:pos] + rng.choice(passport.SYMBOLS) + text[pos:]
+            tries.append(bad)
+        for j, t in enumerate(tries):
+            try:
+                want = described(stamp.decode(t))
+            except passport.PassportError:
+                want = None
+            for binary in (["build/apply", "build/apply.sim"] if i < sample and j == 0
+                           else ["build/apply"]):
+                got = decoded(binary, t)
+                if want is None and not got.startswith("refused"):
+                    fail(f"stamp {i}.{j} on {binary}: the reference refuses {t}, the C core reads {got}")
+                elif want is not None and got != want:
+                    fail(f"stamp {i}.{j} on {binary}: {t}\n  C:      {got}\n  Python: {want}")
+            damaged += j > 0
+            refused += j > 0 and want is None
+    print(f"stamps: {count} decoded by the C core as by the reference ({sample} also on the "
+          f"6502); {damaged} damaged copies, {refused} refused by both")
+
+
 def main():
     hand_worked()
     hand_worked_rewind()
@@ -213,6 +266,7 @@ def main():
                 fail(f"case {i} on {binary}: {' '.join(args(ch, r))}\n"
                      f"  C:      {got!r}\n  Python: {want!r}")
                 break
+    stamps(rng, int(os.environ.get("APB_STAMP_RUNS", "300")), 10)
     print(f"receipts: {count} random receipts checked against the reference "
           f"({sample} also on the 6502), {failures} failed")
     sys.exit(1 if failures else 0)

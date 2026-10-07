@@ -63,6 +63,42 @@ waits until it can reach the Waystation.
 W1 can come early: it needs only what already exists, plus a WebAssembly build. W2 and
 W3 are the online Waystation (roadmap phase 4).
 
+## W1: what's built
+
+`make waystation` builds `build/waystation/`, a static site with no server. Serve it
+(`python3 -m http.server -d build/waystation`) and open it. It has four pages:
+
+- **Make a traveler:** name, race, class, a third tagged skill, and stats bought or
+  rolled (one set and three re-rolls; the last set stands, and the numbers go where
+  you like). A preview shows the result, then it issues the Passport.
+- **Your Passport:** type or paste one in. Spend the points from levelling up
+  (+1 to a stat; +1 training to a skill, +2 if tagged, at the skill's cost), and take
+  the new Passport with you.
+- **Tabletop sheet:** every number a table needs, ready to print.
+- **Travel Stamp:** land a stamp on the Passport: XP and levels, Debt, items (to the
+  lost-and-found if the pack is full) and Echoes, or a Rewind. There's no ticket
+  ledger yet, so stamps are taken on trust. W2 checks them.
+
+**How it works**
+
+- **Rules:** every rule is the rules core's own. `waystation/ws.c` puts it on a small
+  JSON interface, compiled to WebAssembly with Emscripten. The core gained what the
+  site needed, a Travel Stamp decoder (`apb_stamp_decode`), tested against
+  `tools/passport/stamp.py` on PC and 6502.
+- **Names:** these come from the registry (`waystation/registry_json.py`).
+- **Pages:** `waystation/site/`.
+
+`make test-waystation` (`tests/waystation/check_site.py`) plays the site in headless
+Chromium and checks it against the Python references, which were written from the docs
+rather than from the C:
+
+- a traveler made in the browser has the reference's Passport, and boards The Fare in
+  the terminal with a Boarding Pass;
+- the Travel Stamp the trip ends with lands in the browser as the reference lands it,
+  and so does the same stamp as a Rewind;
+- points spent and stats rolled follow the rules;
+- typos are refused, naming the line.
+
 ## Open questions
 
 - How DLC ownership reaches retro disk images (proposal: the website builds personalised

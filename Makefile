@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern demo play play-e18 modern web crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation demo play play-e18 modern web waystation crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -255,6 +255,27 @@ build/web/apb.js: fe/modern/web.c fe/modern/web/index.html $(MODERN_SRC) $(MODER
 web: build/web/apb.js
 	@echo "Browser: serve build/web/ (python3 -m http.server -d build/web) and open it"
 
+# The Waystation website (W1, waystation/): static pages and the rules core as
+# WebAssembly. Serve build/waystation/ and open it.
+WS_FLAGS := -O2 -sALLOW_MEMORY_GROWTH -sEXPORTED_RUNTIME_METHODS=ccall \
+            -sEXPORTED_FUNCTIONS=_ws_traveler,_ws_create,_ws_roll,_ws_load,_ws_raise_stat,_ws_raise_skill,_ws_stamp,_ws_rules
+
+build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) waystation/site/* \
+                        waystation/registry_json.py registry/*.txt
+	@mkdir -p build/waystation
+	$(EMCC) $(WS_FLAGS) $(INC) -DAPB_WAYSTATION -o $@ waystation/ws.c $(CORE_SRC) $(APPLY_SRC)
+	cp waystation/site/* build/waystation/
+	python3 waystation/registry_json.py build/waystation/registry.json
+
+waystation: build/waystation/ws.js
+	@echo "The Waystation: serve build/waystation/ (python3 -m http.server -d build/waystation)"
+
+# The Waystation in headless Chromium: a traveler made there has the Python reference's
+# Passport and boards The Fare in the terminal; its Travel Stamp lands, points are spent
+# and stats rolled as the rules say (tests/waystation/check_site.py).
+test-waystation: build/waystation/ws.js build/apb
+	NODE_PATH=$$(npm root -g) python3 tests/waystation/check_site.py
+
 # The desktop must play the C64's routes as the C64 does (Travel Stamps and all), and the
 # browser as the desktop does; a save survives a restart on both. Needs SDL2, Emscripten,
 # and Node with Playwright (tests/modern/check_modern.py).
@@ -281,10 +302,10 @@ test-term: build/apb build/the-fare.apd build/skirmish.apd
 # Applying receipts: the C core must agree with the Python reference, natively and on
 # the 6502.
 build/apply: tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC) $(CORE_HDR) | build
-	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC)
+	$(CC) $(CFLAGS) $(WARN) $(INC) -DAPB_WAYSTATION -o $@ tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC)
 
 build/apply.sim: tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC) $(CORE_HDR) | build
-	$(CL65) -t sim6502 -O $(INC) -o $@ tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC)
+	$(CL65) -t sim6502 -O $(INC) -DAPB_WAYSTATION -o $@ tests/receipts/apply.c $(APPLY_SRC) $(CORE_SRC)
 
 test-receipts: build/apply build/apply.sim
 	python3 tests/receipts/check_apply.py

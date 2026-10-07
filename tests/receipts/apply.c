@@ -4,6 +4,10 @@
  * tests/receipts/check_apply.py to compare with the Python reference. Native and sim65.
  *
  *   apply PASSPORT XP PAID ADDED GAINED LOST ECHOES [rewind DEPARTURE]
+ *   apply decode STAMP
+ *
+ * `decode` prints the receipt in a Travel Stamp (apb_stamp_decode), or why it's refused,
+ * for check_apply.py to compare with tools/passport/stamp.py.
  *
  * GAINED and LOST are item ids separated by commas, ECHOES is id:state:was entries
  * separated by commas; '-' is an empty list.
@@ -49,9 +53,43 @@ static void parse_echoes(const char *s)
     }
 }
 
+static void print_list(const char *what, const uint16_t *items, uint8_t n)
+{
+    uint8_t i;
+
+    printf(" %s ", what);
+    if (!n) printf("-");
+    for (i = 0; i < n; ++i) printf(i ? ",%u" : "%u", items[i]);
+}
+
+static int decode(const char *text)
+{
+    uint8_t i;
+    uint8_t line = 0;
+    uint8_t err = apb_stamp_decode(text, &r, &line);
+
+    if (err != APB_PP_OK) {
+        printf("refused %u line %u\n", err, line);
+        return 0;
+    }
+    printf("departure %u ticket %lu outcome %u xp %u paid %u added %u", r.departure,
+           (unsigned long)r.ticket, r.outcome, r.xp, r.debt_paid, r.debt_added);
+    print_list("gained", r.gained, r.gained_count);
+    print_list("lost", r.lost, r.lost_count);
+    printf(" echoes ");
+    if (!r.echo_count) printf("-");
+    for (i = 0; i < r.echo_count; ++i) {
+        printf(i ? ",%u:%u:%u" : "%u:%u:%u", r.echoes[i].id, r.echoes[i].state, r.echoes[i].was);
+    }
+    printf("\n");
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     uint8_t i;
+
+    if (argc == 3 && strcmp(argv[1], "decode") == 0) return decode(argv[2]);
 
     if (argc != 8 && argc != 10) {
         printf("usage: apply PASSPORT XP PAID ADDED GAINED LOST ECHOES [rewind DEPARTURE]\n");

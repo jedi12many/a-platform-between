@@ -370,6 +370,31 @@ and clicks are checked in headless Chromium.
 *Not yet:* a look of its own (a wider column, a proportional font, sound), and a
 keyboard for phones.
 
+### W1 in detail
+
+**Goal:** a character made in the browser boards *The Fare* in the terminal
+([waystation-web.md](waystation-web.md)).
+
+*Done:* `make waystation`. It's a static site, with the rules core as WebAssembly
+(`waystation/ws.c`), and four pages:
+
+- make a traveler (bought or rolled stats);
+- read a Passport and spend its points;
+- print a tabletop sheet;
+- land a Travel Stamp, taken on trust until W2.
+
+The core gained `apb_stamp_decode`. It reads every stamp the Python reference writes,
+and refuses the same damaged ones, on PC and 6502 (`make test-receipts`).
+
+`make test-waystation` makes a traveler in headless Chromium and checks her Passport
+against the Python reference's. It boards her on The Fare in the terminal with a
+Boarding Pass, then lands her Travel Stamp in the browser, as it is and as a Rewind,
+and checks the result against the reference. It also checks spending points, rolling
+stats and refusing typos.
+
+*Not yet:* the Arrivals as a character's first trip, and the server (W2): accounts,
+Boarding Passes, the ticket ledger, checked stamps.
+
 ### Departure 00: The Fare
 
 A short prologue, about 20–30 minutes, built alongside the engine as its test content:

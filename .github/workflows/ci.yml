@@ -58,6 +58,9 @@ jobs:
       - name: Modern front end (desktop and browser play as the C64 does)
         run: make test-modern
 
+      - name: The Waystation website (made in the browser, boarded in the terminal)
+        run: make test-waystation
+
       - uses: actions/upload-artifact@v4
         with:
           name: c64
@@ -70,3 +73,8 @@ jobs:
         with:
           name: web
           path: build/web
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: waystation
+          path: build/waystation

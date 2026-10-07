@@ -376,7 +376,9 @@ uint8_t apb_pass_decode(const char *in, apb_pass *pass)
     return APB_PP_OK;
 }
 
-uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line)
+/* Read a password of lines (a Passport, a Travel Stamp): check each line's check symbol
+ * and pack the data symbols into `b`, ready to read from the start. */
+static uint8_t read_lines(const char *in, bitio *b, uint8_t *bad_line)
 {
     uint8_t count = 0;
     uint8_t lines;
@@ -385,11 +387,7 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
     uint8_t line_len;
     uint8_t data;
     uint8_t i;
-    uint8_t n;
     int8_t v;
-    uint16_t stored_crc;
-    uint8_t version;
-    bitio b;
 
     for (; *in != '\0'; ++in) {
         if (is_separator(*in)) {
@@ -412,10 +410,10 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
 
     /* Check each line, and pack the data symbols into bits as we go. */
     memset(buf, 0, sizeof(buf));
-    b.buf = buf;
-    b.pos = 0;
-    b.limit = BUF_BYTES * 8;
-    b.bad = 0;
+    b->buf = buf;
+    b->pos = 0;
+    b->limit = BUF_BYTES * 8;
+    b->bad = 0;
     data = 0;
     for (line = 0; line < lines; ++line) {
         line_start = (uint8_t)(line * APB_PASSWORD_LINE);
@@ -427,16 +425,53 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
             return APB_PP_LINE_CHECK;
         }
         for (i = 0; i < line_len; ++i) {
-            put_bits(&b, symbols[line_start + i], 5);
+            put_bits(b, symbols[line_start + i], 5);
         }
         data = (uint8_t)(data + line_len);
     }
-    if (b.bad) {
+    if (b->bad) {
         return APB_PP_LENGTH;
     }
+    b->limit = (uint16_t)(data * 5u);
+    b->pos = 0;
+    return APB_PP_OK;
+}
 
-    b.limit = (uint16_t)(data * 5u);
-    b.pos = 0;
+/* After the fields: zero padding to a byte, the CRC of the bytes so far, then zero
+ * padding to the last symbol. */
+static uint8_t read_crc(bitio *b)
+{
+    uint8_t n;
+    uint16_t stored_crc;
+
+    while (b->pos & 7u) {
+        if (get_bits(b, 1) != 0 || b->bad) return APB_PP_CHECKSUM;
+    }
+    n = (uint8_t)(b->pos >> 3);
+    stored_crc = get_bits(b, 16);
+    if (b->bad || stored_crc != crc16(buf, n)) {
+        return APB_PP_CHECKSUM;
+    }
+    if (b->limit - b->pos >= 5) {
+        return APB_PP_LENGTH;
+    }
+    while (b->pos < b->limit) {
+        if (get_bits(b, 1) != 0) return APB_PP_CHECKSUM;
+    }
+    return APB_PP_OK;
+}
+
+uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line)
+{
+    uint8_t i;
+    uint8_t n;
+    uint8_t version;
+    bitio b;
+
+    n = read_lines(in, &b, bad_line);
+    if (n != APB_PP_OK) {
+        return n;
+    }
     version = (uint8_t)get_bits(&b, 4);
     if (version != APB_PASSPORT_VERSION) {
         return APB_PP_VERSION;
@@ -494,20 +529,9 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
         return APB_PP_CHECKSUM;
     }
 
-    /* Zero padding to a byte, the CRC, then zero padding to the last symbol. */
-    while (b.pos & 7u) {
-        if (get_bits(&b, 1) != 0 || b.bad) return APB_PP_CHECKSUM;
-    }
-    n = (uint8_t)(b.pos >> 3);
-    stored_crc = get_bits(&b, 16);
-    if (b.bad || stored_crc != crc16(buf, n)) {
-        return APB_PP_CHECKSUM;
-    }
-    if (b.limit - b.pos >= 5) {
-        return APB_PP_LENGTH;
-    }
-    while (b.pos < b.limit) {
-        if (get_bits(&b, 1) != 0) return APB_PP_CHECKSUM;
+    n = read_crc(&b);
+    if (n != APB_PP_OK) {
+        return n;
     }
 
     if (!fields_fit(&work)) {
@@ -569,3 +593,72 @@ uint8_t apb_stamp_encode(const apb_receipt *r, char *out)
     write_symbols(&b, out);
     return APB_PP_OK;
 }
+
+/* Decoding stamps is the Waystation's job (W1), not a client's: builds that need it
+ * define APB_WAYSTATION (the website, and the receipt tests), so a train doesn't carry
+ * it (the 6502 harness has no room for it). */
+#ifdef APB_WAYSTATION
+
+static uint8_t get_list(bitio *b, uint16_t *items)
+{
+    uint8_t n = (uint8_t)get_bits(b, 4);
+    uint8_t i;
+
+    if (n > APB_RECEIPT_MAX) {
+        b->bad = 1;
+        return 0;
+    }
+    for (i = 0; i < n; ++i) {
+        items[i] = get_bits(b, 10);
+    }
+    return n;
+}
+
+static apb_receipt stamped;
+
+uint8_t apb_stamp_decode(const char *in, apb_receipt *r, uint8_t *bad_line)
+{
+    bitio b;
+    uint8_t i;
+    uint16_t amount;
+
+    i = read_lines(in, &b, bad_line);
+    if (i != APB_PP_OK) {
+        return i;
+    }
+    if (get_bits(&b, 4) != APB_STAMP_VERSION) {
+        return b.bad ? APB_PP_LENGTH : APB_PP_VERSION;
+    }
+    memset(&stamped, 0, sizeof(stamped));
+    stamped.departure = get_bits(&b, 16);
+    stamped.ticket = (uint32_t)get_bits(&b, 16) << 16;
+    stamped.ticket |= get_bits(&b, 16);
+    stamped.outcome = (uint8_t)get_bits(&b, 1);
+    stamped.xp = get_bits(&b, 16);
+    i = (uint8_t)get_bits(&b, 1);           /* 1: Debt added, 0: paid */
+    amount = get_bits(&b, 16);
+    if (i) stamped.debt_added = amount;
+    else stamped.debt_paid = amount;
+    stamped.gained_count = get_list(&b, stamped.gained);
+    if (!b.bad) stamped.lost_count = get_list(&b, stamped.lost);
+    if (!b.bad) {
+        stamped.echo_count = (uint8_t)get_bits(&b, 4);
+        if (stamped.echo_count > APB_RECEIPT_MAX) b.bad = 1;
+    }
+    for (i = 0; i < stamped.echo_count && !b.bad; ++i) {
+        stamped.echoes[i].id = get_bits(&b, 10);
+        stamped.echoes[i].state = (uint8_t)get_bits(&b, 2);
+        stamped.echoes[i].was = (uint8_t)get_bits(&b, 2);
+    }
+    if (b.bad) {
+        return APB_PP_CHECKSUM;
+    }
+    i = read_crc(&b);
+    if (i != APB_PP_OK) {
+        return i;
+    }
+    memcpy(r, &stamped, sizeof(stamped));
+    return APB_PP_OK;
+}
+
+#endif /* APB_WAYSTATION */
