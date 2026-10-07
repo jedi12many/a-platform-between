@@ -1,0 +1,126 @@
+=== The Deep Yards
+[picture 0 yards]
+At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft that goes down further than the Waystation does. A brass plate on the gate says YARD 638. Someone has scratched a number under it: 10.
+The operator, a man made mostly of rust and patience, doesn't look up. "Ten floors," he says. "Every one a different place. Come back up when you like. If you can."
+  1) Step into the cage
+  2) Not today
+> 1
+The cage grinds down and stops. Floor 1.
+A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A brazier, and an empty bench
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 2 fighters, health 31]
+  ############
+  #...~..#...#
+  #......~1..#
+  >0.........#
+  #..........#
+  #...+....~.#
+  #.....~....#
+  ############
+round 1: 1's turn
+  1 moves to 2,2
+  1 attacks 0: 47+30=77 vs 58: success, 3 damage
+round 1: 0's turn
+> 0.3.3.0
+  1 gets a free attack on 0
+  1 attacks 0: 48+30=78 vs 58: success, 4 damage
+  0 moves to 0,3
+  0 takes the exit
+  0 is gone
+[the fight is fled; health 24]
+You run back up to the landing. Whatever it was stays by the stairs.
+The cage grinds down and stops. Floor 1.
+A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A brazier, and an empty bench
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 2 fighters, health 24]
+  ############
+  #...~..#...#
+  #......~1..#
+  >0.........#
+  #..........#
+  #...+....~.#
+  #.....~....#
+  ############
+round 1: 1's turn
+  1 moves to 2,2
+  1 attacks 0: 34+30=64 vs 58: success, 2 damage
+round 1: 0's turn
+> 0.3.3.0
+  1 gets a free attack on 0
+  1 attacks 0: 88+30=118 vs 58: crit, 16 damage
+  0 moves to 0,3
+  0 takes the exit
+  0 is gone
+[the fight is fled; health 6]
+You run back up to the landing. Whatever it was stays by the stairs.
+The cage grinds down and stops. Floor 1.
+A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A brazier, and an empty bench
+  2) Take the stairs down
+  3) Ride the cage back up
+> 1
+You sit by the brazier a while. Nobody comes. It's the best kind of nobody.
+The cage grinds down and stops. Floor 1.
+A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) Take the stairs down
+  2) Ride the cage back up
+> 1
+The stair down is guarded.
+[fight: 12 x 8, 2 fighters, health 14]
+  ############
+  #...~..#...#
+  #......~1..#
+  >0.........#
+  #..........#
+  #...+....~.#
+  #.....~....#
+  ############
+round 1: 1's turn
+  1 moves to 2,2
+  1 attacks 0: 54+30=84 vs 58: success, 4 damage
+round 1: 0's turn
+> 0.3.3.0
+  1 gets a free attack on 0
+  1 attacks 0: 79+30=109 vs 58: success, 7 damage
+  0 moves to 0,3
+  0 takes the exit
+  0 is gone
+[the fight is fled; health 3]
+You run back up to the landing. Whatever it was stays by the stairs.
+The cage grinds down and stops. Floor 1.
+A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) Take the stairs down
+  2) Ride the cage back up
+> 1
+The stair down is guarded.
+[fight: 12 x 8, 2 fighters, health 3]
+  ############
+  #...~..#...#
+  #......~1..#
+  >0.........#
+  #..........#
+  #...+....~.#
+  #.....~....#
+  ############
+round 1: 1's turn
+  1 moves to 2,2
+  1 attacks 0: 98+30=128 vs 58: success, 9 damage
+  0 is down
+[the fight is lost; health 1]
+The yard takes you. Something hauls you up the shaft by the collar, and drops you on the Waystation's cold floor.
+You lie there a while, breathing. The yard keeps what you didn't finish.
+[receipt: departure 1000, failed, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 3, xp 0, debt 0]

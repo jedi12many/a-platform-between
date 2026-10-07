@@ -14,10 +14,10 @@ APPLY_SRC := core/src/receipt.c
 # made smaller (docs/engine-plan.md, Risks).
 BATTLE_SRC := core/src/battle.c
 CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
-VM_SRC   := vm/vm.c client/desk.c core/src/battle.c
+VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation demo play play-e18 modern web waystation crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards demo play play-e18 play-yards modern web waystation crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -53,20 +53,23 @@ build/demo.prg: demo/demo.c $(CORE_SRC) $(CORE_HDR) | build
 C64_DEFS   := -DAPB_OVERLAYS -DAPB_VM_DEPOT_MAX=2048 -g
 C64_MAIN   := fe/c64/c64.c fe/c64/split.s vm/vm.c client/view.c core/src/rng.c core/src/names.c \
               core/src/rules.c core/src/registry.c core/src/translate.c core/src/echo.c
+C64_LOAD   := core/src/yard.c
 C64_PASS   := client/desk.c core/src/passport.c client/receipt_view.c
 C64_BATTLE := core/src/battle.c core/src/combat.c client/battle_view.c
 
-build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_PASS) $(C64_BATTLE) $(CORE_HDR) $(VM_HDR) \
+build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(CORE_HDR) $(VM_HDR) \
                    client/apb_view.h | build
 	@mkdir -p build/c64/obj
 	@for f in $(C64_MAIN); do \
 	    $(CL65) -t c64 -O $(INC) $(C64_DEFS) -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
+	@for f in $(C64_LOAD); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY1 \
+	    --rodata-name OVL1DATA -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
 	@for f in $(C64_PASS); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY2 \
-	    --rodata-name OVL2DATA -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
+	    --rodata-name OVL2DATA --bss-name OVL2BSS -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
 	@for f in $(C64_BATTLE); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY3 \
 	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
 	$(CL65) -t c64 -g -C fe/c64/apb.cfg -m build/c64/apb.map -Wl --dbgfile,build/c64/apb.dbg -o $@ \
-	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_PASS) $(C64_BATTLE))))) c64.lib
+	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE))))) c64.lib
 
 # The Fare on a 1541 disk: LOAD"APB",8 and RUN. Its pictures (pic00, pic01, ...) come
 # from the PNGs in its pictures/ folder (tools/c64pic.py, which needs Pillow).
@@ -81,7 +84,7 @@ build/the-fare.d64: build/c64/apb.prg content/s1/00-the-fare/the-fare.qs tools/d
 	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/fare-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
-# Eighteen Minutes, chapter 1 (milestone E5), on a disk of its own, the same way.
+# Eighteen Minutes (Departure 01), on a disk of its own, the same way.
 E18_PICS := $(wildcard content/s1/01-eighteen-minutes/pictures/*.png)
 
 build/eighteen-minutes.d64: build/c64/apb.prg content/s1/01-eighteen-minutes/eighteen-minutes.qs \
@@ -95,13 +98,27 @@ build/eighteen-minutes.d64: build/c64/apb.prg content/s1/01-eighteen-minutes/eig
 	    $$(for f in build/c64/e18/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/e18-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
+# The Deep Yards (E7) on a disk of its own too.
+YARDS_PICS := $(wildcard content/sidings/deep-yards/pictures/*.png)
+
+build/deep-yards.d64: build/c64/apb.prg content/sidings/deep-yards/deep-yards.qs \
+                      tools/d64.py tools/c64pic.py $(YARDS_PICS)
+	@mkdir -p build/c64/yards build/c64/yards-pics
+	python3 tools/qsc/qsc.py build content/sidings/deep-yards/deep-yards.qs \
+	    -o build/c64/deep-yards.apd --split build/c64/yards
+	python3 tools/c64pic.py disk build/c64/yards/DEPOT content/sidings/deep-yards/pictures build/c64/yards-pics
+	python3 tools/d64.py write $@ "the deep yards" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
+	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
+	    $$(for f in build/c64/yards/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
+	    $$(for f in build/c64/yards-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
+
 # The C64 game played without a C64: the real program, from the .d64, on a 6502 emulator
 # (py65) with the KERNAL answered in Python (tests/c64/run_c64.py). The overlays must
 # never reach into each other; The Fare's edge route must match its reviewed transcript
 # and give the same Travel Stamp as the terminal; a fight, a save to disk and a resume
-# after switching off must match theirs; Eighteen Minutes' first loop must match its
-# own; and nothing may pass 40 columns.
-test-c64: build/the-fare.d64 build/eighteen-minutes.d64 build/apb build/the-fare.apd
+# after switching off must match theirs; a trip through all of Eighteen Minutes must
+# match its own; and nothing may pass 40 columns.
+test-c64: build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yards.d64 build/apb build/the-fare.apd
 	python3 fe/c64/check_overlays.py build/c64/apb.dbg
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg tests/c64/fare-edge.choices > build/c64-fare-edge.txt
 	diff tests/c64/fare-edge.expected build/c64-fare-edge.txt
@@ -113,13 +130,16 @@ test-c64: build/the-fare.d64 build/eighteen-minutes.d64 build/apb build/the-fare
 	python3 tests/c64/run_c64.py build/eighteen-minutes.d64 build/c64/apb.dbg tests/c64/e18-loop.choices \
 	    > build/c64-e18-loop.txt
 	diff tests/c64/e18-loop.expected build/c64-e18-loop.txt
+	python3 tests/c64/run_c64.py build/deep-yards.d64 build/c64/apb.dbg tests/c64/yards.choices \
+	    > build/c64-yards.txt
+	diff tests/c64/yards.expected build/c64-yards.txt
 	@awk 'length > 40 { print FILENAME ": line over 40 columns: " $$0; bad = 1 } END { exit bad }' \
-	    build/c64-fare-edge.txt build/c64-fare-fight.txt build/c64-e18-loop.txt
+	    build/c64-fare-edge.txt build/c64-fare-fight.txt build/c64-e18-loop.txt build/c64-yards.txt
 	@echo "c64: no overlay reaches into another; transcripts match; same Travel Stamp as the terminal"
 
-c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64
+c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yards.d64
 	@echo "C64 demo: build/demo.prg ($$(wc -c < build/demo.prg) bytes)"
-	@echo "C64 games: build/the-fare.d64, build/eighteen-minutes.d64 (program $$(wc -c < build/c64/apb.prg) bytes;" \
+	@echo "C64 games: build/the-fare.d64, build/eighteen-minutes.d64, build/deep-yards.d64 (program $$(wc -c < build/c64/apb.prg) bytes;" \
 	      "overlays $$(wc -c < build/c64/apb.prg.1), $$(wc -c < build/c64/apb.prg.2)," \
 	      "$$(wc -c < build/c64/apb.prg.3))"
 
@@ -172,8 +192,17 @@ build/harness: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | 
 # battle engine and stdio fit the simulator's 64 KB (The Fare's biggest car is 3.3 KB; a
 # car too big is refused at load, so a test fails loudly). Fitting the real C64 is
 # milestone E4's memory work.
+# The 6502 has no room for the whole engine in one test program: one build leaves out
+# the Deep Yards, the other the boarding desk (tests/vm/harness.c).
+# sim65's 2 KB C stack is far more than the game needs (the C64 plays in 384 bytes): 1 KB.
+SIM_STACK := -Wl -D,__STACKSIZE__=0x0400
 build/harness.sim: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
-	$(CL65) -t sim6502 -O -DAPB_VM_CAR_MAX=4096 -DAPB_VM_DEPOT_MAX=2048 $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
+	$(CL65) -t sim6502 -O -DAPB_VM_CAR_MAX=4096 -DAPB_VM_DEPOT_MAX=2048 -DAPB_VM_NO_YARDS $(INC) $(SIM_STACK) \
+	    -o $@ tests/vm/harness.c $(filter-out core/src/yard.c,$(VM_SRC)) $(CORE_SRC)
+
+build/harness-yards.sim: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
+	$(CL65) -t sim6502 -O -DAPB_VM_CAR_MAX=4096 -DAPB_VM_DEPOT_MAX=2048 -DAPB_HARNESS_NO_DESK $(INC) $(SIM_STACK) \
+	    -o $@ tests/vm/harness.c $(filter-out client/desk.c,$(VM_SRC)) $(CORE_SRC)
 
 # The same harness with AddressSanitizer and UndefinedBehaviorSanitizer, for damage tests.
 build/harness.asan: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
@@ -185,7 +214,7 @@ build/harness.cov: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR
 	$(CC) $(CFLAGS) $(WARN) -DAPB_VM_TRACE $(INC) -o $@ tests/vm/harness.c $(VM_SRC) $(CORE_SRC)
 
 # Story VM: playthroughs (native == expected, 6502 == native), coverage, damaged images.
-test-vm: build/harness build/harness.sim build/harness.asan build/harness.cov
+test-vm: build/harness build/harness.sim build/harness-yards.sim build/harness.asan build/harness.cov
 	python3 tests/vm/run_tests.py
 
 # The terminal front end: `make play` compiles The Fare and plays it.
@@ -210,6 +239,12 @@ build/eighteen-minutes.apd: content/s1/01-eighteen-minutes/eighteen-minutes.qs |
 play-e18: build/apb build/eighteen-minutes.apd
 	./build/apb build/eighteen-minutes.apd
 
+build/deep-yards.apd: content/sidings/deep-yards/deep-yards.qs | build
+	python3 tools/qsc/qsc.py build $< -o $@
+
+play-yards: build/apb build/deep-yards.apd
+	./build/apb build/deep-yards.apd
+
 # The modern front end (E6, fe/modern/): SDL2 on a desktop. Each Departure is a directory
 # of its files and its pictures in full colour (tools/apic.py).
 MODERN_SRC := fe/modern/screen.c fe/modern/render.c
@@ -233,7 +268,11 @@ build/modern/the-fare/DEPOT: content/s1/00-the-fare/the-fare.qs $(FARE_PICS) too
 build/modern/eighteen-minutes/DEPOT: content/s1/01-eighteen-minutes/eighteen-minutes.qs $(E18_PICS) tools/apic.py
 	$(call modern_departure,content/s1/01-eighteen-minutes/eighteen-minutes.qs,content/s1/01-eighteen-minutes/pictures,build/modern/eighteen-minutes)
 
-MODERN_DEPARTURES := build/modern/the-fare/DEPOT build/modern/eighteen-minutes/DEPOT
+build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_PICS) tools/apic.py
+	$(call modern_departure,content/sidings/deep-yards/deep-yards.qs,content/sidings/deep-yards/pictures,build/modern/deep-yards)
+
+MODERN_DEPARTURES := build/modern/the-fare/DEPOT build/modern/eighteen-minutes/DEPOT \
+                     build/modern/deep-yards/DEPOT
 
 # The same game in a browser: WebAssembly with Emscripten (fe/modern/web.c), the page in
 # fe/modern/web/, and both Departures bundled. Serve build/web/ and open it.
@@ -249,6 +288,7 @@ build/web/apb.js: fe/modern/web.c fe/modern/web/index.html $(MODERN_SRC) $(MODER
 	$(EMCC) $(WEB_FLAGS) $(INC) -o $@ fe/modern/web.c $(MODERN_SRC) $(VIEW_SRC) $(VM_SRC) \
 	    $(CORE_SRC) --preload-file build/modern/the-fare@/departures/the-fare \
 	    --preload-file build/modern/eighteen-minutes@/departures/eighteen-minutes \
+	    --preload-file build/modern/deep-yards@/departures/deep-yards \
 	    --exclude-file '*.apd'
 	cp fe/modern/web/index.html build/web/index.html
 
@@ -331,3 +371,14 @@ build/battle.sim: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | 
 build/battle.asan: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
 		-o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)
+
+# The Deep Yards' generator (E7, docs/deep-yards.md): the C core against the reference
+# written from the doc, natively and on sim65; every map valid, every foe reachable.
+test-yards: build/yardgen build/yardgen.sim
+	python3 tests/yards/check_yards.py
+
+build/yardgen: tests/yards/yardgen.c core/src/yard.c $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/yards/yardgen.c core/src/yard.c $(CORE_SRC)
+
+build/yardgen.sim: tests/yards/yardgen.c core/src/yard.c $(CORE_SRC) $(CORE_HDR) | build
+	$(CL65) -t sim6502 -O $(INC) -o $@ tests/yards/yardgen.c core/src/yard.c $(CORE_SRC)

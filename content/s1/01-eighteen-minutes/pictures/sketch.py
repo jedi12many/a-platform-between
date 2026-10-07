@@ -112,10 +112,28 @@ def reactor():
     return img
 
 
+def safe():
+    img, d = new(DGREY)
+    d.rectangle((0, 76, W, H), fill=BROWN)              # the floor
+    d.rectangle((6, 50, 60, 76), fill=BLUE)             # the bunk
+    d.rectangle((6, 46, 30, 52), fill=WHITE)
+    d.rectangle((70, 14, 90, 38), fill=LGREY, outline=WHITE)    # a photograph of a girl
+    d.ellipse((76, 18, 84, 26), fill=fare.PINK)
+    d.rectangle((76, 26, 84, 36), fill=YELLOW)
+    d.rectangle((100, 30, 156, 80), fill=GREY, outline=LGREY)   # the safe, open
+    d.rectangle((104, 34, 152, 76), fill=BLACK)
+    d.rectangle((118, 44, 138, 72), fill=CYAN, outline=WHITE)   # the seed vault, frosted
+    for y in (50, 58, 66):
+        d.line((120, y, 136, y), fill=LBLUE)
+    d.rectangle((92, 34, 98, 48), fill=LGREY)           # the keypad
+    return img
+
+
 def main():
     for name, draw in (("concourse", fare.concourse), ("platform_bench", fare.platform_bench),
                        ("dock", dock), ("medbay", medbay), ("hydroponics", hydroponics),
-                       ("command", command), ("static", fare.static), ("reactor", reactor)):
+                       ("command", command), ("static", fare.static), ("reactor", reactor),
+                       ("safe", safe), ("stationmaster", fare.stationmaster)):
         draw().save(os.path.join(HERE, name + ".png"))
         print("wrote", name + ".png")
 

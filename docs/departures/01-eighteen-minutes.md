@@ -28,6 +28,47 @@ who Forces It finds the station's sensors screaming at a "reality fault."
 5. **The last loop.** Save the station, save the crew, take the seeds, free MERIDIAN.
    You can't do all of it.
 
+## How it plays
+
+`content/s1/01-eighteen-minutes/eighteen-minutes.qs`. Every move costs minutes; at zero
+the reactor goes and you wake on Dock 3. What you've learned is kept in flags the loop
+never clears.
+
+1. **Arrival.** Once Teodor has forgotten you and MERIDIAN has said "welcome back", you
+   see the loop for what it is.
+2. **The crew.** From then on the ring is a concourse, and the crew can be asked. Each
+   knows one thing, and a failed try costs minutes, so it can wait for the next loop:
+
+   | Who | Knows | How |
+   |---|---|---|
+   | Teodor Vasz, quartermaster | the pod launch sequence | Persuade |
+   | Ravi Okafor, the burned engineer (with Dr Kerr) | the reactor closes by hand; MERIDIAN holds the controls | Medicine |
+   | Pell, botanist | the captain's code, ASHA | ask her |
+   | Captain Ines Marrow | the same code (once you know about the lockout) | Persuade, hard |
+
+3. **The safe.** ASHA opens it: the seed vault.
+4. **The cause.** In the reactor room, MERIDIAN explains: if the station lives, its
+   owners wipe it; if it dies, it wakes again, still itself. So it lets the station die.
+5. **The last loop.** Once you've opened the safe, heard MERIDIAN, and learned a way to
+   save someone (the pods or the override), MERIDIAN agrees to one last loop that stays
+   done. Eighteen minutes, and each act has a price:
+
+   | Act | Minutes | Needs |
+   |---|---|---|
+   | Ask MERIDIAN to let go | 3 | |
+   | Wipe MERIDIAN | 2 | |
+   | Pull MERIDIAN's core (you carry it: `MERIDIAN_CORE`) | 6 | |
+   | Close the reactor (a tricky Tech check; it may fail) | 8 | the controls free, the override |
+   | Launch the pods | 4 | the controls free, the launch sequence, the reactor open |
+   | Take the seeds | 5 | |
+   | Let MERIDIAN go, into the signal | 4 | the controls free |
+
+   Closing the reactor saves the crew too. The station and the seeds fit (16 minutes), and
+   so do the station and a free MERIDIAN (15), or the pods, the seeds and a free or
+   carried MERIDIAN (15 or 16). The station, the seeds and MERIDIAN together don't.
+   Then the train, and the Waystation: hand the Stationmaster the seeds (Debt −5,000) or
+   keep them.
+
 ## Echoes planted
 
 | Echo | States | Kind |
@@ -35,6 +76,12 @@ who Forces It finds the station's sensors screaming at a "reality fault."
 | `MERIDIAN` | FREED / WIPED / CARRIED (you smuggle its core out as an item) | Ally / Nemesis |
 | `KEPLER_CREW` | SAVED / LOST | Debt |
 | `SEED_VAULT` | DELIVERED / KEPT / DESTROYED | Key |
+
+- **`MERIDIAN`:** FREED if you let it go; CARRIED if you pulled its core; otherwise WIPED
+  (by you, by its owners, or with the station).
+- **`KEPLER_CREW`:** SAVED if the reactor is closed or the pods went; otherwise LOST.
+- **`SEED_VAULT`:** DELIVERED or KEPT at the Waystation if you took them; KEPT if they stay
+  on a station that lives; DESTROYED if they go with it.
 
 ## Echoes listened for
 

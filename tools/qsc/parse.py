@@ -11,11 +11,11 @@ import re
 import qs_ast as A
 
 HEADER_KEYS = ["title", "id", "kind", "season", "realm", "levels", "start", "linear"]
-INSERTS = ["name", "race", "class", "debt", "level"]
+INSERTS = ["name", "race", "class", "debt", "level", "yard"]
 KEYWORDS = {"if", "else", "check", "flag", "var", "and", "or", "not", "has", "echo",
             "visited", "level", "race", "class", "name", "debt", "vs"}
 COMMANDS = ["set", "clear", "let", "add", "sub", "echo", "give", "take", "xp", "debt",
-            "heal", "picture", "pause", "end"]
+            "heal", "picture", "pause", "end", "pick"]
 OUTCOMES = ["crit", "success", "cost", "fail"]
 TN_WORDS = {"easy": 80, "routine": 90, "normal": 100, "tricky": 110, "hard": 120,
             "very_hard": 130}
@@ -35,6 +35,8 @@ MAP_H_MAX = 10
 PARTY_MAX = 4
 FIGHTERS_MAX = 8
 FIGHT_OUTCOMES = ["won", "lost", "fled"]
+YARD_POOL_MAX = 7          # a pool's foes stand in a row beside one start (docs/deep-yards.md)
+MAX_PICKS = 255
 SURPRISE = {"ambush": 1, "sneak": 2}
 
 LOWER_NAME = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -105,6 +107,7 @@ class Parser:
         self.scene_refs = []          # (name, line) to check once all scenes are known
         self.used_flags = set()
         self.used_vars = set()
+        self.picks = 0                # `~ pick`s so far: each gets the next salt
         self.skills = {name: e["id"] for name, e in registry["skills"].items()}
 
     # -------------------------------------------------------------- helpers
@@ -233,7 +236,7 @@ class Parser:
                 self.err(first, f"the header is missing '{key}:'")
         if self.dep.kind == "official" and "season" not in seen and "kind" in seen:
             self.err(first, "official Departures need 'season:' in the header")
-        if self.dep.kind == "branch" and "season" in seen:
+        if self.dep.kind != "official" and "season" in seen:
             self.err(seen["season"], "'season:' is only for official Departures")
         return i
 
@@ -248,8 +251,8 @@ class Parser:
         elif key == "id":
             d.id = self.number(value, line, 0, 65535, "id")
         elif key == "kind":
-            if value not in ("official", "branch"):
-                self.err(line, f"kind must be 'official' or 'branch', not '{value}'")
+            if value not in ("official", "branch", "siding"):
+                self.err(line, f"kind must be 'official', 'branch' or 'siding', not '{value}'")
             else:
                 d.kind = value
         elif key == "season":
@@ -295,6 +298,11 @@ class Parser:
                 self.parse_map(ln, kids)
                 i = nxt
                 continue
+            if words[0] == "yard":
+                kids, nxt = self.children(lines, i, ln.indent)
+                self.parse_yard(ln, kids)
+                i = nxt
+                continue
             if words[0] == "flag" and len(words) == 2:
                 self.declare(words[1], ln.no, None)
             elif words[0] == "var":
@@ -305,8 +313,8 @@ class Parser:
                     self.declare(m.group(1), ln.no,
                                  self.number(m.group(2), ln.no, 0, 255, "a variable's value"))
             else:
-                self.err(ln.no, "expected 'flag name', 'var name = 0', 'map name', a "
-                                "'=== Chapter' or a '== scene' here")
+                self.err(ln.no, "expected 'flag name', 'var name = 0', 'map name', 'yard name', "
+                                "a '=== Chapter' or a '== scene' here")
             i += 1
         if len(self.dep.flags) > MAX_FLAGS:
             self.err(1, f"{len(self.dep.flags)} flags; the most is {MAX_FLAGS}")
@@ -386,6 +394,39 @@ class Parser:
             if c not in letters:
                 self.diag.warn(ln.no, f"'{c}' is given a foe but isn't on map '{name}'")
         self.dep.maps[name] = A.Map(name, rows, foes, ln.no)
+
+    def parse_yard(self, ln, kids):
+        """`yard depths` and the bestiary's foes under it, weakest first: a pool for the
+        Deep Yards' generated maps (docs/deep-yards.md)."""
+        words = ln.text.split()
+        if len(words) != 2:
+            self.err(ln.no, "a yard's foes are declared like 'yard depths', with the bestiary's "
+                            "foes indented underneath, weakest first")
+            return
+        name = words[1]
+        if not self.lower_name(name, ln.no, "yard name"):
+            return
+        if name in self.dep.maps:
+            self.err(ln.no, f"there's already a map or yard called '{name}', on line "
+                            f"{self.dep.maps[name].line}")
+            return
+        foes = []
+        for k in kids:
+            for foe in k.text.replace(",", " ").split():
+                if foe not in self.reg["foes"]:
+                    self.err(k.no, f"there's no foe called '{foe}' in the bestiary "
+                                   f"(registry/foes.txt)." + suggest(foe, self.reg["foes"]))
+                foes.append(foe)
+        if not foes:
+            self.err(ln.no, f"yard '{name}' has no foes: list them under it, weakest first")
+            return
+        if len(foes) > YARD_POOL_MAX:
+            self.err(ln.no, f"yard '{name}' lists {len(foes)} foes; a yard holds at most "
+                            f"{YARD_POOL_MAX}")
+            return
+        import codegen
+        rows, by_letter = codegen.pool_rows(foes)
+        self.dep.maps[name] = A.Map(name, rows, by_letter, ln.no, yard=True)
 
     def declare(self, name, line, value):
         if not self.lower_name(name, line, "flag or variable name"):
@@ -739,12 +780,39 @@ class Parser:
 
     def parse_fight(self, ln, kids):
         words = ln.text.split()
-        name, surprise = None, 0
-        if len(words) < 2 or len(words) > 3:
+        name, surprise, floor = None, 0, None
+        # `fight yard POOL on VAR`; but `fight yard` alone, or `fight yard ambush`, is an
+        # ordinary map that happens to be called yard.
+        in_yard = (len(words) >= 3 and words[1] == "yard"
+                   and ("on" in words or (words[2] in self.dep.maps
+                                          and self.dep.maps[words[2]].yard)))
+        if in_yard:
+            # fight yard POOL on VAR [ambush|sneak]
+            if len(words) not in (5, 6) or words[3] != "on":
+                self.err(ln.no, "a fight in the Deep Yards is written like 'fight yard depths on "
+                                "floor': the yard's foes, and the variable that holds the floor")
+                words = []
+            else:
+                floor = words[4]
+                if self.var_ref(floor, ln.no) is False:
+                    floor = None
+                yard = words[2]
+                if yard not in self.dep.maps or not self.dep.maps[yard].yard:
+                    self.err(ln.no, f"there's no yard called '{yard}': declare it before the "
+                                    "first chapter with 'yard " + yard + "' and its foes."
+                                    + suggest(yard, [m for m in self.dep.maps
+                                                     if self.dep.maps[m].yard]))
+                words = ["fight", yard] + words[5:]
+        if not words:
+            pass
+        elif len(words) < 2 or len(words) > 3:
             self.err(ln.no, "a fight is written like 'fight scrapyard', or 'fight scrapyard "
                             "ambush' (the foes go first) or 'fight scrapyard sneak' (you do)")
         else:
             name = words[1]
+            if not in_yard and name in self.dep.maps and self.dep.maps[name].yard:
+                self.err(ln.no, f"'{name}' is a yard: its maps are built for each floor. "
+                                f"Write 'fight yard {name} on floor'")
             if name not in self.dep.maps:
                 self.err(ln.no, f"there's no map called '{name}': declare it before the "
                                 "first chapter with 'map " + name + "'."
@@ -781,7 +849,7 @@ class Parser:
                 self.err(k.no, f"'{which}:' is empty")
             outcomes[which] = self.parse_block(block, block[0].indent) if block else []
             j = nj
-        return A.Fight(name, surprise, outcomes, ln.no)
+        return A.Fight(name, surprise, outcomes, ln.no, floor)
 
     # ------------------------------------------------------------ commands
 
@@ -790,6 +858,7 @@ class Parser:
         name = words[0]
         args = words[1:]
         official = self.dep.kind == "official"
+        others = "Sidings" if self.dep.kind == "siding" else "Branch Lines"
 
         def need(n, usage):
             if len(args) != n:
@@ -813,7 +882,7 @@ class Parser:
                                                               "the amount")], line)
         elif name == "echo":
             if not official:
-                self.err(line, "Branch Lines can't change Echoes: they can read them in "
+                self.err(line, f"{others} can't change Echoes: they can read them in "
                                "conditions, but not plant them")
                 return None
             m = re.fullmatch(r"(\S+)\s*=\s*(\S+)", " ".join(args))
@@ -839,7 +908,7 @@ class Parser:
                 return A.Command("heal", [self.number(args[0], line, 1, 254, "healing")], line)
         elif name == "debt":
             if not official:
-                self.err(line, "Branch Lines can't change Debt")
+                self.err(line, f"{others} can't change Debt")
                 return None
             m = re.fullmatch(r"([-+=])\s*(\d+)", " ".join(args))
             if not m:
@@ -849,6 +918,21 @@ class Parser:
                 mode = {"=": "set", "+": "add", "-": "sub"}[m.group(1)]
                 return A.Command("debt", [mode, self.number(m.group(2), line, 0, 65535,
                                                             "Debt")], line)
+        elif name == "pick":
+            # ~ pick room 4 [on floor]
+            m = re.fullmatch(r"(\S+)\s+(\S+)(?:\s+on\s+(\S+))?", " ".join(args))
+            if not m:
+                self.err(line, "'~ pick' is written '~ pick room 4', or '~ pick room 4 on floor' "
+                               "to pick again for each floor")
+            elif self.var_ref(m.group(1), line) and (m.group(3) is None
+                                                     or self.var_ref(m.group(3), line)):
+                if self.picks >= MAX_PICKS:
+                    self.err(line, f"more than {MAX_PICKS} picks in one Departure")
+                    return None
+                self.picks += 1
+                return A.Command("pick", [m.group(1), self.number(m.group(2), line, 1, 255,
+                                                                  "the number to pick from"),
+                                          m.group(3), self.picks - 1], line)
         elif name == "picture":
             if need(1, "picture name") and self.lower_name(args[0], line, "picture name"):
                 if args[0] not in self.dep.pictures:

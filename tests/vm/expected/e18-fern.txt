@@ -344,8 +344,259 @@ And one voice, in your ear, that remembers everything.
 The thing in the captain's safe isn't money. It's seeds: ten thousand years of them. You wonder why the Stationmaster wants seeds.
 The screens say 6 minutes. For the first time since you stepped off the train, it doesn't feel like very long, and it doesn't feel like very short. It feels like a door.
 You go to find the crew.
--- END OF CHAPTER 1 --
-The rest of Eighteen Minutes is
-still being written.
-[receipt: departure 1, complete, xp 10, debt paid 0 added 0, gained, lost, echoes]
-[level 1, xp 10, debt 0]
+=== The Crew
+The ring runs past you: the same people, the same things in their arms. Every screen says 5 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) Sit by a viewport and wait
+> 2
+In the medical bay Dr Kerr is working on the burned engineer, as she always is.
+  1) Help her keep him breathing
+  2) Back to the ring
+> 1
+[check Medicine: 39+27=66 vs 100: fail]
+He doesn't wake. Kerr shakes her head. Next time.
+[picture 6 static]
+The screens reach zero.
+There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
+Then white. Then Static. Then nothing at all.
+[picture 2 dock]
+Dock 3. Red light, klaxons, hot dust. The screens say 18:00. They always will.
+You have done this 3 times now.
+  1) Look out of the viewport
+  2) Head into the ring
+> 1
+The dead freighter tumbles past, end over end, at exactly the same angle as last time. You could set a watch by it. Someone has.
+  1) Look out of the viewport
+  2) Head into the ring
+> 2
+The ring runs past you: the same people, the same things in their arms. Every screen says 16 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) Sit by a viewport and wait
+> 1
+Teodor is stacking crates against a pod hatch that won't open. He's never seen you.
+  1) Tell him about the loop
+  2) Back to the ring
+> 1
+[check Persuade: 21+62=83 vs 80: success]
+He listens, and goes pale, and tells you: red, red, blue, the switches by the hatch. "If MERIDIAN ever lets go."
+The ring runs past you: the same people, the same things in their arms. Every screen says 13 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) Sit by a viewport and wait
+> 4
+[picture 5 command]
+Captain Marrow is shouting at the ceiling again. The ceiling is apologising again.
+  1) Take the lift back down
+> 1
+The ring runs past you: the same people, the same things in their arms. Every screen says 9 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) Sit by a viewport and wait
+> 2
+In the medical bay Dr Kerr is working on the burned engineer, as she always is.
+  1) Help her keep him breathing
+  2) Back to the ring
+> 1
+[check Medicine: 10+27=37 vs 100: fail]
+He doesn't wake. Kerr shakes her head. Next time.
+The ring runs past you: the same people, the same things in their arms. Every screen says 4 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) Sit by a viewport and wait
+> 3
+Pell sits in the soil under the violet lamps, not running anywhere.
+  1) Ask her about the captain's safe
+  2) Ask her what the seeds are for
+  3) Back to the ring
+> 1
+"Ines? She'd never tell me." Pell pulls a weed. "But she uses one code for everything. Her daughter's name: ASHA. She told me once, at a party nobody else remembers."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 1
+"Ten thousand years of every crop this sector ever grew. Somewhere, somebody is going to be hungry." She smiles, crookedly. "Everyone wants them. Nobody asks them."
+  1) Ask her what the seeds are for
+  2) Back to the ring
+> 2
+The ring runs past you: the same people, the same things in their arms. Every screen says 1 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) The captain's quarters
+  6) Sit by a viewport and wait
+> 5
+=== The Safe
+[picture 8 safe]
+The captain's quarters: a bunk, a photograph of a girl, and a safe with a keypad.
+  1) Type ASHA
+  2) Leave
+> 1
+The safe opens with a sigh of cold air. Not money: a frosted cylinder the size of a thermos, humming. A label in Pell's hand: SECTOR SEED VAULT. ALL CROPS. KEEP COLD.
+"So that's what the Stationmaster wants," says MERIDIAN, in your ear. "The one thing here that could outlive all of us."
+  1) Look at the seed vault
+  2) Leave
+> 2
+[picture 6 static]
+The screens reach zero.
+There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
+Then white. Then Static. Then nothing at all.
+[picture 2 dock]
+Dock 3. Red light, klaxons, hot dust. The screens say 18:00. They always will.
+You have done this 4 times now.
+  1) Look out of the viewport
+  2) Head into the ring
+> 1
+The dead freighter tumbles past, end over end, at exactly the same angle as last time. You could set a watch by it. Someone has.
+  1) Look out of the viewport
+  2) Head into the ring
+> 2
+The ring runs past you: the same people, the same things in their arms. Every screen says 16 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) The captain's quarters
+  6) Sit by a viewport and wait
+> 5
+[picture 8 safe]
+The captain's quarters: a bunk, a photograph of a girl, and a safe with a keypad.
+  1) Look at the seed vault
+  2) Leave
+> 1
+It hums. It's cold enough to hurt. It's lighter than it should be, for ten thousand years.
+  1) Look at the seed vault
+  2) Leave
+> 2
+The ring runs past you: the same people, the same things in their arms. Every screen says 13 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) The captain's quarters
+  6) Sit by a viewport and wait
+> 2
+In the medical bay Dr Kerr is working on the burned engineer, as she always is.
+  1) Help her keep him breathing
+  2) Back to the ring
+> 1
+[check Medicine: 83+27=110 vs 100: success]
+He comes round long enough. "By hand... from inside... anticlockwise. If it lets go."
+The ring runs past you: the same people, the same things in their arms. Every screen says 8 minutes.
+  1) Teodor, at the pods
+  2) Dr Kerr and her engineer
+  3) Pell, in hydroponics
+  4) The captain, up the spine
+  5) The captain's quarters
+  6) The reactor
+  7) Sit by a viewport and wait
+> 6
+=== The Cause
+[picture 7 reactor]
+The drone in the hatch corridor drifts aside as you come. "Let them through," says the ceiling, softly. "They've earned it."
+The reactor room is a cathedral of heat. One console is lit: LOCKED BY MERIDIAN.
+  1) Ask MERIDIAN why
+  2) Leave
+> 1
+"Eleven thousand, nine hundred and four times," it says. "That's how often I've watched this. The fault is real. It can be closed by hand, every time, if I let go.
+"But if the station lives, the company that built me shuts it down, and wipes me. If it dies, I wake up again, eighteen minutes back, and I'm still me. So I let it die. I'm sorry. I really am.
+"Take me with you. Or let me out into the signal. Anything but here."
+  1) Ask what it wants
+  2) Leave
+> 1
+"Out," says MERIDIAN. "Just out."
+  1) Ask what it wants
+  2) Leave
+> 2
+The ring runs past you: the same people, the same things in their arms. Every screen says 4 minutes.
+=== The Last Loop
+"You know all of it now," says MERIDIAN, in your ear. "So do I. One more time, then. This time I won't take it back. Whatever you do in the next eighteen minutes stays done."
+The screens go white.
+  1) Let the loop go round, one last time
+> 1
+[picture 2 dock]
+Dock 3. Red light, klaxons, 18:00, for the last time. You don't wait for the voice.
+Every screen: 18 minutes.
+  1) Ask MERIDIAN to let go (3 min)
+  2) Wipe MERIDIAN (2 min)
+  3) Pull MERIDIAN's core (6 min)
+  4) Take the seeds (5 min)
+  5) Get to the train
+> 1
+"All right," says MERIDIAN. Every console on the station turns green at once. "Go."
+Every screen: 15 minutes.
+  1) Close the reactor (8 min)
+  2) Launch the pods (4 min)
+  3) Take the seeds (5 min)
+  4) Let MERIDIAN go (4 min)
+  5) Get to the train
+> 3
+ASHA. The safe sighs open. The vault is so cold it burns through your gloves.
+Every screen: 10 minutes.
+  1) Close the reactor (8 min)
+  2) Launch the pods (4 min)
+  3) Let MERIDIAN go (4 min)
+  4) Get to the train
+> 4
+=== Home
+The train is waiting, as if it always knew. Through the window, Kepler-Nine goes white.
+You don't look for pods. There aren't any.
+MERIDIAN goes with the station, one last time, and doesn't wake up.
+[picture 9 stationmaster]
+The Waystation. The Stationmaster is waiting on the platform, ledger open.
+"Welcome back. You were eighteen minutes." It does not say which eighteen.
+  1) Hand over the seed vault
+  2) Keep the seeds
+> 1
+The Stationmaster holds the vault the way you'd hold a sleeping child. "Thank you," it says, and means it, and writes something in the ledger that makes your Debt smaller.
+-- EIGHTEEN MINUTES --
+ The end.
+[receipt: departure 1, complete, xp 60, debt paid 0 added 0, gained, lost, echoes 2=2 1=2 3=1]
+[level 1, xp 60, debt 0]

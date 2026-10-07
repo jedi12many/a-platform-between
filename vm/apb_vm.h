@@ -40,6 +40,9 @@ enum {
  * Returns 0, or APB_VM_ERROR with apb_vm_error() set. */
 uint8_t  apb_vm_open(void);
 uint16_t apb_vm_departure(void);
+/* 1 for a Siding (kind 2, like the Deep Yards, docs/deep-yards.md): its seed is a yard,
+ * so a front end boarding without a Boarding Pass asks which (apb_desk_yard). */
+uint8_t  apb_vm_siding(void);
 
 /* Board `snapshot` (copied) with a Boarding Pass: it must be for this Departure and
  * this character as they are (apb_passport_check). The pass seeds the dice, and its

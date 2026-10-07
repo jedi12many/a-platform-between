@@ -99,16 +99,16 @@ The airlock cycles. Somewhere above you, a calm voice says:
 
 ## C64 memory budget
 
-The C64 is the tightest target, so it sets the budget for everyone. Measured at E4
+The C64 is the tightest target, so it sets the budget for everyone. Measured at E7
 (the details: [c64.md](c64.md)):
 
 | Region | Size |
 |---|---|
-| Main program: the VM's interpreter, rules core, C64 front end | 22 KB |
-| Buffers: one car (6 KB at most), the depot (2 KB), battle state, saves | 13 KB |
-| C stack | 0.5 KB |
-| Overlay area: LOAD (4 KB), PASS (12.5 KB) or BATTLE (15 KB), one at a time | 15 KB |
-| **Total** | **about 50.8 KB** of the 51 KB below $D000 with BASIC switched out |
+| Main program: the VM's interpreter, rules core, C64 front end | 22.6 KB |
+| Buffers: one car (6 KB at most), the depot (2 KB), battle state, saves | 11.9 KB |
+| C stack | 0.4 KB |
+| Overlay area: LOAD (7.4 KB, with the Deep Yards' generator), PASS (14.5 KB, with its own buffers) or BATTLE (15.1 KB), one at a time | 15 KB |
+| **Total** | **about 50.2 KB** of the 51 KB below $D000 with BASIC switched out: 0.8 KB free |
 | Picture, in the RAM under the KERNAL ROM ($E000) | 3.5 KB of 8 KB |
 
 The 4 KB of RAM under the I/O chips ($D000) is still unused.
@@ -240,9 +240,10 @@ Each one ends with something playable or testable.
 | **E6** | **Modern front end**: SDL2 desktop and browser builds | *The Fare* and the slice playable in a browser |
 | **W1** | **The Waystation, static site**: creator, Passport editing and level-ups, tabletop sheets, with the rules core as WebAssembly. Can start any time after E1. See [waystation-web.md](waystation-web.md). | A character made in the browser boards *The Fare* in the terminal |
 | **E7** | **Deep Yards prototype**: seeded procedural floors | A 10-floor descent playable on terminal and C64 |
+| **E8** | **Departure 01, whole**: *Eighteen Minutes*, chapters 2–5 and its Echoes | Playable start to end on terminal, C64, desktop and browser |
 
-After E7: the browser Workshop for community authors, Apple II, DOS, Amiga and SNES
-front ends, the full Departure 01, party support.
+After E8: the browser Workshop for community authors, Apple II, DOS, Amiga and SNES
+front ends, party support.
 
 ### E1 in detail
 
@@ -394,6 +395,77 @@ stats and refusing typos.
 
 *Not yet:* the Arrivals as a character's first trip, and the server (W2): accounts,
 Boarding Passes, the ticket ledger, checked stamps.
+
+### E7 in detail
+
+**Goal:** a 10-floor descent of the Deep Yards ([deep-yards.md](deep-yards.md)), the first
+Siding, built from a seed, playable on the terminal and the C64.
+
+*Done:* `content/sidings/deep-yards/deep-yards.qs`. Play it with `make play-yards`, on
+`build/deep-yards.d64`, or with `make modern` / `make web`.
+
+**The language.** Quest Script gained three things, and the rest is ordinary story:
+- `kind: siding`: it asks for a yard number at boarding, and pays no Debt and plants no
+  Echoes.
+- `~ pick VAR N on KEY`: a choice made by the yard and the floor, never by the dice.
+- `yard POOL` with `fight yard POOL on FLOOR`: maps built for each floor.
+
+**The generator.** The maps come from `core/src/yard.c`, specified in
+[deep-yards.md](deep-yards.md) closely enough that `tools/yards/yard.py`, written from the
+page, gives the same bytes on thousands of maps. On the C64 it runs in the LOAD overlay
+and builds each floor's map in the free space after the depot, so it costs the main
+program nothing but its two new instructions.
+
+**Making room.** The C64's main program had about 150 bytes free.
+- The PASS overlay's buffers moved into the overlay (`OVL2BSS`, 1 KB).
+- The C stack went from 512 to 384 bytes (the deepest route uses 115).
+- The 6502 test harness no longer holds everything at once: one build has the yards,
+  the other the boarding desk.
+
+**Two mistakes found by testing, fixed.** The first mixing function was linear, so a
+floor's picks came in fixed pairs: `make test-yards` now checks picks are independent.
+The first foe numbers were too steep for anyone to reach the bottom.
+
+**Tests.** `make test-yards` checks the generator against the reference. Twelve VM
+playthroughs cover every instruction, on PC and 6502, saved and resumed at every menu,
+and 150 damaged copies play under the sanitizers. On the C64 a descent plays from the
+disk, and the desktop and the browser play the same yard to the same transcript.
+
+*Not yet:* Translation per floor (it needs the VM to carry a realm), daily yards with
+leaderboards (W2), and party yards.
+
+### E8 in detail
+
+**Goal:** all of *Eighteen Minutes* ([01-eighteen-minutes.md](departures/01-eighteen-minutes.md)),
+the first Departure of Platform 1, playable from the ticket to the Stationmaster's ledger
+on every front end, planting its three Echoes.
+
+*Done:* five more chapters in `content/s1/01-eighteen-minutes/eighteen-minutes.qs`, and
+no engine changes: everything it needed, Quest Script already had.
+
+- **The crew.** After chapter 1, the ring becomes a concourse. Four of the crew know one
+  thing each: Teodor the pod launch, Ravi the manual override, and Pell and the captain
+  the safe's code. A failed check costs minutes, so a try can always wait for another
+  loop.
+- **The safe and the cause.** The code opens the seed vault, and in the reactor room
+  MERIDIAN says why it lets the station die.
+- **The last loop.** When you know enough, MERIDIAN agrees to one loop that stays done:
+  eighteen minutes, and seven acts with prices. Closing the reactor, launching the pods,
+  taking the seeds and MERIDIAN's fate (let go, wiped, or carried out as
+  `MERIDIAN_CORE`) don't all fit.
+- **The Echoes.** `MERIDIAN`, `KEPLER_CREW` and `SEED_VAULT` are planted from what you
+  did, and handing the seeds to the Stationmaster takes 5,000 off your Debt.
+- **Nine chapters.** The largest car is still 3.7 KB (chapter 1's station). Two more
+  placeholder pictures: the safe, and the Stationmaster from The Fare.
+- **Tests.** Eleven playthroughs run every instruction (1,085, from 544), every one to the
+  end, on PC and 6502, saved and resumed at every menu. Each starts with one of chapter
+  1's routes, and a random search found the rest of the way; it prefers choices it
+  hasn't made, which keeps the trips short. On the C64 (and on the desktop and in the
+  browser, to the same transcript) the test route now plays the whole Departure: the
+  pods launched, the seeds taken, MERIDIAN let go, and the seeds handed over.
+
+*Not yet:* real art. A Boarding Pass for the C64 route, so its Travel Stamp can be
+compared with the terminal's as The Fare's is.
 
 ### Departure 00: The Fare
 

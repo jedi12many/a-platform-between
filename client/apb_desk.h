@@ -22,4 +22,8 @@ uint8_t apb_desk_run(apb_character *out);
  * nothing they earn can be stamped). */
 uint8_t apb_desk_pass(const apb_character *ch, uint16_t departure, apb_pass *out);
 
+/* A Siding's yard (docs/deep-yards.md), asked after travelling without a pass: the
+ * number the player types, or `fresh` for a blank line. */
+uint16_t apb_desk_yard(uint16_t fresh);
+
 #endif

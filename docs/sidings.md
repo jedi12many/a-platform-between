@@ -20,6 +20,8 @@ and tinker. Some players will spend most of their time here, and that's fine.
 
 ### The Deep Yards: procedural dungeons
 
+*A prototype is built (milestone E7): [deep-yards.md](deep-yards.md).*
+
 Beneath the Waystation are rail yards that go down further than they should: tracks to
 dead and half-remembered realms. Each descent is procedurally generated from a seed:
 

@@ -67,8 +67,8 @@ A Departure is one or more `.qs` files (UTF-8 text). The **header** comes first,
 | Key | Required | Meaning |
 |---|---|---|
 | `title` | yes | Shown on the departure board. |
-| `id` | yes | A number. Official Departures use 0–899; Branch Lines get theirs from the Workshop. |
-| `kind` | yes | `official` or `branch`. |
+| `id` | yes | A number. Official Departures use 0–899; Sidings 1000 and up; Branch Lines get theirs from the Workshop. |
+| `kind` | yes | `official`, `branch`, or `siding` (content outside the story, like the Deep Yards: see *Sidings* below). |
 | `season` | official only | Which season this belongs to. |
 | `realm` | yes | `tl N, ml N`: the realm's Tech and Magic Levels, 0–9. Drives Translation. |
 | `levels` | yes | The level band, for example `2-5`. |
@@ -121,6 +121,20 @@ Every row is the same width; a map is at most 16 × 10, and holds at most 8 figh
 The compiler copies each foe's numbers and name into the image, so a later change to the bestiary
 never changes a Departure that has shipped.
 
+### Yards
+
+A **yard** is a pool of foes for maps the game builds as it's played, one for each floor
+of the Deep Yards ([deep-yards.md](deep-yards.md)). List the bestiary's foes under it,
+weakest first, up to 7; deeper floors reach further down the list:
+
+```
+yard depths
+    ASH_RAT
+    RUST_GUARD, MAINT_DRONE
+```
+
+Fight on it with `fight yard depths on floor` (see *Fights*).
+
 ## Chapters and scenes
 
 ```
@@ -169,6 +183,7 @@ The letters settle long enough to read:
 | `{class}` | Their class, e.g. *Warden* |
 | `{debt}` | Their Debt |
 | `{level}` | Their level |
+| `{yard}` | The trip's yard number, 0–65535 (the Deep Yards: [deep-yards.md](deep-yards.md)) |
 | `{loops}` | The value of a variable you declared |
 
 ## Choices
@@ -311,6 +326,9 @@ fight scrapyard                  // or: fight scrapyard ambush (the foes go firs
 - Each branch is optional. With no `lost:`, losing ends the Departure, failed. With no
   `won:` or `fled:`, the story carries on after the fight.
 - Health carries over from one fight to the next.
+- `fight yard depths on floor` fights on a map built for the floor in the variable `floor`
+  from the yard `depths`: the same yard and floor always build the same map, anywhere
+  ([deep-yards.md](deep-yards.md)). `ambush` and `sneak` work the same way.
 - **Always leave another road.** The compiler warns about a fight every route to an ending
   has to go through, even in a `linear: yes` Departure: give players a way around it
   (another route, a check, a parley). See *Writing roadblocks and many roads* below.
@@ -325,6 +343,7 @@ Commands start with `~`. Several can share a line: `~ give KEYCARD ~ set alarm`.
 | `~ set alarm` / `~ clear alarm` | set or clear a flag |
 | `~ let loops = 3` | set a variable |
 | `~ add loops 1` / `~ sub loops 1` | add or subtract (stops at 0 and 255) |
+| `~ pick room 4` / `~ pick room 4 on floor` | set `room` to 1..4, decided by the trip's yard (and the value of `floor`), never by the dice or anything the player did: the same yard picks the same each time ([deep-yards.md](deep-yards.md)) |
 | `~ echo WOLF_PUP = SAVED` | plant or change an Echo *(official only)* |
 
 ### The character
@@ -445,6 +464,17 @@ can't damage anyone's character or the main story:
 - Your flags and variables are kept in the player's **Branch Line ledger** when the
   Departure ends. (Reading them back from a sequel is planned, not in v0.)
 
+## Sidings: what's different
+
+Sidings (`kind: siding`) are content outside the story: places to wander and grind, like
+the Deep Yards ([sidings.md](sidings.md), [deep-yards.md](deep-yards.md)).
+
+- No `~ echo` or `~ debt`: Sidings never change the story, or move you toward home.
+- Boarding without a Boarding Pass, the player is asked for a yard number to share a
+  descent, or a blank line for a new one. That number is the trip's seed, `{yard}`.
+- A Departure with a yard keeps its depot (scenes, text pairs, pictures and maps) under
+  1,732 bytes, leaving room in the C64's memory to build each floor's map.
+
 ## Limits (v0)
 
 | Thing | Limit | Why |
@@ -455,6 +485,8 @@ can't damage anyone's character or the main story:
 | Chapter size (compiled) | 6 KB | one chapter in C64 memory at a time ([c64.md](c64.md)) |
 | Scenes per Departure | 1024 | |
 | `~ xp`, `~ give` and `~ debt` commands | 32 | the VM remembers which have paid |
+| `~ pick` commands | 255 | each has its own salt ([deep-yards.md](deep-yards.md)) |
+| Foes in a yard | 7 | they stand in a row beside one start |
 
 The compiler tells you when you hit one, and where.
 

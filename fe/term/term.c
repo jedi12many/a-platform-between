@@ -353,6 +353,7 @@ int main(int argc, char **argv)
     const char *choices = NULL;
     size_t n;
     int resume = 0;
+    uint8_t with_pass;
 
     for (i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--width") == 0 && i + 1 < argc) {
@@ -410,9 +411,12 @@ int main(int argc, char **argv)
         return 1;
     }
     putchar('\n');
-    if ((apb_desk_pass(&traveler, apb_vm_departure(), &pass)
-         ? apb_vm_board_pass(&traveler, &pass)
-         : apb_vm_board(&traveler, (uint16_t)seed)) != 0) {
+    with_pass = apb_desk_pass(&traveler, apb_vm_departure(), &pass);
+    if (!with_pass && apb_vm_siding()) {
+        seed = apb_desk_yard((uint16_t)seed);   /* a Siding's seed is its yard */
+    }
+    if ((with_pass ? apb_vm_board_pass(&traveler, &pass)
+                   : apb_vm_board(&traveler, (uint16_t)seed)) != 0) {
         printf("This Departure can't be boarded: %s\n", apb_vm_error());
         return 1;
     }

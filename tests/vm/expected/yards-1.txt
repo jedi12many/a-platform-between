@@ -1,0 +1,451 @@
+=== The Deep Yards
+[picture 0 yards]
+At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft that goes down further than the Waystation does. A brass plate on the gate says YARD 2450. Someone has scratched a number under it: 10.
+The operator, a man made mostly of rust and patience, doesn't look up. "Ten floors," he says. "Every one a different place. Come back up when you like. If you can."
+  1) Step into the cage
+  2) Not today
+> 1
+The cage grinds down and stops. Floor 1.
+A marshalling yard under three moons, so cold the rails sing when you touch them.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A brazier, and an empty bench
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 2 fighters, health 35]
+  ############
+  #...#..~#.1#
+  >0.........#
+  #.....~....#
+  #..........#
+  #....+.....#
+  #....~.....#
+  ############
+round 1: 1's turn
+  1 moves to 4,2
+round 1: 0's turn
+> q
+  (quick: 1.2.0.1)
+  0 attacks 1: 26+20=46 vs 60: cost, 10 damage
+  1 is down
+[the fight is won; health 35]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 2.
+A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A shrine built out of signal lamps
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 2 fighters, health 35]
+  ############
+  >0......1..#
+  #.......O..#
+  #..........#
+  #.........=#
+  #....+....~#
+  #......~...#
+  ############
+round 1: 1's turn
+  1 moves to 2,1
+  1 attacks 0: 79+31=110 vs 58: success, 7 damage
+round 1: 0's turn
+> q
+  (quick: 1.1.0.1)
+  0 attacks 1: 36+20=56 vs 60: cost, 10 damage
+  1 is down
+[the fight is won; health 28]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 3.
+A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A shrine built out of signal lamps
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 2 fighters, health 35]
+  ############
+  #.....+.O..#
+  #...~......#
+  #....~.....#
+  >0.........#
+  #....+.....#
+  #...+...1~.#
+  ############
+round 1: 0's turn
+> q
+  (quick: 1.4.0.1)
+  0 attacks 1: 85+20=105 vs 54: success, 23 damage
+  1 is down
+[the fight is won; health 35]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 4.
+A marshalling yard under three moons, so cold the rails sing when you touch them.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A dark siding: something nests there
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 2 fighters, health 35]
+  ############
+  #....O.#++.#
+  #...+......#
+  #.....+....#
+  #....+.....#
+  >0......1..#
+  #..........#
+  ############
+round 1: 1's turn
+  1 moves to 2,4
+  1 attacks 0: 54+33=87 vs 58: success, 4 damage
+round 1: 0's turn
+> q
+  (quick: 1.5.0.1)
+  0 attacks 1: 27+20=47 vs 60: cost, 10 damage
+  1 is down
+[the fight is won; health 31]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 5.
+A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A brazier, and an empty bench
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 3 fighters, health 35]
+  ############
+  >0.........#
+  #..........#
+  #.......+.2#
+  #....~.~~..#
+  #..........#
+  #......1..+#
+  ############
+round 1: 1's turn
+  1 moves to 2,2
+  1 attacks 0: 97+34=131 vs 58: success, 9 damage
+round 1: 2's turn
+  2 moves to 4,1
+round 1: 0's turn
+> q
+  (quick: 1.1.0.1)
+  0 attacks 1: 51+20=71 vs 60: success, 21 damage
+  1 is down
+round 2: 2's turn
+  2 moves to 2,1
+  2 attacks 0: 22+34=56 vs 58: cost, 1 damage
+round 2: 0's turn
+> q
+  (quick: 1.1.0.2)
+  0 attacks 2: 94+20=114 vs 60: success, 25 damage
+  2 is down
+[the fight is won; health 25]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 6.
+A drowned rail city: green water to the platform edge, lamps burning underneath it.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A brazier, and an empty bench
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 3 fighters, health 35]
+  ############
+  #....=.....#
+  #...#...+.##
+  #.........^#
+  #..^....~12#
+  >0.........#
+  #.....^....#
+  ############
+round 1: 2's turn
+  2 moves to 4,3
+round 1: 0's turn
+> q
+  (quick: 1.5.0.2)
+  0 attacks 2: 45+20=65 vs 60: success, 20 damage
+  2 is down
+round 1: 1's turn
+  1 guards
+round 2: 0's turn
+> q
+  (quick: 1.5.0.1)
+  0 attacks 1: 33+20=53 vs 84: fail, 0 damage
+round 2: 1's turn
+  1 guards
+round 3: 0's turn
+> q
+  (quick: 1.5.0.1)
+  0 attacks 1: 53+20=73 vs 84: cost, 8 damage
+round 3: 1's turn
+  1 guards
+round 4: 0's turn
+> q
+  (quick: 1.5.0.1)
+  0 attacks 1: 83+20=103 vs 84: success, 19 damage
+  1 is down
+[the fight is won; health 35]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 7.
+A marshalling yard under three moons, so cold the rails sing when you touch them.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A wagon with its doors sealed
+  2) Take the stairs down
+  3) Ride the cage back up
+> 1
+The wagon's seal is old. It gives with a sigh.
+Nothing but a ticket stub, punched for a line that doesn't exist.
+The cage grinds down and stops. Floor 7.
+A marshalling yard under three moons, so cold the rails sing when you touch them.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) Take the stairs down
+  2) Ride the cage back up
+> 1
+The stair down is guarded.
+[fight: 12 x 8, 3 fighters, health 35]
+  ############
+  #.......^..#
+  #......#~..#
+  #......~#+.#
+  #........^.#
+  >0........2#
+  #...O...1..#
+  ############
+round 1: 2's turn
+  2 moves to 4,2
+round 1: 0's turn
+> q
+  (quick: 1.5.0.2)
+  0 attacks 2: 43+20=63 vs 60: success, 20 damage
+  2 is down
+round 1: 1's turn
+  1 moves to 4,2
+round 2: 0's turn
+> q
+  (quick: 1.5.0.1)
+  0 attacks 1: 8+20=28 vs 54: fail, 0 damage
+round 2: 1's turn
+  1 moves to 2,4
+  1 attacks 0: 80+51=131 vs 58: success, 13 damage
+round 3: 0's turn
+> q
+  (quick: 1.5.0.1)
+  0 attacks 1: 52+20=72 vs 54: success, 19 damage
+round 3: 1's turn
+  1 attacks 0: 27+51=78 vs 58: success, 8 damage
+round 4: 0's turn
+> q
+  (quick: 1.5.0.1)
+  0 attacks 1: 25+20=45 vs 54: cost, 8 damage
+  1 is down
+[the fight is won; health 14]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 8.
+A marshalling yard under three moons, so cold the rails sing when you touch them.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A dark siding: something nests there
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 3 fighters, health 24]
+  ############
+  #...O..~...#
+  >0.....2...#
+  #..^.......#
+  #..+..~#.#.#
+  #..........#
+  #......1...#
+  ############
+round 1: 2's turn
+  2 moves to 2,1
+  2 attacks 0: 61+37=98 vs 58: success, 6 damage
+round 1: 0's turn
+> q
+  (quick: 1.2.0.2)
+  0 attacks 2: 34+20=54 vs 60: cost, 10 damage
+  2 is gone
+round 1: 1's turn
+  1 guards
+round 2: 0's turn
+> q
+  (quick: 1.2.0.1)
+  0 attacks 1: 75+20=95 vs 84: success, 19 damage
+round 2: 1's turn
+  1 guards
+round 3: 0's turn
+> q
+  (quick: 1.2.0.1)
+  0 attacks 1: 52+20=72 vs 84: cost, 8 damage
+  1 is down
+[the fight is won; health 18]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 9.
+A cathedral of bone where trains are worshipped. A choir hums the timetable.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A wagon with its doors sealed
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 4 fighters, health 28]
+  ############
+  #..........#
+  >0.........#
+  #....~.....#
+  #...+.^=...#
+  #........32#
+  #......O.~1#
+  ############
+round 1: 3's turn
+  3 moves to 3,1
+round 1: 0's turn
+> q
+  (quick: 1.2.0.3)
+  0 attacks 3: 96+20=116 vs 60: success, 25 damage
+  3 is down
+round 1: 1's turn
+  1 guards
+round 1: 2's turn
+  2 moves to 6,1
+round 2: 0's turn
+> q
+  (quick: 1.2.0.2)
+  0 attacks 2: 81+20=101 vs 54: success, 22 damage
+round 2: 1's turn
+  1 guards
+round 2: 2's turn
+  2 moves to 2,1
+  2 attacks 0: 50+53=103 vs 58: success, 10 damage
+round 3: 0's turn
+> q
+  (quick: 1.2.0.2)
+  0 attacks 2: 35+20=55 vs 54: success, 18 damage
+  2 is down
+round 3: 1's turn
+  1 guards
+round 4: 0's turn
+> q
+  (quick: 1.2.0.1)
+  0 attacks 1: 41+20=61 vs 84: fail, 0 damage
+round 4: 1's turn
+  1 guards
+round 5: 0's turn
+> q
+  (quick: 1.2.0.1)
+  0 attacks 1: 61+20=81 vs 84: cost, 8 damage
+round 5: 1's turn
+  1 guards
+round 6: 0's turn
+> q
+  (quick: 1.2.0.1)
+  0 attacks 1: 90+20=110 vs 84: success, 20 damage
+  1 is down
+[the fight is won; health 18]
+The way down is clear.
+You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
+The cage grinds down and stops. Floor 10.
+A cathedral of bone where trains are worshipped. A choir hums the timetable.
+Ahead, past the buffers, a stair goes down, and something is waiting by it.
+  1) A shrine built out of signal lamps
+  2) Take the stairs down
+  3) Ride the cage back up
+> 2
+The stair down is guarded.
+[fight: 12 x 8, 4 fighters, health 28]
+  ############
+  #...=...+..#
+  >0........1#
+  #.....O.+.2#
+  #........3+#
+  #..........#
+  #...^....~.#
+  ############
+round 1: 2's turn
+  2 moves to 4,1
+round 1: 0's turn
+> q
+  (quick: 1.2.0.2)
+  0 attacks 2: 71+20=91 vs 60: success, 23 damage
+  2 is down
+round 1: 1's turn
+  1 moves to 6,1
+round 1: 3's turn
+  3 guards
+round 2: 0's turn
+> q
+  (quick: 1.2.0.1)
+  0 attacks 1: 12+20=32 vs 54: fail, 0 damage
+round 2: 1's turn
+  1 moves to 2,1
+  1 attacks 0: 2+54=56 vs 58: cost, 3 damage
+round 2: 3's turn
+  3 guards
+round 3: 0's turn
+> q
+  (quick: 1.2.0.1)
+  0 attacks 1: 44+20=64 vs 54: crit, 40 damage
+  1 is down
+round 3: 3's turn
+  3 guards
+round 4: 0's turn
+> q
+  (quick: 1.2.0.3)
+  0 attacks 3: 63+20=83 vs 84: cost, 8 damage
+round 4: 3's turn
+  3 guards
+round 5: 0's turn
+> q
+  (quick: 1.2.0.3)
+  0 attacks 3: 28+20=48 vs 84: fail, 0 damage
+round 5: 3's turn
+  3 guards
+round 6: 0's turn
+> q
+  (quick: 1.2.0.3)
+  0 attacks 3: 22+20=42 vs 84: fail, 0 damage
+round 6: 3's turn
+  3 guards
+round 7: 0's turn
+> q
+  (quick: 1.2.0.3)
+  0 attacks 3: 21+20=41 vs 84: fail, 0 damage
+round 7: 3's turn
+  3 guards
+round 8: 0's turn
+> q
+  (quick: 1.2.0.3)
+  0 attacks 3: 56+20=76 vs 84: cost, 8 damage
+round 8: 3's turn
+  3 guards
+round 9: 0's turn
+> q
+  (quick: 1.2.0.3)
+  0 attacks 3: 13+20=33 vs 84: fail, 0 damage
+round 9: 3's turn
+  3 guards
+round 10: 0's turn
+> q
+  (quick: 1.2.0.3)
+  0 attacks 3: 83+20=103 vs 84: success, 19 damage
+  3 is down
+[the fight is won; health 25]
+The way down is clear.
+[picture 1 bottom]
+The tenth floor. There's no stair down from here, only a buffer stop, and painted on it in letters older than the Waystation: YOU CAME A LONG WAY.
+The rust-and-patience man is waiting with the cage. "Yard 2450," he says, and writes it in a book. "Not many get here."
+[receipt: departure 1000, complete, xp 170, debt paid 0 added 0, gained 7, lost, echoes]
+[level 6, xp 70, debt 0]

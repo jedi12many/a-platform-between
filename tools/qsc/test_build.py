@@ -270,6 +270,36 @@ def test_encounters():
         fail(f"encounter read back as {e}")
 
 
+def test_yards():
+    """The Deep Yards' instructions, assembled by hand from docs/vm-spec.md."""
+    src = (TINY.replace("kind: branch", "kind: siding")
+           .replace("flag f\n", "flag f\nvar floor = 3\nvar room = 0\n\nyard pit\n    ASH_RAT\n")
+           .replace("Hi {name}.", "Yard {yard}.")
+           .replace("+ [Stay]\n    ~ set f",
+                    "+ [Stay]\n    ~ set f ~ pick room 4 on floor ~ pick room 9\n"
+                    "    fight yard pit on floor sneak\n        won: Done."))
+    img = build(src)
+    code = bytes(img.cars[0])
+    # PICK var 1 (room), from 4, keyed by var 0 (floor), salt 0; then from 9, no key
+    # (FF), salt 1. FIGHT_YARD encounter 0, sneak (2), floor in var 0.
+    for what, want in (("PICK 1, 4, 0, 0", "45 01 04 00 00"), ("PICK 1, 9, FF, 1", "45 01 09 ff 01"),
+                       ("FIGHT_YARD 0, 2, 0", "3b 00 02 00")):
+        if bytes.fromhex(want) not in code:
+            fail(f"{what} ({want}) isn't in the code")
+    # The depot says Siding (kind 2), and "{yard}" is insert 07.
+    if img.depot[3] != 2:
+        fail(f"a Siding's depot kind is {img.depot[3]}, not 2")
+    from image import read_depot, read_car
+    d = read_depot(img.depot)
+    strings = read_car(bytes(img.cars[0]), 0, d["pairs"])["strings"]
+    if not any(s.startswith(b"Yard \x07") for s in strings):
+        fail("'Yard {yard}.' doesn't start 'Yard ' 07")
+    # The pool: one start, then the rat, in a row on a 2 x 1 map.
+    e = d["encounters"][0]
+    if (e["w"], e["h"], e["starts"], [f["name"] for f in e["foes"]]) != (2, 1, [(0, 0)], ["Ash rat"]):
+        fail(f"the yard's pool read back as {e}")
+
+
 def test_manifests():
     path = os.path.join(ROOT, "content", "s1", "00-the-fare", "the-fare.qs")
     with open(path, encoding="utf-8") as f:
@@ -320,6 +350,7 @@ def test_manifests():
 
 test_hand_assembled()
 test_encounters()
+test_yards()
 test_manifests()
 for p in sorted(glob.glob(os.path.join(ROOT, "tests", "qsc", "ok", "*.qs")) +
                 glob.glob(os.path.join(ROOT, "content", "**", "*.qs"), recursive=True)):

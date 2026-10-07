@@ -51,7 +51,8 @@ from manifest import fits, manifest  # noqa: E402
 from parse import parse  # noqa: E402
 
 # Departures whose playthroughs must, together, run every instruction.
-COVERED = ["content/s1/00-the-fare/the-fare.qs",
+COVERED = ["content/sidings/deep-yards/deep-yards.qs",
+           "content/s1/00-the-fare/the-fare.qs",
            "content/s1/01-eighteen-minutes/eighteen-minutes.qs"]
 
 BUILD = os.path.join(ROOT, "build", "vm")
@@ -67,6 +68,13 @@ def fail(msg):
 def run(cmd, timeout=60):
     p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, cwd=ROOT)
     return p.returncode, p.stdout, p.stderr
+
+
+def sim_harness(src):
+    """The 6502 harness for this Departure: the 6502 has no room for the whole engine in
+    one program, so the Deep Yards' build leaves out the boarding desk (its playthroughs
+    board the built-in traveler), and the other leaves out the yards."""
+    return "build/harness-yards.sim" if "/sidings/" in src else "build/harness.sim"
 
 
 def compile_split(src, out):
@@ -172,7 +180,7 @@ def pass_seed(picks, transcript):
 def dice(name, seed, transcript, who):
     """Re-roll every check in a transcript, and every roll in its fights (one roll for
     all of an area attack); returns how many rolls there were."""
-    rolls = d100s(int(seed))
+    rolls = d100s(int(str(seed).split("+")[0]))      # SEED+LEVEL: a veteran
     rated = ratings(who)
     n = 0
     last = None
@@ -258,7 +266,7 @@ def playthroughs(update):
         rolled = pass_seed(picks, native) if seed == "-" else seed
         rerolled = dice(name, rolled, native, who) if who else 0
         receipt_fits(name, src, native)
-        code, sim, err = run(["sim65", "build/harness.sim", out, seed, picks], timeout=600)
+        code, sim, err = run(["sim65", sim_harness(src), out, seed, picks], timeout=600)
         if sim != native:
             fail(f"{name}: the 6502 transcript differs from the native one")
         else:
@@ -344,7 +352,7 @@ def saves():
         for k in range(len(tokens)):
             if "." in tokens[k] or tokens[k] == "q":         # a turn in a fight
                 continue                # a battle turn: saves are made at story menus
-            for binary, sim in (("build/harness", False), ("build/harness.sim", True)):
+            for binary, sim in (("build/harness", False), (sim_harness(src), True)):
                 if sim and not (name == "fare-edge" and k in (0, 5, len(tokens) - 1)):
                     continue
                 pre = ["sim65"] if sim else []
@@ -454,7 +462,7 @@ def wrapped_menu(case="fare-edge"):
         print("ok  wrapped menu offset: refused")
 
 
-def damage(count, case="fare-edge"):
+def damage(count, case="fare-edge", tokens=("1", "2", "3")):
     src_dir = os.path.join(BUILD, case)
     files = {}
     for n in os.listdir(src_dir):
@@ -463,7 +471,7 @@ def damage(count, case="fare-edge"):
     rng = random.Random(1985)
     out = os.path.join(BUILD, "damaged")
     os.makedirs(out, exist_ok=True)
-    picks = ",".join(str(rng.randint(1, 3)) for _ in range(40))
+    picks = ",".join(rng.choice(tokens) for _ in range(40))
     outcomes = {}
     env = dict(os.environ, ASAN_OPTIONS="detect_leaks=0:abort_on_error=0",
                UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1")
@@ -500,6 +508,8 @@ def main():
     damaged_saves(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2)
     damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")))
     damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2, "fight-tour")
+    # The Deep Yards: picks and floors built from damaged pools, fought on quick.
+    damage(int(os.environ.get("APB_DAMAGE_RUNS", "300")) // 2, "yards-1", ("1", "2", "q", "q"))
     print(f"vm tests: {failures} failed")
     sys.exit(1 if failures else 0)
 

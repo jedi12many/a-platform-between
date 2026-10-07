@@ -22,7 +22,7 @@ def records(path):
 
 
 def overlay_of(name):
-    m = re.match(r"OVERLAY(\d)$|OVL(\d)DATA$", name)
+    m = re.match(r"OVERLAY(\d)$|OVL(\d)(?:DATA|BSS)$", name)
     return int(m.group(1) or m.group(2)) if m else None
 
 
