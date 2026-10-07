@@ -99,16 +99,19 @@ The airlock cycles. Somewhere above you, a calm voice says:
 
 ## C64 memory budget
 
-The C64 is the tightest target, so it sets the budget for everyone:
+The C64 is the tightest target, so it sets the budget for everyone. Measured at E4
+(the details: [c64.md](c64.md)):
 
-| Region | Budget |
+| Region | Size |
 |---|---|
-| Engine code: VM + rules core + HAL + text decoder + disk loader | ≤ 20 KB |
-| Current car: bytecode + compressed text | ≤ 16 KB |
-| Picture: character set + screen data | ≤ 6 KB |
-| Character, save state, flags, registry tables | ≤ 3 KB |
-| Stack, buffers, screen | ≤ 4 KB |
-| **Total** | **≤ ~49 KB** of the ~50 KB available with BASIC switched out |
+| Main program: the VM's interpreter, rules core, C64 front end | 21 KB |
+| Buffers: one car (6 KB at most), the depot (2 KB), battle state, saves | 13 KB |
+| C stack | 1.5 KB |
+| Overlay area: LOAD (4 KB), PASS (12.5 KB) or BATTLE (15 KB), one at a time | 15 KB |
+| **Total** | **about 50.5 KB** of the 51 KB below $D000 with BASIC switched out |
+
+There's no room left for a picture (a character set and screen, about 6 KB): pictures
+will have to share the overlay area, or live under the I/O and KERNAL ROMs.
 
 A 4–6 hour Departure is maybe 150 KB of raw text. Compressed, that's 75–100 KB, about one
 side of a 1541 floppy (170 KB). One Departure per disk side is the target.
@@ -295,6 +298,19 @@ a test Departure; two receipts from overlapping Departures both land.
 | **E3.7 Voting (design)** | How a party votes on story choices and declares actions at once. | A reviewed design. *Done: [party-play.md](party-play.md). An elected leader; the party chooses "the leader decides" or democracy (one vote per character, the leader breaks ties); the best at it rolls story checks; personal moments; fights turn by turn as in* Pool of Radiance*, with a combat log and a recap since your last turn; the network messages. The VM never sees a vote, only the decision.* |
 | **E3.8 *Pool of Radiance* turns** | The turn from review ([combat.md](combat.md), *Your turn*): guard (a free attack on the first foe to come close), wait (act at the end of the round), free attacks on anyone pulling away, done, and quick (the computer plays a character). The terminal shows the log, and a recap. Cast and use come with powers and items. | Python reference and C agree; battle scenarios for each new action match on PC and 6502; *The Fare*'s fight still covered. *Done: guard replaces defend, and help is gone; a foe with the guard rule stands guard when nobody's in reach; wait reorders only the round it's used in; free attacks for anyone pulling away, both sides; quick (`apb_battle_quick`) plans a traveler's turn with the foes' own rules. A new scenario covers each, re-checked roll by roll on PC and 6502; the terminal offers wait and quick, and its recorded skirmish shows them; The Fare's flee cases gained free attacks and new seeds, and every instruction still runs.* |
 
+### E4 in detail
+
+**Goal:** *The Fare* on a C64 disk, and proof it plays without a C64 in the room.
+
+| Step | What | Done when |
+|---|---|---|
+| **E4.1 Fit in 64 KB** | Measure; split the game into a main program and overlays loaded from disk (LOAD, PASS, BATTLE); a memory map; 6 KB chapters | It links for the C64, with room for the stack. *Done: [c64.md](c64.md). The whole game was 38 KB of code before any Departure; now 21 KB stays and the rest loads when needed. Two cc65 traps found and fixed in the memory map: the C stack started inside the overlay area, and a function's local constants landed on its own label.* |
+| **E4.2 The C64 front end** (`fe/c64/`) | The HAL on the KERNAL: text wrapped at 40 columns with "-- more --", menus by key, typed lines, the 1541 for files, saves and overlays | *The Fare* boards and plays. *Done: the battle screen, status line, checks and receipt moved into shared client code (`client/*view.c`), so the C64 and the terminal say the same words; the terminal's transcripts didn't change by a byte.* |
+| **E4.3 The disk** | `.d64` images from the build | `make c64` writes *The Fare*'s disk. *Done: `tools/d64.py`, checked against VICE's c1541.* |
+| **E4.4 Play it without a C64** | The real program on a 6502 emulator, the KERNAL answered in Python, from the disk image | `make test-c64`: transcripts match; the Travel Stamp is the terminal's. *Done: it also proved a save survives switching off, and found a function left in the wrong overlay; `fe/c64/check_overlays.py` now refuses any overlay that reaches into another.* |
+| **E4.5 Real hardware** | VICE on a PC, then a real C64 | You play *The Fare* from the disk. |
+| **E4.6 Pictures and a status bar** | The picture area and a fixed status bar | A picture shows at the bench. |
+
 ### Departure 00: The Fare
 
 A short prologue, about 20–30 minutes, built alongside the engine as its test content:
@@ -385,6 +401,9 @@ rewards, possibly becoming official.
   runs with a 4 KB car and a 2 KB depot buffer (`-DAPB_VM_CAR_MAX`, `-DAPB_VM_DEPOT_MAX`).
   E4 needs a real memory map: smaller cars (chapters), overlays for the battle and the
   desk, and no stdio.
+  *E4: done that way* ([c64.md](c64.md)): a 21 KB main program, three overlays in a 15 KB
+  area, 6 KB chapters, no stdio. It fits with about half a kilobyte to spare, so the
+  next big thing (pictures) needs a new idea, not a squeeze.
   *E2 adds about 2 KB to `passport.c`:* Boarding Pass decoding and Travel Stamp encoding,
   which a client needs, beside the Passport and pass encoders, which only tests and the
   website need. cc65 links whole files, so E4 should split them (`apb_receipt_apply` is

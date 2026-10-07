@@ -143,6 +143,9 @@ void    apb_battle_quick(uint8_t who, apb_action *out);
 
 /* Helpers the front ends use to offer only what's possible. */
 uint8_t apb_battle_can_reach(uint8_t who, uint8_t x, uint8_t y);
+/* Every square `who` can reach this turn, in one pass (1: yes): for menus, which would
+ * otherwise ask apb_battle_can_reach square by square. */
+void    apb_battle_reach_map(uint8_t who, uint8_t map[APB_MAP_H_MAX][APB_MAP_W_MAX]);
 uint8_t apb_battle_can_attack(uint8_t who, uint8_t target, uint8_t from_x, uint8_t from_y);
 int16_t apb_battle_tn(uint8_t attacker, uint8_t target);
 

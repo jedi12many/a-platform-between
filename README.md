@@ -69,5 +69,6 @@ make demo        # build and run the native demo
 | [Engine plan](docs/engine-plan.md) | Story VM, Quest Script, C64 budget, milestones E0–E7 |
 | [Quest Script](docs/quest-script.md) | The language Departures are written in (public reference) |
 | [VM spec](docs/vm-spec.md) | Departure image format, bytecode, runtime checks, saves |
+| [The C64 build](docs/c64.md) | Memory map, overlays, the disk, playing it in VICE, testing without a C64 |
 | [Roadmap](docs/roadmap.md) | Phases from paper rules to multiplayer |
 | [Departures](docs/departures/) | One-page treatments of the first solo Departures |

@@ -269,6 +269,19 @@ uint8_t apb_battle_can_reach(uint8_t who, uint8_t x, uint8_t y)
     return (uint8_t)(cost_to[y][x] != 0xFF);
 }
 
+void apb_battle_reach_map(uint8_t who, uint8_t map[APB_MAP_H_MAX][APB_MAP_W_MAX])
+{
+    uint8_t x;
+    uint8_t y;
+
+    memset(map, 0, APB_MAP_H_MAX * APB_MAP_W_MAX);
+    if (who >= count) return;
+    reach(who);
+    for (y = 0; y < map_h; ++y) {
+        for (x = 0; x < map_w; ++x) map[y][x] = (uint8_t)(cost_to[y][x] != 0xFF);
+    }
+}
+
 /* Can a shot from x0,y0 reach x1,y1? Walls block it; so does anyone standing in
  * between (but not the shooter or the target). */
 static uint8_t in_sight(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1, uint8_t shooter)

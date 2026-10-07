@@ -52,6 +52,23 @@ void hal_pause(void);
  * `rating` is numbered as in the VM spec: 0..5 a stat, 16..27 a skill. */
 void hal_check(uint8_t rating, const apb_roll *roll);
 
+/* ---------------------------------------------------------- overlays */
+
+/* On a machine that loads code from disk only when it's needed (the C64: E4, see
+ * docs/c64.md), the VM asks for an overlay before it calls into one, and the front end
+ * loads it unless it's already there. Everywhere else this is nothing at all. */
+enum {
+    APB_OVL_LOAD = 1,   /* checking the depot and each car as it loads        */
+    APB_OVL_PASS,       /* the boarding desk, Passports, passes, stamps, saves */
+    APB_OVL_BATTLE      /* the battle engine and the battle screen             */
+};
+#ifdef APB_OVERLAYS
+void hal_overlay(uint8_t which);
+#define APB_NEED(which) hal_overlay(which)
+#else
+#define APB_NEED(which) ((void)0)
+#endif
+
 /* ---------------------------------------------------------- battles */
 
 /* A fight has begun: the map and the fighters are set up (read them with the

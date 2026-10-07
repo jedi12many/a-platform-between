@@ -74,7 +74,7 @@ NO_MENU = 0xFFFF            # a scene's menu offset when it has no menu
 NO_TITLE = 0xFFFF           # a car's title string when its chapter has none
 STACK_DEPTH = 16
 MAX_OPTIONS = 9
-MAX_CAR = 16384
+MAX_CAR = 6144          # a C64 holds one car at a time (docs/c64.md)
 MAX_DEPOT = 4096                # vm/apb_vm.h, APB_VM_DEPOT_MAX
 MAX_ENCOUNTERS = 32
 MAP_TILES = ".#O~+^=>"          # tile codes 0..7, in order (core/include/apb.h, APB_TILE_*)

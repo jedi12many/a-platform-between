@@ -176,8 +176,8 @@ static void fail(const char *what, uint16_t at)
 
 /* ------------------------------------------------------- loading: depot */
 
-/* A battle map and its foes (docs/vm-spec.md, Encounters): `len` bytes at depot[at].
- * Everything is checked here, at load, so the battle can trust it. */
+/* Square x, y of a battle map whose squares start at depot[tiles_at]: used when loading
+ * and in fights, so it stays in the main program on the C64. */
 static uint8_t enc_tile(uint16_t tiles_at, uint8_t w, uint8_t x, uint8_t y)
 {
     uint16_t n = (uint16_t)(y * w + x);
@@ -185,6 +185,14 @@ static uint8_t enc_tile(uint16_t tiles_at, uint8_t w, uint8_t x, uint8_t y)
 
     return (uint8_t)((n & 1) ? (b & 15) : (b >> 4));
 }
+
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY1")
+#pragma rodata-name (push, "OVL1DATA")
+#endif
+
+/* A battle map and its foes (docs/vm-spec.md, Encounters): `len` bytes at depot[at].
+ * Everything is checked here, at load, so the battle can trust it. */
 
 static uint8_t encounter_ok(uint16_t at, uint16_t len)
 {
@@ -350,6 +358,11 @@ static uint8_t load_depot(void)
     return 1;
 }
 
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
+
 static uint8_t dir_car(uint16_t scene)
 {
     return depot[dir_at + 3 * scene];
@@ -508,6 +521,11 @@ static uint8_t marked(uint16_t at)
 {
     return (uint8_t)((boundary[at >> 3] >> (at & 7)) & 1u);
 }
+#endif
+
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY1")
+#pragma rodata-name (push, "OVL1DATA")
 #endif
 
 /* Walk the code once: every opcode known, every operand in range. Scene starts
@@ -672,6 +690,11 @@ static uint8_t load_car(uint8_t index)
     strings_len = (uint16_t)(car_len - strings_at);
     return verify_car(index);
 }
+
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
 
 static uint16_t crc_byte(uint16_t crc, uint8_t b)
 {
@@ -840,6 +863,11 @@ static uint8_t first_pay(void)
     return 1;
 }
 
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY2")
+#pragma rodata-name (push, "OVL2DATA")
+#endif
+
 /* ---------------------------------------------------------------- saves */
 
 /* A save is made at a menu and resumes by showing that menu again (docs/vm-spec.md,
@@ -962,6 +990,18 @@ static uint8_t save_game(uint16_t menu_at)
 }
 
 /* Read a save back in. Returns the menu's offset, or 0xFFFF (with the VM failed). */
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
+
+static uint8_t sv_car;
+
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY2")
+#pragma rodata-name (push, "OVL2DATA")
+#endif
+
 static uint16_t load_game(void)
 {
     uint8_t i;
@@ -1040,8 +1080,23 @@ static uint16_t load_game(void)
         fail("the save is damaged", 0);
         return 0xFFFFu;
     }
-    /* Back into the car, and check the menu is a real one. */
-    if (!load_car(c)) {
+    sv_car = c;
+    return at;
+}
+
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
+
+/* The rest of a resume, back in the main program: into the save's car (loading it
+ * needs the LOAD overlay), and check the menu is a real one. */
+static uint16_t resume_at(uint16_t at)
+{
+    uint8_t i;
+
+    APB_NEED(APB_OVL_LOAD);
+    if (!load_car(sv_car)) {
         return 0xFFFFu;
     }
     if (at >= code_len || car[CODE_AT + at] != OP_MENU) {
@@ -1068,6 +1123,11 @@ static uint16_t load_game(void)
 #endif
     return at;
 }
+
+#ifdef APB_OVERLAYS
+#pragma code-name (push, "OVERLAY3")
+#pragma rodata-name (push, "OVL3DATA")
+#endif
 
 /* -------------------------------------------------------------- fights */
 
@@ -1163,6 +1223,11 @@ static uint8_t fight(uint8_t n, uint8_t surprise)
     return (uint8_t)(result - 1);
 }
 
+#ifdef APB_OVERLAYS
+#pragma code-name (pop)
+#pragma rodata-name (pop)
+#endif
+
 /* -------------------------------------------------------------- running */
 
 static uint8_t push(int16_t v)
@@ -1190,6 +1255,7 @@ static uint8_t enter(uint16_t scene)
         fail("bad scene", pc);
         return 0;
     }
+    if (dir_car(scene) != car_index) APB_NEED(APB_OVL_LOAD);
     if (dir_car(scene) != car_index && !load_car(dir_car(scene))) {
         return 0;
     }
@@ -1210,6 +1276,7 @@ uint8_t apb_vm_open(void)
     error_buf[0] = '\0';
     car_index = 0xFF;
     opened = 0;
+    APB_NEED(APB_OVL_LOAD);
     if (!load_depot()) {
         return APB_VM_ERROR;
     }
@@ -1236,6 +1303,7 @@ uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass)
         fail("pass is for another Departure", 0);
         return APB_VM_ERROR;
     }
+    APB_NEED(APB_OVL_PASS);
     if (pass->check != apb_passport_check(snapshot)) {
         fail("pass is for another character", 0);
         return APB_VM_ERROR;
@@ -1259,7 +1327,9 @@ uint8_t apb_vm_resume(void)
     }
     opened = 0;
     car_index = 0xFF;
+    APB_NEED(APB_OVL_PASS);
     at = load_game();
+    if (at != 0xFFFFu) at = resume_at(at);
     if (at == 0xFFFFu) {
         return APB_VM_ERROR;
     }
@@ -1420,6 +1490,7 @@ uint8_t apb_vm_run(void)
             steps = 0;
             i = hal_menu(label_ptrs, menu_count);
             if (i == APB_MENU_SAVE) {
+                APB_NEED(APB_OVL_PASS);
                 hal_prompt(save_game(op_at) ? "Saved." : "Couldn't save.");
                 pc = op_at;             /* and show the menu again */
                 break;
@@ -1488,6 +1559,7 @@ uint8_t apb_vm_run(void)
             i = FETCH8();
             a = FETCH8();
             if (i >= encounter_count || a > 2) { fail("bad fight", pc); break; }
+            APB_NEED(APB_OVL_BATTLE);
             push(fight(i, (uint8_t)a));
             break;
         case OP_CHECK:

@@ -452,7 +452,7 @@ can't damage anyone's character or the main story:
 | Choices per menu | 9 | one key each |
 | Choice label | 37 characters | fits a C64 line |
 | Flags / variables | 512 / 128 | memory on the C64 |
-| Chapter size (compiled) | 16 KB | one chapter in C64 memory at a time |
+| Chapter size (compiled) | 6 KB | one chapter in C64 memory at a time ([c64.md](c64.md)) |
 | Scenes per Departure | 1024 | |
 | `~ xp`, `~ give` and `~ debt` commands | 32 | the VM remembers which have paid |
 

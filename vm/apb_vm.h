@@ -20,7 +20,7 @@
 #define APB_VM_DEPOT_MAX   4096     /* a test build may use less (the 6502 harness: 2 KB) */
 #endif
 #ifndef APB_VM_CAR_MAX
-#define APB_VM_CAR_MAX     16384    /* a test build may use less (the 6502 harness: 4 KB) */
+#define APB_VM_CAR_MAX     6144     /* the compiler's limit; the 6502 harness uses 4 KB */
 #endif
 #define APB_VM_REWARD_SITES 32      /* XP, GIVE and DEBT instructions in one Departure */
 #define APB_VM_FOE_NAME_MAX 20      /* a foe's display name in an encounter record */

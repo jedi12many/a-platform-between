@@ -8,7 +8,8 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-6502`: the same tests on the sim65 6502 simulator. Needs cc65
   (`apt-get install cc65`).
 - `make crosscheck`: the demo's native and 6502 output must be byte-identical.
-- `make c64`: build `build/demo.prg` for the Commodore 64.
+- `make c64`: build `build/demo.prg` and The Fare's C64 disk, `build/the-fare.d64`
+  (`LOAD"APB",8` in VICE; see `docs/c64.md`).
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
   C engine's password; the registry and Quest Script parser tests must pass.
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
@@ -36,8 +37,13 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   in `core/src/battle.c`) must match their reviewed logs on both, with every roll
   re-checked, and random battles must never crash under the sanitizers.
   `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff.
+- `make test-c64`: the C64 program from the `.d64` must play The Fare on a 6502 emulator
+  (py65: `pip install py65`) with the KERNAL answered in Python
+  (`tests/c64/run_c64.py`): transcripts match `tests/c64/*.expected`, the Travel Stamp is
+  the terminal's, a save survives switching off; and no overlay may use another's code
+  or data (`fe/c64/check_overlays.py`).
 
-Run all eleven before pushing; CI runs them too. `make play` plays The Fare in a terminal.
+Run all twelve before pushing; CI runs them too. `make play` plays The Fare in a terminal.
 
 ## Rules-core house rules
 
@@ -52,6 +58,12 @@ The core must build with cc65 for the 6502 and give identical results everywhere
   to PETSCII on the C64. Compare against literal tables instead (see `core/src/names.c`).
 - cc65 2.19's optimizer has bugs. If a test passes natively but fails on sim65, suspect
   the compiler, rewrite the expression, and leave a comment (see `core/src/translate.c`).
+- On the C64 the game is a main program plus overlays (`docs/c64.md`). Before calling
+  into an overlay, ask for it with `APB_NEED(...)`; an overlay must never call another.
+  Code that's only for one moment (loading, boarding, fights) can go in an overlay
+  (`C64_PASS`, `C64_BATTLE` in the Makefile, or a `#pragma code-name` block in `vm.c`).
+- Shared client text (`client/*view.c`) is ASCII on every compiler: those files include
+  cc65's `ascii_charmap.h`.
 - Golden values in tests (dice, passwords) must be derived independently, not copied from
   the code's own output. Use `tools/passport/passport.py` for passwords.
 - Rules must stay playable at a table by hand (see `docs/tabletop.md`).
@@ -90,7 +102,8 @@ the image: every operand is checked when it's used, not only at load.
 
 `client/` holds client code shared by every front end, on the HAL: the boarding desk
 (`desk.c`), where a player types their Passport. Front ends live in `fe/`: `fe/term/` is
-the terminal (`build/apb`), which plays an `.apd` or a directory of split files.
+the terminal (`build/apb`), which plays an `.apd` or a directory of split files;
+`fe/c64/` is the Commodore 64 (`docs/c64.md`).
 Characters are never made in a client; they're made at the Waystation website
 (`docs/waystation-web.md`). For tests,
 `python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM] [ECHO=STATE...]`

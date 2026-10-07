@@ -86,7 +86,7 @@ on ground you can stand on, no two fighters on one square) and every number's ra
 | string offsets | 2 × strings | offset of each string from the start of string data |
 | string data | rest | compressed strings, each ending in `0x00` |
 
-A car is at most 16 KB in total.
+A car is at most 6 KB in total: one fits in a C64 at a time, beside the game ([c64.md](c64.md)).
 
 ## Text encoding
 
