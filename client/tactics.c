@@ -298,16 +298,16 @@ static void log_row(const char *s, uint8_t n)
     for (r = 0; r + 1 < LOG_ROWS; ++r) memcpy(log_text[r], log_text[r + 1], LOG_WIDTH + 1);
     memcpy(log_text[LOG_ROWS - 1], s, n);
     log_text[LOG_ROWS - 1][n] = '\0';
+    hal_scene_log((const char *)log_text[LOG_ROWS - 1]);
     if (log_new < LOG_ROWS) ++log_new;
 }
 
-/* A sentence into the log, broken between words to fit, and into the record. */
+/* A sentence into the log, broken between words to fit; the record has its rows. */
 static void say(const char *s)
 {
     uint8_t n;
     uint8_t cut;
 
-    hal_scene_log(s);
     log_new = 0;
     while (*s) {
         n = (uint8_t)strlen(s);
