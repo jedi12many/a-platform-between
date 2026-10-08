@@ -17,6 +17,7 @@
 
 #include <SDL.h>
 
+#include "apb_scene.h"
 #include "modern.h"
 
 static uint32_t fb[SCR_W * SCR_H];
@@ -82,6 +83,77 @@ uint16_t plat_key(void)
 
 void plat_saved(void) {}
 
+/* Sound: an SDL audio device, opened the first time there's something to play. */
+static SDL_AudioDeviceID audio;
+static int audio_tried;
+
+void plat_sound(const int16_t *samples, int count)
+{
+    SDL_AudioSpec want;
+
+    if (!renderer) return;                  /* no window: no sound either */
+    if (!audio_tried) {
+        audio_tried = 1;
+        memset(&want, 0, sizeof(want));
+        want.freq = SFX_RATE;
+        want.format = AUDIO_S16SYS;
+        want.channels = 1;
+        want.samples = 1024;
+        if (SDL_InitSubSystem(SDL_INIT_AUDIO) == 0) {
+            audio = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0);
+            if (audio) SDL_PauseAudioDevice(audio, 0);
+        }
+    }
+    if (!audio) return;
+    SDL_ClearQueuedAudio(audio);            /* a new sound cuts off the last, as on the SID */
+    SDL_QueueAudio(audio, samples, (Uint32)count * sizeof(int16_t));
+}
+
+/* --sounds DIR: every sound effect as a WAV file (sfx0.wav, ...), for tests and ears. */
+static void put32(FILE *f, uint32_t v)
+{
+    fputc((int)(v & 0xFF), f);
+    fputc((int)(v >> 8 & 0xFF), f);
+    fputc((int)(v >> 16 & 0xFF), f);
+    fputc((int)(v >> 24), f);
+}
+
+static int write_sounds(const char *dir)
+{
+    static int16_t samples[2 * SFX_RATE];
+    char path[512];
+    FILE *f;
+    int effect;
+    int n;
+    int i;
+
+    for (effect = 0; effect < APB_SFX_COUNT; ++effect) {
+        n = sfx_render((uint8_t)effect, samples, 2 * SFX_RATE);
+        snprintf(path, sizeof(path), "%s/sfx%d.wav", dir, effect);
+        f = fopen(path, "wb");
+        if (!f) {
+            fprintf(stderr, "can't write %s\n", path);
+            return 1;
+        }
+        fwrite("RIFF", 1, 4, f);
+        put32(f, (uint32_t)(36 + 2 * n));
+        fwrite("WAVEfmt ", 1, 8, f);
+        put32(f, 16);
+        put32(f, 1u | 1u << 16);                        /* PCM, one channel */
+        put32(f, SFX_RATE);
+        put32(f, SFX_RATE * 2);
+        put32(f, 2u | 16u << 16);                       /* 2 bytes a sample, 16 bits */
+        fwrite("data", 1, 4, f);
+        put32(f, (uint32_t)(2 * n));
+        for (i = 0; i < n; ++i) {
+            fputc(samples[i] & 0xFF, f);
+            fputc((samples[i] >> 8) & 0xFF, f);
+        }
+        fclose(f);
+    }
+    return 0;
+}
+
 void plat_wait(unsigned ms)
 {
     SDL_Event ev;
@@ -132,6 +204,8 @@ int main(int argc, char **argv)
             choices = argv[++i];
         } else if (strcmp(argv[i], "--shots") == 0 && i + 1 < argc) {
             shot_dir = argv[++i];
+        } else if (strcmp(argv[i], "--sounds") == 0 && i + 1 < argc) {
+            return write_sounds(argv[++i]);
         } else if (argv[i][0] == '-' || dir) {
             dir = NULL;
             break;
@@ -141,6 +215,7 @@ int main(int argc, char **argv)
     }
     if (!dir) {
         fprintf(stderr, "usage: apb-modern [--seed N] [--choices FILE] [--shots DIR] DEPARTURE\n"
+                        "       apb-modern --sounds DIR   (the sound effects as WAV files)\n"
                         "  DEPARTURE is a directory of its files (make modern writes them)\n");
         return 2;
     }

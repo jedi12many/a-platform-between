@@ -73,6 +73,16 @@ void plat_wait(unsigned ms)
     emscripten_sleep(ms);
 }
 
+/* Sound: the page plays the samples through Web Audio (index.html, Module.playSound). */
+EM_JS(void, js_sound, (const int16_t *samples, int count, int rate), {
+    if (Module.playSound) Module.playSound(HEAP16.subarray(samples >> 1, (samples >> 1) + count), rate);
+});
+
+void plat_sound(const int16_t *samples, int count)
+{
+    js_sound(samples, count, SFX_RATE);
+}
+
 void plat_saved(void)
 {
     js_sync_saves();

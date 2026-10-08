@@ -57,7 +57,8 @@ C64_LOAD   := core/src/yard.c
 C64_PASS   := client/desk.c core/src/passport.c client/receipt_view.c
 # Nothing in a fight is recursive, so its C is built with its locals static (-Cl): smaller.
 C64_BATTLE := fe/c64/sprites.s
-C64_SCENE  := core/src/battle.c core/src/combat.c client/battle_text.c client/tactics.c fe/c64/scene.c
+C64_SCENE  := core/src/battle.c core/src/combat.c client/battle_text.c client/tactics.c fe/c64/scene.c \
+              client/sfx.c
 
 build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE) $(CORE_HDR) $(VM_HDR) \
                    client/apb_view.h | build
@@ -257,9 +258,9 @@ play-yards: build/apb build/deep-yards.apd
 # of its files and its pictures in full colour (tools/apic.py).
 # Fights are the battle screen with graphics (client/tactics.c, docs/c64-hardware.md),
 # drawn as the C64 draws them from the battle graphics (BGFX, tools/battlegfx.py).
-MODERN_SRC := fe/modern/screen.c fe/modern/render.c fe/modern/scene.c
+MODERN_SRC := fe/modern/screen.c fe/modern/render.c fe/modern/scene.c fe/modern/sound.c
 MODERN_HDR := fe/modern/modern.h fe/modern/font8x8.h client/apb_scene.h
-MODERN_VIEW_SRC := client/view.c client/tactics.c client/battle_text.c client/receipt_view.c
+MODERN_VIEW_SRC := client/view.c client/tactics.c client/battle_text.c client/receipt_view.c client/sfx.c
 
 build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(MODERN_VIEW_SRC) client/apb_view.h \
                   $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build

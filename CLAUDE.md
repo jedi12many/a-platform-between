@@ -53,7 +53,8 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-modern`: the modern front end (`fe/modern/`, `docs/modern.md`) must play the
   C64's test routes as the C64 does (`tests/modern/check_modern.py`), on the desktop
   (SDL2, `build/apb-modern`) and in a browser (`build/web/`, headless Chromium through
-  Playwright), and a save must survive a restart on both. Needs `libsdl2-dev`,
+  Playwright), and a save must survive a restart on both; the fight's sound effects
+  (`apb-modern --sounds DIR`) must sound, fade, and have the SID's pitches. Needs `libsdl2-dev`,
   `emscripten`, and Node with Playwright.
 - `make test-yards`: the Deep Yards' generator (`core/src/yard.c`, `docs/deep-yards.md`)
   must build the same maps as the reference written from the doc (`tools/yards/yard.py`),

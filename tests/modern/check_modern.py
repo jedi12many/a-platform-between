@@ -11,6 +11,11 @@ clock, which reads 0 in the C64's emulator, so the desktop plays with --seed 0. 
 Travel Stamps are the C64's, and the terminal's. A
 save is made on the desktop, the program stops, and a new one picks up the trip.
 
+The sound effects (client/sfx.c, fe/modern/sound.c), written as WAV files with
+--sounds, must each sound and fade out within two seconds, all differ, and have the
+pitch the SID gives them: a steady tone's frequency register is its pitch byte times
+256, and a PAL C64's SID plays register value F at F x 985248 / 2^24 Hz.
+
 With --web, the browser build (build/web/, in headless Chromium through Playwright,
 tests/modern/check_web.cjs) must give the desktop's transcript, line for line, on the
 same routes; its save survives the page being reloaded. Then real keys and clicks.
@@ -76,8 +81,45 @@ def like_the_c64(text, departure):
     return lines
 
 
+def sounds():
+    import struct
+    import wave
+    with tempfile.TemporaryDirectory() as tmp:
+        p = subprocess.run([os.path.join(ROOT, "build", "apb-modern"), "--sounds", tmp],
+                           capture_output=True, text=True, timeout=60)
+        if p.returncode:
+            fail(f"apb-modern --sounds: {p.stderr.strip()}")
+            return
+        heard = []
+        for n in range(8):
+            with wave.open(os.path.join(tmp, f"sfx{n}.wav")) as w:
+                rate, count = w.getframerate(), w.getnframes()
+                data = struct.unpack(f"<{count}h", w.readframes(count))
+            heard.append(data)
+            if not 0.02 < count / rate < 2 or max(abs(v) for v in data) < 1000:
+                fail(f"sound {n}: {count / rate:.3f} s, peak {max(abs(v) for v in data)}")
+            elif max(abs(v) for v in data[-3:]) > 300:
+                fail(f"sound {n} stops with a click, not a fade")
+        if len(set(heard)) != 8:
+            fail("two sound effects are the same")
+        # Steady tones: select (triangle, pitch $28) and no (sawtooth, pitch $06). Their
+        # pitch, counted from the samples: how often the wave rises through its middle.
+        for n, pitch in ((6, 0x28), (7, 0x06)):
+            data = heard[n]
+            ups = [i for i in range(1, len(data)) if data[i - 1] < 0 <= data[i]]
+            if len(ups) < 3:
+                fail(f"sound {n}: too short to hear its pitch")
+                continue
+            got = (len(ups) - 1) * 44100 / (ups[-1] - ups[0])
+            want = pitch * 256 * 985248 / 2 ** 24
+            if abs(got - want) > want * 0.03:
+                fail(f"sound {n}: {got:.1f} Hz, where the SID plays {want:.1f} Hz")
+    print("ok  the sound effects: eight, each fading out, at the SID's pitches")
+
+
 def main(argv):
     web = "--web" in argv
+    sounds()
     for name, departure, choices, then, expected in ROUTES:
         got = desktop(departure, choices, then)
         with open(os.path.join(ROOT, "tests", "c64", expected)) as f:

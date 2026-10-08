@@ -28,11 +28,12 @@ enum {
 /* How a sprite is drawn. */
 enum { APB_SPR_OFF = 0, APB_SPR_HIRES, APB_SPR_MULTI };
 
-/* Sound effects (E9c). */
+/* Sound effects: client/sfx.c says how each sounds, as the SID plays it. */
 enum {
     APB_SFX_STEP = 0, APB_SFX_SWING, APB_SFX_SHOT, APB_SFX_HIT, APB_SFX_MISS,
-    APB_SFX_DOWN, APB_SFX_SELECT, APB_SFX_NO
+    APB_SFX_DOWN, APB_SFX_SELECT, APB_SFX_NO, APB_SFX_COUNT
 };
+extern const uint8_t apb_sfx[APB_SFX_COUNT][6];
 
 /* Into the battle screen, cleared, with its graphics loaded: returns their tables (the
  * file's first APB_SCENE_TABLES bytes), or 0 if they can't be had. */

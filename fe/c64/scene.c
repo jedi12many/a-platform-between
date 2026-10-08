@@ -298,25 +298,13 @@ uint8_t hal_scene_key(void)
 
 /* ------------------------------------------------------------------ sound */
 
-/* The SID's first voice, a sound at a time: waveform, pitch (the high byte), how it
- * slides a frame, attack/decay, sustain/release, and how many frames the gate's open. */
-static const uint8_t effects[][6] = {
-    { 0x81, 0x06, 0x00, 0x00, 0xA1, 2 },     /* step: a scuff of noise     */
-    { 0x81, 0x30, 0xF8, 0x02, 0x83, 5 },     /* swing: a whoosh, falling   */
-    { 0x21, 0x40, 0xFA, 0x00, 0xA4, 7 },     /* shot: a zip, falling       */
-    { 0x81, 0x10, 0xFF, 0x08, 0x09, 3 },     /* hit: a thump               */
-    { 0x41, 0x18, 0xFF, 0x05, 0x00, 3 },     /* miss: a dull clack         */
-    { 0x21, 0x18, 0xFF, 0x0A, 0x0A, 16 },    /* down: a long falling note  */
-    { 0x11, 0x28, 0x00, 0x00, 0xA2, 2 },     /* select: a blip             */
-    { 0x21, 0x06, 0x00, 0x00, 0xA4, 5 }      /* no: a low buzz             */
-};
-
+/* The SID's first voice, a sound at a time, from client/sfx.c's table. */
 void hal_scene_sound(uint8_t effect)
 {
     const uint8_t *e;
 
-    if (effect >= sizeof(effects) / sizeof(effects[0])) return;
-    e = effects[effect];
+    if (effect >= APB_SFX_COUNT) return;
+    e = apb_sfx[effect];
     sfx_time = 0;
     VOICE1[4] = 0;                          /* the last one's gate shut, so this one starts */
     VOICE1[0] = 0;

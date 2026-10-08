@@ -44,7 +44,11 @@ fit. Unlike the C64, it has `~`, `_` and braces.
 [c64.md](c64.md#the-battle-screen)), drawn exactly as the C64's VIC-II draws it, from the
 same graphics file (`BGFX`, `tools/battlegfx.py`), each C64 pixel two by two. The arrow
 keys or the keypad's digits move, Return chooses, Escape or Backspace goes back, and a
-command's first letter does it at once.
+command's first letter does it at once. The fight's sound effects are the C64's: the
+same table (`client/sfx.c`) played by a small synthesiser that works like the SID's
+voice, its waveforms, envelope and timings (`fe/modern/sound.c`), through SDL on the
+desktop and Web Audio in the browser (which starts sound after the first key).
+`apb-modern --sounds DIR` writes each as a WAV file.
 
 **Pictures** are in full colour. A Departure's `pictures/*.png` become `picNN.apic`
 files (`tools/apic.py`): up to 640 x 384 pixels and 256 colours each. They're stretched
@@ -58,14 +62,16 @@ too. Real art can be drawn bigger, and the C64 converter will scale it down
 |---|---|
 | `fe/modern/screen.c` | the whole HAL on the 40 x 25 screen: text, menus, typed lines, pictures, files, the start menu and the receipt |
 | `fe/modern/scene.c` | the battle screen's HAL (`client/apb_scene.h`): its characters, colours and sprites, kept for `render.c` |
+| `fe/modern/sound.c` | the fight's sound effects, synthesised as the SID plays them |
 | `fe/modern/render.c` | the screen into a 640 x 400 framebuffer; the battle screen as the VIC-II draws it (`tools/vic.py` is the reference) |
 | `fe/modern/sdl.c` | the desktop: a window, keys and clicks (SDL2) |
 | `fe/modern/web.c`, `fe/modern/web/index.html` | the browser: the page draws the framebuffer on a canvas and queues keys and clicks |
 
-A platform supplies four functions (`fe/modern/modern.h`):
+A platform supplies five functions (`fe/modern/modern.h`):
 - `plat_key`: wait for a key or a click;
 - `plat_show`: show the screen;
 - `plat_wait`: show it and wait some milliseconds (a fight's animations);
+- `plat_sound`: play a sound's samples;
 - `plat_saved`: a save was written.
 
 The VM waits for the player the same way everywhere: `plat_key` returns when there's a

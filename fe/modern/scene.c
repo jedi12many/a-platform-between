@@ -97,11 +97,6 @@ uint8_t hal_scene_key(void)
     }
 }
 
-void hal_scene_sound(uint8_t effect)
-{
-    (void)effect;                           /* E9c */
-}
-
 void hal_scene_log(const char *ascii)
 {
     modern_log(ascii);

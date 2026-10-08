@@ -76,8 +76,9 @@ again when the story shows one.
 - **E9b, the C64** (done, [c64.md](c64.md#the-battle-screen)). The same screen on the
   VIC: bank 3, tiles in characters, figures in sprites through a multiplexer, keys and a
   joystick, the fight borrowing the chapter's memory.
-- **E9c, sound.** The SID's effects (on the C64 already), and the same through a small
-  synthesiser on the desktop and in the browser.
+- **E9c, sound** (done). The SID's effects, from one table (`client/sfx.c`), and the same
+  through a small SID-style synthesiser on the desktop and in the browser
+  (`fe/modern/sound.c`).
 - **E9d, our own font** for all the game's text.
 
 **Bitmap pictures** (done): the story's pictures in multicolour bitmap mode, and

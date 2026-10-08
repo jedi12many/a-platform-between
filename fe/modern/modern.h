@@ -90,6 +90,11 @@ void plat_show(void);
 void plat_saved(void);
 /* Show the screen and wait `ms` milliseconds, for animation. */
 void plat_wait(unsigned ms);
+/* Play a sound: mono, 16 bits, SFX_RATE samples a second (fe/modern/sound.c). */
+#define SFX_RATE 44100
+void plat_sound(const int16_t *samples, int count);
+/* A sound effect's samples (client/sfx.c), as the SID plays it: how many, up to max. */
+int sfx_render(uint8_t effect, int16_t *out, int max);
 
 /* screen.c, for scene.c: a key as the story's screen takes them (from the choices file
  * in tests), with no cursor; and a line into the transcript, if there is one. */
