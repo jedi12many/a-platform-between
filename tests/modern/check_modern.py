@@ -5,8 +5,7 @@
 Each route the C64 is tested on (tests/c64/*.choices) is played on the desktop build
 (build/apb-modern, from a choices file, with no window) and must give the C64's reviewed
 transcript (tests/c64/*.expected), except where the two machines are meant to differ:
-the C64 has no ~ (its chapter titles read "- The Static -"), and it names its pictures
-by their files (pic00, ...). A trip without a Boarding Pass takes its dice from the
+the C64 names its pictures by their files (pic00, ...). A trip without a Boarding Pass takes its dice from the
 clock, which reads 0 in the C64's emulator, so the desktop plays with --seed 0. So the
 Travel Stamps are the C64's, and the terminal's. A
 save is made on the desktop, the program stops, and a new one picks up the trip.
@@ -67,7 +66,7 @@ def desktop(departure, choices, then):
 
 
 def like_the_c64(text, departure):
-    """The desktop's transcript as the C64 shows it: '-' for '~', pictures by file."""
+    """The desktop's transcript as the C64 shows it: pictures by file."""
     with open(os.path.join(ROOT, "build", "modern", departure, "DEPOT"), "rb") as f:
         names = read_depot(f.read()).get("pictures", [])
     lines = []
@@ -77,7 +76,7 @@ def like_the_c64(text, departure):
             line = f"[picture pic{names.index(m.group(1)):02d}]"
         elif line == "[the trip is over]":
             line = "[the program ended]"
-        lines.append(line.replace("~", "-"))
+        lines.append(line)
     return lines
 
 

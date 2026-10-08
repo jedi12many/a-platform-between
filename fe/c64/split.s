@@ -2,17 +2,19 @@
 ;
 ; A picture lives in the RAM under the KERNAL (VIC bank 3), in multicolour bitmap mode
 ; (tools/c64pic.py): its bitmap at $E000, its screen (two colours a cell) at $F400, the
-; third colour of each of its cells at $F608 and its background at $F7E8. A raster
-; interrupt shows it on rows 1-12 and the normal text screen ($0400, the ROM's
-; upper/lower case characters) above and below, twice a frame:
+; third colour of each of its cells at $F608 and its background at $F7E8. The text
+; screen is in bank 3 too: at $F800, in our font at $D000 (tools/c64font.py, under the
+; I/O, which only the VIC sees there). A raster interrupt shows the picture on rows 1-12
+; and the text above and below, twice a frame:
 ;
-;   just before row 1:  VIC bank 3, bitmap $E000, screen $F400, multicolour bitmap
-;   just before row 13: VIC bank 0, screen $0400, characters $1800, hires text, black
+;   just before row 1:  bitmap $E000, screen $F400, multicolour bitmap
+;   just before row 13: screen $F800, characters $D000, hires text, black
 ;
 ; The second one also runs the KERNAL's own interrupt (keyboard, cursor, clock) once a
 ; frame, in place of the CIA timer it normally runs from.
 
-        .export _split_on, _split_off, _pic_show
+        .export _split_on, _split_off, _pic_show, _text_screen, _font_install, _text_scroll
+        .importzp ptr1, ptr2, ptr3, ptr4, tmp1
 
 ROW_PIC   = 51 + 8 * 1 - 2          ; raster lines: a little before each row starts
 ROW_TEXT  = 51 + 8 * 13 - 2
@@ -120,13 +122,14 @@ irq:
         sta phase
         jmp $EA31                   ; the KERNAL's interrupt: keys, cursor, clock
 
+_text_screen:
 text_screen:
         lda #$1B                    ; text mode
         sta $D011
-        lda $DD00                   ; VIC bank 0
-        ora #$03
+        lda $DD00                   ; VIC bank 3 (keep the serial bits)
+        and #$FC
         sta $DD00
-        lda #$17                    ; screen $0400, upper/lower case characters
+        lda #$E4                    ; screen $F800, characters $D000
         sta $D018
         lda $D016
         and #$EF                    ; hires
@@ -134,3 +137,87 @@ text_screen:
         lda #0
         sta $D021                   ; black
         rts
+
+; Our font, loaded at $E000, to $D000: under the I/O, so with everything but RAM switched
+; out for the copy (and interrupts off, as their vectors are in the ROM).
+_font_install:
+        sei
+        lda $01
+        pha
+        lda #$34
+        sta $01
+        lda #$00
+        sta ptr1
+        sta ptr2
+        lda #$E0
+        sta ptr1 + 1
+        lda #$D0
+        sta ptr2 + 1
+        ldx #8                      ; 8 pages: 2 KB
+        ldy #0
+@copy:  lda (ptr1), y
+        sta (ptr2), y
+        iny
+        bne @copy
+        inc ptr1 + 1
+        inc ptr2 + 1
+        dex
+        bne @copy
+        pla
+        sta $01
+        cli
+        rts
+
+; Scroll the text window (rows A to 24) up a row: the screen, from under the KERNAL
+; (so with the ROM out), and its colours. A row at a time, with interrupts let in between,
+; so the raster split never misses a frame.
+_text_scroll:
+        sta tmp1                    ; the row being filled
+@row:   lda tmp1
+        cmp #24
+        bcs @done
+        tax
+        lda rows_lo, x              ; ptr1: this row; ptr2: the one under it
+        sta ptr1
+        sta ptr3
+        lda rows_lo + 1, x
+        sta ptr2
+        sta ptr4
+        lda rows_hi, x
+        sta ptr1 + 1
+        sec
+        sbc #$20                    ; colour RAM is $2000 below the screen
+        sta ptr3 + 1
+        lda rows_hi + 1, x
+        sta ptr2 + 1
+        sec
+        sbc #$20
+        sta ptr4 + 1
+        sei
+        lda $01
+        pha
+        lda #$35                    ; RAM under the KERNAL, the I/O for colours
+        sta $01
+        ldy #39
+@copy:  lda (ptr2), y
+        sta (ptr1), y
+        lda (ptr4), y
+        sta (ptr3), y
+        dey
+        bpl @copy
+        pla
+        sta $01
+        cli
+        inc tmp1
+        jmp @row
+@done:  rts
+
+        .segment "RODATA"
+rows_lo:
+        .repeat 25, r
+        .byte <($F800 + r * 40)
+        .endrepeat
+rows_hi:
+        .repeat 25, r
+        .byte >($F800 + r * 40)
+        .endrepeat

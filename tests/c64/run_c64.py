@@ -55,7 +55,7 @@ def to_ascii(c):
     return "?"
 
 
-SCREEN = 0x0400
+SCREEN = 0xF800             # the text screen, in VIC bank 3 (fe/c64/split.s)
 COLS = 40
 LAST_ROW = 24
 STACK_TOP = None            # the C stack starts where the overlays do: from the map
@@ -70,7 +70,8 @@ def screen_ascii(code):
         return chr(code)
     if 0x20 <= code < 0x40:
         return chr(code)
-    return {0x00: "@", 0x1B: "[", 0x1C: "\\", 0x1D: "]", 0x1E: "^", 0x1F: "-"}.get(code, "?")
+    return {0x00: "@", 0x1B: "[", 0x1C: "\\", 0x1D: "]", 0x1E: "^", 0x1F: "_", 0x40: "`",
+            0x5B: "{", 0x5C: "|", 0x5D: "}", 0x5E: "~"}.get(code, "?")
 
 
 def segment_start(dbg, name):
@@ -167,9 +168,9 @@ class C64:
 
     def shot(self):
         """What the screen shows now: the status bar, the picture (when the raster split
-        is on) and the text window, as a PNG, for a person to look at. The C64's own
-        characters are in its ROM, which isn't here, so text is drawn with a stand-in."""
-        from PIL import Image, ImageDraw
+        is on) and the text window, as a PNG, for a person to look at, in the game's own
+        font (the disk's file font: here the VIC's registers share its address)."""
+        from PIL import Image
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools"))
         import c64pic
         if self.in_scene:
@@ -177,7 +178,7 @@ class C64:
             self.scene_shot().save(os.path.join(self.shot_dir, f"screen{self.shots:03d}.png"))
             return
         img = Image.new("RGB", (320, 200))
-        draw = ImageDraw.Draw(img)
+        font = self.files.get("font", b"\0\0" + bytes(2048))[2:]
         split = self.mem[0xD01A] & 1
         if split:
             at = c64pic.LOAD_AT
@@ -189,11 +190,11 @@ class C64:
             for x in range(40):
                 code = self.mem[SCREEN + row * COLS + x]
                 ink = c64pic.PALETTE[self.mem[0xD800 + row * COLS + x] & 15]
-                back = (0, 0, 0)
-                if code & 0x80:
-                    ink, back = back, ink
-                draw.rectangle((x * 8, row * 8, x * 8 + 7, row * 8 + 7), fill=back)
-                draw.text((x * 8 + 1, row * 8 - 2), screen_ascii(code), fill=ink)
+                for y in range(8):
+                    bits = font[code * 8 + y]
+                    for dx in range(8):
+                        img.putpixel((x * 8 + dx, row * 8 + y),
+                                     ink if (bits >> (7 - dx)) & 1 else (0, 0, 0))
         img = img.resize((640, 400), Image.NEAREST)
         self.shots += 1
         img.save(os.path.join(self.shot_dir, f"screen{self.shots:03d}.png"))

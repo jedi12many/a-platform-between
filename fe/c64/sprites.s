@@ -21,6 +21,7 @@
         .export _scene_start, _scene_stop, _scene_wait, _hal_scene_log
         .export _scene_next, _scene_pending
         .export _sfx_time, _sfx_sweep, _sfx_wave, _sfx_freq
+        .importzp ptr1, ptr2
 
 FRAME_LINE = 250
 SPRPTR     = $EBF8                  ; the screen's at $E800: its sprite pointers
@@ -60,9 +61,12 @@ _sfx_freq:      .res 1              ; its pitch (high byte)
         .segment "OVERLAY3"
 
 ; The battle screen on: VIC bank 3, screen $E800, characters $E000, multicolour; the
-; raster interrupt, and no CIA timer interrupts (the raster runs the KERNAL's).
+; raster interrupt, and no CIA timer interrupts (the raster runs the KERNAL's). The
+; story's text screen ($F800) is kept at $FC00 meanwhile: the sprite shapes ($EC00) run
+; over its first rows.
 _scene_start:
         sei
+        jsr keep_text
         lda #0
         sta evi
         sta _scene_pending
@@ -103,9 +107,10 @@ _scene_start:
         cli
         rts
 
-; And off: the text screen, as fe/c64/split.s leaves it, and the CIA timer.
+; And off: the story's text screen back, as fe/c64/split.s shows it, and the CIA timer.
 _scene_stop:
         sei
+        jsr text_back
         lda #0
         sta $D01A
         sta $D015
@@ -120,15 +125,49 @@ _scene_stop:
         sta $0315
         lda #$81
         sta $DC0D
-        lda $DD00
-        ora #$03
-        sta $DD00
-        lda #$17
+        lda #$E4                    ; screen $F800, characters $D000 (bank 3 still)
         sta $D018
         lda $D016
         and #$EF
         sta $D016
         cli
+        rts
+
+; The text screen to $FC00 and back, with the KERNAL's ROM out (interrupts are off).
+keep_text:
+        lda #$F8
+        ldx #$FC
+        bne move_text               ; always
+text_back:
+        lda #$FC
+        ldx #$F8
+move_text:
+        sta ptr2 + 1
+        stx ptr1 + 1
+        lda #0
+        sta ptr1
+        sta ptr2
+        lda $01
+        pha
+        lda #$35
+        sta $01
+        ldx #4                      ; 1000 bytes: 3 pages and 232 (not the 6502's
+        ldy #0                      ; vectors at $FFFA, in the RAM at $FC00 + 1018)
+@copy:  lda (ptr2), y
+        sta (ptr1), y
+        iny
+        cpx #1
+        bne @page
+        cpy #232
+        beq @done
+@page:  cpy #0
+        bne @copy
+        inc ptr1 + 1
+        inc ptr2 + 1
+        dex
+        bne @copy
+@done:  pla
+        sta $01
         rts
 
 ; Wait until the plan handed over is up, then A frames more. tests/c64/run_c64.py has no

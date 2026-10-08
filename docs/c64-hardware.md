@@ -52,7 +52,8 @@ The plan moves the whole display into bank 3, text included:
 | $0400–$07FF | freed (the old text screen): the sound-effect player and its table | 1 KB | in bank 0, always there for the main program |
 
 As built, it went a little differently ([c64.md](c64.md#how-it-fits-in-64-kb) has the
-map): the text screen stayed at $0400 with the ROM's font for now; the story's picture
+map): the text screen went to $F800 and our font to $D000 (the old screen at $0400 holds
+the battle screen's buffers now); the story's picture
 became a **multicolour bitmap** (the bitmap at $E000, its screen at $F400: three colours
 of any sixteen in every cell, and no limit of 256 different cells); and a fight puts its
 characters at $E000, its screen at $E800 and its sprite shapes at $F000, then loads the
@@ -79,7 +80,8 @@ again when the story shows one.
 - **E9c, sound** (done). The SID's effects, from one table (`client/sfx.c`), and the same
   through a small SID-style synthesiser on the desktop and in the browser
   (`fe/modern/sound.c`).
-- **E9d, our own font** for all the game's text.
+- **E9d, our own font** for all the game's text (done): the story's and the battle
+  screen's, the same letters; the text screen moved to bank 3 to use it.
 
 **Bitmap pictures** (done): the story's pictures in multicolour bitmap mode, and
 `tools/c64fit.py` giving every cell its best three colours of sixteen.

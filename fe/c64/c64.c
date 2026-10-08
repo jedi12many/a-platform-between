@@ -11,7 +11,6 @@
  * has already made PETSCII.
  */
 #include <cbm.h>
-#include <conio.h>
 #include <string.h>
 
 #include "apb.h"
@@ -24,12 +23,11 @@
 #define ROWS 25
 #define LAST_ROW (ROWS - 1)
 
-#define SCREEN     ((uint8_t *)0x0400)
+#define SCREEN     ((uint8_t *)0xF800)  /* in VIC bank 3, under the KERNAL: write only */
 #define COLORS     ((uint8_t *)0xD800)
 #define BORDER     (*(volatile uint8_t *)0xD020)
 #define BACKGROUND (*(volatile uint8_t *)0xD021)
-#define VIC_MEMORY (*(volatile uint8_t *)0xD018)
-#define CASE_LOCK  (*(volatile uint8_t *)0x0291)
+#define BLINK_OFF  (*(volatile uint8_t *)0x00CC)
 #define JIFFY_LO   (*(volatile uint8_t *)0x00A2)
 #define JIFFY_MID  (*(volatile uint8_t *)0x00A1)
 
@@ -49,10 +47,15 @@
 #define PICTURE_TOP 1
 #define PICTURE_ROWS 12
 
-/* fe/c64/split.s: the raster split, and putting a loaded picture on screen. */
+/* fe/c64/split.s: the raster split, putting a loaded picture on screen, the text screen
+ * and our font, and scrolling the text window (the screen is in the RAM under the
+ * KERNAL ROM, which only the VIC and writes reach: reading it needs the ROM out). */
 void split_on(void);
 void split_off(void);
 void pic_show(void);
+void text_screen(void);
+void font_install(void);
+void __fastcall__ text_scroll(uint8_t top);
 
 /* ----------------------------------------------------------------- text */
 
@@ -67,6 +70,7 @@ static uint8_t word_len;
 static uint8_t spaces;          /* spaces waiting to go before the next word   */
 
 static void more(void);
+static uint8_t wait_key(void);
 
 /* PETSCII to the screen's own codes (upper/lower case set). */
 static uint8_t screen_code(uint8_t c)
@@ -91,8 +95,7 @@ static void clear_row(uint8_t row)
  * row as this function starts, so don't rename it. */
 static void newline(void)
 {
-    memmove(SCREEN + top * COLS, SCREEN + (top + 1) * COLS, (LAST_ROW - top) * COLS);
-    memmove(COLORS + top * COLS, COLORS + (top + 1) * COLS, (LAST_ROW - top) * COLS);
+    text_scroll(top);
     clear_row(LAST_ROW);
     col = 0;
     more();
@@ -116,10 +119,7 @@ static void more(void)
     reverse = 0x80;
     for (i = 0; msg[i]; ++i) put((uint8_t)msg[i]);
     reverse = 0;
-    gotoxy(col, LAST_ROW);
-    cursor(1);
-    cgetc();
-    cursor(0);
+    wait_key();
     clear_row(LAST_ROW);
     col = 0;
     rows_shown = 0;
@@ -182,7 +182,8 @@ static uint8_t petscii(uint8_t c)
     if (c >= 0x61 && c <= 0x7A) return (uint8_t)(c - 0x20);     /* a-z */
     if (c >= 0x41 && c <= 0x5A) return (uint8_t)(c + 0x80);     /* A-Z */
     if (c == 0x0A) return PET_RETURN;
-    if (c == 0x5F || c >= 0x7B) return 0x2D;                    /* no _ { | } ~ */
+    if (c >= 0x7B && c <= 0x7E) return (uint8_t)(c + 0x60);     /* { | } ~ in our font */
+    if (c >= 0x7F) return 0x2D;
     return c;
 }
 
@@ -196,14 +197,25 @@ static void plat_out(const char *s)
     while (*s) stream((uint8_t)*s++);
 }
 
-static uint8_t key(void)
+/* A key, with the cursor where the next character goes: a block that blinks with the
+ * clock (the ROM's cursor can't read the screen under the KERNAL, so it's ours). */
+static uint8_t wait_key(void)
 {
     uint8_t k;
+    uint16_t at = (uint16_t)(LAST_ROW * COLS + (col < COLS ? col : COLS - 1));
 
-    gotoxy(col, LAST_ROW);
-    cursor(1);
-    k = (uint8_t)cgetc();
-    cursor(0);
+    COLORS[at] = ink;
+    while (!(k = cbm_k_getin())) {
+        SCREEN[at] = (uint8_t)(JIFFY_LO & 0x10 ? 0x20 : 0xA0);
+    }
+    SCREEN[at] = 0x20;
+    return k;
+}
+
+static uint8_t key(void)
+{
+    uint8_t k = wait_key();
+
     rows_shown = 0;
     return k;
 }
@@ -216,9 +228,12 @@ void hal_init(void)
 
     BORDER = INK_BLACK;
     BACKGROUND = INK_BLACK;
-    VIC_MEMORY = 0x17;          /* screen at $0400, the upper/lower case characters */
-    CASE_LOCK = 0x80;           /* and C= + SHIFT can't switch them back            */
+    BLINK_OFF = 1;              /* the ROM's cursor: never, it would read the ROM   */
     for (row = 0; row < ROWS; ++row) clear_row(row);
+    /* Our font (tools/c64font.py, on every disk), loaded where the picture goes, then
+     * moved under the I/O, where the VIC reads it. */
+    if (cbm_load("font", 8, 0)) font_install();
+    text_screen();
     top = 1;
     col = rows_shown = 0;
     draw_status();
@@ -237,7 +252,7 @@ void hal_text_end(void)
     end_line();
 }
 
-/* "~ The Static ~", as the terminal has it; the C64 has no ~, so it reads "- The Static -". */
+/* "~ The Static ~", as the terminal has it (our font has the ~). */
 static const char tilde_space[] = { 0x7E, 0x20, 0 };
 static const char space_tilde[] = { 0x20, 0x7E, 0 };
 

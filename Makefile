@@ -57,10 +57,11 @@ C64_LOAD   := core/src/yard.c
 C64_PASS   := client/desk.c core/src/passport.c client/receipt_view.c
 # Nothing in a fight is recursive, so its C is built with its locals static (-Cl): smaller.
 C64_BATTLE := fe/c64/sprites.s
-C64_SCENE  := core/src/battle.c core/src/combat.c client/battle_text.c client/tactics.c fe/c64/scene.c \
-              client/sfx.c
+C64_SCENE  := core/src/battle.c core/src/combat.c client/battle_text.c client/tactics.c client/sfx.c
+# Its buffers in the 1 KB at $0400 (LOWBSS, fe/c64/apb.cfg).
+C64_LOWBSS := fe/c64/scene.c
 
-build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE) $(CORE_HDR) $(VM_HDR) \
+build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE) $(C64_LOWBSS) $(CORE_HDR) $(VM_HDR) \
                    client/apb_view.h | build
 	@mkdir -p build/c64/obj
 	@for f in $(C64_MAIN); do \
@@ -73,8 +74,10 @@ build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATT
 	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
 	@for f in $(C64_SCENE); do $(CL65) -t c64 -O -Cl $(INC) $(C64_DEFS) --code-name OVERLAY3 \
 	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
+	$(CL65) -t c64 -O -Cl $(INC) $(C64_DEFS) --code-name OVERLAY3 --rodata-name OVL3DATA \
+	    --bss-name LOWBSS -c -o build/c64/obj/scene.o fe/c64/scene.c
 	$(CL65) -t c64 -g -C fe/c64/apb.cfg -m build/c64/apb.map -Wl --dbgfile,build/c64/apb.dbg -o $@ \
-	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE))))) c64.lib
+	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE) $(C64_LOWBSS))))) c64.lib
 
 # The Fare on a 1541 disk: LOAD"APB",8 and RUN. Its pictures (pic00, pic01, ...) come
 # from the PNGs in its pictures/ folder (tools/c64pic.py, which needs Pillow).
@@ -86,7 +89,7 @@ build/the-fare.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/00-the-fare
 	python3 tools/c64pic.py disk build/c64/fare/DEPOT content/s1/00-the-fare/pictures build/c64/fare-pics
 	python3 tools/d64.py write $@ "the fare" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
 	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/fare-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
@@ -101,7 +104,7 @@ build/eighteen-minutes.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/01-
 	python3 tools/c64pic.py disk build/c64/e18/DEPOT content/s1/01-eighteen-minutes/pictures build/c64/e18-pics
 	python3 tools/d64.py write $@ "eighteen minutes" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
 	    $$(for f in build/c64/e18/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/e18-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
@@ -116,7 +119,7 @@ build/deep-yards.d64: build/c64/apb.prg build/c64/bgfx/btab content/sidings/deep
 	python3 tools/c64pic.py disk build/c64/yards/DEPOT content/sidings/deep-yards/pictures build/c64/yards-pics
 	python3 tools/d64.py write $@ "the deep yards" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
 	    $$(for f in build/c64/yards/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/yards-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
@@ -271,9 +274,11 @@ build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(MODERN_VIEW_SRC)
 build/battle.bgfx: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h | build
 	python3 tools/battlegfx.py $@
 
-build/c64/bgfx/btab: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h
+build/c64/bgfx/btab: tools/battlegfx.py tools/c64font.py tools/c64pic.py $(wildcard registry/*.txt) \
+                     fe/modern/font8x8.h
 	@mkdir -p build/c64/bgfx
 	python3 tools/battlegfx.py build/c64/battle.bgfx --c64 build/c64/bgfx
+	python3 tools/c64font.py build/c64/bgfx/font
 
 # $(1) the .qs, $(2) its pictures, $(3) the directory to fill
 define modern_departure

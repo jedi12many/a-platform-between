@@ -1,7 +1,7 @@
 /*
  * The battle screen on the C64 (client/apb_scene.h, docs/c64.md): the VIC-II's
  * multicolour character mode in bank 3 (the characters at $E000, the screen at $E800, the
- * sprite shapes at $F000, all in the RAM under the KERNAL, loaded from the disk files
+ * sprite shapes at $EC00, all in the RAM under the KERNAL, loaded from the disk files
  * btab, bchr and bspr, tools/battlegfx.py), more sprites than the VIC's eight (planned
  * here, put up by the raster interrupt in fe/c64/sprites.s), the keyboard and a joystick in
  * port 2, and the SID's sound effects.
@@ -26,7 +26,7 @@
 #define JOYSTICK   (*(volatile uint8_t *)0xDC00)
 #define VOICE1     ((volatile uint8_t *)0xD400)
 
-#define SHAPES_AT  192          /* sprite pointer of the shapes at $F000, in bank 3   */
+#define SHAPES_AT  176          /* sprite pointer of the shapes at $EC00, in bank 3   */
 #define SPRITES    APB_SCENE_SPRITES
 #define TOP        50           /* the screen's top and left, in the VIC's sprite     */
 #define LEFT       24           /* coordinates                                        */

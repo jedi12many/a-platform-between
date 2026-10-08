@@ -5,8 +5,8 @@ graphics loads for a fight, built from the art below and checked against the C64
 
 --c64 also writes it as the C64 loads it (fe/c64/scene.c), three program files with
 their load addresses: btab (the tables, loaded where the program says), bchr (the
-characters, at $E000) and bspr (the sprite shapes, at $F000), both in VIC bank 3, under
-the KERNAL's ROM, where the VIC sees them and nothing else lives during a fight.
+characters, at $E000) and bspr (the sprite shapes, at $EC00), both in VIC bank 3, under
+the KERNAL's ROM, where the VIC sees them; the story's text waits at $FC00 meanwhile.
 
 The screen is the C64's multicolour character mode: 40 x 25 characters from one set of
 256, each cell either hires (colours 0-7: the text) or multicolour (the tiles: three
@@ -64,14 +64,16 @@ def font8x8():
 
 def glyph(rows):
     """font8x8 rows (bit 0 leftmost) as C64 character bytes (bit 7 leftmost), bolder:
-    each stroke a pixel wider, the way C64 games' own fonts were."""
+    each stroke a pixel wider, the way C64 games' own fonts were, except where that would
+    close a one-pixel gap (an m, a w, a #), which stays open."""
     out = []
     for r in rows:
         b = 0
         for x in range(8):
             if (r >> x) & 1:
                 b |= 0x80 >> x
-        out.append((b | (b >> 1)) & 0xFF)
+        grow = (b >> 1) & ~b & ~(b << 1)        # right of a stroke, not touching the next
+        out.append((b | grow) & 0xFF)
     return out
 
 
@@ -520,9 +522,10 @@ def main(argv):
         os.makedirs(out, exist_ok=True)
         for name, at, part in (("btab", 0x0000, data[:TABLES]),
                                ("bchr", 0xE000, data[TABLES:TABLES + 2048]),
-                               ("bspr", 0xF000, data[TABLES + 2048:])):
-            if at and at + len(part) > 0xFFFA:
-                raise SystemExit(f"battlegfx: {name} runs into the 6502's vectors")
+                               ("bspr", 0xEC00, data[TABLES + 2048:])):
+            if at and at + len(part) > 0xFC00:
+                raise SystemExit(f"battlegfx: {name} runs past $FC00, where the story's "
+                                 "text waits during a fight")
             with open(os.path.join(out, name), "wb") as f:
                 f.write(bytes([at & 0xFF, at >> 8]) + part)
     print(f"{argv[1]}: {len(data)} bytes, {n} sprite shapes")
