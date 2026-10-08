@@ -18,6 +18,10 @@
   #pick button:focus-visible { outline: 3px solid #fff; }
   #pick p { max-width: 32em; margin: 1.5em auto 0; font-size: 0.85em; }
   #status { margin-top: 1em; font-size: 0.85em; min-height: 1.5em; }
+  #board-as { display: none; margin-top: 0.75em; gap: 0.5em; align-items: center; flex-wrap: wrap;
+              justify-content: center; font-size: 0.85em; }
+  #board-as select, #board-as button { font: inherit; padding: 0.3em 0.5em; }
+  #board-as button { color: #000; background: #9ad284; border: 0; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -32,7 +36,13 @@
 </div>
 <canvas id="screen" width="640" height="400" tabindex="0"
         aria-label="The game screen. Type to play."></canvas>
+<div id="board-as">
+  <label for="board-who">Your travelers:</label>
+  <select id="board-who"></select>
+  <button type="button" id="board-type">Type their Passport</button>
+</div>
 <div id="status">Loading...</div>
+<script src="travelers.js"></script>
 <script>
   var canvas = document.getElementById("screen");
   var ctx = canvas.getContext("2d");
@@ -40,6 +50,8 @@
   var statusLine = document.getElementById("status");
 
   var Module = {
+    /* The packed Departures, named .wasm: some hosts won't serve a .data file. */
+    locateFile: function (p) { return p === "apb.data" ? "apb-data.wasm" : p; },
     keys: [],
     transcript: [],
     print: function (line) { Module.transcript.push(line); console.log(line); },
@@ -79,6 +91,26 @@
     },
     onTripOver: function () {
       statusLine.textContent = "The trip is over. Reload the page to travel again.";
+      Module.keepStamp();
+    },
+    /* The trip's Travel Stamp, read off the screen (two spaces, then 20 letters a line), kept
+     * with the traveler who boarded from Your travelers, to land at the Waystation. */
+    boardedAs: null,
+    keepStamp: function () {
+      if (!Module.boardedAs) return;
+      var stamp = "";
+      for (var row = 0; row < 25; row++) {
+        var text = Module.UTF8ToString(Module._web_screen_row(row));    /* not ccall: the game is waiting */
+        if (/^  [0-9A-Z]{20}\s*$/.test(text)) stamp += text.trim();
+        else if (stamp) break;
+      }
+      if (!stamp) return;
+      var who = Module.boardedAs;
+      who.stamp = stamp;
+      Travelers.save(who).then(function () {
+        statusLine.textContent = "The trip is over. Its Travel Stamp is waiting with " + who.name +
+          " at the Waystation. Reload the page to travel again.";
+      });
     },
     /* Start a trip: from the buttons, or from a test with a choices file. */
     start: function (departure, choices) {
@@ -91,6 +123,7 @@
       }
       document.getElementById("pick").style.display = "none";
       canvas.style.display = "block";
+      if (choices === undefined) drawTravelers();
       canvas.focus();
       /* A choices file that runs out ends the game with exit(): that's the end, too. */
       var ended = function (e) {
@@ -137,6 +170,37 @@
       else if (c >= 32 && c < 127) Module.keys.push(c);
     }
     e.preventDefault();
+  });
+
+  /* Your travelers (travelers.js): choose one, and their Passport is typed in for them, a line
+   * at a time and a blank line after, as the boarding desk asks. */
+  var saved = [];
+  function drawTravelers() {
+    var box = document.getElementById("board-as");
+    var who = document.getElementById("board-who");
+    Travelers.list().then(function (list) {
+      saved = list;
+      who.innerHTML = "";
+      list.forEach(function (t) {
+        var o = document.createElement("option");
+        o.value = t.id;
+        o.textContent = t.name + (t.about ? " - " + t.about : "") + (t.note ? " (" + t.note + ")" : "");
+        who.appendChild(o);
+      });
+      box.style.display = list.length ? "flex" : "none";
+    });
+  }
+  Travelers.onChange(function () { if (canvas.style.display === "block") drawTravelers(); });
+  document.getElementById("board-type").addEventListener("click", function () {
+    var id = document.getElementById("board-who").value;
+    var t = saved.filter(function (x) { return x.id === id; })[0];
+    if (!t) return;
+    Module.boardedAs = t;
+    var text = (t.passport.match(/.{1,20}/g) || []).join("\n") + "\n\n";
+    for (var i = 0; i < text.length; i++) {
+      Module.keys.push(text.charCodeAt(i) === 10 ? 13 : text.charCodeAt(i));
+    }
+    canvas.focus();
   });
 
   canvas.addEventListener("click", function (e) {

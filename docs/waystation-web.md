@@ -86,7 +86,7 @@ W3 are the online Waystation (roadmap phase 4).
   site needed, a Travel Stamp decoder (`apb_stamp_decode`), tested against
   `tools/passport/stamp.py` on PC and 6502.
 - **Names:** these come from the registry (`waystation/registry_json.py`).
-- **Pages:** `waystation/site/`.
+- **Pages:** `waystation/site/`; the platform page around it, `site/`.
 
 `make test-waystation` (`tests/waystation/check_site.py`) plays the site in headless
 Chromium and checks it against the Python references, which were written from the docs
@@ -98,6 +98,40 @@ rather than from the C:
   and so does the same stamp as a Rewind;
 - points spent and stats rolled follow the rules;
 - typos are refused, naming the line.
+
+## Your travelers
+
+A player keeps their travelers: each one's Passport, with a note of their own ("off to
+Dock 3"), so nobody has to copy twenty-letter lines around.
+
+- **Making a traveler** at the Waystation: *Save to your travelers*, with a note, on
+  *Your Passport*. Spending points there changes the Passport; *Save the new Passport*
+  keeps it.
+- **Landing a Travel Stamp:** *Whose Passport* lists them; choose one and their Passport is
+  read (and a stamp waiting with them is filled in). The stamped Passport replaces theirs,
+  and the old one is kept (the last five), in case a stamp was landed by mistake.
+- **Boarding a train** in the browser: under the screen, *Your travelers* and *Type their
+  Passport* types it in, a line at a time, when the desk asks for it. A trip that ends in
+  a Travel Stamp keeps the stamp with that traveler, to land at the Waystation.
+- **The platform page** (`site/index.html`) lists them: notes to edit, Passports to copy,
+  a mark on anyone with a stamp to land, and *Remove*.
+
+**Signing in.** The site is the platform page with the Waystation and the train in a frame
+under it (`make site`, `build/site/`). Published on claude.ai, the platform page is signed
+in as whoever opens it, and keeps their travelers in its private store, in their own place
+(`data/users/<their id>/<traveler>`, which nobody else, the page's owner included, can
+read). It asks claude.ai for that (the page's `user` and `db` capabilities); the Waystation
+and the train ask the platform page (`waystation/site/travelers.js`, by message). A player
+needs to be one the page is shared with, as a Contributor or above, to save. Anywhere else
+(signed out, or the pages served on their own) the travelers are kept in this browser
+instead, and the first time a player signs in, the ones kept in the browser move to
+their account.
+
+`make test-waystation` checks it too: a traveler saved with a note is kept over a reload,
+chosen to land a stamp, and replaced by the stamped Passport; and on the site, signed in
+(claude.ai's store stood in for in the browser), a traveler saved in the Waystation's frame
+is kept in the player's own place, shown on the platform, and boards the train from the
+list.
 
 ## Open questions
 

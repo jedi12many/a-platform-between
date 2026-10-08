@@ -8,6 +8,11 @@
 //   node site.cjs stamp PASSPORT STAMP [rewind]                  what landing it says
 //   node site.cjs read PASSPORT                                  what the page says
 //   node site.cjs sheet PASSPORT                                 the tabletop sheet's text
+//   node site.cjs keep PASSPORT STAMP NOTE    saved to Your travelers, the page loaded again,
+//                                             the stamp landed by choosing them: what's kept
+//   node site.cjs shell PASSPORT              the site (build/site/) signed in, with a stand-in
+//                                             for claude.ai's store: the traveler saved in the
+//                                             Waystation's frame, then boarded from the train's
 //
 // RACE, CLASS and TAG are names as the page shows them ("Glassfolk").
 "use strict";
@@ -17,7 +22,7 @@ const http = require("http");
 const path = require("path");
 const { chromium } = require("playwright");
 
-const ROOT = path.join(__dirname, "..", "..", "build", "waystation");
+let ROOT = path.join(__dirname, "..", "..", "build", "waystation");
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".wasm": "application/wasm",
                 ".css": "text/css", ".json": "application/json" };
 
@@ -36,15 +41,16 @@ function serve() {
   return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(server)));
 }
 
-async function session(work) {
+async function session(work, setup) {
   const server = await serve();
   const browser = await chromium.launch();
   const page = await browser.newPage();
   const problems = [];
   page.on("pageerror", (e) => problems.push(String(e)));
   try {
+    if (setup) await page.addInitScript(setup);
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
-    await page.waitForSelector("body[data-ready='1']", { timeout: 60000 });
+    if (!setup) await page.waitForSelector("body[data-ready='1']", { timeout: 60000 });
     const out = await work(page);
     if (problems.length) throw new Error(problems.join("\n"));
     return out;
@@ -136,6 +142,92 @@ const commands = {
       await read(page, text);
       const error = await page.textContent("#p-error");
       return error || (await page.textContent("#p-summary"));
+    });
+  },
+
+  async keep(text, stamp, note) {
+    return session(async (page) => {
+      await read(page, text);
+      await page.fill("#p-note", note);
+      await page.click("#p-save");
+      await page.waitForFunction(() => /^Saved/.test(document.getElementById("p-saved").textContent));
+      await page.reload();
+      await page.waitForSelector("body[data-ready='1']", { timeout: 60000 });
+      await page.click("text=Travel Stamp");
+      const label = await page.$eval("#t-pick", (s) => s.options[1] && s.options[1].textContent);
+      await page.selectOption("#t-pick", { index: 1 });
+      await page.fill("#t-text", stamp);
+      await page.click("#t-apply");
+      await page.waitForSelector("#t-kept", { timeout: 10000 });
+      return JSON.stringify({ label, kept: JSON.parse(await page.evaluate(() => localStorage.getItem("apb-travelers"))) });
+    });
+  },
+
+  // The site, signed in: claude.ai's user and db, stood in for by an in-memory store in the
+  // top page (not the frames: they must ask the page for their travelers).
+  async shell(text) {
+    ROOT = path.join(__dirname, "..", "..", "build", "site");
+    return session(async (page) => {
+      if (process.env.STEP) console.error("1 who"); await page.waitForFunction(() => /on your account/.test(document.getElementById("who").textContent));
+      await page.click("text=Go to the Waystation");
+      const way = page.frameLocator("#frame");
+      await way.locator("body[data-ready='1']").waitFor({ timeout: 60000 });
+      await way.locator("text=Your Passport").first().click();
+      await way.locator("#p-text").fill(text);
+      await way.locator("#p-load").click();
+      await way.locator("#p-note").fill("Off to Dock 3");
+      await way.locator("#p-save").click();
+      await way.locator("#p-saved", { hasText: "on your account (Tess)" }).waitFor({ timeout: 10000 });
+      await page.click("#home");
+      await page.waitForSelector("#list li");
+      const shown = await page.$$eval("#list li", (ls) => ls.map((l) =>
+        l.innerText + "\n" + l.querySelector("input").value));
+      await page.click("text=Board a train");
+      const play = page.frameLocator("#frame");
+      await play.locator("button[data-departure='the-fare']").click({ timeout: 60000 });
+      await play.locator("#board-as").waitFor({ state: "visible", timeout: 10000 });
+      const choices = await play.locator("#board-who option").allTextContents();
+      const frame = page.frames().find((f) => f.url().includes("play/"));
+      const onScreen = (words) => frame.waitForFunction((w) => {
+        for (let r = 0; r < 25; ++r) if (Module.UTF8ToString(Module._web_screen_row(r)).includes(w)) return true;
+        return false;
+      }, words, { timeout: 20000 });
+      // Board (1), and when the desk asks for the Passport, have it typed from the list.
+      await onScreen("1. Board");
+      await play.locator("canvas").press("1");
+      await onScreen("Your Passport, please");
+      await play.locator("#board-type").click();
+      await frame.waitForFunction((first) => {
+        for (let r = 0; r < 25; ++r) {
+          if (Module.UTF8ToString(Module._web_screen_row(r)).includes(first)) return true;
+        }
+        return false;
+      }, text.slice(0, 20), { timeout: 20000 }).catch(() => null);
+      let typed = false;
+      for (let r = 0; r < 25 && !typed; ++r) {
+        typed = (await frame.evaluate((r) => Module.UTF8ToString(Module._web_screen_row(r)), r))
+          .includes(text.slice(0, 20));
+      }
+      return JSON.stringify({ shown, choices, typed, docs: await page.evaluate(() => window.__docs) });
+    }, () => {
+      if (window.top !== window) return;
+      const docs = {};
+      const watching = [];
+      const snap = (where) => ({ docs: Object.keys(docs).filter((k) => k.startsWith(where + "/"))
+        .map((k) => ({ id: k.split("/").pop(), data: () => docs[k] })) });
+      const tell = () => watching.forEach(([where, next]) => next(snap(where)));
+      const db = {
+        collection: (where) => ({
+          doc: (id) => ({
+            set: (d) => { docs[where + "/" + id] = JSON.parse(JSON.stringify(d)); setTimeout(tell); return Promise.resolve(); },
+            delete: () => { delete docs[where + "/" + id]; setTimeout(tell); return Promise.resolve(); },
+          }),
+          onSnapshot: (next) => { watching.push([where, next]); setTimeout(() => next(snap(where))); return () => {}; },
+        }),
+      };
+      const user = { me: () => Promise.resolve({ id: "u_test", name: "Tess", email: null }) };
+      window.__docs = docs;
+      window.claude = { use: (name) => new Promise((ok) => setTimeout(() => ok(name === "db" ? db : name === "user" ? user : null))) };
     });
   },
 

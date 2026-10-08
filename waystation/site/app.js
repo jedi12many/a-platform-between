@@ -9,6 +9,8 @@ var Module = {
 var REG = null;          // names, from registry.json
 var RULES = null;        // the creation rules' numbers, from the core
 var traveler = null;     // the traveler on the Passport and sheet pages
+var kept = null;         // that traveler as saved in Your travelers, if they are
+var keptList = [];       // everyone in Your travelers
 
 function call(name, types, args) {
   var out = Module.ccall(name, "string", types || [], args || []);
@@ -40,9 +42,12 @@ function show(tab) {
   });
   document.querySelectorAll(".panel").forEach(function (p) { p.hidden = p.id !== tab; });
   if (tab === "sheet") drawSheet();
-  if (tab === "stamp") $("t-who").textContent = traveler
-    ? "Stamping into " + traveler.name + "'s Passport."
-    : "Read a Passport first (Your Passport), then stamp it here.";
+  if (tab === "stamp") {
+    $("t-who").textContent = traveler
+      ? "Stamping into " + traveler.name + "'s Passport."
+      : "Choose one of your travelers, or read a Passport first (Your Passport).";
+    $("t-pick").value = kept ? kept.id : "";
+  }
 }
 
 /* ---------------------------------------------------------------- creator */
@@ -178,6 +183,8 @@ function setupCreator() {
     var made = create();
     if (!made.ok) return;
     traveler = made;
+    kept = null;
+    $("p-note").value = "";
     $("p-text").value = lines(made.passport);
     drawPassport();
     show("passport");
@@ -231,6 +238,98 @@ function drawPassport() {
       el("td", {}, [b])]));
   });
   $("p-out").textContent = lines(t.passport);
+  drawKeep();
+}
+
+/* --------------------------------------------------------- your travelers */
+
+function about(t) {
+  return REG.races[t.race].name + " " + REG.classes[t.class].name + ", level " + t.level;
+}
+
+function label(k) {
+  return (k.name || "?") + " - " + (k.about || "") + (k.note ? " (" + k.note + ")" : "") +
+    (k.stamp ? " - a stamp to land" : "");
+}
+
+function fillPick(select, first) {
+  var was = select.value;
+  select.innerHTML = "";
+  select.appendChild(el("option", { value: "", text: first }));
+  keptList.forEach(function (k) { select.appendChild(el("option", { value: k.id, text: label(k) })); });
+  select.value = keptList.some(function (k) { return k.id === was; }) ? was : "";
+}
+
+function drawPicks(list) {
+  keptList = list;
+  if (kept) kept = list.filter(function (k) { return k.id === kept.id; })[0] || null;
+  fillPick($("p-pick"), list.length ? "Type or paste one below" : "None saved yet");
+  fillPick($("t-pick"), "The one on Your Passport");
+  if (kept) $("p-pick").value = kept.id;
+  drawKeep();
+}
+
+function drawKeep() {
+  var w = Travelers.where();
+  var saved = kept && traveler && kept.passport === traveler.passport;
+  $("p-save").textContent = !kept ? "Save to your travelers" : saved ? "Save the note" : "Save the new Passport";
+  $("p-saved").textContent = (kept ? (saved ? "Saved in your travelers" : "Changed since it was saved")
+                                   : "Not saved yet") + (w.account
+    ? ", on your account" + (w.who ? " (" + w.who + ")" : "") + "."
+    : ", in this browser.");
+}
+
+// Open a saved traveler: their Passport read, as if typed in.
+function openKept(id) {
+  var k = keptList.filter(function (x) { return x.id === id; })[0];
+  if (!k) return false;
+  var got = call("ws_load", ["string"], [k.passport]);
+  if (!got.ok) {
+    $("p-error").textContent = "That saved Passport can't be read: " + got.error + ".";
+    return false;
+  }
+  $("p-error").textContent = "";
+  traveler = got;
+  kept = k;
+  $("p-text").value = lines(k.passport);
+  $("p-note").value = k.note || "";
+  drawPassport();
+  return true;
+}
+
+// Save the traveler on Your Passport: new, or a new Passport (the old one kept), or the note.
+function keepTraveler(extra) {
+  if (!traveler) return Promise.resolve(null);
+  var t = travelerWithPassport(kept, traveler.passport);
+  t.name = traveler.name;
+  t.about = about(traveler);
+  t.note = $("p-note").value.trim();
+  Object.keys(extra || {}).forEach(function (k) { t[k] = extra[k]; });
+  if (t.stamp === undefined) t.stamp = "";
+  return Travelers.save(t).then(function (id) {
+    t.id = id;
+    kept = t;
+    drawKeep();
+    return t;
+  }, function (e) {
+    $("p-saved").textContent = "It couldn't be saved: " + e.message + ".";
+    return null;
+  });
+}
+
+function setupTravelers() {
+  Travelers.onChange(drawPicks);
+  Travelers.list().then(drawPicks);
+  $("p-pick").addEventListener("change", function () {
+    if ($("p-pick").value) openKept($("p-pick").value);
+  });
+  $("p-save").addEventListener("click", function () { keepTraveler(); });
+  $("t-pick").addEventListener("change", function () {
+    var id = $("t-pick").value;
+    if (!id || !openKept(id)) return show("stamp");
+    $("t-text").value = kept.stamp ? lines(kept.stamp) : "";
+    show("stamp");
+  });
 }
 
 function spend(fn, i) {
@@ -250,6 +349,8 @@ function setupPassport() {
     }
     $("p-error").textContent = "";
     traveler = got;
+    kept = keptList.filter(function (k) { return k.passport === got.passport; })[0] || null;
+    $("p-note").value = kept ? kept.note || "" : "";
     drawPassport();
   });
   document.querySelectorAll(".copy").forEach(function (b) {
@@ -345,7 +446,18 @@ function setupStamp() {
     out.appendChild(el("p", { text: "Your new Passport:" }));
     out.appendChild(el("pre", { class: "password", id: "t-out", text: lines(traveler.passport) }));
     $("p-text").value = lines(traveler.passport);
+    $("t-text").value = "";
     drawPassport();
+    if (kept) {
+      // A saved traveler: the stamped Passport replaces theirs (the old one kept, just in case).
+      keepTraveler({ stamp: "" }).then(function (t) {
+        if (t) out.appendChild(el("p", { class: "note", id: "t-kept",
+          text: "Saved in your travelers: " + t.name + "'s Passport is the new one now." }));
+      });
+    } else {
+      out.appendChild(el("p", { class: "note",
+        text: "Keep the new Passport: save it to your travelers on Your Passport." }));
+    }
   });
 }
 
@@ -362,6 +474,7 @@ function start() {
     setupCreator();
     setupPassport();
     setupStamp();
+    setupTravelers();
     show("create");
     document.body.dataset.ready = "1";
   });

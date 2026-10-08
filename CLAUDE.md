@@ -63,13 +63,17 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-waystation`: the Waystation website (`waystation/`, W1 in
   `docs/waystation-web.md`), in headless Chromium: a traveler made there has the Python
   reference's Passport and boards The Fare in the terminal; Travel Stamps land, points
-  are spent and stats rolled as the references say (`tests/waystation/check_site.py`).
+  are spent and stats rolled as the references say (`tests/waystation/check_site.py`);
+  travelers are kept with notes, chosen to land a stamp, and, on the site signed in (a
+  stand-in for claude.ai's store), kept on the player's account and boarded from the list.
 
 Run all fifteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website
-(serve `build/waystation/`). The 6502 test harness holds a 4 KB car, so keep each chapter of a covered Departure under that
+(serve `build/waystation/`); `make site` builds the whole site, the platform page with
+the player's travelers and the Waystation and the train in a frame (serve `build/site/`;
+it's what's published). The 6502 test harness holds a 4 KB car, so keep each chapter of a covered Departure under that
 (`qsc.py build` prints the sizes). It has no room for the whole engine: `build/harness.sim`
 leaves out the Deep Yards, and `build/harness-yards.sim` the boarding desk, so the yards'
 cases board the built-in traveler (`SEED+LEVEL` makes it a veteran).

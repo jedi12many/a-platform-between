@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards demo play play-e18 play-yards modern web waystation crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -301,13 +301,14 @@ MODERN_DEPARTURES := build/modern/the-fare/DEPOT build/modern/eighteen-minutes/D
                      build/modern/deep-yards/DEPOT
 
 # The same game in a browser: WebAssembly with Emscripten (fe/modern/web.c), the page in
-# fe/modern/web/, and both Departures bundled. Serve build/web/ and open it.
+# fe/modern/web/, and both Departures bundled, as apb-data.wasm (some hosts won't serve a
+# .data file). Serve build/web/ and open it.
 EMCC ?= emcc
 WEB_FLAGS := -O2 -sASYNCIFY -sASYNCIFY_STACK_SIZE=65536 -sALLOW_MEMORY_GROWTH \
              -sEXPORTED_RUNTIME_METHODS=FS,ccall,UTF8ToString \
              -sEXPORTED_FUNCTIONS=_web_start,_web_screen_row -sFORCE_FILESYSTEM -lidbfs.js
 
-build/web/apb.js: fe/modern/web.c fe/modern/web/index.html $(MODERN_SRC) $(MODERN_HDR) \
+build/web/apb.js: fe/modern/web.c fe/modern/web/index.html waystation/site/travelers.js $(MODERN_SRC) $(MODERN_HDR) \
                   $(MODERN_VIEW_SRC) client/apb_view.h $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) \
                   $(MODERN_DEPARTURES)
 	@mkdir -p build/web
@@ -316,7 +317,9 @@ build/web/apb.js: fe/modern/web.c fe/modern/web/index.html $(MODERN_SRC) $(MODER
 	    --preload-file build/modern/eighteen-minutes@/departures/eighteen-minutes \
 	    --preload-file build/modern/deep-yards@/departures/deep-yards \
 	    --exclude-file '*.apd'
+	mv build/web/apb.data build/web/apb-data.wasm
 	cp fe/modern/web/index.html build/web/index.html
+	cp waystation/site/travelers.js build/web/travelers.js
 
 web: build/web/apb.js
 	@echo "Browser: serve build/web/ (python3 -m http.server -d build/web) and open it"
@@ -333,13 +336,27 @@ build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) way
 	cp waystation/site/* build/waystation/
 	python3 waystation/registry_json.py build/waystation/registry.json
 
+# The site (site/, docs/waystation-web.md): the platform page, with the player's travelers,
+# and the Waystation and the train in a frame. Serve build/site/ and open it.
+build/site/index.html: site/index.html build/web/apb.js build/waystation/ws.js
+	rm -rf build/site
+	mkdir -p build/site/play build/site/waystation
+	( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
+	  printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
+	  cat site/index.html; printf '</body></html>\n' ) > $@
+	cp build/web/* build/site/play/
+	cp build/waystation/* build/site/waystation/
+
+site: build/site/index.html
+	@echo "The site: serve build/site/ (python3 -m http.server -d build/site) and open it"
+
 waystation: build/waystation/ws.js
 	@echo "The Waystation: serve build/waystation/ (python3 -m http.server -d build/waystation)"
 
 # The Waystation in headless Chromium: a traveler made there has the Python reference's
 # Passport and boards The Fare in the terminal; its Travel Stamp lands, points are spent
 # and stats rolled as the rules say (tests/waystation/check_site.py).
-test-waystation: build/waystation/ws.js build/apb
+test-waystation: build/waystation/ws.js build/site/index.html build/apb
 	NODE_PATH=$$(npm root -g) python3 tests/waystation/check_site.py
 
 # The desktop must play the C64's routes as the C64 does (Travel Stamps and all), and the

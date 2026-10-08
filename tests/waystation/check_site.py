@@ -15,6 +15,10 @@ from the docs, independently of the C core the site runs:
    made from the last set has it, with the race and class bonuses.
 5. A Passport with a typo is refused, naming the line; the tabletop sheet shows the
    numbers the rules give.
+6. Your travelers: a Passport saved with a note is kept, chosen from the list to land a
+   stamp, and replaced by the stamped one (the old one kept too). On the site (build/site/),
+   signed in (claude.ai's store, stood in for), it's kept in the player's own place in the
+   store, shown on the platform, and boards the train from the list under the screen.
 
     python3 tests/waystation/check_site.py
 """
@@ -126,6 +130,33 @@ def main():
         else:
             ok(f"her Travel Stamp lands{' as a Rewind' if rewind else ''} as the reference lands it"
                f" ({' '.join(got['said'][:2])})")
+    # Your travelers: saved with a note, kept over a reload, chosen to land the stamp, and the
+    # stamped Passport kept in place of the old one, which is kept too.
+    got = site("keep", wren, s, "Dock 3")
+    if got is not None:
+        got = json.loads(got)
+        after, _ = receipt.apply(passport.decode(wren), stamp.decode(s), rewind=False)
+        kept = got["kept"]
+        if (len(kept) != 1 or kept[0]["passport"] != passport.encode(after)
+                or kept[0]["previous"][:1] != [wren] or kept[0]["note"] != "Dock 3"
+                or kept[0]["name"] != "WREN" or not got["label"].startswith("WREN")):
+            fail(f"Your travelers kept {got}")
+        else:
+            ok("saved with a note, Wren is chosen to land her stamp, and her new Passport is kept"
+               " (the old one too)")
+    got = site("shell", wren)
+    if got is not None:
+        got = json.loads(got)
+        docs = got["docs"]
+        mine = [k for k in docs if k.startswith("data/users/u_test/")]
+        if (len(mine) != 1 or docs[mine[0]]["passport"] != wren
+                or docs[mine[0]]["note"] != "Off to Dock 3" or not got["shown"]
+                or "Off to Dock 3" not in got["shown"][0] or not got["choices"]
+                or not got["choices"][0].startswith("WREN") or not got["typed"]):
+            fail(f"the signed-in site: {got}")
+        else:
+            ok("signed in, Wren is kept on her player's account, shown on the platform, and"
+               " boards the train from the list")
     bad = s[:5] + ("0" if s[5] != "0" else "1") + s[6:]
     got = site("stamp", wren, bad)
     if got is None or "line 1" not in json.loads(got).get("error", ""):

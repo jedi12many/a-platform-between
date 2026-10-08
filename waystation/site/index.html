@@ -67,6 +67,9 @@
   <!-- ---------------------------------------------------------- passport -->
   <section id="passport" class="panel" hidden>
     <h2>Your Passport</h2>
+    <label>Your travelers
+      <select id="p-pick"><option value="">Type or paste one below</option></select>
+    </label>
     <label>Type or paste a Passport
       <textarea id="p-text" rows="5" spellcheck="false" autocapitalize="characters"></textarea>
     </label>
@@ -84,6 +87,14 @@
          points or land a Travel Stamp, so take the new one with you.</p>
       <pre id="p-out" class="password"></pre>
       <button type="button" class="copy" data-copy="p-out">Copy</button>
+      <div id="p-keep" class="keep">
+        <h3>Keep this traveler</h3>
+        <label>A note, for you <small>(where they are, what they're after)</small>
+          <input id="p-note" maxlength="200">
+        </label>
+        <button type="button" id="p-save" class="primary">Save to your travelers</button>
+        <p id="p-saved" class="note" role="status"></p>
+      </div>
     </div>
   </section>
 
@@ -102,6 +113,9 @@
     <p class="note">A train without a connection ends a trip with a Travel Stamp. Type it in
        here and it's stamped into your Passport. This version of the Waystation keeps no
        ledger of the tickets it issued, so it takes stamps on trust.</p>
+    <label>Whose Passport
+      <select id="t-pick"><option value="">The one on Your Passport</option></select>
+    </label>
     <p id="t-who" class="note"></p>
     <label>The Travel Stamp
       <textarea id="t-text" rows="3" spellcheck="false" autocapitalize="characters"></textarea>
@@ -118,6 +132,7 @@
   <p>A Platform Between. The rules on this page are the game's own, compiled to WebAssembly.</p>
 </footer>
 
+<script src="travelers.js"></script>
 <script src="app.js"></script>
 <script src="ws.js"></script>
 </body>
