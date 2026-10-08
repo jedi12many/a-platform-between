@@ -15,6 +15,13 @@ const uint32_t modern_palette[16] = {
 
 #define BACKGROUND 0x000000u
 
+/* The game's letters, as the C64 has them (tools/c64font.py): font8x8 (bit 0 the left)
+ * with each stroke a pixel wider to the right, unless that would close a one-pixel gap. */
+static unsigned bold(unsigned row)
+{
+    return (row | ((row << 1) & ~row & ~(row >> 1))) & 0xFFu;
+}
+
 static void draw_cell(uint32_t *fb, int row, int col, uint8_t ch, uint32_t ink, int cursor)
 {
     const unsigned char *glyph;
@@ -33,7 +40,7 @@ static void draw_cell(uint32_t *fb, int row, int col, uint8_t ch, uint32_t ink, 
         bg = ink;
     }
     for (y = 0; y < 16; ++y) {
-        bits = glyph[y / 2];
+        bits = bold(glyph[y / 2]);
         p = fb + (row * 16 + y) * SCR_W + col * 16;
         for (x = 0; x < 16; ++x) p[x] = (bits >> (x / 2)) & 1 ? fg : bg;
     }

@@ -37,8 +37,9 @@ sees a scene in one sees the same scene in all of them.
 | 13–24 | the text window, word-wrapped at 40 columns, with "-- more --" before anything scrolls off unread |
 
 The screen is 640 x 400 pixels: 40 x 25 characters of 16 x 16, from an 8 x 8 font
-(`fe/modern/font8x8.h`, the public-domain font8x8) doubled. The window scales it to
-fit. Unlike the C64, it has `~`, `_` and braces.
+(`fe/modern/font8x8.h`, the public-domain font8x8) made bold as the C64's is (each stroke
+a pixel wider, unless that closes a gap: `tools/c64font.py`), doubled. The window scales it to
+fit.
 
 **A fight** has the whole screen: the battle screen with graphics (`client/tactics.c`,
 [c64.md](c64.md#the-battle-screen)), drawn exactly as the C64's VIC-II draws it, from the
