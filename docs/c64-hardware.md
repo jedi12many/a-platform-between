@@ -51,6 +51,13 @@ The plan moves the whole display into bank 3, text included:
 | $EE00–$FFF9 | **sound**: the SID player, effects and tunes | 4.5 KB | runs from the raster interrupt with the KERNAL switched out for a moment |
 | $0400–$07FF | freed (the old text screen): the sound-effect player and its table | 1 KB | in bank 0, always there for the main program |
 
+As built, it went a little differently ([c64.md](c64.md#how-it-fits-in-64-kb) has the
+map): the text screen stayed at $0400 with the ROM's font for now; the story's picture
+became a **multicolour bitmap** (the bitmap at $E000, its screen at $F400: three colours
+of any sixteen in every cell, and no limit of 256 different cells); and a fight puts its
+characters at $E000, its screen at $E800 and its sprite shapes at $F000, then loads the
+picture again.
+
 The BATTLE overlay needs room for the new screen. Because loading is free, a fight can
 **borrow the chapter's memory**: the car buffer (up to 6 KB) moves to sit just below the
 overlay area, a fight's overlay is allowed to run over it, and after the fight the
@@ -72,6 +79,9 @@ again when the story shows one.
 - **E9c, sound.** The SID's effects (on the C64 already), and the same through a small
   synthesiser on the desktop and in the browser.
 - **E9d, our own font** for all the game's text.
+
+**Bitmap pictures** (done): the story's pictures in multicolour bitmap mode, and
+`tools/c64fit.py` giving every cell its best three colours of sixteen.
 
 What the screen does:
 - The map in tiles, 24 x 24 pixels (3 x 3 characters) a square, three-quarter view;

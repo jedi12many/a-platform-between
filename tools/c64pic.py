@@ -1,5 +1,5 @@
 """Pictures for the C64 (docs/c64.md): a 160x96 PNG into a file the game shows on rows
-1-12 of the screen, in multicolour character mode.
+1-12 of the screen, in multicolour bitmap mode.
 
     python3 tools/c64pic.py convert IN.png OUT.pic        a picture file
     python3 tools/c64pic.py render IN.pic OUT.png         what the C64 will show (x2 wide)
@@ -8,19 +8,18 @@
 
 The picture is 40 x 12 cells of 4 x 8 multicolour pixels (each pixel twice as wide as
 it is tall on the screen, so draw at 160 x 96 and let it stretch). Each cell can use
-four colours: three shared by the whole picture (the background and two more) and one
-of its own, from the first eight colours (a C64 rule). The converter shares the three
-used most (or, if those leave a cell with two colours of its own, the first three that
-don't), picks each cell's own colour by how much it's used, then the nearest of the
-four for every pixel. Cells that come out the same share a character; with more
-than 256 different ones, the rarest are drawn with the nearest one kept.
+four colours: the background, shared by the whole picture, and three of its own, any
+of the sixteen (the VIC-II's multicolour bitmap mode). The converter takes for the
+background the colour that leaves fewest cells with more than three others (the most
+used, if that's a tie); a cell with more keeps its three most used, and its other
+pixels take the nearest of its four.
 
-The file loads at $E000 (the RAM under the KERNAL): 2048 bytes of characters, the
-screen at $E800 (rows 1-12 used), the shared colours at $EBE8, each cell's colour at
-$EC00.
+The file loads at $E140, in the RAM under the KERNAL, VIC bank 3: the bitmap's rows 1-12
+($E140-$F03F, the bitmap at $E000), the screen's rows 1-12 ($F428-$F607, the screen at
+$F400: each cell's first two colours), each cell's third colour ($F608, for colour
+RAM) and the background ($F7E8).
 """
 
-import itertools
 import os
 import sys
 
@@ -55,104 +54,73 @@ def load(path):
     return px
 
 
-def choose_shared(px, counts):
-    """The three colours every cell shares: the three used most, unless that leaves some
-    cell needing two colours of its own (or one past the first eight) and another three
-    don't; then the first such three, taking colours in order of use."""
-    used = sorted((c for c in range(16) if counts[c]), key=lambda c: -counts[c])
-    top = (used + [c for c in range(16) if c not in used])[:3]
-    own = []
-    for cy in range(ROWS):
-        for cx in range(COLS):
-            own.append({px[cy * 8 + y][cx * 4 + x] for y in range(8) for x in range(4)})
+LOAD_AT = 0xE140
+BITMAP = 0xE000 + TOP_ROW * 320         # where the picture's bitmap starts
+SCREEN = 0xF400 + TOP_ROW * COLS        # its screen rows (two colours a cell)
+CELLS = 0xF608                          # its colour RAM (the third)
+BACK = 0xF7E8                           # the background
+SIZE = BACK + 1 - LOAD_AT
 
-    def fits(trio):
-        for colours in own:
-            extra = colours - set(trio)
-            if len(extra) > 1 or any(c >= 8 for c in extra):
-                return False
-        return True
 
-    if len(used) <= 3 or fits(top):
-        return top
-    for trio in itertools.combinations(used, 3):
-        if fits(trio):
-            return list(trio)
-    return top
+def blocks(px):
+    """The picture as 480 cells, each the colours of its 32 pixels, row by row."""
+    return [[px[cy * 8 + y][cx * 4 + x] for y in range(8) for x in range(4)]
+            for cy in range(ROWS) for cx in range(COLS)]
+
+
+def crowded(cells, back):
+    """Cells with more than three colours besides `back`."""
+    return sum(1 for block in cells if len(set(block) - {back}) > 3)
+
+
+def choose_background(cells, counts):
+    """The colour that leaves fewest cells crowded; the most used, if that's a tie."""
+    used = sorted((c for c in range(16) if counts[c]), key=lambda c: -counts[c]) or [0]
+    return min(used, key=lambda c: (crowded(cells, c), -counts[c]))
 
 
 def convert(px):
+    """The picture file, and how many cells had to change (more than three colours of
+    their own: the rest are drawn with the nearest of the four)."""
     counts = [0] * 16
     for row in px:
         for c in row:
             counts[c] += 1
-    shared = choose_shared(px, counts)
-    back, multi1, multi2 = shared
-    cells = []
-    for cy in range(ROWS):
-        for cx in range(COLS):
-            block = [px[cy * 8 + y][cx * 4 + x] for y in range(8) for x in range(4)]
-            own = [c for c in block if c not in shared]
-            if own:
-                best = max(set(own), key=own.count)
-                cell = best if best < 8 else nearest(PALETTE[best], range(8))
-            else:
-                cell = 0
-            choice = {back: 0, multi1: 1, multi2: 2}
-            pair = []
-            for c in block:
-                if c in choice:
-                    pair.append(choice[c])
-                elif c == cell:
-                    pair.append(3)
-                else:
-                    options = [back, multi1, multi2, cell]
-                    pair.append(options.index(nearest(PALETTE[c], options)))
-            rows = bytes((pair[y * 4] << 6) | (pair[y * 4 + 1] << 4) | (pair[y * 4 + 2] << 2)
-                         | pair[y * 4 + 3] for y in range(8))
-            cells.append((rows, cell))
-    # Characters: the same cell shares one; at most 256, the rarest drawn with the nearest.
-    freq = {}
-    for rows, _ in cells:
-        freq[rows] = freq.get(rows, 0) + 1
-    kept = sorted(freq, key=lambda r: -freq[r])[:256]
-    index = {r: i for i, r in enumerate(kept)}
-
-    def distance(a, b):
-        return sum(bin((x ^ y) & 0xFF).count("1") for x, y in zip(a, b))
-
-    for r in freq:
-        if r not in index:
-            index[r] = index[min(kept, key=lambda k: distance(k, r))]
-    charset = bytearray(2048)
-    for r, i in index.items():
-        if r in kept:
-            charset[i * 8:i * 8 + 8] = r
-    screen = bytearray([0x20] * 1000)
-    colours = bytearray(COLS * ROWS)
-    for n, (rows, cell) in enumerate(cells):
-        screen[TOP_ROW * COLS + n] = index[rows]
-        colours[n] = cell | 8                       # 8 and up: a multicolour cell
-    data = bytearray(0xC00 + len(colours))
-    data[0:0x800] = charset
-    data[0x800:0x800 + 1000] = screen
-    data[0xBE8:0xBEB] = bytes([back, multi1, multi2])
-    data[0xC00:] = colours
-    return b"\x00\xE0" + bytes(data), len(freq)
+    cells = blocks(px)
+    back = choose_background(cells, counts)
+    data = bytearray(SIZE)
+    for n, block in enumerate(cells):
+        cy, cx = divmod(n, COLS)
+        own = [c for c in block if c != back]
+        three = sorted(set(own), key=lambda c: (-own.count(c), c))[:3]
+        three += [back] * (3 - len(three))
+        options = [back] + three                     # bit pairs 00, 01, 10, 11
+        pair = []
+        for c in block:
+            pair.append(options.index(c) if c in options
+                        else options.index(nearest(PALETTE[c], options)))
+        at = BITMAP + cy * 320 + cx * 8 - LOAD_AT
+        for y in range(8):
+            data[at + y] = ((pair[y * 4] << 6) | (pair[y * 4 + 1] << 4) | (pair[y * 4 + 2] << 2)
+                            | pair[y * 4 + 3])
+        data[SCREEN + n - LOAD_AT] = (options[1] << 4) | options[2]
+        data[CELLS + n - LOAD_AT] = options[3]
+    data[BACK - LOAD_AT] = back
+    return bytes([LOAD_AT & 0xFF, LOAD_AT >> 8]) + bytes(data), crowded(cells, back)
 
 
 def render(pic):
+    """What the C64 shows, from a picture file: 320 x 96, each pixel twice as wide."""
     data = pic[2:]
-    charset, screen = data[0:0x800], data[0x800:0x800 + 1000]
-    back, multi1, multi2 = data[0xBE8:0xBEB]
-    colours = data[0xC00:0xC00 + COLS * ROWS]
+    back = data[BACK - LOAD_AT] & 15
     img = Image.new("RGB", (W * 2, H))
     for n in range(COLS * ROWS):
-        cx, cy = n % COLS, n // COLS
-        ch = screen[TOP_ROW * COLS + n]
-        options = [back, multi1, multi2, colours[n] & 7]
+        cy, cx = divmod(n, COLS)
+        both = data[SCREEN + n - LOAD_AT]
+        options = [back, both >> 4, both & 15, data[CELLS + n - LOAD_AT] & 15]
+        at = BITMAP + cy * 320 + cx * 8 - LOAD_AT
         for y in range(8):
-            b = charset[ch * 8 + y]
+            b = data[at + y]
             for x in range(4):
                 c = PALETTE[options[(b >> (6 - 2 * x)) & 3]]
                 img.putpixel((cx * 8 + x * 2, cy * 8 + y), c)
@@ -176,12 +144,12 @@ def disk(depot_path, pic_dir, out_dir):
 
 def main(argv):
     if len(argv) == 4 and argv[1] == "convert":
-        pic, distinct = convert(load(argv[2]))
+        pic, changed = convert(load(argv[2]))
         with open(argv[3], "wb") as f:
             f.write(pic)
-        print(f"{argv[3]}: {len(pic)} bytes, {min(distinct, 256)} characters"
-              + (f" ({distinct} different cells, the rest drawn with the nearest)"
-                 if distinct > 256 else ""))
+        print(f"{argv[3]}: {len(pic)} bytes"
+              + (f", {changed} cells with more than four colours (drawn with the nearest)"
+                 if changed else ""))
         return 0
     if len(argv) == 4 and argv[1] == "render":
         with open(argv[2], "rb") as f:

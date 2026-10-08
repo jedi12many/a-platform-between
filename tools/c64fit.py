@@ -3,24 +3,22 @@ drawing, a photo, an image model) into a 160 x 96 PNG that tools/c64pic.py shows
 unchanged.
 
     python3 tools/c64fit.py IN OUT.png [--box X0,Y0,X1,Y1] [--dither ordered|none]
-                                       [--shared C,C,C]
+                                       [--background C]
 
 1. **The shape.** The middle of the picture is cut to 10:3 (the screen's picture strip)
    and scaled to 160 x 96, each pixel standing for a patch twice as wide as it is tall.
    `--box` keeps a region instead, as fractions of the width and height (0,0.2,1,0.8
    is the full width, the middle 60%), and scales it to the strip whatever its shape:
    art that isn't 10:3 can be squeezed a little rather than cut.
-2. **The shared three.** Every choice of three among the colours the picture uses most is
-   tried; the one that leaves the least error wins. (`--shared` names them instead, by
-   number 0-15, background first.)
-3. **Each cell's own.** Every 4 x 8 cell takes the one of the first eight colours that
-   suits it best.
+2. **The background**, the one colour every cell shares: each of the colours the
+   picture uses most is tried, and the one that leaves the least error wins. (`--background`
+   names it instead, by number 0-15.)
+3. **Each cell's three.** Every 4 x 8 cell takes the three colours, of all sixteen, that
+   suit it best beside the background.
 4. **The pixels.** Each pixel takes the nearest of its cell's four colours, or with
    `--dither ordered` (the default) a 4 x 4 Bayer pattern between the nearest two, so
    shading survives as checkerboard. (Art that is dithered already often looks better
    with `--dither none`.)
-5. **The characters.** At most 256 different cells: past that, the rarest are redrawn as
-   the kept pattern that looks most like them.
 
 Then it checks the result with tools/paint.py and says how it went. Needs numpy and
 Pillow (only this tool; the build doesn't use it).
@@ -86,34 +84,37 @@ def cells(rgb):
     return rgb.reshape(12, 8, 40, 4, 3).transpose(0, 2, 1, 3, 4).reshape(480, 32, 3)
 
 
-def fit_cells(rgb, shared):
-    """Each cell's own colour (0-7) and the total error, for these shared three."""
-    c = cells(rgb)
-    base = distance(c, shared).min(-1)                       # (480, 32)
-    own = distance(c, range(8))                              # (480, 32, 8)
-    err = np.minimum(base[..., None], own).sum(1)            # (480, 8)
-    best = err.argmin(1)
-    return best, err[np.arange(480), best].sum()
+TRIOS = list(itertools.combinations(range(16), 3))
 
 
-def choose_shared(rgb):
+def fit_cells(rgb, back):
+    """Each cell's best three colours beside `back` (480 x 3), and the total error."""
+    d = distance(cells(rgb), range(16))                      # (480, 32, 16)
+    base = d[..., back]
+    best_err = np.full(480, np.inf)
+    best = np.zeros((480, 3), dtype=np.int64)
+    for trio in TRIOS:
+        if back in trio:
+            continue
+        e = np.minimum(np.minimum(base, d[..., trio[0]]),
+                       np.minimum(d[..., trio[1]], d[..., trio[2]])).sum(1)
+        better = e < best_err
+        best_err[better] = e[better]
+        best[better] = trio
+    return best, best_err.sum()
+
+
+def choose_background(rgb):
     near = distance(rgb, range(16)).argmin(-1)
-    common = [int(c) for c in np.argsort(-np.bincount(near.ravel(), minlength=16))[:8]]
-    best = None
-    for trio in itertools.combinations(common, 3):
-        _, e = fit_cells(rgb, trio)
-        if best is None or e < best[0]:
-            best = (e, trio)
-    trio = list(best[1])
-    counts = np.bincount(near.ravel(), minlength=16)
-    return sorted(trio, key=lambda c: -counts[c])            # background: the most used
+    common = [int(c) for c in np.argsort(-np.bincount(near.ravel(), minlength=16))[:6]]
+    return min(common, key=lambda c: fit_cells(rgb, c)[1])
 
 
-def paint(rgb, shared, own, dither):
+def paint(rgb, back, own, dither):
     out = np.zeros((H, W), dtype=np.int64)
     for n in range(480):
         cy, cx = divmod(n, 40)
-        options = list(shared) + [int(own[n])]
+        options = [back] + [int(c) for c in own[n]]
         block = rgb[cy * 8:cy * 8 + 8, cx * 4:cx * 4 + 4]
         d = distance(block, options)                         # (8, 4, 4)
         order = np.argsort(d, -1)
@@ -130,65 +131,26 @@ def paint(rgb, shared, own, dither):
     return out
 
 
-def limit_characters(rgb, px, shared, own, most=256):
-    """At most `most` different cells (the C64 has 256 characters): while there are more,
-    the rarest cell pattern is redrawn as whichever kept pattern looks most like it, in
-    that cell's own four colours."""
-    slots = np.zeros_like(px)
-    for n in range(480):
-        cy, cx = divmod(n, 40)
-        options = list(shared) + [int(own[n])]
-        block = px[cy * 8:cy * 8 + 8, cx * 4:cx * 4 + 4]
-        for i, c in reversed(list(enumerate(options))):     # a shared colour wins, as in c64pic
-            slots[cy * 8:cy * 8 + 8, cx * 4:cx * 4 + 4][block == c] = i
-    patterns = [slots[(n // 40) * 8:(n // 40) * 8 + 8, (n % 40) * 4:(n % 40) * 4 + 4].tobytes()
-                for n in range(480)]
-    counts = {}
-    for pat in patterns:
-        counts[pat] = counts.get(pat, 0) + 1
-    if len(counts) <= most:
-        return px
-    kept = sorted(counts, key=lambda pat: -counts[pat])[:most]
-    kept_arrays = np.array([np.frombuffer(k, dtype=slots.dtype).reshape(8, 4) for k in kept])
-    keep = set(kept)
-    out = px.copy()
-    for n, pat in enumerate(patterns):
-        if pat in keep:
-            continue
-        cy, cx = divmod(n, 40)
-        options = np.array(list(shared) + [int(own[n])])
-        block = rgb[cy * 8:cy * 8 + 8, cx * 4:cx * 4 + 4]
-        d = distance(block, options)                                     # (8, 4, 4)
-        cost = np.take_along_axis(d[None], kept_arrays[..., None], -1)[..., 0].sum((1, 2))
-        if int(own[n]) in shared:
-            # Its own colour is a shared one, so c64pic would read those pixels as the
-            # shared colour: a different pattern. Only patterns without them will do.
-            cost[(kept_arrays == 3).any((1, 2))] = np.inf
-        out[cy * 8:cy * 8 + 8, cx * 4:cx * 4 + 4] = options[kept_arrays[int(cost.argmin())]]
-    return out
-
-
-def fit_pixels(path, dither="ordered", shared=None, box=None, characters=256):
-    """The fitted picture as 96 rows of 160 colour numbers, and the shared three. With
-    fewer `characters`, it leaves room for words or details painted on afterwards."""
+def fit_pixels(path, dither="ordered", background=None, box=None):
+    """The fitted picture as 96 rows of 160 colour numbers, and its background."""
     rgb = shape(Image.open(path), box)
-    shared = shared or choose_shared(rgb)
-    own, _ = fit_cells(rgb, shared)
-    px = limit_characters(rgb, paint(rgb, shared, own, dither), shared, own, characters)
-    return [[int(c) for c in row] for row in px], shared
+    back = choose_background(rgb) if background is None else background
+    own, _ = fit_cells(rgb, back)
+    px = paint(rgb, back, own, dither)
+    return [[int(c) for c in row] for row in px], back
 
 
-def fit(path, out_path, dither="ordered", shared=None, box=None):
-    px, shared = fit_pixels(path, dither, shared, box)
+def fit(path, out_path, dither="ordered", background=None, box=None):
+    px, back = fit_pixels(path, dither, background, box)
     px = np.array(px)
     img = Image.new("RGB", (W, H))
     img.putdata([c64pic.PALETTE[c] for c in px.ravel()])
     img.save(out_path)
-    return shared
+    return back
 
 
 def main(argv):
-    options = {"--dither": "ordered", "--shared": None, "--box": None}
+    options = {"--dither": "ordered", "--background": None, "--box": None}
     args = []
     rest = iter(argv[1:])
     for a in rest:
@@ -197,19 +159,17 @@ def main(argv):
         else:
             args.append(a)
     dither = options["--dither"]
-    shared = [int(c) for c in options["--shared"].split(",")] if options["--shared"] else None
+    back = int(options["--background"]) if options["--background"] else None
     box = [float(v) for v in options["--box"].split(",")] if options["--box"] else None
-    if (len(args) != 2 or dither not in ("ordered", "none") or (shared and len(shared) != 3)
+    if (len(args) != 2 or dither not in ("ordered", "none") or (back is not None and not 0 <= back < 16)
             or (box and not (len(box) == 4 and 0 <= box[0] < box[2] <= 1
                              and 0 <= box[1] < box[3] <= 1))):
         print(__doc__)
         return 2
-    trio = fit(args[0], args[1], dither, shared, box)
+    back = fit(args[0], args[1], dither, back, box)
     import paint as check
-    changed, distinct = check.check(args[1])
-    print(f"{args[1]}: shared {trio}, {distinct} different cells, {changed} pixels the C64 "
-          f"changes" + (" (more than 256 cells: the rarest are drawn with the nearest)"
-                        if distinct > 256 else ""))
+    changed, _ = check.check(args[1])
+    print(f"{args[1]}: background {back}, {changed} pixels the C64 changes")
     return 0
 
 

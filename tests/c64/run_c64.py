@@ -180,7 +180,8 @@ class C64:
         draw = ImageDraw.Draw(img)
         split = self.mem[0xD01A] & 1
         if split:
-            pic = b"\x00\xE0" + bytes(self.mem[0xE000 + i] for i in range(0xC00 + 480))
+            at = c64pic.LOAD_AT
+            pic = bytes([at & 0xFF, at >> 8]) + bytes(self.mem[at + i] for i in range(c64pic.SIZE))
             img.paste(c64pic.render(pic), (0, 8))
         for row in range(25):
             if split and 1 <= row <= 12:

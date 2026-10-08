@@ -1,10 +1,10 @@
 """A small kit for painting the game's pictures in code (docs/c64.md, "Pictures").
 
 A picture is 160 x 96 pixels in the C64's sixteen colours, each pixel twice as wide as
-it is tall on the screen. On the C64 every 4 x 8 cell can show three colours shared by
-the whole picture and one of its own from the first eight, and at most 256 different
-cells; `check` runs tools/c64pic.py on a picture and says how far it is from what the
-C64 can show, so a painting can be made to come through unchanged.
+it is tall on the screen. On the C64 every 4 x 8 cell can show the picture's background
+and three colours of its own, any of the sixteen; `check` runs tools/c64pic.py on a
+picture and says how far it is from what the C64 can show, so a painting can be made to
+come through unchanged.
 
     from paint import Canvas, BLACK, ...
     c = Canvas(BLACK)
@@ -36,13 +36,12 @@ class Canvas:
         self.px = [[background] * W for _ in range(H)]
 
     @classmethod
-    def fitted(cls, path, box=None, dither="none", characters=256):
+    def fitted(cls, path, box=None, dither="none", background=None):
         """Art from anywhere, fitted to the C64's rules by tools/c64fit.py (which needs
-        numpy), to paint over: a sign's words, a colour put right. Painting adds cells,
-        so leave room with fewer `characters`."""
+        numpy), to paint over: a sign's words, a colour put right."""
         import c64fit
         c = cls(BLACK)
-        c.px, _ = c64fit.fit_pixels(path, dither, None, box, characters)
+        c.px, _ = c64fit.fit_pixels(path, dither, background, box)
         return c
 
     def recolour(self, old, new, x0=0, y0=0, x1=W - 1, y1=H - 1):
@@ -148,7 +147,7 @@ class Canvas:
 
     def resolve(self, keep, drop, to):
         """In every 4 x 8 cell that holds both `keep` and `drop`, paint `drop` as `to`:
-        a cell can only have one colour of its own (stars give way to the sun)."""
+        a cell has only three colours of its own (stars give way to the sun)."""
         for cy in range(0, H, 8):
             for cx in range(0, W, 4):
                 cell = [(x, y) for y in range(cy, cy + 8) for x in range(cx, cx + 4)]
@@ -177,26 +176,26 @@ class Canvas:
 
 
 def check(path):
-    """How a PNG comes out on the C64: (pixels it changes, different cells)."""
+    """How a PNG comes out on the C64: (pixels it changes, cells with too many colours)."""
     px = c64pic.load(path)
-    pic, distinct = c64pic.convert(px)
+    pic, crowded = c64pic.convert(px)
     shown = c64pic.render(pic)
     changed = 0
     for y in range(H):
         for x in range(W):
             if shown.getpixel((x * 2, y)) != c64pic.PALETTE[px[y][x]]:
                 changed += 1
-    return changed, distinct
+    return changed, crowded
 
 
 def report(paths):
     """Print check() for each picture; True if all come through within the C64's rules."""
     ok = True
     for path in paths:
-        changed, distinct = check(path)
-        flag = "" if changed == 0 and distinct <= 256 else "  <- the C64 changes it"
+        changed, crowded = check(path)
+        flag = "" if changed == 0 else "  <- the C64 changes it"
         ok = ok and not flag
-        print(f"{os.path.basename(path)}: {distinct} cells, {changed} pixels changed{flag}")
+        print(f"{os.path.basename(path)}: {crowded} crowded cells, {changed} pixels changed{flag}")
     return ok
 
 
