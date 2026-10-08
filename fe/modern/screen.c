@@ -43,6 +43,8 @@ static uint8_t word_len;
 static uint8_t spaces;          /* spaces waiting to go before the next word   */
 
 static void more(void);
+static void settle(void);
+static void newline(void);
 
 /* ----------------------------------------------------------------- keys */
 
@@ -98,6 +100,33 @@ static uint16_t key_for(int line)
 static uint16_t key(void)
 {
     return key_for(0);
+}
+
+uint16_t modern_key(void)
+{
+    uint16_t k;
+
+    if (modern_on_wait) modern_on_wait();
+    k = choices ? choice_key(0) : plat_key();
+    rows_shown = 0;
+    return k;
+}
+
+/* Before the battle screen takes over: the story's last row into the transcript. */
+void modern_end_row(void)
+{
+    settle();
+    if (col) newline();
+}
+
+void modern_log(const char *s)
+{
+    if (transcript) fprintf(transcript, "%s\n", s);
+}
+
+int modern_scripted(void)
+{
+    return choices != NULL;
 }
 
 /* A click on a row that starts "3. ", a menu line: as if 3 were pressed. */

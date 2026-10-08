@@ -12,11 +12,22 @@ more of the machine:
 | **the SID** | music on the title and in towns; footsteps, bowstrings and blows in a fight | not at all |
 | **8 hardware sprites**, reused down the screen | figures, cursors, arrows and fireballs that fly | not at all |
 | **custom character sets** | a game's own font, frames, icons; whole tile worlds (Ultima) | the ROM's font |
-| **the 1541's own CPU** | fast loaders, 5 to 20 times the KERNAL's 400 bytes a second | the KERNAL |
 | **raster interrupts** | split screens, colour bars, a flashing border | the picture split |
 | **the joystick port** | menus, cursors, movement | not at all |
 
 This page plans how to use them all, within the memory we have.
+
+**Loading is free.** Most C64 players today load from an SD2IEC or similar, not a 1541,
+and waiting on the disk isn't a concern for this game. So the C64 version may load as
+often as it likes: code, tiles, sprites and pictures each when they're needed, and loaded
+again afterwards rather than kept. That's what makes room for everything below.
+
+**Space is free too.** An SD card holds as much as we like: an SD2IEC loads plain files
+from the card's folders, and disk images up to a .d81's 800 KB (a .d64 holds 170 KB). So
+a Departure can carry a picture for every scene, its own tiles and sprites, and music,
+without counting kilobytes on the disk; when one outgrows a .d64, its disk becomes a .d81
+(`tools/d64.py` learns the format). Only the C64's 64 KB of memory is a limit, and the
+plan works around it by loading things when they're needed.
 
 ## Memory
 
@@ -38,16 +49,31 @@ The plan moves the whole display into bank 3, text included:
 | $E800–$EBFF | the picture's screen, or the battle map's | 1 KB | |
 | $EC00–$EDDF | the picture's colours | 480 B | |
 | $EE00–$FFF9 | **sound**: the SID player, effects and tunes | 4.5 KB | runs from the raster interrupt with the KERNAL switched out for a moment |
-| $0400–$07FF | freed (the old text screen): **the fast loader**, the effects table | 1 KB | in bank 0, always there for the main program |
+| $0400–$07FF | freed (the old text screen): the sound-effect player and its table | 1 KB | in bank 0, always there for the main program |
 
-The BATTLE overlay needs room for the new screen. The plan is to measure first, then:
-move the battle screen's drawing into a small assembly module (tile and sprite work is
-what assembly is good at), keep the rules in C, and if it still doesn't fit, take the
-battle's buffers out of the main program into the overlay (as `OVL2BSS` did for PASS).
+The BATTLE overlay needs room for the new screen. Because loading is free, a fight can
+**borrow the chapter's memory**: the car buffer (up to 6 KB) moves to sit just below the
+overlay area, a fight's overlay is allowed to run over it, and after the fight the
+chapter is loaded again (the VM only keeps its place in it as an offset). The tiles and
+sprite shapes for a fight load from the disk too, into bank 3, and the picture is loaded
+again when the story shows one.
 
 ## The milestones
 
-**E9: the battle screen** (the mock-up: `docs/` will hold it once agreed).
+**E9: the battle screen.** In steps, each one playable and tested:
+- **E9a, the screen's logic, on the desktop and in the browser** (done). A battle screen shared
+  by every front end with graphics (`client/`), drawing through a small interface: tiles,
+  figures, a cursor, marks, effects, text in the panel and the log, sounds. The terminal
+  keeps the text screen. Tests play fights through a recording stand-in for the
+  graphics, so the screen's every move is in a transcript.
+- **E9b, the C64** (done, [c64.md](c64.md#the-battle-screen)). The same screen on the
+  VIC: bank 3, tiles in characters, figures in sprites through a multiplexer, keys and a
+  joystick, the fight borrowing the chapter's memory.
+- **E9c, sound.** The SID's effects (on the C64 already), and the same through a small
+  synthesiser on the desktop and in the browser.
+- **E9d, our own font** for all the game's text.
+
+What the screen does:
 - The map in tiles, 24 x 24 pixels (3 x 3 characters) a square, three-quarter view;
   maps wider than 9 squares scroll, as Pool of Radiance's did.
 - Every figure is two sprites: a multicolour body and a hires outline over it, so it
@@ -59,13 +85,9 @@ battle's buffers out of the main program into the overlay (as `OVL2BSS` did for 
 - Sound effects through the SID: a step, a swing, a shot, a hit, a miss, a death.
 - The rules don't change: every battle test and transcript stays as it is.
 
-**E10: a fast loader.** Our own drive code, uploaded to the 1541, loading chapters,
-overlays and pictures several times faster. The KERNAL's routines stay as a fallback
-(other drives, SD2IEC).
+**E10: music.** A tune for the title, one for the Waystation, one per Departure.
 
-**E11: music.** A tune for the title, one for the Waystation, one per Departure.
-
-**E12: pictures that move.** Colour cycling and a few swapped characters per frame: the
+**E11: pictures that move.** Colour cycling and a few swapped characters per frame: the
 klaxon pulsing on Dock 3, the reactor's glow, the Static crawling, the countdown counting;
 the border flashing red as the minutes run out, and white at the meltdown.
 
@@ -84,6 +106,3 @@ What `make test-c64` can check, and what it can't:
   characters, so a fight can be looked at, and its pictures compared.
 - **Sound:** the SID's registers are recorded, so a test can say "a hit sounded here"
   without listening to it.
-- **The fast loader:** the test harness answers the KERNAL in Python; it can't run a 1541.
-  It will answer the loader's call the same way, which tests everything but the drive's
-  side. That side gets checked in VICE by hand (Ubuntu's VICE has no ROMs, so CI can't).

@@ -62,7 +62,15 @@ static const char *const operands[OP_LAST + 1] = {
 
 static uint8_t depot[APB_VM_DEPOT_MAX];
 static uint16_t depot_len;
+#ifdef APB_FIGHT_BORROWS_CAR
+/* On the C64 (fe/c64/apb.cfg) the car sits just under the overlays, and a fight's
+ * overlay, the biggest, spreads down over it: the car is loaded again afterwards. */
+#pragma bss-name (push, "CARBUF")
+#endif
 static uint8_t car[APB_VM_CAR_MAX + 16];   /* padding: a damaged image can't read past it */
+#ifdef APB_FIGHT_BORROWS_CAR
+#pragma bss-name (pop)
+#endif
 static uint16_t car_len;
 #ifdef APB_VM_FULL_CHECKS
 static uint8_t boundary[APB_VM_CAR_MAX / 8];
@@ -922,11 +930,18 @@ static uint8_t first_pay(void)
 #define SAVE_MAGIC_2 0x53
 #define SAVE_VERSION 3      /* 2: health; 3: the yard */
 
+#ifdef APB_OVERLAYS
+/* Used only by the code below, in the PASS overlay: its room, not the main program's. */
+#pragma bss-name (push, "OVL2BSS")
+#endif
 static uint8_t save_buf[APB_VM_SAVE_MAX];
+#ifdef APB_OVERLAYS
+#pragma bss-name (pop)
+#endif
+static char sv_passport[APB_PASSWORD_BUF];
 static uint16_t sv_pos;
 static uint16_t sv_len;
 static uint8_t sv_bad;
-static char sv_passport[APB_PASSWORD_BUF];
 
 static void sv_put8(uint8_t v)
 {
@@ -1283,6 +1298,15 @@ static uint8_t fight(uint8_t n, uint8_t surprise)
 
 /* -------------------------------------------------------------- running */
 
+/* After a fight: the car, if the fight's overlay borrowed its room (see car[]). */
+static void car_back(void)
+{
+#ifdef APB_FIGHT_BORROWS_CAR
+    APB_NEED(APB_OVL_LOAD);
+    load_car(car_index);
+#endif
+}
+
 static uint8_t push(int16_t v)
 {
     if (sp >= STACK_MAX) {
@@ -1620,6 +1644,7 @@ uint8_t apb_vm_run(void)
             if (i >= encounter_count || a > 2) { fail("bad fight", pc); break; }
             APB_NEED(APB_OVL_BATTLE);
             push(fight(i, (uint8_t)a));
+            car_back();
             break;
 #ifdef APB_VM_NO_YARDS
         /* A build without the Deep Yards (the 6502 test harness has no room for both
@@ -1638,6 +1663,7 @@ uint8_t apb_vm_run(void)
             if (!build_yard(i, vars[b])) break;
             APB_NEED(APB_OVL_BATTLE);
             push(fight(YARD_MAP, (uint8_t)a));
+            car_back();
             break;
         case OP_PICK:
             /* The Deep Yards (docs/deep-yards.md): 1..n from the yard and a key, the

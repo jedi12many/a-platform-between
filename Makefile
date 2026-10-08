@@ -50,14 +50,16 @@ build/demo.prg: demo/demo.c $(CORE_SRC) $(CORE_HDR) | build
 # The game on the Commodore 64 (docs/c64.md): the main program plus three overlays,
 # loaded from disk when the VM asks (LOAD, PASS and BATTLE), on cc65's overlay memory
 # map (fe/c64/apb.cfg). The linker fails the build if anything doesn't fit.
-C64_DEFS   := -DAPB_OVERLAYS -DAPB_VM_DEPOT_MAX=2048 -g
+C64_DEFS   := -DAPB_OVERLAYS -DAPB_FIGHT_BORROWS_CAR -DAPB_VM_DEPOT_MAX=2048 -g
 C64_MAIN   := fe/c64/c64.c fe/c64/split.s vm/vm.c client/view.c core/src/rng.c core/src/names.c \
               core/src/rules.c core/src/registry.c core/src/translate.c core/src/echo.c
 C64_LOAD   := core/src/yard.c
 C64_PASS   := client/desk.c core/src/passport.c client/receipt_view.c
-C64_BATTLE := core/src/battle.c core/src/combat.c client/battle_view.c
+# Nothing in a fight is recursive, so its C is built with its locals static (-Cl): smaller.
+C64_BATTLE := fe/c64/sprites.s
+C64_SCENE  := core/src/battle.c core/src/combat.c client/battle_text.c client/tactics.c fe/c64/scene.c
 
-build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(CORE_HDR) $(VM_HDR) \
+build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE) $(CORE_HDR) $(VM_HDR) \
                    client/apb_view.h | build
 	@mkdir -p build/c64/obj
 	@for f in $(C64_MAIN); do \
@@ -67,48 +69,53 @@ build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATT
 	@for f in $(C64_PASS); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY2 \
 	    --rodata-name OVL2DATA --bss-name OVL2BSS -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
 	@for f in $(C64_BATTLE); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY3 \
-	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
+	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
+	@for f in $(C64_SCENE); do $(CL65) -t c64 -O -Cl $(INC) $(C64_DEFS) --code-name OVERLAY3 \
+	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
 	$(CL65) -t c64 -g -C fe/c64/apb.cfg -m build/c64/apb.map -Wl --dbgfile,build/c64/apb.dbg -o $@ \
-	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE))))) c64.lib
+	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE))))) c64.lib
 
 # The Fare on a 1541 disk: LOAD"APB",8 and RUN. Its pictures (pic00, pic01, ...) come
 # from the PNGs in its pictures/ folder (tools/c64pic.py, which needs Pillow).
 FARE_PICS := $(wildcard content/s1/00-the-fare/pictures/*.png)
 
-build/the-fare.d64: build/c64/apb.prg content/s1/00-the-fare/the-fare.qs tools/d64.py tools/c64pic.py $(FARE_PICS)
+build/the-fare.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/00-the-fare/the-fare.qs tools/d64.py tools/c64pic.py $(FARE_PICS)
 	@mkdir -p build/c64/fare build/c64/fare-pics
 	python3 tools/qsc/qsc.py build content/s1/00-the-fare/the-fare.qs -o build/c64/the-fare.apd --split build/c64/fare
 	python3 tools/c64pic.py disk build/c64/fare/DEPOT content/s1/00-the-fare/pictures build/c64/fare-pics
 	python3 tools/d64.py write $@ "the fare" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
-	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
+	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr \
 	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/fare-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
 # Eighteen Minutes (Departure 01), on a disk of its own, the same way.
 E18_PICS := $(wildcard content/s1/01-eighteen-minutes/pictures/*.png)
 
-build/eighteen-minutes.d64: build/c64/apb.prg content/s1/01-eighteen-minutes/eighteen-minutes.qs \
+build/eighteen-minutes.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/01-eighteen-minutes/eighteen-minutes.qs \
                             tools/d64.py tools/c64pic.py $(E18_PICS)
 	@mkdir -p build/c64/e18 build/c64/e18-pics
 	python3 tools/qsc/qsc.py build content/s1/01-eighteen-minutes/eighteen-minutes.qs \
 	    -o build/c64/eighteen-minutes.apd --split build/c64/e18
 	python3 tools/c64pic.py disk build/c64/e18/DEPOT content/s1/01-eighteen-minutes/pictures build/c64/e18-pics
 	python3 tools/d64.py write $@ "eighteen minutes" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
-	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
+	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr \
 	    $$(for f in build/c64/e18/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/e18-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
 # The Deep Yards (E7) on a disk of its own too.
 YARDS_PICS := $(wildcard content/sidings/deep-yards/pictures/*.png)
 
-build/deep-yards.d64: build/c64/apb.prg content/sidings/deep-yards/deep-yards.qs \
+build/deep-yards.d64: build/c64/apb.prg build/c64/bgfx/btab content/sidings/deep-yards/deep-yards.qs \
                       tools/d64.py tools/c64pic.py $(YARDS_PICS)
 	@mkdir -p build/c64/yards build/c64/yards-pics
 	python3 tools/qsc/qsc.py build content/sidings/deep-yards/deep-yards.qs \
 	    -o build/c64/deep-yards.apd --split build/c64/yards
 	python3 tools/c64pic.py disk build/c64/yards/DEPOT content/sidings/deep-yards/pictures build/c64/yards-pics
 	python3 tools/d64.py write $@ "the deep yards" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
-	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
+	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr \
 	    $$(for f in build/c64/yards/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(for f in build/c64/yards-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
@@ -220,7 +227,7 @@ test-vm: build/harness build/harness.sim build/harness-yards.sim build/harness.a
 
 # The terminal front end: `make play` compiles The Fare and plays it.
 # Shared by every front end: the status line, checks and the battle screen.
-VIEW_SRC := client/view.c client/battle_view.c client/receipt_view.c
+VIEW_SRC := client/view.c client/battle_view.c client/battle_text.c client/receipt_view.c
 
 build/apb: fe/term/term.c $(VIEW_SRC) client/apb_view.h $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ fe/term/term.c $(VIEW_SRC) $(VM_SRC) $(CORE_SRC)
@@ -248,28 +255,40 @@ play-yards: build/apb build/deep-yards.apd
 
 # The modern front end (E6, fe/modern/): SDL2 on a desktop. Each Departure is a directory
 # of its files and its pictures in full colour (tools/apic.py).
-MODERN_SRC := fe/modern/screen.c fe/modern/render.c
-MODERN_HDR := fe/modern/modern.h fe/modern/font8x8.h
+# Fights are the battle screen with graphics (client/tactics.c, docs/c64-hardware.md),
+# drawn as the C64 draws them from the battle graphics (BGFX, tools/battlegfx.py).
+MODERN_SRC := fe/modern/screen.c fe/modern/render.c fe/modern/scene.c
+MODERN_HDR := fe/modern/modern.h fe/modern/font8x8.h client/apb_scene.h
+MODERN_VIEW_SRC := client/view.c client/tactics.c client/battle_text.c client/receipt_view.c
 
-build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(VIEW_SRC) client/apb_view.h \
+build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(MODERN_VIEW_SRC) client/apb_view.h \
                   $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) $$(sdl2-config --cflags) -o $@ fe/modern/sdl.c $(MODERN_SRC) \
-	    $(VIEW_SRC) $(VM_SRC) $(CORE_SRC) $$(sdl2-config --libs)
+	    $(MODERN_VIEW_SRC) $(VM_SRC) $(CORE_SRC) $$(sdl2-config --libs)
+
+# The battle graphics, for every front end with graphics; the C64 has them as three files.
+build/battle.bgfx: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h | build
+	python3 tools/battlegfx.py $@
+
+build/c64/bgfx/btab: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h
+	@mkdir -p build/c64/bgfx
+	python3 tools/battlegfx.py build/c64/battle.bgfx --c64 build/c64/bgfx
 
 # $(1) the .qs, $(2) its pictures, $(3) the directory to fill
 define modern_departure
 	@mkdir -p $(3)
 	python3 tools/qsc/qsc.py build $(1) -o $(3).apd --split $(3)
 	python3 tools/apic.py dir $(3)/DEPOT $(2) $(3)
+	cp build/battle.bgfx $(3)/BGFX
 endef
 
-build/modern/the-fare/DEPOT: content/s1/00-the-fare/the-fare.qs $(FARE_PICS) tools/apic.py
+build/modern/the-fare/DEPOT: content/s1/00-the-fare/the-fare.qs $(FARE_PICS) tools/apic.py build/battle.bgfx
 	$(call modern_departure,content/s1/00-the-fare/the-fare.qs,content/s1/00-the-fare/pictures,build/modern/the-fare)
 
-build/modern/eighteen-minutes/DEPOT: content/s1/01-eighteen-minutes/eighteen-minutes.qs $(E18_PICS) tools/apic.py
+build/modern/eighteen-minutes/DEPOT: content/s1/01-eighteen-minutes/eighteen-minutes.qs $(E18_PICS) tools/apic.py build/battle.bgfx
 	$(call modern_departure,content/s1/01-eighteen-minutes/eighteen-minutes.qs,content/s1/01-eighteen-minutes/pictures,build/modern/eighteen-minutes)
 
-build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_PICS) tools/apic.py
+build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_PICS) tools/apic.py build/battle.bgfx
 	$(call modern_departure,content/sidings/deep-yards/deep-yards.qs,content/sidings/deep-yards/pictures,build/modern/deep-yards)
 
 MODERN_DEPARTURES := build/modern/the-fare/DEPOT build/modern/eighteen-minutes/DEPOT \
@@ -283,10 +302,10 @@ WEB_FLAGS := -O2 -sASYNCIFY -sASYNCIFY_STACK_SIZE=65536 -sALLOW_MEMORY_GROWTH \
              -sEXPORTED_FUNCTIONS=_web_start,_web_screen_row -sFORCE_FILESYSTEM -lidbfs.js
 
 build/web/apb.js: fe/modern/web.c fe/modern/web/index.html $(MODERN_SRC) $(MODERN_HDR) \
-                  $(VIEW_SRC) client/apb_view.h $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) \
+                  $(MODERN_VIEW_SRC) client/apb_view.h $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) \
                   $(MODERN_DEPARTURES)
 	@mkdir -p build/web
-	$(EMCC) $(WEB_FLAGS) $(INC) -o $@ fe/modern/web.c $(MODERN_SRC) $(VIEW_SRC) $(VM_SRC) \
+	$(EMCC) $(WEB_FLAGS) $(INC) -o $@ fe/modern/web.c $(MODERN_SRC) $(MODERN_VIEW_SRC) $(VM_SRC) \
 	    $(CORE_SRC) --preload-file build/modern/the-fare@/departures/the-fare \
 	    --preload-file build/modern/eighteen-minutes@/departures/eighteen-minutes \
 	    --preload-file build/modern/deep-yards@/departures/deep-yards \

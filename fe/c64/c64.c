@@ -261,6 +261,7 @@ void hal_pause(void)
  * RAM under the KERNAL at $E000, where the VIC can show it but nothing else lives. A
  * missing picture just leaves the last one up. */
 static uint8_t picture_up;      /* a picture is loaded at $E000 */
+static uint8_t picture_id;
 
 void hal_picture(uint8_t id, const char *name)
 {
@@ -273,6 +274,7 @@ void hal_picture(uint8_t id, const char *name)
     BORDER = INK_GRAY;
     if (cbm_load(pic, 8, 0) != 0) {
         picture_up = 1;
+        picture_id = id;
         pic_show();
         if (top != PICTURE_TOP + PICTURE_ROWS) {
             /* The text window shrinks to the rows under the picture. */
@@ -403,58 +405,41 @@ void hal_error(const char *msg)
     end_line();
 }
 
-/* ------------------------------------------------------- the battle screen */
-
+/* A line of the receipt (client/receipt_view.c). */
 void apb_view_out(const char *ascii, uint8_t wrap)
 {
     if (wrap) {
         ascii_out(ascii);
     } else {
-        /* Map rows and the roster: as they are, spaces and all. */
         settle();
         while (*ascii) put(petscii((uint8_t)*ascii++));
     }
     end_line();
 }
 
-uint8_t apb_view_pick(uint8_t count)
-{
-    uint8_t k;
+/* ------------------------------------------------------- the battle screen */
 
-    for (;;) {
-        k = key();
-        if (k >= '1' && k < '1' + count) {
-            echo_key(k);
-            return (uint8_t)(k - '1');
-        }
-    }
-}
-
-/* A fight needs the whole screen for its map and menus: the picture goes, and comes
- * back when the fight's over. */
-void apb_view_fight(uint8_t on)
+/* fe/c64/scene.c, the battle screen, has the whole screen for a fight (on) and gives it
+ * back after (off): the story's text is still on the screen at $0400, but the colours
+ * are the fight's, and the picture's characters at $E000 are the fight's too. */
+void c64_scene(uint8_t on)
 {
     uint8_t row;
 
-    if (!picture_up) return;
     if (on) {
-        split_off();
-        top = PICTURE_TOP;
-    } else {
-        for (row = PICTURE_TOP; row < PICTURE_TOP + PICTURE_ROWS; ++row) clear_row(row);
-        pic_show();
-        top = PICTURE_TOP + PICTURE_ROWS;
-        split_on();
+        settle();
+        if (col) newline();
+        if (picture_up) split_off();
+        return;
+    }
+    draw_status();
+    for (row = 1; row < ROWS; ++row) memset(COLORS + row * COLS, ink, COLS);
+    if (picture_up) {
+        picture_up = 0;
+        hal_picture(picture_id, 0);
+        if (picture_up) split_on();
     }
     rows_shown = 0;
-}
-
-uint8_t apb_view_go_on(void)
-{
-    uint8_t k = key();
-
-    echo_key(k);
-    return (uint8_t)!(k == 't' || k == 'T');
 }
 
 /* ----------------------------------------------------------------- disk */

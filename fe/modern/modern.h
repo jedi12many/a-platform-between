@@ -40,6 +40,23 @@ typedef struct {
 extern modern_picture scr_picture;
 extern uint8_t scr_picture_shown;      /* drawn on rows 1-12 */
 
+/* The battle screen with graphics (client/apb_scene.h, fe/modern/scene.c): while a fight
+ * is on, render.c draws this instead, the C64's multicolour character screen and its
+ * sprites, from the battle graphics (tools/battlegfx.py), twice the C64's size. */
+#define SCN_SPRITES 24
+typedef struct {
+    int16_t x, y;
+    uint8_t shape, colour, mode;    /* mode: APB_SPR_OFF, _HIRES, _MULTI */
+} modern_sprite;
+
+extern uint8_t scn_active;
+extern uint8_t scn_char[SCR_ROWS][SCR_COLS];
+extern uint8_t scn_colour[SCR_ROWS][SCR_COLS];
+extern uint8_t scn_regs[6];         /* border, background, mc1, mc2, sprite mc1, mc2 */
+extern modern_sprite scn_sprite[SCN_SPRITES];
+extern const uint8_t *scn_charset;  /* 256 x 8 bytes */
+extern const uint8_t *scn_shapes;   /* 64 bytes each */
+
 /* render.c: the screen into `fb`, SCR_W x SCR_H pixels of 0x00RRGGBB. */
 void modern_render(uint32_t *fb);
 /* The C64's sixteen colours, 0x00RRGGBB. */
@@ -61,6 +78,8 @@ void modern_play(uint16_t seed);
 #define KEY_RETURN 13
 #define KEY_DELETE 8
 #define KEY_CLICK  0x100        /* | row: the player clicked a row of the screen */
+#define KEY_ARROW  0x200        /* | APB_KEY_UP..APB_KEY_RIGHT: an arrow key */
+#define KEY_ESCAPE 27
 
 /* Show the screen (call modern_render), then wait for a key or a click and return it:
  * ASCII, KEY_RETURN, KEY_DELETE or KEY_CLICK | row. */
@@ -69,5 +88,14 @@ uint16_t plat_key(void);
 void plat_show(void);
 /* A save was written: make it last (the browser copies it to IndexedDB). */
 void plat_saved(void);
+/* Show the screen and wait `ms` milliseconds, for animation. */
+void plat_wait(unsigned ms);
+
+/* screen.c, for scene.c: a key as the story's screen takes them (from the choices file
+ * in tests), with no cursor; and a line into the transcript, if there is one. */
+uint16_t modern_key(void);
+void modern_log(const char *line);
+void modern_end_row(void);           /* the story's last row into the transcript */
+int modern_scripted(void);          /* keys come from a choices file */
 
 #endif

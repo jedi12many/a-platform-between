@@ -67,6 +67,12 @@ EMSCRIPTEN_KEEPALIVE const char *web_screen_row(int row)
     return text;
 }
 
+void plat_wait(unsigned ms)
+{
+    plat_show();
+    emscripten_sleep(ms);
+}
+
 void plat_saved(void)
 {
     js_sync_saves();

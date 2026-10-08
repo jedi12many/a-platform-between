@@ -97,6 +97,11 @@
     if (canvas.style.display !== "block" || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === "Enter") Module.keys.push(13);
     else if (e.key === "Backspace") Module.keys.push(8);
+    else if (e.key === "Escape") Module.keys.push(27);
+    else if (e.key === "ArrowUp") Module.keys.push(0x201);
+    else if (e.key === "ArrowDown") Module.keys.push(0x202);
+    else if (e.key === "ArrowLeft") Module.keys.push(0x203);
+    else if (e.key === "ArrowRight") Module.keys.push(0x204);
     else if (e.key.length === 1 && e.key.charCodeAt(0) >= 32 && e.key.charCodeAt(0) < 127)
       Module.keys.push(e.key.charCodeAt(0));
     else return;

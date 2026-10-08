@@ -11,6 +11,11 @@ window, and scrolls the window up in newline(). So the transcript is the bottom 
 read each time newline() starts (its address comes from the linker's debug file,
 SYMBOLS). Loading a picture adds a line "[picture picNN]".
 
+A fight is on the battle screen (fe/c64/scene.c): its words come from hal_scene_log,
+which the harness reads (the C64 shows them nowhere), its waits for frames are skipped
+(there are no interrupts here), and each line of the choices file is one key. The
+picture the C64 loads again after a fight isn't a new picture, so isn't in the record.
+
 Keys come from a choices file like the terminal's (tests/term/*.choices), one line per
 answer: at a "> " prompt (a typed line) the whole line and RETURN; at a menu the line's
 first character; at "-- more --" a space, without using a line.
@@ -77,6 +82,12 @@ def segment_start(dbg, name):
     raise RuntimeError(f"no segment {name} in {dbg}")
 
 
+def symbol_cache(c64, name):
+    if name not in c64.cache:
+        c64.cache[name] = symbol(c64.dbg, name)
+    return c64.cache[name]
+
+
 def symbol(dbg, name):
     """A symbol's address from ld65's debug file."""
     for line in open(dbg):
@@ -94,8 +105,18 @@ class C64:
         self.lines = []
         self.shot_dir = None
         self.shots = 0
+        self.dbg = dbg
+        self.cache = {}
         self.newline_at = symbol(dbg, "_newline")
-        self.stack_top = segment_start(dbg, "OVERLAY1")    # the stack ends where they start
+        self.stack_top = segment_start(dbg, "CARBUF")      # the stack ends where the car starts
+        self.scene_wait = symbol(dbg, "_scene_wait")
+        self.scene_log = symbol(dbg, "_hal_scene_log")
+        self.scene_start = symbol(dbg, "_scene_start")
+        self.scene_stop = symbol(dbg, "_scene_stop")
+        self.overlay = None                                 # the overlay loaded
+        self.in_scene = False
+        self.after_scene = False
+        self.last_picture = None
         self.stack_low = self.stack_top
         self.keys = []
         self.mem = ObservableMemory()
@@ -116,6 +137,34 @@ class C64:
         at = SCREEN + LAST_ROW * COLS
         return "".join(screen_ascii(self.mem[at + i]) for i in range(COLS)).rstrip()
 
+    def scene_shot(self):
+        """The battle screen, as the VIC-II draws it (tools/vic.py): bank 3's characters
+        and screen, the colour RAM, and the sprites as scene.c planned them."""
+        import vic
+        m = self.mem
+        r = lambda a: m[a] & 15                             # noqa: E731
+        scr = vic.Screen(bytes(m[0xE000 + i] for i in range(2048)), r(0xD021), r(0xD022),
+                         r(0xD023), r(0xD025), r(0xD026))
+        for i in range(1000):
+            scr.put(i % 40, i // 40, m[0xE800 + i], m[0xD800 + i] & 15)
+        # The sprites as the raster interrupt puts them up (fe/c64/sprites.s): the plan's
+        # first eight, then each event's, on its VIC sprite; a lower one is on top.
+        plan = [m[symbol_cache(self, "_scene_next") + i] for i in range(180)]
+        shown = []
+        for s in range(8):
+            if plan[34] >> s & 1:
+                shown.append((s, plan[s], plan[8 + s], plan[16 + s], plan[24 + s],
+                              plan[32] >> s & 1, plan[33] >> s & 1))
+        for e in range(plan[35]):
+            s = plan[52 + e]
+            shown.append((s, plan[84 + e], plan[100 + e], plan[116 + e], plan[132 + e],
+                          plan[148 + e] >> s & 1, plan[164 + e] >> s & 1))
+        for s, x, y, ptr, colour, msb, multi in sorted(shown, key=lambda t: -t[0]):
+            at = 0xC000 + 64 * ptr
+            scr.sprite(x + 256 * msb - 24, y - 50, bytes(m[at + i] for i in range(63)),
+                       colour & 15, multi)
+        return scr.image(r(0xD020)).resize((768, 528))
+
     def shot(self):
         """What the screen shows now: the status bar, the picture (when the raster split
         is on) and the text window, as a PNG, for a person to look at. The C64's own
@@ -123,6 +172,10 @@ class C64:
         from PIL import Image, ImageDraw
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools"))
         import c64pic
+        if self.in_scene:
+            self.shots += 1
+            self.scene_shot().save(os.path.join(self.shot_dir, f"screen{self.shots:03d}.png"))
+            return
         img = Image.new("RGB", (320, 200))
         draw = ImageDraw.Draw(img)
         split = self.mem[0xD01A] & 1
@@ -148,6 +201,12 @@ class C64:
         """The keys for whatever the program is waiting for now."""
         if self.shot_dir:
             self.shot()
+        if self.in_scene:                                   # a key at a time
+            if not self.choices:
+                self.ended = "[end of input]"
+                return []
+            answer = self.choices.pop(0)
+            return [self.petscii(answer[0]) if answer else 0x0D]
         line = self.bottom_row()
         if line.endswith("-- more --"):
             return [0x20]
@@ -280,12 +339,39 @@ class C64:
                 end = at + len(data) - 2
                 m.x, m.y = end & 0xFF, end >> 8
                 self.overlays += 1
+                if name.startswith("ovl"):
+                    self.overlay = name
                 if name.startswith("pic"):
-                    self.lines.append(f"[picture {name}]")
+                    if not (self.after_scene and name == self.last_picture):
+                        self.lines.append(f"[picture {name}]")
+                    self.after_scene = False
+                    self.last_picture = name
                 self.carry(False)
         else:
             raise RuntimeError(f"the program called ${pc:04X} in the ROM, which isn't emulated")
         self.rts()
+
+    def scene_call(self, pc):
+        m = self.mpu
+        if pc == self.scene_log:                            # hal_scene_log(ascii): A/X
+            at = m.a | (m.x << 8)
+            text = bytearray()
+            while self.mem[at] and len(text) < 200:
+                text.append(self.mem[at])
+                at += 1
+            self.lines.append(text.decode("ascii", "replace"))
+            self.rts()
+            return
+        if pc == self.scene_start:
+            self.in_scene = True
+        elif pc == self.scene_stop:
+            self.in_scene = False
+            self.after_scene = True
+        if pc == self.scene_wait:                           # no frames here: no waiting
+            self.mem[symbol_cache(self, "_scene_pending")] = 0
+            self.rts()
+            return
+        self.mpu.step()                                     # the rest runs as it is
 
     # ----------------------------------------------------------------- run
 
@@ -297,6 +383,7 @@ class C64:
         for i, b in enumerate(prg[2:]):
             self.mem[at + i] = b
         self.mem[0x01] = 0x37
+        self.mem[0xDC00] = 0xFF                             # no joystick in port 2
         m = self.mpu
         m.sp = 0xFF
         ret = STOP_AT - 1                                   # main's RTS comes here
@@ -314,7 +401,10 @@ class C64:
                 break
             if pc == self.newline_at:
                 self.lines.append(self.bottom_row())
-            if pc >= 0xE000:
+            if self.overlay == "ovl3" and pc in (self.scene_wait, self.scene_log,
+                                                 self.scene_start, self.scene_stop):
+                self.scene_call(pc)
+            elif pc >= 0xE000:
                 self.kernal(pc)
             else:
                 m.step()

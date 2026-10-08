@@ -61,6 +61,11 @@ uint16_t plat_key(void)
         case SDL_KEYDOWN:
             if (ev.key.keysym.sym == SDLK_RETURN || ev.key.keysym.sym == SDLK_KP_ENTER) return KEY_RETURN;
             if (ev.key.keysym.sym == SDLK_BACKSPACE) return KEY_DELETE;
+            if (ev.key.keysym.sym == SDLK_ESCAPE) return KEY_ESCAPE;
+            if (ev.key.keysym.sym == SDLK_UP) return KEY_ARROW | 1;
+            if (ev.key.keysym.sym == SDLK_DOWN) return KEY_ARROW | 2;
+            if (ev.key.keysym.sym == SDLK_LEFT) return KEY_ARROW | 3;
+            if (ev.key.keysym.sym == SDLK_RIGHT) return KEY_ARROW | 4;
             break;
         case SDL_MOUSEBUTTONDOWN:
             /* SDL_RenderSetLogicalSize maps the click into the 640 x 400 screen. */
@@ -76,6 +81,21 @@ uint16_t plat_key(void)
 }
 
 void plat_saved(void) {}
+
+void plat_wait(unsigned ms)
+{
+    SDL_Event ev;
+
+    plat_show();
+    if (!renderer) return;
+    while (SDL_PollEvent(&ev)) {
+        if (ev.type == SDL_QUIT) {
+            SDL_Quit();
+            exit(0);
+        }
+    }
+    SDL_Delay(ms);
+}
 
 /* A picture of the screen, for a person to look at. */
 static void shot(void)

@@ -146,118 +146,28 @@ like visitors.
 > 1
 
 -- A fight! --
-  # # # # # # # # #
-  > . . + . . - . #
-  # @ . + . . a . #
-  # . . - - . + b #
-  # # # # # # # # #
- # wall  - rough  + cover  > exit
- @ Kestrel  27/27
- a Ash rat  6/6  TN 60
- b Ash rat  6/6  TN 60
-
 -- Round 1 --
 Ash rat moves.
-Ash rat attacks you: 12 + 30 = 42
-against 58, a glancing hit: 1 damage.
+Ash rat attacks you: 12 + 30 = 42 against 58, a glancing hit: 1 damage.
 Ash rat moves.
-Ash rat attacks you: 12 + 30 = 42
-against 58, a glancing hit: 1 damage.
-
-  # # # # # # # # #
-  > . a + . . - . #
-  # @ b + . . . . #
-  # . . - - . + . #
-  # # # # # # # # #
- # wall  - rough  + cover  > exit
- @ Kestrel  25/27
- a Ash rat  6/6  TN 60
- b Ash rat  6/6  TN 60
-
-Where to?
-1. Stay here
-2. To the exit
-3. Into cover
-4. Wait: act at the end of the round
-5. Quick: the computer plays you
-> 1
-Then?
-1. Attack Ash rat (a): TN 60
-2. Attack Ash rat (b): TN 60
-3. Guard: hit the first to come close
-4. Flee: TN 120
-5. Done
-6. Back
-> 1
-
-You attack Ash rat: 25 + 20 = 45 against
-60, a glancing hit: 10 damage.
+Ash rat attacks you: 12 + 30 = 42 against 58, a glancing hit: 1 damage.
+[Kestrel: choose.]
+[Aim: Ash rat, TN 60]
+You attack Ash rat: 25 + 20 = 45 against 60, a glancing hit: 10 damage.
 Ash rat is down.
 -- Round 2 --
-Ash rat attacks you: 2 + 30 = 32 against
-58, a miss.
-
-  # # # # # # # # #
-  > . x + . . - . #
-  # @ b + . . . . #
-  # . . - - . + . #
-  # # # # # # # # #
- # wall  - rough  + cover  > exit
- @ Kestrel  25/27
- x Ash rat  down
- b Ash rat  6/6  TN 60
-
-Where to?
-1. Stay here
-2. To the exit
-3. Into cover
-4. Wait: act at the end of the round
-5. Quick: the computer plays you
-> 1
-Then?
-1. Attack Ash rat (b): TN 60
-2. Guard: hit the first to come close
-3. Flee: TN 110
-4. Done
-5. Back
-> 1
-
-You attack Ash rat: 4 + 20 = 24 against
-60, a miss.
+Ash rat attacks you: 2 + 30 = 32 against 58, a miss.
+[Kestrel: choose.]
+[Aim: Ash rat, TN 60]
+You attack Ash rat: 4 + 20 = 24 against 60, a miss.
 -- Round 3 --
-Ash rat attacks you: 66 + 30 = 96
-against 58, a crit: 10 damage.
-
-  # # # # # # # # #
-  > . x + . . - . #
-  # @ b + . . . . #
-  # . . - - . + . #
-  # # # # # # # # #
- # wall  - rough  + cover  > exit
- @ Kestrel  15/27
- x Ash rat  down
- b Ash rat  6/6  TN 60
-
-Where to?
-1. Stay here
-2. To the exit
-3. Into cover
-4. Wait: act at the end of the round
-5. Quick: the computer plays you
-> 1
-Then?
-1. Attack Ash rat (b): TN 60
-2. Guard: hit the first to come close
-3. Flee: TN 110
-4. Done
-5. Back
-> 1
-
-You attack Ash rat: 74 + 20 = 94 against
-60, a hit: 23 damage.
+Ash rat attacks you: 66 + 30 = 96 against 58, a crit: 10 damage.
+[Kestrel: choose.]
+[Aim: Ash rat, TN 60]
+You attack Ash rat: 74 + 20 = 94 against 60, a hit: 23 damage.
 Ash rat is down.
 You won the fight.
-
+[Press a key.]
 The last rat bolts into a hole behind
 the trunks, trailing sparks.
 

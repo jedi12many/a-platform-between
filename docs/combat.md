@@ -202,7 +202,14 @@ attacks both ways, quick) with logs reviewed by hand; `make test-combat` plays t
 PC and the 6502, re-checks every roll against the Python reference, and runs random
 battles under the sanitizers.
 
-On screen (`fe/term/term.c`, the model for the C64's): the map is drawn two characters to
+On the C64, the desktop and in the browser, a fight is the battle screen with graphics
+(`client/tactics.c`, [c64.md](c64.md#the-battle-screen)): the map in tiles, the fighters
+as sprites, a roster, the log and a command bar, **Move Aim Guard Wait Flee Quick Done**.
+Move walks a cursor over the squares the rules allow this turn (they're marked); Aim
+cycles through the foes in reach from there, with the TN; Wait only before moving; Quick
+plays you until T takes over.
+
+In the terminal (`fe/term/term.c`, `client/battle_view.c`): the map is drawn two characters to
 a square (`@` you, `a`, `b`, ... the foes, `x` one who's down) with a key and a roster
 giving each foe's health and the TN to hit it. A turn is two short menus, **Where to?**
 (stay, next to or toward a foe, to the exit, into cover, onto high ground; or instead

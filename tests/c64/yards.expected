@@ -84,50 +84,14 @@ down, and something is waiting by it.
 The stair down is guarded.
 
 -- A fight! --
-  # # # # # # # # # # # #
-  > @ . . . . . . . . . #
-  # . . . . + . . . . . #
-  # . . . . . . . . . . #
-  # . . . . - . . = . . #
-  # . . . . . . a . - + #
-  # . . . . . . . . . - #
-  # # # # # # # # # # # #
- # wall  - rough  + cover  = high ground
- > exit
- @ Kestrel  27/27
- a Ash rat  6/6  TN 60
-
 -- Round 1 --
 Ash rat moves.
-Ash rat attacks you: 5 + 30 = 35 against
-58, a miss.
-
-  # # # # # # # # # # # #
-  > @ a . . . . . . . . #
-  # . . . . + . . . . . #
-  # . . . . . . . . . . #
-  # . . . . - . . = . . #
-  # . . . . . . . . - + #
-  # . . . . . . . . . - #
-  # # # # # # # # # # # #
- # wall  - rough  + cover  = high ground
- > exit
- @ Kestrel  27/27
- a Ash rat  6/6  TN 60
-
-Where to?
-1. Stay here
-2. To the exit
-3. Into cover
-4. Wait: act at the end of the round
-5. Quick: the computer plays you
-> 5
-
-You attack Ash rat: 87 + 20 = 107
-against 60, a hit: 24 damage.
+Ash rat attacks you: 5 + 30 = 35 against 58, a miss.
+[Kestrel: choose.]
+You attack Ash rat: 87 + 20 = 107 against 60, a hit: 24 damage.
 Ash rat is down.
 You won the fight.
-
+[Press a key.]
 The way down is clear.
 
 You go down, and catch your breath on

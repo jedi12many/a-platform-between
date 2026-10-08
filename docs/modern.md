@@ -33,12 +33,18 @@ sees a scene in one sees the same scene in all of them.
 | Rows | What |
 |---|---|
 | 0 | the status bar |
-| 1–12 | the picture, once the story has shown one (the whole screen is text during a fight) |
+| 1–12 | the picture, once the story has shown one |
 | 13–24 | the text window, word-wrapped at 40 columns, with "-- more --" before anything scrolls off unread |
 
 The screen is 640 x 400 pixels: 40 x 25 characters of 16 x 16, from an 8 x 8 font
 (`fe/modern/font8x8.h`, the public-domain font8x8) doubled. The window scales it to
 fit. Unlike the C64, it has `~`, `_` and braces.
+
+**A fight** has the whole screen: the battle screen with graphics (`client/tactics.c`,
+[c64.md](c64.md#the-battle-screen)), drawn exactly as the C64's VIC-II draws it, from the
+same graphics file (`BGFX`, `tools/battlegfx.py`), each C64 pixel two by two. The arrow
+keys or the keypad's digits move, Return chooses, Escape or Backspace goes back, and a
+command's first letter does it at once.
 
 **Pictures** are in full colour. A Departure's `pictures/*.png` become `picNN.apic`
 files (`tools/apic.py`): up to 640 x 384 pixels and 256 colours each. They're stretched
@@ -50,14 +56,16 @@ too. Real art can be drawn bigger, and the C64 converter will scale it down
 
 | File | What |
 |---|---|
-| `fe/modern/screen.c` | the whole HAL on the 40 x 25 screen: text, menus, typed lines, the battle screen, pictures, files, the start menu and the receipt |
-| `fe/modern/render.c` | the screen into a 640 x 400 framebuffer |
+| `fe/modern/screen.c` | the whole HAL on the 40 x 25 screen: text, menus, typed lines, pictures, files, the start menu and the receipt |
+| `fe/modern/scene.c` | the battle screen's HAL (`client/apb_scene.h`): its characters, colours and sprites, kept for `render.c` |
+| `fe/modern/render.c` | the screen into a 640 x 400 framebuffer; the battle screen as the VIC-II draws it (`tools/vic.py` is the reference) |
 | `fe/modern/sdl.c` | the desktop: a window, keys and clicks (SDL2) |
 | `fe/modern/web.c`, `fe/modern/web/index.html` | the browser: the page draws the framebuffer on a canvas and queues keys and clicks |
 
-A platform supplies three functions (`fe/modern/modern.h`):
+A platform supplies four functions (`fe/modern/modern.h`):
 - `plat_key`: wait for a key or a click;
 - `plat_show`: show the screen;
+- `plat_wait`: show it and wait some milliseconds (a fight's animations);
 - `plat_saved`: a save was written.
 
 The VM waits for the player the same way everywhere: `plat_key` returns when there's a

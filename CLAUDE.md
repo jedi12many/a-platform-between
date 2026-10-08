@@ -44,10 +44,12 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-c64`: the C64 program from the `.d64` must play The Fare, Eighteen Minutes
   and the Deep Yards on a 6502 emulator
   (py65: `pip install py65`; the disk's pictures need Pillow) with the KERNAL answered
-  in Python (`tests/c64/run_c64.py`): transcripts match `tests/c64/*.expected`, the
+  in Python (`tests/c64/run_c64.py`; fights on the battle screen are read from
+  `hal_scene_log`, a key a line): transcripts match `tests/c64/*.expected`, the
   Travel Stamp is the terminal's, a save survives switching off, the C stack stays
   under 384 bytes; and no overlay may use another's code or data
-  (`fe/c64/check_overlays.py`). `--shots DIR` saves pictures of the screen to look at.
+  (`fe/c64/check_overlays.py`). `--shots DIR` saves pictures of the screen to look at,
+  the battle screen drawn as the VIC-II would (`tools/vic.py`).
 - `make test-modern`: the modern front end (`fe/modern/`, `docs/modern.md`) must play the
   C64's test routes as the C64 does (`tests/modern/check_modern.py`), on the desktop
   (SDL2, `build/apb-modern`) and in a browser (`build/web/`, headless Chromium through
