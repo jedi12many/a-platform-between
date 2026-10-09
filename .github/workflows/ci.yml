@@ -64,6 +64,9 @@ jobs:
       - name: The Deep Yards' generator (C against the reference, PC and 6502)
         run: make test-yards
 
+      - name: The music players (reference, C and 6502 write the same SID registers)
+        run: make test-music
+
       - uses: actions/upload-artifact@v4
         with:
           name: c64

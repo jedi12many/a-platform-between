@@ -100,3 +100,7 @@ footer { max-width: 60rem; margin: 0 auto; padding: 0.5rem 1rem 2rem; color: var
   .panel { border: 0; padding: 0; }
   body { background: #fff; }
 }
+
+/* Your travelers: keeping the one on the page. */
+.keep { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--line, #ccc); }
+.keep h3 { margin-top: 0; }

@@ -44,14 +44,21 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-c64`: the C64 program from the `.d64` must play The Fare, Eighteen Minutes
   and the Deep Yards on a 6502 emulator
   (py65: `pip install py65`; the disk's pictures need Pillow) with the KERNAL answered
-  in Python (`tests/c64/run_c64.py`): transcripts match `tests/c64/*.expected`, the
+  in Python (`tests/c64/run_c64.py`; fights on the battle screen are read from
+  `hal_scene_log`, a key a line): transcripts match `tests/c64/*.expected`, the
   Travel Stamp is the terminal's, a save survives switching off, the C stack stays
-  under 384 bytes; and no overlay may use another's code or data
-  (`fe/c64/check_overlays.py`). `--shots DIR` saves pictures of the screen to look at.
+  under 384 bytes; the music plays (the harness keeps the I/O apart from the RAM under it,
+  and fires the raster interrupt), its cues in the transcripts as `[music NAME]`; and no
+  overlay may use another's code or data
+  (`fe/c64/check_overlays.py`). `--shots DIR` saves pictures of the screen to look at,
+  the battle screen drawn as the VIC-II would (`tools/vic.py`).
 - `make test-modern`: the modern front end (`fe/modern/`, `docs/modern.md`) must play the
   C64's test routes as the C64 does (`tests/modern/check_modern.py`), on the desktop
   (SDL2, `build/apb-modern`) and in a browser (`build/web/`, headless Chromium through
-  Playwright), and a save must survive a restart on both. Needs `libsdl2-dev`,
+  Playwright), music cues and all, and a save must survive a restart on both; the fight's
+  sound effects (`apb-modern --sounds DIR`) must sound, fade, and have the SID's pitches;
+  each tune (`--music DEPARTURE DIR`) must sound, unclipped; the browser's music must play
+  through Web Audio. Needs `libsdl2-dev`,
   `emscripten`, and Node with Playwright.
 - `make test-yards`: the Deep Yards' generator (`core/src/yard.c`, `docs/deep-yards.md`)
   must build the same maps as the reference written from the doc (`tools/yards/yard.py`),
@@ -60,13 +67,22 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-waystation`: the Waystation website (`waystation/`, W1 in
   `docs/waystation-web.md`), in headless Chromium: a traveler made there has the Python
   reference's Passport and boards The Fare in the terminal; Travel Stamps land, points
-  are spent and stats rolled as the references say (`tests/waystation/check_site.py`).
+  are spent and stats rolled as the references say (`tests/waystation/check_site.py`);
+  travelers are kept with notes, chosen to land a stamp, and, on the site signed in (a
+  stand-in for claude.ai's store), kept on the player's account and boarded from the list.
+- `make test-music`: the music players (`docs/music.md`) must write the same SID registers
+  frame by frame: the Python reference (`tools/music/player.py`), the C player
+  (`client/music.c`, under the sanitizers) and the C64's 6502 player (`fe/c64/music.s`, on
+  py65), for every tune in `content/` and `tests/music/` under scripts of commands, and for
+  damaged files. `tools/music/musicc.py build NAME.music -o FILE` compiles a tune file.
 
-Run all fifteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+Run all sixteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website
-(serve `build/waystation/`). The 6502 test harness holds a 4 KB car, so keep each chapter of a covered Departure under that
+(serve `build/waystation/`); `make site` builds the whole site, the platform page with
+the player's travelers and the Waystation and the train in a frame (serve `build/site/`;
+it's what's published). The 6502 test harness holds a 4 KB car, so keep each chapter of a covered Departure under that
 (`qsc.py build` prints the sizes). It has no room for the whole engine: `build/harness.sim`
 leaves out the Deep Yards, and `build/harness-yards.sim` the boarding desk, so the yards'
 cases board the built-in traveler (`SEED+LEVEL` makes it a veteran).

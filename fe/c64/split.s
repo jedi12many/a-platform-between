@@ -1,35 +1,45 @@
 ; The picture on the C64 screen (docs/c64.md).
 ;
-; A picture lives in the RAM under the KERNAL, at $E000 (VIC bank 3): its characters at
-; $E000, its screen at $E800, its three shared colours at $EBE8 and the colour of each of
-; its cells at $EC00. A raster interrupt shows it on rows 1-12 and the normal text
-; screen ($0400, the ROM's upper/lower case characters) above and below, twice a frame:
+; A picture lives in the RAM under the KERNAL (VIC bank 3), in multicolour bitmap mode
+; (tools/c64pic.py): its bitmap at $E000, its screen (two colours a cell) at $F400, the
+; third colour of each of its cells at $F608 and its background at $F7E8. The text
+; screen is in bank 3 too: at $F800, in our font at $D000 (tools/c64font.py, under the
+; I/O, which only the VIC sees there). A raster interrupt shows the picture on rows 1-12
+; and the text above and below, twice a frame:
 ;
-;   just before row 1:  VIC bank 3, screen $E800, characters $E000, multicolour
-;   just before row 13: VIC bank 0, screen $0400, characters $1800, hires, black
+;   just before row 1:  bitmap $E000, screen $F400, multicolour bitmap
+;   just before row 13: screen $F800, characters $D000, hires text, black
 ;
-; The second one also runs the KERNAL's own interrupt (keyboard, cursor, clock) once a
-; frame, in place of the CIA timer it normally runs from.
+; The second one also plays a frame of music (fe/c64/tune.s) and runs the KERNAL's own
+; interrupt (keyboard, cursor, clock), once a frame, in place of the CIA timer it
+; normally runs from. Without a picture, only the second one runs. The interrupt is on
+; from the start (irq_on) to the end (irq_off), but for fights, when the battle screen
+; has its own (fe/c64/sprites.s), which gives it back with irq_on.
 
-        .export _split_on, _split_off, _pic_show
+        .export _split_on, _split_off, _pic_show, _text_screen, _font_install, _text_scroll
+        .export _irq_on, irq_on, _irq_off, _split_picture
+        .import tune_tick
+        .importzp ptr1, ptr2, ptr3, ptr4, tmp1
 
 ROW_PIC   = 51 + 8 * 1 - 2          ; raster lines: a little before each row starts
 ROW_TEXT  = 51 + 8 * 13 - 2
 
-PIC_COLORS = $EBE8                  ; background, multicolour 1, multicolour 2
-PIC_CELLS  = $EC00                  ; 12 rows x 40 cell colours
+PIC_BACK   = $F7E8                  ; the background
+PIC_CELLS  = $F608                  ; 12 rows x 40 cells' third colours
 COLOR_RAM  = $D800 + 40             ; row 1
 
         .segment "DATA"
 
 phase:  .byte 0                     ; 0: next is the picture's turn; 1: the text's
 back:   .byte 0
-multi1: .byte 0
-multi2: .byte 0
+_split_picture:                     ; (tests/c64/run_c64.py reads it)
+picture: .byte 0                    ; 1 while a picture shows
 
         .segment "CODE"
 
-_split_on:
+; The raster interrupt on, with no picture: the text's turn, once a frame.
+_irq_on:
+irq_on:
         sei
         lda #$7F
         sta $DC0D                   ; no CIA 1 timer interrupts:
@@ -39,8 +49,10 @@ _split_on:
         lda #>irq
         sta $0315
         lda #0
+        sta picture
+        lda #1
         sta phase
-        lda #ROW_PIC
+        lda #ROW_TEXT
         sta $D012
         lda $D011
         and #$7F
@@ -52,7 +64,8 @@ _split_on:
         cli
         rts
 
-_split_off:
+; And off, for good: the CIA timer runs the KERNAL again.
+_irq_off:
         sei
         lda #0
         sta $D01A
@@ -63,7 +76,32 @@ _split_off:
         lda #$EA
         sta $0315
         lda #$81
-        sta $DC0D                   ; the CIA 1 timer again
+        sta $DC0D
+        jsr text_screen
+        cli
+        rts
+
+; A picture on rows 1-12, from the next frame.
+_split_on:
+        sei
+        lda #1
+        sta picture
+        lda #0
+        sta phase
+        lda #ROW_PIC
+        sta $D012
+        cli
+        rts
+
+; Text all the way down.
+_split_off:
+        sei
+        lda #0
+        sta picture
+        lda #1
+        sta phase
+        lda #ROW_TEXT
+        sta $D012
         jsr text_screen
         cli
         rts
@@ -85,12 +123,8 @@ _pic_show:
         inx
         cpx #240
         bne @cells
-        lda PIC_COLORS
+        lda PIC_BACK
         sta back
-        lda PIC_COLORS + 1
-        sta multi1
-        lda PIC_COLORS + 2
-        sta multi2
         pla
         sta $01
         cli
@@ -104,34 +138,38 @@ irq:
         lda $DD00                   ; the picture: VIC bank 3 (keep the serial bits)
         and #$FC
         sta $DD00
-        lda #$A8                    ; screen $E800, characters $E000
+        lda #$3B                    ; bitmap mode (25 rows, the screen on)
+        sta $D011
+        lda #$D8                    ; screen $F400, bitmap $E000
         sta $D018
         lda $D016
         ora #$10                    ; multicolour
         sta $D016
         lda back
         sta $D021
-        lda multi1
-        sta $D022
-        lda multi2
-        sta $D023
         lda #ROW_TEXT
         sta $D012
         inc phase
         jmp $EA81                   ; done: restore the registers, return
 @text:
         jsr text_screen
+        lda picture
+        beq @alone
         lda #ROW_PIC
         sta $D012
         lda #0
         sta phase
+@alone: jsr tune_tick               ; a frame of music
         jmp $EA31                   ; the KERNAL's interrupt: keys, cursor, clock
 
+_text_screen:
 text_screen:
-        lda $DD00                   ; VIC bank 0
-        ora #$03
+        lda #$1B                    ; text mode
+        sta $D011
+        lda $DD00                   ; VIC bank 3 (keep the serial bits)
+        and #$FC
         sta $DD00
-        lda #$17                    ; screen $0400, upper/lower case characters
+        lda #$E4                    ; screen $F800, characters $D000
         sta $D018
         lda $D016
         and #$EF                    ; hires
@@ -139,3 +177,87 @@ text_screen:
         lda #0
         sta $D021                   ; black
         rts
+
+; Our font, loaded at $E000, to $D000: under the I/O, so with everything but RAM switched
+; out for the copy (and interrupts off, as their vectors are in the ROM).
+_font_install:
+        sei
+        lda $01
+        pha
+        lda #$34
+        sta $01
+        lda #$00
+        sta ptr1
+        sta ptr2
+        lda #$E0
+        sta ptr1 + 1
+        lda #$D0
+        sta ptr2 + 1
+        ldx #8                      ; 8 pages: 2 KB
+        ldy #0
+@copy:  lda (ptr1), y
+        sta (ptr2), y
+        iny
+        bne @copy
+        inc ptr1 + 1
+        inc ptr2 + 1
+        dex
+        bne @copy
+        pla
+        sta $01
+        cli
+        rts
+
+; Scroll the text window (rows A to 24) up a row: the screen, from under the KERNAL
+; (so with the ROM out), and its colours. A row at a time, with interrupts let in between,
+; so the raster split never misses a frame.
+_text_scroll:
+        sta tmp1                    ; the row being filled
+@row:   lda tmp1
+        cmp #24
+        bcs @done
+        tax
+        lda rows_lo, x              ; ptr1: this row; ptr2: the one under it
+        sta ptr1
+        sta ptr3
+        lda rows_lo + 1, x
+        sta ptr2
+        sta ptr4
+        lda rows_hi, x
+        sta ptr1 + 1
+        sec
+        sbc #$20                    ; colour RAM is $2000 below the screen
+        sta ptr3 + 1
+        lda rows_hi + 1, x
+        sta ptr2 + 1
+        sec
+        sbc #$20
+        sta ptr4 + 1
+        sei
+        lda $01
+        pha
+        lda #$35                    ; RAM under the KERNAL, the I/O for colours
+        sta $01
+        ldy #39
+@copy:  lda (ptr2), y
+        sta (ptr1), y
+        lda (ptr4), y
+        sta (ptr3), y
+        dey
+        bpl @copy
+        pla
+        sta $01
+        cli
+        inc tmp1
+        jmp @row
+@done:  rts
+
+        .segment "RODATA"
+rows_lo:
+        .repeat 25, r
+        .byte <($F800 + r * 40)
+        .endrepeat
+rows_hi:
+        .repeat 25, r
+        .byte >($F800 + r * 40)
+        .endrepeat

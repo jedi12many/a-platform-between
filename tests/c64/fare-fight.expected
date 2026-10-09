@@ -29,7 +29,7 @@ trip can be stamped.
 2. Type a pass
 > 1
 
-- The Static -
+~ The Static ~
 
 [picture pic00]
 Static.
@@ -47,6 +47,7 @@ left of you, and pulls.
 > 1
 
 [picture pic01]
+[music arrivals]
 You are sitting on a wooden bench, and
 you are breathing, and both of those
 things are wrong.
@@ -99,9 +100,10 @@ mournful and far away.
 1. Stand up
 > 1
 
-- The Buffer Stop -
+~ The Buffer Stop ~
 
 [picture pic02]
+[music concourse]
 The platform opens into a great hall.
 Iron arches, a tiled floor worn into
 paths by more feet than you can imagine,
@@ -120,7 +122,7 @@ THE BUFFER STOP.
 4. Try the door marked LOST PROPERTY
 > 4
 
-- Lost Property -
+~ Lost Property ~
 
 Between a shuttered newsstand and a
 clock with no hands there is a narrow
@@ -145,17 +147,8 @@ like visitors.
 3. Leave them to it
 > 1
 
+[music battle]
 -- A fight! --
-  # # # # # # # # #
-  > . . + . . - . #
-  # @ . + . . a . #
-  # . . - - . + b #
-  # # # # # # # # #
- # wall  - rough  + cover  > exit
- @ Kestrel  27/27
- a Ash rat  6/6  TN 60
- b Ash rat  6/6  TN 60
-
 -- Round 1 --
 Ash rat moves.
 Ash rat attacks you: 12 + 30 = 42
@@ -163,101 +156,30 @@ against 58, a glancing hit: 1 damage.
 Ash rat moves.
 Ash rat attacks you: 12 + 30 = 42
 against 58, a glancing hit: 1 damage.
-
-  # # # # # # # # #
-  > . a + . . - . #
-  # @ b + . . . . #
-  # . . - - . + . #
-  # # # # # # # # #
- # wall  - rough  + cover  > exit
- @ Kestrel  25/27
- a Ash rat  6/6  TN 60
- b Ash rat  6/6  TN 60
-
-Where to?
-1. Stay here
-2. To the exit
-3. Into cover
-4. Wait: act at the end of the round
-5. Quick: the computer plays you
-> 1
-Then?
-1. Attack Ash rat (a): TN 60
-2. Attack Ash rat (b): TN 60
-3. Guard: hit the first to come close
-4. Flee: TN 120
-5. Done
-6. Back
-> 1
-
-You attack Ash rat: 25 + 20 = 45 against
-60, a glancing hit: 10 damage.
+[Kestrel: choose.]
+[Aim: Ash rat, TN 60]
+You attack Ash rat: 25 + 20 = 45
+against 60, a glancing hit: 10 damage.
 Ash rat is down.
 -- Round 2 --
-Ash rat attacks you: 2 + 30 = 32 against
-58, a miss.
-
-  # # # # # # # # #
-  > . x + . . - . #
-  # @ b + . . . . #
-  # . . - - . + . #
-  # # # # # # # # #
- # wall  - rough  + cover  > exit
- @ Kestrel  25/27
- x Ash rat  down
- b Ash rat  6/6  TN 60
-
-Where to?
-1. Stay here
-2. To the exit
-3. Into cover
-4. Wait: act at the end of the round
-5. Quick: the computer plays you
-> 1
-Then?
-1. Attack Ash rat (b): TN 60
-2. Guard: hit the first to come close
-3. Flee: TN 110
-4. Done
-5. Back
-> 1
-
-You attack Ash rat: 4 + 20 = 24 against
-60, a miss.
+Ash rat attacks you: 2 + 30 = 32
+against 58, a miss.
+[Kestrel: choose.]
+[Aim: Ash rat, TN 60]
+You attack Ash rat: 4 + 20 = 24
+against 60, a miss.
 -- Round 3 --
 Ash rat attacks you: 66 + 30 = 96
 against 58, a crit: 10 damage.
-
-  # # # # # # # # #
-  > . x + . . - . #
-  # @ b + . . . . #
-  # . . - - . + . #
-  # # # # # # # # #
- # wall  - rough  + cover  > exit
- @ Kestrel  15/27
- x Ash rat  down
- b Ash rat  6/6  TN 60
-
-Where to?
-1. Stay here
-2. To the exit
-3. Into cover
-4. Wait: act at the end of the round
-5. Quick: the computer plays you
-> 1
-Then?
-1. Attack Ash rat (b): TN 60
-2. Guard: hit the first to come close
-3. Flee: TN 110
-4. Done
-5. Back
-> 1
-
-You attack Ash rat: 74 + 20 = 94 against
-60, a hit: 23 damage.
+[Kestrel: choose.]
+[Aim: Ash rat, TN 60]
+You attack Ash rat: 74 + 20 = 94
+against 60, a hit: 23 damage.
 Ash rat is down.
+[music won]
 You won the fight.
-
+[Press a key.]
+[music concourse]
 The last rat bolts into a hole behind
 the trunks, trailing sparks.
 
@@ -288,6 +210,7 @@ Saved.
 2. Pick up a saved trip
 > 2
 
+[music concourse]
 Picking up where you left off.
 
 1. Read the departure board
@@ -296,6 +219,7 @@ Picking up where you left off.
 > 3
 
 [picture pic03]
+[music buffer_stop]
 The Buffer Stop is warm, and crowded,
 and wrong in a dozen small ways that add
 up to cozy. A knight in rusted plate is
@@ -321,6 +245,7 @@ stationmaster watches a clock.
 > 3
 
 [picture pic04]
+[music ledger]
 The figure in the velvet coat rises as
 you approach. It is very tall. Its face
 is a polite arrangement of shadow, and
@@ -385,7 +310,8 @@ it comes. Fen will find you a bed."
 
 "Welcome back to the living, Kestrel."
 
-- Departure complete -
+[music welcome]
+~ Departure complete ~
 
 Your receipt:
   5 XP

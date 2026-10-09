@@ -93,6 +93,11 @@ void hal_battle_end(uint8_t result);
  * front ends that load pictures by name). Front ends without pictures ignore it. */
 void hal_picture(uint8_t id, const char *name);
 
+/* Play the Departure's tune called `name` (ASCII, from the image's music list), fading out
+ * whatever plays now; 0: fade out to silence (docs/music.md). It's also called when a save
+ * is resumed, with the tune that was playing. Front ends without music ignore it. */
+void hal_music(const char *name);
+
 /* Redraw the status bar (name, health, level, Debt, ...). */
 void hal_status(const apb_character *ch);
 

@@ -25,7 +25,7 @@
 enum {
     OP_HALT_ERR = 0x00, OP_JMP = 0x01, OP_JZ = 0x02, OP_GOTO = 0x03, OP_SWITCH4 = 0x04,
     OP_END = 0x05,
-    OP_TEXT = 0x10, OP_PICTURE = 0x11, OP_PAUSE = 0x12, OP_CHAPTER = 0x13,
+    OP_TEXT = 0x10, OP_PICTURE = 0x11, OP_PAUSE = 0x12, OP_CHAPTER = 0x13, OP_MUSIC = 0x14,
     OP_MENU_CLEAR = 0x18, OP_OPTION = 0x19, OP_MENU = 0x1A,
     OP_PUSH8 = 0x20, OP_PUSH16 = 0x21, OP_FLAG = 0x22, OP_VAR = 0x23, OP_HAS = 0x24,
     OP_ECHO = 0x25, OP_RATING = 0x26, OP_LEVEL = 0x27, OP_RACE = 0x28, OP_CLASS = 0x29,
@@ -40,10 +40,10 @@ enum {
 
 /* Operand kinds, one letter each:
  * a addr  s scene  t string  f flag  v var  i item  e echo  r rating  p picture
- * n encounter  b u8  w u16  h s16  k a var or 0xFF (none) */
+ * n encounter  b u8  w u16  h s16  k a var or 0xFF (none)  m a tune or 0xFF (off) */
 static const char *const operands[OP_LAST + 1] = {
     "",  "a", "a", "s", "aaaa", "b", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,          /* 00 */
-    "t", "p", "",  "",  0, 0, 0, 0, "", "ta", "", 0, 0, 0, 0, 0,          /* 10 */
+    "t", "p", "",  "",  "m", 0, 0, 0, "", "ta", "", 0, 0, 0, 0, 0,        /* 10 */
     "b", "h", "f", "v", "i", "eb", "r", "", "", "", 0, 0, 0, 0, 0, 0,     /* 20 */
     "", "", "", "", "", "", "", "", "", "rb", "nb", "nbv", 0, 0, 0, 0,    /* 30 */
     "f", "f", "v", "vb", "vb", "vbkb", 0, 0, "i", "i", "b", "bw", "eb", "b"  /* 40 */
@@ -62,7 +62,15 @@ static const char *const operands[OP_LAST + 1] = {
 
 static uint8_t depot[APB_VM_DEPOT_MAX];
 static uint16_t depot_len;
+#ifdef APB_FIGHT_BORROWS_CAR
+/* On the C64 (fe/c64/apb.cfg) the car sits just under the overlays, and a fight's
+ * overlay, the biggest, spreads down over it: the car is loaded again afterwards. */
+#pragma bss-name (push, "CARBUF")
+#endif
 static uint8_t car[APB_VM_CAR_MAX + 16];   /* padding: a damaged image can't read past it */
+#ifdef APB_FIGHT_BORROWS_CAR
+#pragma bss-name (pop)
+#endif
 static uint16_t car_len;
 #ifdef APB_VM_FULL_CHECKS
 static uint8_t boundary[APB_VM_CAR_MAX / 8];
@@ -84,6 +92,9 @@ static uint8_t picture_count;
 static uint16_t pictures_at;
 static uint8_t encounter_count;
 static uint16_t encounters_at;      /* the first encounter's length field */
+static uint8_t music_count;         /* image v1: the tunes `~ music` names */
+static uint16_t music_at;
+static uint8_t music_now = 0xFF;    /* the tune playing (0xFF: none); saves keep it */
 
 /* The loaded car. */
 static uint8_t car_index = 0xFF;
@@ -281,8 +292,8 @@ static uint8_t load_depot(void)
         fail("can't load DEPOT", 0);
         return 0;
     }
-    if (depot_len < 21 || depot[0] != 0x44 || depot[1] != 0x50 || depot[2] != 0) {
-        fail("not a v0 depot", 0);
+    if (depot_len < 21 || depot[0] != 0x44 || depot[1] != 0x50 || depot[2] > 1) {
+        fail("not a v0 or v1 depot", 0);
         return 0;
     }
     kind = depot[3];
@@ -347,6 +358,24 @@ static uint8_t load_depot(void)
             return 0;
         }
         at = (uint16_t)(at + 2 + rd16(depot + at));
+    }
+    music_count = 0;
+    music_at = at;
+    if (depot[2] == 1) {                    /* v1: the tunes' names */
+        if (at >= depot_len || depot[at] > 32) {
+            fail("bad music list", 0);
+            return 0;
+        }
+        music_count = depot[at];
+        music_at = (uint16_t)(at + 1);
+        at = music_at;
+        for (i = 0; i < music_count; ++i) {
+            if (at >= depot_len || depot[at] == 0 || depot[at] > 20) {
+                fail("bad music list", 0);
+                return 0;
+            }
+            at = (uint16_t)(at + 1 + depot[at]);
+        }
     }
     if (at != depot_len) {
         fail("depot has trailing bytes", 0);
@@ -632,7 +661,8 @@ static uint8_t verify_car(uint8_t index)
         }
         ++at;
         for (k = operands[op]; *k; ++k) {
-            if (*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p' || *k == 'n' || *k == 'k') {
+            if (*k == 'b' || *k == 'v' || *k == 'r' || *k == 'p' || *k == 'n' || *k == 'k'
+                || *k == 'm') {
                 if (at + 1 > code_len) break;
                 v = code[at];
                 at = (uint16_t)(at + 1);
@@ -645,6 +675,7 @@ static uint8_t verify_car(uint8_t index)
                 || (*k == 't' && v >= string_count) || (*k == 'f' && v >= flag_count)
                 || (*k == 'v' && v >= var_count) || (*k == 'p' && v >= picture_count)
                 || (*k == 'k' && v != 0xFF && v >= var_count)
+                || (*k == 'm' && v != 0xFF && v >= music_count)
                 || (*k == 'n' && v >= encounter_count)
                 || (*k == 'r' && !valid_rating((uint8_t)v))
                 || (*k == 'i' && (v >= APB_ITEM_COUNT || apb_items[v].tier == 0))
@@ -920,13 +951,20 @@ static uint8_t first_pay(void)
  * edited save is refused, never trusted. The character is kept as its Passport. */
 #define SAVE_MAGIC_1 0x41   /* bytes, not characters: 'A' 'S' in ASCII */
 #define SAVE_MAGIC_2 0x53
-#define SAVE_VERSION 3      /* 2: health; 3: the yard */
+#define SAVE_VERSION 4      /* 2: health; 3: the yard; 4: the music */
 
+#ifdef APB_OVERLAYS
+/* Used only by the code below, in the PASS overlay: its room, not the main program's. */
+#pragma bss-name (push, "OVL2BSS")
+#endif
 static uint8_t save_buf[APB_VM_SAVE_MAX];
+#ifdef APB_OVERLAYS
+#pragma bss-name (pop)
+#endif
+static char sv_passport[APB_PASSWORD_BUF];
 static uint16_t sv_pos;
 static uint16_t sv_len;
 static uint8_t sv_bad;
-static char sv_passport[APB_PASSWORD_BUF];
 
 static void sv_put8(uint8_t v)
 {
@@ -1004,6 +1042,7 @@ static uint8_t save_game(uint16_t menu_at)
     for (i = 0; i < var_count; ++i) sv_put8(vars[i]);
     sv_put16(rng.state);
     sv_put16(yard);
+    sv_put8(music_now);
     sv_put16(boarded_debt);
     sv_put8(health);
     sv_put8(gives);
@@ -1090,6 +1129,8 @@ static uint16_t load_game(void)
     rng.state = sv_get16();
     if (rng.state == 0) sv_bad = 1;         /* xorshift never reaches 0 */
     yard = sv_get16();
+    music_now = sv_get8();
+    if (music_now != 0xFF && music_now >= music_count) sv_bad = 1;
     boarded_debt = sv_get16();
     health = sv_get8();
     gives = sv_get8();
@@ -1283,6 +1324,15 @@ static uint8_t fight(uint8_t n, uint8_t surprise)
 
 /* -------------------------------------------------------------- running */
 
+/* After a fight: the car, if the fight's overlay borrowed its room (see car[]). */
+static void car_back(void)
+{
+#ifdef APB_FIGHT_BORROWS_CAR
+    APB_NEED(APB_OVL_LOAD);
+    load_car(car_index);
+#endif
+}
+
 static uint8_t push(int16_t v)
 {
     if (sp >= STACK_MAX) {
@@ -1376,6 +1426,23 @@ uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass)
     return 0;
 }
 
+/* Tell the front end which tune plays now, by name (0: none). */
+static void cue_music(void)
+{
+    uint16_t a;
+    uint8_t i;
+
+    if (music_now == 0xFF) {
+        hal_music(0);
+        return;
+    }
+    a = music_at;
+    for (i = music_now; i; --i) a = (uint16_t)(a + 1 + depot[a]);
+    for (i = 0; i < depot[a]; ++i) title_buf[i] = (char)depot[a + 1 + i];
+    title_buf[i] = '\0';
+    hal_music(title_buf);
+}
+
 uint8_t apb_vm_resume(void)
 {
     uint16_t at;
@@ -1392,6 +1459,7 @@ uint8_t apb_vm_resume(void)
         return APB_VM_ERROR;
     }
     pc = at;
+    if (music_now != 0xFF) cue_music();
     return 0;
 }
 
@@ -1418,6 +1486,7 @@ uint8_t apb_vm_board(const apb_character *snapshot, uint16_t seed)
     menu_count = 0;
     apb_rng_seed(&rng, seed);
     yard = seed;
+    music_now = 0xFF;
     car_index = 0xFF;
     if (!enter(start_scene)) {
         return APB_VM_ERROR;
@@ -1512,6 +1581,12 @@ uint8_t apb_vm_run(void)
             title_buf[b] = '\0';
             hal_picture((uint8_t)(code[pc - 1]), title_buf);
             break;
+        case OP_MUSIC:
+            i = FETCH8();
+            if (i != 0xFF && i >= music_count) { fail("bad music", pc); break; }
+            music_now = i;
+            cue_music();
+            break;
         case OP_PAUSE:
             hal_pause();
             break;
@@ -1580,6 +1655,7 @@ uint8_t apb_vm_run(void)
         case OP_ECHO:
             a = FETCH16();
             i = FETCH8();
+            APB_NEED(APB_OVL_LOAD);         /* on the C64, Echoes are looked up there */
             push(apb_echo_get_or(&ch, a, i));
             break;
         case OP_RATING:
@@ -1620,6 +1696,7 @@ uint8_t apb_vm_run(void)
             if (i >= encounter_count || a > 2) { fail("bad fight", pc); break; }
             APB_NEED(APB_OVL_BATTLE);
             push(fight(i, (uint8_t)a));
+            car_back();
             break;
 #ifdef APB_VM_NO_YARDS
         /* A build without the Deep Yards (the 6502 test harness has no room for both
@@ -1638,6 +1715,7 @@ uint8_t apb_vm_run(void)
             if (!build_yard(i, vars[b])) break;
             APB_NEED(APB_OVL_BATTLE);
             push(fight(YARD_MAP, (uint8_t)a));
+            car_back();
             break;
         case OP_PICK:
             /* The Deep Yards (docs/deep-yards.md): 1..n from the yard and a key, the
@@ -1718,6 +1796,7 @@ uint8_t apb_vm_run(void)
                 fail("bad echo", pc);
                 break;
             }
+            APB_NEED(APB_OVL_LOAD);
             receipt_echo(a, i);
             apb_echo_set(&ch, a, i, 0);
             break;

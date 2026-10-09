@@ -23,7 +23,7 @@ Kestrel, Salvaged Warden, level 1. Debt
 Your Boarding Pass, please, or a blank
 line to travel without one:
 > 20000000f-GC2683W26
-- The Static -
+~ The Static ~
 
 [picture pic00]
 Static.
@@ -41,6 +41,7 @@ left of you, and pulls.
 > 1
 
 [picture pic01]
+[music arrivals]
 You are sitting on a wooden bench, and
 you are breathing, and both of those
 things are wrong.
@@ -93,9 +94,10 @@ mournful and far away.
 1. Stand up
 > 1
 
-- The Buffer Stop -
+~ The Buffer Stop ~
 
 [picture pic02]
+[music concourse]
 The platform opens into a great hall.
 Iron arches, a tiled floor worn into
 paths by more feet than you can imagine,
@@ -138,6 +140,7 @@ Buffer Stop glows.
 > 2
 
 [picture pic03]
+[music buffer_stop]
 The Buffer Stop is warm, and crowded,
 and wrong in a dozen small ways that add
 up to cozy. A knight in rusted plate is
@@ -174,6 +177,7 @@ a burning twig.
 > 3
 
 [picture pic04]
+[music ledger]
 The figure in the velvet coat rises as
 you approach. It is very tall. Its face
 is a polite arrangement of shadow, and
@@ -250,7 +254,8 @@ it comes. Fen will find you a bed."
 
 "Welcome back to the living, Kestrel."
 
-- Departure complete -
+[music welcome]
+~ Departure complete ~
 
 Your receipt:
   5 XP

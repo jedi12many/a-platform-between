@@ -11,6 +11,7 @@
 #define APB_VIEW_H
 
 #include "apb.h"
+#include "apb_battle.h"
 
 #define APB_VIEW_LINE 100       /* the longest line the view writes, with its NUL */
 #define APB_VIEW_LABEL 40       /* a menu label, with its NUL                     */
@@ -35,6 +36,15 @@ void apb_view_name(char *out, const apb_character *ch);
  * introduce the Travel Stamp, which the front end prints after them (its symbols are
  * in the platform's own character set); otherwise why there's none. */
 void apb_view_receipt(const apb_receipt *r, uint8_t stamped);
+
+/* A fight in words (client/battle_text.c), for every battle screen. */
+enum { APB_VIEW_NOTHING = 0, APB_VIEW_SENTENCE, APB_VIEW_HEADING };
+void        apb_view_battle_reset(void);              /* a fight begins          */
+/* What an event says, into `line` (APB_VIEW_LINE): a sentence, a heading ("-- Round
+ * 2 --"), or nothing to say. */
+uint8_t     apb_view_event(const apb_event *e, char *line);
+const char *apb_view_fighter(uint8_t who);            /* "Ash rat", or the traveler */
+const char *apb_view_ending(uint8_t result);          /* "You won the fight."    */
 
 /* Appending to a line: text, and a whole number. Each returns the new end. */
 char *apb_view_put(char *at, const char *ascii);

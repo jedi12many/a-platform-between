@@ -1,0 +1,352 @@
+<title>A Platform Between</title>
+<style>
+/* Layout: a departures board over the player's travelers and the three steps; the Waystation
+   and the train open full-size in a frame under a slim bar. The station's own night palette. */
+:root {
+  --bg: #f3efe4; --panel: #fffdf7; --ink: #1d2226; --muted: #5f5a4e;
+  --iron: #3d6b47; --lamp: #9a6a12; --board: #1d2226; --board-ink: #f1d48a; --line: #d9d2c0;
+  --danger: #a33a2a;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161a; --panel: #1b2127; --ink: #e8e2d0; --muted: #a39d8c;
+    --iron: #4f7a58; --lamp: #e7b75a; --board: #0c0f12; --board-ink: #f1d48a; --line: #2c343c;
+    --danger: #e08a7a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161a; --panel: #1b2127; --ink: #e8e2d0; --muted: #a39d8c;
+  --iron: #4f7a58; --lamp: #e7b75a; --board: #0c0f12; --board-ink: #f1d48a; --line: #2c343c;
+  --danger: #e08a7a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 1rem/1.6 var(--body); }
+.wrap { max-width: 40rem; margin: 0 auto; padding: 2rem 16px 3rem; display: grid; gap: 1.75rem; }
+.board {
+  background: var(--board); color: var(--board-ink); border-radius: 6px; padding: 1.1rem 1.25rem;
+  font-family: var(--mono); display: grid; gap: 0.35rem;
+}
+.board h1 { margin: 0; font: 600 1.5rem/1.2 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; text-wrap: balance; }
+.board .row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; font-size: 0.9rem; color: #c9c2ae; }
+.board .row b { color: var(--board-ink); font-weight: 600; letter-spacing: 0.06em; }
+p.lede { margin: 0; color: var(--muted); max-width: 34rem; }
+h2 { margin: 0; font-size: 1.05rem; text-wrap: balance; }
+
+/* Your travelers */
+.travelers { display: grid; gap: 0.75rem; }
+.travelers header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 1rem; }
+.who { margin: 0; font-size: 0.9rem; color: var(--muted); }
+.who b { color: var(--ink); font-weight: 600; }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.list li { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0.75rem 0.9rem; display: grid; gap: 0.4rem; }
+.list .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; align-items: baseline; }
+.list .name { font-weight: 600; }
+.list .about { color: var(--muted); font-size: 0.9rem; }
+.list .badge { font: 600 0.75rem/1.4 var(--mono); color: var(--board); background: var(--board-ink); border-radius: 3px; padding: 0 0.4em; }
+.list label { display: grid; gap: 0.15rem; font-size: 0.85rem; color: var(--muted); }
+.list input { font: inherit; font-size: 0.95rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0.35rem 0.5rem; width: 100%; }
+.list pre { margin: 0; font: 0.85rem/1.4 var(--mono); white-space: pre; overflow-x: auto; color: var(--ink); }
+.list .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.empty { margin: 0; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 6px; padding: 0.9rem; }
+button.small { font: inherit; font-size: 0.85rem; background: none; color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 0.2rem 0.6rem; cursor: pointer; }
+button.small.danger { color: var(--danger); }
+button.small:focus-visible, a.go:focus-visible, button.go:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+
+/* The steps */
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; counter-reset: step; }
+.steps li {
+  counter-increment: step; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); gap: 0.25rem 0.9rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.1rem;
+}
+.steps li::before { content: counter(step); grid-row: span 3; font: 600 1.4rem/1 var(--mono); color: var(--lamp); padding-top: 0.15rem; }
+.steps p { margin: 0; color: var(--muted); }
+.steps ul { margin: 0.25rem 0 0; padding-left: 1.1rem; color: var(--muted); }
+a.go, button.go {
+  justify-self: start; margin-top: 0.5rem; display: inline-block; text-decoration: none; font: inherit; border: 0; cursor: pointer;
+  background: var(--iron); color: #f6f1e2; padding: 0.5rem 1rem; border-radius: 4px; font-weight: 600;
+}
+a.go:hover, button.go:hover { filter: brightness(1.1); }
+kbd { font: 0.85em var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 0.3em; color: var(--ink); }
+.notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; font-size: 0.92rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1rem; }
+.notes strong { color: var(--ink); font-weight: 600; }
+
+/* A place, full-size */
+#place { position: fixed; inset: 0; display: none; flex-direction: column; background: var(--bg); }
+#place .bar { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 16px; background: var(--board); color: var(--board-ink); font-family: var(--mono); }
+#place .bar button { font: inherit; background: none; color: var(--board-ink); border: 1px solid #5a5440; border-radius: 4px; padding: 0.15rem 0.6rem; cursor: pointer; }
+#place .bar span { font-size: 0.9rem; letter-spacing: 0.06em; }
+#place iframe { flex: 1; width: 100%; border: 0; background: #000; }
+body.away .wrap { display: none; }
+body.away #place { display: flex; }
+</style>
+
+<div class="wrap">
+  <header class="board" aria-label="Departures">
+    <h1>A Platform Between</h1>
+    <div class="row"><span>PLATFORM 0</span><b>THE FARE</b><span>BOARDING</span></div>
+    <div class="row"><span>PLATFORM 1</span><b>EIGHTEEN MINUTES</b><span>ON TIME</span></div>
+  </header>
+
+  <p class="lede">You died, and woke at the Waystation, owing a fare. Make a traveler, then
+    take the first train. The game is the same one that runs on a Commodore 64: 40 columns,
+    with the same pictures and the same dice.</p>
+
+  <section class="travelers" aria-labelledby="travelers-title">
+    <header>
+      <h2 id="travelers-title">Your travelers</h2>
+      <p class="who" id="who">Looking for your travelers...</p>
+    </header>
+    <ul class="list" id="list"></ul>
+    <p class="empty" id="empty" hidden>No travelers yet. Make one at the Waystation and press
+      <em>Save to your travelers</em>: their Passport is kept here, with a note.</p>
+  </section>
+
+  <ol class="steps">
+    <li>
+      <h2>Make a traveler at the Waystation</h2>
+      <p>Name them, then pick a race, a class and a skill, and buy or roll their stats.
+        Press <em>Issue the Passport</em>, then <em>Save to your travelers</em>, with a note.</p>
+      <button class="go" type="button" data-place="waystation">Go to the Waystation</button>
+    </li>
+    <li>
+      <h2>Board the train</h2>
+      <p>Choose <em>Departure 00: The Fare</em>, then <kbd>1</kbd> to board. When it asks for
+        your Passport, pick your traveler under the screen and press <em>Type their
+        Passport</em>.</p>
+      <button class="go" type="button" data-place="play">Board a train</button>
+    </li>
+    <li>
+      <h2>Play</h2>
+      <ul>
+        <li>Press a number, or click a line, to choose.</li>
+        <li>Press <kbd>S</kbd> at a menu to save. <em>Pick up a saved trip</em> carries on from there.</li>
+        <li>In a fight: the arrow keys or the keypad move, <kbd>Enter</kbd> chooses, and a
+          command's first letter does it (<kbd>M</kbd>ove, <kbd>A</kbd>im, <kbd>Q</kbd>uick...).</li>
+        <li>A trip that ends in a Travel Stamp keeps it with the traveler who boarded: land it
+          at the Waystation, on <em>Travel Stamp</em>, by choosing them.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <ul class="notes">
+    <li><strong>Use a computer with a keyboard.</strong> The game reads keys, so a phone can
+      make a traveler but can't board.</li>
+    <li><strong>Saved trips stay in this browser.</strong> Your travelers follow your account
+      when you're signed in.</li>
+    <li><strong>After The Fare,</strong> <em>Eighteen Minutes</em> is on the same train
+      menu: Departure 01, all five chapters.</li>
+  </ul>
+</div>
+
+<div id="place" role="region" aria-label="The Waystation or the train">
+  <div class="bar">
+    <button type="button" id="home">&larr; Platform</button>
+    <span id="place-name"></span>
+  </div>
+  <iframe id="frame" title="A Platform Between" allow="clipboard-write; autoplay"></iframe>
+</div>
+
+<script>
+"use strict";
+/* Your travelers (docs/waystation-web.md): kept here, for this page and for the Waystation and
+ * the train in the frame (waystation/site/travelers.js asks this page for them). Signed in on
+ * claude.ai, they're kept on the player's own account, in this page's private store
+ * (data/users/<id>/<traveler>); anywhere else, in this browser. */
+var KEY = "apb-travelers";
+var list = [];
+var where = { account: false, who: "" };
+var store = null;                // {save(t), remove(id)} on the account, or null: this browser
+
+function $(id) { return document.getElementById(id); }
+
+function local() {
+  try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch (e) { return []; }
+}
+function keepLocal(l) {
+  try { localStorage.setItem(KEY, JSON.stringify(l)); } catch (e) { /* private mode */ }
+}
+function sorted(l) {
+  return l.slice().sort(function (a, b) { return (b.updated || "").localeCompare(a.updated || ""); });
+}
+
+function setList(l) {
+  list = sorted(l);
+  draw();
+  var frame = $("frame").contentWindow;
+  if (frame) frame.postMessage({ apb: "travelers-changed", list: list, where: where }, "*");
+}
+
+function save(t) {
+  if (store) return store.save(t);
+  var l = local().filter(function (x) { return x.id !== t.id; });
+  l.push(t);
+  keepLocal(l);
+  setList(l);
+  return Promise.resolve();
+}
+function remove(id) {
+  if (store) return store.remove(id);
+  var l = local().filter(function (x) { return x.id !== id; });
+  keepLocal(l);
+  setList(l);
+  return Promise.resolve();
+}
+
+/* ----------------------------------------------------------- the list */
+
+function lines(p) { return (p.match(/.{1,20}/g) || []).join("\n"); }
+
+function draw() {
+  var ul = $("list");
+  ul.textContent = "";
+  $("empty").hidden = list.length > 0;
+  $("who").textContent = "";
+  if (where.account) {
+    $("who").append("Kept on your account");
+    if (where.who) {
+      var b = document.createElement("b");
+      b.textContent = where.who;
+      $("who").append(", ", b);
+    }
+    $("who").append(".");
+  } else {
+    $("who").textContent = "Kept in this browser" + (store === null && window.claude ? " (sign in to keep them on your account)" : "") + ".";
+  }
+  list.forEach(function (t) {
+    var li = document.createElement("li");
+    var top = document.createElement("div");
+    top.className = "top";
+    var name = document.createElement("span");
+    name.className = "name";
+    name.textContent = t.name || "A traveler";
+    var aboutEl = document.createElement("span");
+    aboutEl.className = "about";
+    aboutEl.textContent = t.about || "";
+    top.append(name, aboutEl);
+    if (t.stamp) {
+      var badge = document.createElement("span");
+      badge.className = "badge";
+      badge.textContent = "STAMP TO LAND";
+      top.append(badge);
+    }
+    var note = document.createElement("label");
+    note.textContent = "Note";
+    var input = document.createElement("input");
+    input.value = t.note || "";
+    input.maxLength = 200;
+    input.setAttribute("aria-label", "Note for " + (t.name || "this traveler"));
+    input.addEventListener("change", function () {
+      var copy = JSON.parse(JSON.stringify(t));
+      copy.note = input.value.trim();
+      copy.updated = new Date().toISOString();
+      save(copy);
+    });
+    note.append(input);
+    var pre = document.createElement("pre");
+    pre.textContent = lines(t.passport || "");
+    var actions = document.createElement("div");
+    actions.className = "actions";
+    var copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "small";
+    copyBtn.textContent = "Copy Passport";
+    copyBtn.addEventListener("click", function () {
+      navigator.clipboard.writeText(lines(t.passport)).then(function () {
+        copyBtn.textContent = "Copied";
+        setTimeout(function () { copyBtn.textContent = "Copy Passport"; }, 1500);
+      }, function () { copyBtn.textContent = "Select it above to copy"; });
+    });
+    var del = document.createElement("button");
+    del.type = "button";
+    del.className = "small danger";
+    del.textContent = "Remove";
+    del.addEventListener("click", function () {
+      if (del.dataset.sure) return remove(t.id);
+      del.dataset.sure = "1";
+      del.textContent = "Remove " + (t.name || "them") + "? Press again";
+      setTimeout(function () { delete del.dataset.sure; del.textContent = "Remove"; }, 4000);
+    });
+    actions.append(copyBtn, del);
+    li.append(top, note, pre, actions);
+    ul.append(li);
+  });
+}
+
+/* ------------------------------------------------------- the frames */
+
+var PLACES = { waystation: ["waystation/index.html", "THE WAYSTATION"], play: ["play/index.html", "PLATFORM"] };
+
+function go(place) {
+  var p = PLACES[place];
+  if (!p) return;
+  $("frame").src = p[0];
+  $("place-name").textContent = p[1];
+  document.body.classList.add("away");
+}
+document.querySelectorAll("[data-place]").forEach(function (b) {
+  b.addEventListener("click", function () { go(b.dataset.place); });
+});
+$("home").addEventListener("click", function () {
+  document.body.classList.remove("away");
+  $("frame").src = "about:blank";
+});
+
+// What the frame asks (travelers.js), and the answers.
+window.addEventListener("message", function (e) {
+  var m = e.data;
+  var frame = $("frame").contentWindow;
+  if (!m || typeof m !== "object" || e.source !== frame) return;
+  if (m.apb === "travelers-hello") {
+    frame.postMessage({ apb: "travelers-hello", where: where }, "*");
+    return;
+  }
+  if (m.apb !== "travelers") return;
+  var reply = function (ok, result, error) {
+    frame.postMessage({ apb: "travelers-reply", id: m.id, ok: ok, result: result, error: error }, "*");
+  };
+  var t = m.arg;
+  var work = m.op === "list" ? Promise.resolve(list)
+    : m.op === "save" && t && typeof t === "object" && typeof t.id === "string" && typeof t.passport === "string" ? save(t)
+    : m.op === "remove" && typeof t === "string" ? remove(t)
+    : Promise.reject(new Error("not understood"));
+  work.then(function (r) { reply(true, r); }, function (err) { reply(false, null, (err && (err.message || err.code)) || "not saved"); });
+});
+
+/* ---------------------------------------------------- the account */
+
+setList(local());
+if (window.claude && window.claude.use) {
+  Promise.all([window.claude.use("user"), window.claude.use("db")]).then(function (got) {
+    var user = got[0], db = got[1];
+    if (!user || !db) return draw();
+    return user.me().then(function (me) {
+      if (!me.id) return draw();          // signed out, or no identity here: this browser
+      var mine = db.collection("data/users/" + me.id);
+      store = {
+        save: function (t) { return mine.doc(t.id).set(t); },
+        remove: function (id) { return mine.doc(id).delete(); }
+      };
+      where = { account: true, who: me.name || "" };
+      mine.onSnapshot(function (snap) {
+        setList(snap.docs.map(function (d) { return d.data(); }));
+      }, function () {
+        store = null;
+        where = { account: false, who: "" };
+        setList(local());
+      });
+      // Travelers kept in this browser before signing in come along, once.
+      var before = local();
+      if (before.length) {
+        before.reduce(function (p, t) {
+          return p.then(function () { return mine.doc(t.id).set(t); });
+        }, Promise.resolve()).then(function () { keepLocal([]); }, function () { /* try again next visit */ });
+      }
+    });
+  });
+}
+</script>

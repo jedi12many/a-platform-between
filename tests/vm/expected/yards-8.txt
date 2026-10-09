@@ -1,11 +1,13 @@
 === The Deep Yards
 [picture 0 yards]
+[music lift]
 At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft that goes down further than the Waystation does. A brass plate on the gate says YARD 1502. Someone has scratched a number under it: 10.
 The operator, a man made mostly of rust and patience, doesn't look up. "Ten floors," he says. "Every one a different place. Come back up when you like. If you can."
   1) Step into the cage
   2) Not today
 > 1
 The cage grinds down and stops. Floor 1.
+[music drowned]
 A drowned rail city: green water to the platform edge, lamps burning underneath it.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A brazier, and an empty bench
@@ -34,6 +36,7 @@ round 1: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 2.
+[music light]
 A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A wagon with its doors sealed
@@ -43,11 +46,13 @@ Ahead, past the buffers, a stair goes down, and something is waiting by it.
 The wagon's seal is old. It gives with a sigh.
 Inside, wrapped in oilcloth: a sabre, rusted, but it remembers how.
 The cage grinds down and stops. Floor 2.
+[music light]
 A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) Take the stairs down
   2) Ride the cage back up
 > 2
+[music lift]
 The cage rattles up through the floors you've seen. At the top, the operator nods. "Floor 2. Not bad. The yard'll keep."
 [receipt: departure 1000, complete, xp 10, debt paid 0 added 0, gained 5, lost, echoes]
 [level 1, xp 10, debt 0]

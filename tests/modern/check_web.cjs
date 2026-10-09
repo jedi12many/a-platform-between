@@ -38,6 +38,7 @@ async function open(server) {
   const page = await browser.newPage();
   const problems = [];
   page.on("pageerror", (e) => problems.push(String(e)));
+  page.on("console", (m) => { if (m.type() === "error" || m.type() === "warning") problems.push(m.text()); });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.waitForFunction(() => !document.querySelector("#pick button").disabled, null,
                              { timeout: 60000 });
@@ -119,6 +120,40 @@ async function keys() {
     return lit;
   });
   expect("the screen is drawn on the canvas (the status bar)", pixels > 1000);
+  // On through boarding (as tests/c64/fare-edge.choices answers) to the bench, where the
+  // music starts (fe/modern/sound.c, web.c): Web Audio pulls the SID's samples.
+  for (const answer of ["8V40-0000-0000-K60M-2A4A", "50200810HJB", "", "1",
+                        "20000000f-GC2683W26"]) {
+    if (answer.length > 1) {
+      await page.keyboard.type(answer);
+      await page.keyboard.press("Enter");
+    } else if (answer) {
+      await page.keyboard.press(answer);
+    } else {
+      await page.keyboard.press("Enter");
+    }
+    await page.waitForTimeout(200);
+  }
+  for (let wait = 0; wait < 20 && !(await screen(page)).some((r) => r.startsWith("2. Fight it")); ++wait) {
+    if ((await screen(page)).some((r) => r.includes("-- more --"))) await page.keyboard.press(" ");
+    await page.waitForTimeout(100);
+  }
+  await page.keyboard.press("1");
+  await page.waitForTimeout(500);
+  rows = await screen(page);
+  expect("boarded, on the bench", rows.some((r) => r.includes("wooden bench")));
+  const sound = await page.evaluate(async () => {
+    if (!Module.audio) return { state: "none", peak: 0 };
+    await new Promise((done) => setTimeout(done, 300));
+    let peak = 0;
+    for (let k = 0; k < 40; ++k) {          // two seconds of the tune, pulled as Web Audio does
+      const at = Module._web_audio_fill(2205) >> 1;
+      for (let i = 0; i < 2205; ++i) peak = Math.max(peak, Math.abs(Module.HEAP16[at + i]));
+    }
+    return { state: Module.audio.state, peak: peak, node: !!Module.audioNode };
+  });
+  expect(`the music plays through Web Audio (${sound.state}, peak ${sound.peak})`,
+         sound.node && sound.state !== "none" && sound.state !== "closed" && sound.peak > 1000);
   await browser.close();
   server.close();
   if (problems.length) throw new Error(problems.join("\n"));

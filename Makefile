@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards demo play play-e18 play-yards modern web waystation crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -50,15 +50,21 @@ build/demo.prg: demo/demo.c $(CORE_SRC) $(CORE_HDR) | build
 # The game on the Commodore 64 (docs/c64.md): the main program plus three overlays,
 # loaded from disk when the VM asks (LOAD, PASS and BATTLE), on cc65's overlay memory
 # map (fe/c64/apb.cfg). The linker fails the build if anything doesn't fit.
-C64_DEFS   := -DAPB_OVERLAYS -DAPB_VM_DEPOT_MAX=2048 -g
-C64_MAIN   := fe/c64/c64.c fe/c64/split.s vm/vm.c client/view.c core/src/rng.c core/src/names.c \
-              core/src/rules.c core/src/registry.c core/src/translate.c core/src/echo.c
-C64_LOAD   := core/src/yard.c
+C64_DEFS   := -DAPB_OVERLAYS -DAPB_FIGHT_BORROWS_CAR -DAPB_PLAY_ONLY -DAPB_VM_DEPOT_MAX=2048 -g
+C64_MAIN   := fe/c64/c64.c fe/c64/split.s fe/c64/music.s fe/c64/tune.s client/cue.c vm/vm.c client/view.c \
+              core/src/rng.c core/src/names.c \
+              core/src/rules.c core/src/registry.c
+# Echoes are only looked at now and then: in the LOAD overlay (vm.c asks for it first).
+C64_LOAD   := core/src/yard.c core/src/echo.c
 C64_PASS   := client/desk.c core/src/passport.c client/receipt_view.c
-C64_BATTLE := core/src/battle.c core/src/combat.c client/battle_view.c
+# Nothing in a fight is recursive, so its C is built with its locals static (-Cl): smaller.
+C64_BATTLE := fe/c64/sprites.s
+C64_SCENE  := core/src/battle.c core/src/combat.c client/battle_text.c client/tactics.c
+# Its buffers in the 1 KB at $0400 (LOWBSS, fe/c64/apb.cfg).
+C64_LOWBSS := fe/c64/scene.c
 
-build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(CORE_HDR) $(VM_HDR) \
-                   client/apb_view.h | build
+build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE) $(C64_LOWBSS) $(CORE_HDR) $(VM_HDR) \
+                   client/apb_view.h client/apb_cue.h client/apb_scene.h | build
 	@mkdir -p build/c64/obj
 	@for f in $(C64_MAIN); do \
 	    $(CL65) -t c64 -O $(INC) $(C64_DEFS) -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
@@ -67,49 +73,65 @@ build/c64/apb.prg: fe/c64/apb.cfg $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATT
 	@for f in $(C64_PASS); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY2 \
 	    --rodata-name OVL2DATA --bss-name OVL2BSS -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
 	@for f in $(C64_BATTLE); do $(CL65) -t c64 -O $(INC) $(C64_DEFS) --code-name OVERLAY3 \
-	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $$f .c).o $$f || exit 1; done
+	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
+	@for f in $(C64_SCENE); do $(CL65) -t c64 -O -Cl $(INC) $(C64_DEFS) --code-name OVERLAY3 \
+	    --rodata-name OVL3DATA -c -o build/c64/obj/$$(basename $${f%.*}).o $$f || exit 1; done
+	$(CL65) -t c64 -O -Cl $(INC) $(C64_DEFS) --code-name OVERLAY3 --rodata-name OVL3DATA \
+	    --bss-name LOWBSS -c -o build/c64/obj/scene.o fe/c64/scene.c
 	$(CL65) -t c64 -g -C fe/c64/apb.cfg -m build/c64/apb.map -Wl --dbgfile,build/c64/apb.dbg -o $@ \
-	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE))))) c64.lib
+	    $(addprefix build/c64/obj/,$(addsuffix .o,$(notdir $(basename $(C64_MAIN) $(C64_LOAD) $(C64_PASS) $(C64_BATTLE) $(C64_SCENE) $(C64_LOWBSS))))) c64.lib
 
 # The Fare on a 1541 disk: LOAD"APB",8 and RUN. Its pictures (pic00, pic01, ...) come
 # from the PNGs in its pictures/ folder (tools/c64pic.py, which needs Pillow).
 FARE_PICS := $(wildcard content/s1/00-the-fare/pictures/*.png)
 
-build/the-fare.d64: build/c64/apb.prg content/s1/00-the-fare/the-fare.qs tools/d64.py tools/c64pic.py $(FARE_PICS)
+build/the-fare.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/00-the-fare/the-fare.qs tools/d64.py tools/c64pic.py $(FARE_PICS) \
+                    $(wildcard content/s1/00-the-fare/the-fare.music) tools/music/musicc.py tools/music/quiet.music
 	@mkdir -p build/c64/fare build/c64/fare-pics
 	python3 tools/qsc/qsc.py build content/s1/00-the-fare/the-fare.qs -o build/c64/the-fare.apd --split build/c64/fare
 	python3 tools/c64pic.py disk build/c64/fare/DEPOT content/s1/00-the-fare/pictures build/c64/fare-pics
 	python3 tools/d64.py write $@ "the fare" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
-	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
+	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
 	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
+	    $$(python3 tools/music/musicc.py build $$(ls content/s1/00-the-fare/the-fare.music 2>/dev/null || echo tools/music/quiet.music) \
+	       -o build/c64/fare-music --c64 >&2 && echo build/c64/fare-music=music) \
 	    $$(for f in build/c64/fare-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
 # Eighteen Minutes (Departure 01), on a disk of its own, the same way.
 E18_PICS := $(wildcard content/s1/01-eighteen-minutes/pictures/*.png)
 
-build/eighteen-minutes.d64: build/c64/apb.prg content/s1/01-eighteen-minutes/eighteen-minutes.qs \
-                            tools/d64.py tools/c64pic.py $(E18_PICS)
+build/eighteen-minutes.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/01-eighteen-minutes/eighteen-minutes.qs \
+                            tools/d64.py tools/c64pic.py $(E18_PICS) tools/music/musicc.py tools/music/quiet.music \
+                            $(wildcard content/s1/01-eighteen-minutes/eighteen-minutes.music)
 	@mkdir -p build/c64/e18 build/c64/e18-pics
 	python3 tools/qsc/qsc.py build content/s1/01-eighteen-minutes/eighteen-minutes.qs \
 	    -o build/c64/eighteen-minutes.apd --split build/c64/e18
 	python3 tools/c64pic.py disk build/c64/e18/DEPOT content/s1/01-eighteen-minutes/pictures build/c64/e18-pics
 	python3 tools/d64.py write $@ "eighteen minutes" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
-	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
+	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
 	    $$(for f in build/c64/e18/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
+	    $$(python3 tools/music/musicc.py build $$(ls content/s1/01-eighteen-minutes/eighteen-minutes.music 2>/dev/null || echo tools/music/quiet.music) \
+	       -o build/c64/e18-music --c64 >&2 && echo build/c64/e18-music=music) \
 	    $$(for f in build/c64/e18-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
 # The Deep Yards (E7) on a disk of its own too.
 YARDS_PICS := $(wildcard content/sidings/deep-yards/pictures/*.png)
 
-build/deep-yards.d64: build/c64/apb.prg content/sidings/deep-yards/deep-yards.qs \
-                      tools/d64.py tools/c64pic.py $(YARDS_PICS)
+build/deep-yards.d64: build/c64/apb.prg build/c64/bgfx/btab content/sidings/deep-yards/deep-yards.qs \
+                      tools/d64.py tools/c64pic.py $(YARDS_PICS) tools/music/musicc.py tools/music/quiet.music \
+                      $(wildcard content/sidings/deep-yards/deep-yards.music)
 	@mkdir -p build/c64/yards build/c64/yards-pics
 	python3 tools/qsc/qsc.py build content/sidings/deep-yards/deep-yards.qs \
 	    -o build/c64/deep-yards.apd --split build/c64/yards
 	python3 tools/c64pic.py disk build/c64/yards/DEPOT content/sidings/deep-yards/pictures build/c64/yards-pics
 	python3 tools/d64.py write $@ "the deep yards" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
-	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 \
+	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
 	    $$(for f in build/c64/yards/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
+	    $$(python3 tools/music/musicc.py build $$(ls content/sidings/deep-yards/deep-yards.music 2>/dev/null || echo tools/music/quiet.music) \
+	       -o build/c64/yards-music --c64 >&2 && echo build/c64/yards-music=music) \
 	    $$(for f in build/c64/yards-pics/*; do printf '%s=%s ' $$f $$(basename $$f); done)
 
 # The C64 game played without a C64: the real program, from the .d64, on a 6502 emulator
@@ -196,14 +218,16 @@ build/harness: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | 
 # The 6502 has no room for the whole engine in one test program: one build leaves out
 # the Deep Yards, the other the boarding desk (tests/vm/harness.c).
 # sim65's 2 KB C stack is far more than the game needs (the C64 plays in 384 bytes): 1 KB.
+# Neither needs translate.c (the C64 leaves it out too), and cl65 links every file it's given.
 SIM_STACK := -Wl -D,__STACKSIZE__=0x0400
+SIM_CORE  := $(filter-out core/src/translate.c,$(CORE_SRC))
 build/harness.sim: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
 	$(CL65) -t sim6502 -O -DAPB_VM_CAR_MAX=4096 -DAPB_VM_DEPOT_MAX=2048 -DAPB_VM_NO_YARDS $(INC) $(SIM_STACK) \
-	    -o $@ tests/vm/harness.c $(filter-out core/src/yard.c,$(VM_SRC)) $(CORE_SRC)
+	    -o $@ tests/vm/harness.c $(filter-out core/src/yard.c,$(VM_SRC)) $(SIM_CORE)
 
 build/harness-yards.sim: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
 	$(CL65) -t sim6502 -O -DAPB_VM_CAR_MAX=4096 -DAPB_VM_DEPOT_MAX=2048 -DAPB_HARNESS_NO_DESK $(INC) $(SIM_STACK) \
-	    -o $@ tests/vm/harness.c $(filter-out client/desk.c,$(VM_SRC)) $(CORE_SRC)
+	    -o $@ tests/vm/harness.c $(filter-out client/desk.c,$(VM_SRC)) $(SIM_CORE)
 
 # The same harness with AddressSanitizer and UndefinedBehaviorSanitizer, for damage tests.
 build/harness.asan: tests/vm/harness.c $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
@@ -220,7 +244,7 @@ test-vm: build/harness build/harness.sim build/harness-yards.sim build/harness.a
 
 # The terminal front end: `make play` compiles The Fare and plays it.
 # Shared by every front end: the status line, checks and the battle screen.
-VIEW_SRC := client/view.c client/battle_view.c client/receipt_view.c
+VIEW_SRC := client/view.c client/battle_view.c client/battle_text.c client/receipt_view.c
 
 build/apb: fe/term/term.c $(VIEW_SRC) client/apb_view.h $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ fe/term/term.c $(VIEW_SRC) $(VM_SRC) $(CORE_SRC)
@@ -248,50 +272,74 @@ play-yards: build/apb build/deep-yards.apd
 
 # The modern front end (E6, fe/modern/): SDL2 on a desktop. Each Departure is a directory
 # of its files and its pictures in full colour (tools/apic.py).
-MODERN_SRC := fe/modern/screen.c fe/modern/render.c
-MODERN_HDR := fe/modern/modern.h fe/modern/font8x8.h
+# Fights are the battle screen with graphics (client/tactics.c, docs/c64-hardware.md),
+# drawn as the C64 draws them from the battle graphics (BGFX, tools/battlegfx.py).
+MODERN_SRC := fe/modern/screen.c fe/modern/render.c fe/modern/scene.c fe/modern/sound.c fe/modern/sid.c
+MODERN_HDR := fe/modern/modern.h fe/modern/font8x8.h client/apb_scene.h client/apb_music.h client/apb_cue.h
+MODERN_VIEW_SRC := client/view.c client/tactics.c client/battle_text.c client/receipt_view.c client/sfx.c \
+                   client/music.c client/cue.c
 
-build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(VIEW_SRC) client/apb_view.h \
+build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(MODERN_VIEW_SRC) client/apb_view.h \
                   $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) $$(sdl2-config --cflags) -o $@ fe/modern/sdl.c $(MODERN_SRC) \
-	    $(VIEW_SRC) $(VM_SRC) $(CORE_SRC) $$(sdl2-config --libs)
+	    $(MODERN_VIEW_SRC) $(VM_SRC) $(CORE_SRC) $$(sdl2-config --libs)
 
-# $(1) the .qs, $(2) its pictures, $(3) the directory to fill
+# The battle graphics, for every front end with graphics; the C64 has them as three files.
+build/battle.bgfx: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h | build
+	python3 tools/battlegfx.py $@
+
+build/c64/bgfx/btab: tools/battlegfx.py tools/c64font.py tools/c64pic.py $(wildcard registry/*.txt) \
+                     fe/modern/font8x8.h
+	@mkdir -p build/c64/bgfx
+	python3 tools/battlegfx.py build/c64/battle.bgfx --c64 build/c64/bgfx
+	python3 tools/c64font.py build/c64/bgfx/font
+
+# $(1) the .qs, $(2) its pictures, $(3) the directory to fill; its music, if it has a
+# NAME.music beside the .qs
 define modern_departure
 	@mkdir -p $(3)
 	python3 tools/qsc/qsc.py build $(1) -o $(3).apd --split $(3)
 	python3 tools/apic.py dir $(3)/DEPOT $(2) $(3)
+	cp build/battle.bgfx $(3)/BGFX
+	rm -f $(3)/MUSIC
+	if [ -f $(basename $(1)).music ]; then python3 tools/music/musicc.py build $(basename $(1)).music -o $(3)/MUSIC; fi
 endef
 
-build/modern/the-fare/DEPOT: content/s1/00-the-fare/the-fare.qs $(FARE_PICS) tools/apic.py
+build/modern/the-fare/DEPOT: content/s1/00-the-fare/the-fare.qs $(FARE_PICS) tools/apic.py build/battle.bgfx \
+    $(wildcard content/s1/00-the-fare/the-fare.music) tools/music/musicc.py
 	$(call modern_departure,content/s1/00-the-fare/the-fare.qs,content/s1/00-the-fare/pictures,build/modern/the-fare)
 
-build/modern/eighteen-minutes/DEPOT: content/s1/01-eighteen-minutes/eighteen-minutes.qs $(E18_PICS) tools/apic.py
+build/modern/eighteen-minutes/DEPOT: content/s1/01-eighteen-minutes/eighteen-minutes.qs $(E18_PICS) tools/apic.py build/battle.bgfx \
+    $(wildcard content/s1/01-eighteen-minutes/eighteen-minutes.music) tools/music/musicc.py
 	$(call modern_departure,content/s1/01-eighteen-minutes/eighteen-minutes.qs,content/s1/01-eighteen-minutes/pictures,build/modern/eighteen-minutes)
 
-build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_PICS) tools/apic.py
+build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_PICS) tools/apic.py build/battle.bgfx \
+    $(wildcard content/sidings/deep-yards/deep-yards.music) tools/music/musicc.py
 	$(call modern_departure,content/sidings/deep-yards/deep-yards.qs,content/sidings/deep-yards/pictures,build/modern/deep-yards)
 
 MODERN_DEPARTURES := build/modern/the-fare/DEPOT build/modern/eighteen-minutes/DEPOT \
                      build/modern/deep-yards/DEPOT
 
 # The same game in a browser: WebAssembly with Emscripten (fe/modern/web.c), the page in
-# fe/modern/web/, and both Departures bundled. Serve build/web/ and open it.
+# fe/modern/web/, and both Departures bundled, as apb-data.wasm (some hosts won't serve a
+# .data file). Serve build/web/ and open it.
 EMCC ?= emcc
 WEB_FLAGS := -O2 -sASYNCIFY -sASYNCIFY_STACK_SIZE=65536 -sALLOW_MEMORY_GROWTH \
-             -sEXPORTED_RUNTIME_METHODS=FS,ccall,UTF8ToString \
-             -sEXPORTED_FUNCTIONS=_web_start,_web_screen_row -sFORCE_FILESYSTEM -lidbfs.js
+             -sEXPORTED_RUNTIME_METHODS=FS,ccall,UTF8ToString,HEAP16 \
+             -sEXPORTED_FUNCTIONS=_web_start,_web_screen_row,_web_audio_fill -sFORCE_FILESYSTEM -lidbfs.js
 
-build/web/apb.js: fe/modern/web.c fe/modern/web/index.html $(MODERN_SRC) $(MODERN_HDR) \
-                  $(VIEW_SRC) client/apb_view.h $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) \
+build/web/apb.js: fe/modern/web.c fe/modern/web/index.html waystation/site/travelers.js $(MODERN_SRC) $(MODERN_HDR) \
+                  $(MODERN_VIEW_SRC) client/apb_view.h $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR) \
                   $(MODERN_DEPARTURES)
 	@mkdir -p build/web
-	$(EMCC) $(WEB_FLAGS) $(INC) -o $@ fe/modern/web.c $(MODERN_SRC) $(VIEW_SRC) $(VM_SRC) \
+	$(EMCC) $(WEB_FLAGS) $(INC) -o $@ fe/modern/web.c $(MODERN_SRC) $(MODERN_VIEW_SRC) $(VM_SRC) \
 	    $(CORE_SRC) --preload-file build/modern/the-fare@/departures/the-fare \
 	    --preload-file build/modern/eighteen-minutes@/departures/eighteen-minutes \
 	    --preload-file build/modern/deep-yards@/departures/deep-yards \
 	    --exclude-file '*.apd'
+	mv build/web/apb.data build/web/apb-data.wasm
 	cp fe/modern/web/index.html build/web/index.html
+	cp waystation/site/travelers.js build/web/travelers.js
 
 web: build/web/apb.js
 	@echo "Browser: serve build/web/ (python3 -m http.server -d build/web) and open it"
@@ -308,13 +356,27 @@ build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) way
 	cp waystation/site/* build/waystation/
 	python3 waystation/registry_json.py build/waystation/registry.json
 
+# The site (site/, docs/waystation-web.md): the platform page, with the player's travelers,
+# and the Waystation and the train in a frame. Serve build/site/ and open it.
+build/site/index.html: site/index.html build/web/apb.js build/waystation/ws.js
+	rm -rf build/site
+	mkdir -p build/site/play build/site/waystation
+	( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
+	  printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
+	  cat site/index.html; printf '</body></html>\n' ) > $@
+	cp build/web/* build/site/play/
+	cp build/waystation/* build/site/waystation/
+
+site: build/site/index.html
+	@echo "The site: serve build/site/ (python3 -m http.server -d build/site) and open it"
+
 waystation: build/waystation/ws.js
 	@echo "The Waystation: serve build/waystation/ (python3 -m http.server -d build/waystation)"
 
 # The Waystation in headless Chromium: a traveler made there has the Python reference's
 # Passport and boards The Fare in the terminal; its Travel Stamp lands, points are spent
 # and stats rolled as the rules say (tests/waystation/check_site.py).
-test-waystation: build/waystation/ws.js build/apb
+test-waystation: build/waystation/ws.js build/site/index.html build/apb
 	NODE_PATH=$$(npm root -g) python3 tests/waystation/check_site.py
 
 # The desktop must play the C64's routes as the C64 does (Travel Stamps and all), and the
@@ -372,6 +434,15 @@ build/battle.sim: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | 
 build/battle.asan: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
 		-o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)
+
+# The music players (E10, docs/music.md): the Python reference, the C player (with the
+# sanitizers) and the C64's 6502 player (on py65) must write the same SID registers.
+test-music: build/music_trace build/c64/apb.prg
+	python3 tests/music/check_music.py
+
+build/music_trace: tests/music/trace.c client/music.c client/sfx.c client/apb_music.h $(CORE_HDR) | build
+	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
+		-o $@ tests/music/trace.c client/music.c client/sfx.c
 
 # The Deep Yards' generator (E7, docs/deep-yards.md): the C core against the reference
 # written from the doc, natively and on sim65; every map valid, every foe reachable.

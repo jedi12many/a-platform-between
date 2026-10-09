@@ -78,6 +78,12 @@ void hal_picture(uint8_t id, const char *name)
     printf("[picture %u %s]\n", id, name);
 }
 
+void hal_music(const char *name)
+{
+    if (name) printf("[music %s]\n", name);
+    else printf("[music off]\n");
+}
+
 void hal_status(const apb_character *ch)
 {
     (void)ch;

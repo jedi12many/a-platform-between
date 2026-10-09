@@ -40,6 +40,23 @@ typedef struct {
 extern modern_picture scr_picture;
 extern uint8_t scr_picture_shown;      /* drawn on rows 1-12 */
 
+/* The battle screen with graphics (client/apb_scene.h, fe/modern/scene.c): while a fight
+ * is on, render.c draws this instead, the C64's multicolour character screen and its
+ * sprites, from the battle graphics (tools/battlegfx.py), twice the C64's size. */
+#define SCN_SPRITES 24
+typedef struct {
+    int16_t x, y;
+    uint8_t shape, colour, mode;    /* mode: APB_SPR_OFF, _HIRES, _MULTI */
+} modern_sprite;
+
+extern uint8_t scn_active;
+extern uint8_t scn_char[SCR_ROWS][SCR_COLS];
+extern uint8_t scn_colour[SCR_ROWS][SCR_COLS];
+extern uint8_t scn_regs[6];         /* border, background, mc1, mc2, sprite mc1, mc2 */
+extern modern_sprite scn_sprite[SCN_SPRITES];
+extern const uint8_t *scn_charset;  /* 256 x 8 bytes */
+extern const uint8_t *scn_shapes;   /* 64 bytes each */
+
 /* render.c: the screen into `fb`, SCR_W x SCR_H pixels of 0x00RRGGBB. */
 void modern_render(uint32_t *fb);
 /* The C64's sixteen colours, 0x00RRGGBB. */
@@ -61,6 +78,8 @@ void modern_play(uint16_t seed);
 #define KEY_RETURN 13
 #define KEY_DELETE 8
 #define KEY_CLICK  0x100        /* | row: the player clicked a row of the screen */
+#define KEY_ARROW  0x200        /* | APB_KEY_UP..APB_KEY_RIGHT: an arrow key */
+#define KEY_ESCAPE 27
 
 /* Show the screen (call modern_render), then wait for a key or a click and return it:
  * ASCII, KEY_RETURN, KEY_DELETE or KEY_CLICK | row. */
@@ -69,5 +88,39 @@ uint16_t plat_key(void);
 void plat_show(void);
 /* A save was written: make it last (the browser copies it to IndexedDB). */
 void plat_saved(void);
+/* Show the screen and wait `ms` milliseconds, for animation. */
+void plat_wait(unsigned ms);
+/* Sound (fe/modern/sound.c): mono, 16 bits, SFX_RATE samples a second. Start pulling
+ * samples with sound_mix, from now on; and keep sound_mix out while the lock's held. */
+#define SFX_RATE 44100
+void plat_audio_start(void);
+void plat_audio_lock(void);
+void plat_audio_unlock(void);
+
+/* sid.c: the SID's three voices from its registers. */
+typedef struct {
+    uint8_t regs[25];
+    uint32_t acc[3], noise[3], level[3];
+    uint8_t stage[3];               /* 0 attack, 1 decay and sustain, 2 release */
+} modern_sid;
+void sid_reset(modern_sid *s);
+void sid_registers(modern_sid *s, const uint8_t *regs);
+void sid_render(modern_sid *s, int16_t *out, int n);
+
+/* sound.c: the Departure's music (its MUSIC file), played as the C64 plays it. */
+void sound_setup(void);
+void sound_mix(int16_t *out, int n);
+/* A sound effect's samples (client/sfx.c), as the SID plays it: how many, up to max. */
+int sfx_render(uint8_t effect, int16_t *out, int max);
+/* A tune from a music file, alone, until it ends or `max` samples: how many. */
+int music_render(const uint8_t *data, uint16_t len, uint8_t tune, int16_t *out, int max);
+
+/* screen.c, for scene.c: a key as the story's screen takes them (from the choices file
+ * in tests), with no cursor; and a line into the transcript, if there is one. */
+uint16_t modern_key(void);
+void modern_log(const char *line);
+void modern_note(const char *line);  /* the same, after the text so far, as a picture's */
+void modern_end_row(void);           /* the story's last row into the transcript */
+int modern_scripted(void);          /* keys come from a choices file */
 
 #endif

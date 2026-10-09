@@ -10,7 +10,7 @@ from opcodes import (BY_CODE, ENCOUNTER_FOE_BYTES, FOE_NAME_MAX, MAP_TILES, MAX_
                      MAX_ENCOUNTERS,
                      MAX_OPTIONS, NO_MENU, NO_TITLE, OFFICIAL_ONLY,
                      SKILL_RATING_BASE, TXT_CLASS, TXT_DEBT, TXT_END, TXT_LEVEL, TXT_NAME,
-                     TXT_NEWLINE, TXT_RACE, TXT_VAR, TXT_YARD, WIDTH, NO_KEY)
+                     TXT_NEWLINE, TXT_RACE, TXT_VAR, TXT_YARD, WIDTH, NO_KEY, MUSIC_OFF)
 from textpack import expand
 
 
@@ -82,6 +82,16 @@ def read_depot(depot):
     if n > MAX_ENCOUNTERS:
         raise BadImage(f"{n} encounters")
     d["encounters"] = [read_encounter(r.bytes(r.take("<H")), i) for i in range(n)]
+    d["music"] = []
+    if d["version"] == 1:
+        n = r.take("<B")
+        if n > 32:
+            raise BadImage(f"{n} tunes in the music list")
+        for _ in range(n):
+            name = ascii_name(r.bytes(r.take("<B")), "a tune name")
+            if not 1 <= len(name) <= 20:
+                raise BadImage(f"a tune name of {len(name)} letters")
+            d["music"].append(name)
     if r.pos != len(depot):
         raise BadImage("depot has trailing bytes")
     return d
@@ -207,7 +217,7 @@ def verify(data, registry=None):
     from codegen import crc16
     depot, cars = split_apd(data)
     d = read_depot(depot)
-    if d["version"] != 0:
+    if d["version"] > 1:
         raise BadImage(f"image version {d['version']}")
     for i, (a, b) in enumerate(d["pairs"]):
         if a >= 0x80 + i or b >= 0x80 + i:
@@ -280,6 +290,7 @@ def verify_code(c, d, registry):
         for kind, v in args:
             limit = {"str": len(c["strings"]), "scene": d["scenes"], "flag": d["flags"],
                      "var": d["vars"], "pic": len(d["pictures"]),
+                     "mus": len(d["music"]) if v != MUSIC_OFF else None,
                      "enc": len(d["encounters"])}.get(kind)
             if kind == "key" and v != NO_KEY and v >= d["vars"]:
                 raise BadImage(f"{name}: key variable {v} out of range")

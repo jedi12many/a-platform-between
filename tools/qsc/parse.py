@@ -15,7 +15,7 @@ INSERTS = ["name", "race", "class", "debt", "level", "yard"]
 KEYWORDS = {"if", "else", "check", "flag", "var", "and", "or", "not", "has", "echo",
             "visited", "level", "race", "class", "name", "debt", "vs"}
 COMMANDS = ["set", "clear", "let", "add", "sub", "echo", "give", "take", "xp", "debt",
-            "heal", "picture", "pause", "end", "pick"]
+            "heal", "picture", "music", "pause", "end", "pick"]
 OUTCOMES = ["crit", "success", "cost", "fail"]
 TN_WORDS = {"easy": 80, "routine": 90, "normal": 100, "tricky": 110, "hard": 120,
             "very_hard": 130}
@@ -23,6 +23,7 @@ OPS = ["<=", ">=", "!=", "=", "<", ">"]
 STATS = ["MIGHT", "GRACE", "GRIT", "WITS", "PRESENCE", "FATE"]
 
 MAX_FLAGS = 512
+MAX_MUSIC = 32
 MAX_VARS = 128
 MAX_CHOICES = 9
 MAX_LABEL = 37
@@ -938,6 +939,21 @@ class Parser:
                 if args[0] not in self.dep.pictures:
                     self.dep.pictures.append(args[0])
                 return A.Command("picture", [args[0]], line)
+        elif name == "music":
+            if need(1, "music NAME' or '~ music off"):
+                if args[0] == "off":
+                    return A.Command("music", [None], line)
+                if not self.lower_name(args[0], line, "tune name"):
+                    return None
+                if len(args[0]) > 20:
+                    self.err(line, f"the tune name '{args[0]}' is too long: 20 letters at most")
+                    return None
+                if args[0] not in self.dep.music:
+                    if len(self.dep.music) >= MAX_MUSIC:
+                        self.err(line, f"more than {MAX_MUSIC} tunes in one Departure")
+                        return None
+                    self.dep.music[args[0]] = line
+                return A.Command("music", [args[0]], line)
         elif name == "pause":
             if need(0, "pause"):
                 return A.Command("pause", [], line)

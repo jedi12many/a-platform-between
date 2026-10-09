@@ -348,7 +348,34 @@ def test_manifests():
             fail(f"wrong message for too many rewards: {e}")
 
 
+def test_music():
+    """`~ music`, assembled by hand from docs/vm-spec.md: MUSIC (14) takes the tune's index
+    in the depot's music list, or FF for off; a Departure with music has a v1 depot,
+    whose music list follows the encounters."""
+    src = TINY.replace("+ [Stay]\n    ~ set f",
+                       "+ [Stay]\n    ~ set f ~ music night_train ~ music off ~ music dawn"
+                       " ~ music night_train")
+    img = build(src)
+    code = bytes(img.cars[0])
+    if bytes.fromhex("14 00 14 ff 14 01 14 00") not in code:
+        fail(f"MUSIC 0, FF, 1, 0 isn't in the code: {code.hex(' ')}")
+    d = img.depot
+    if d[2] != 1:
+        fail(f"a Departure with music has depot version {d[2]}, not 1")
+    tail = bytes([2, 11]) + b"night_train" + bytes([4]) + b"dawn"
+    if not d.endswith(b"\x00" + tail):
+        fail(f"the depot should end with no encounters, then the music list: {d[-24:].hex(' ')}")
+    if build(TINY).depot[2] != 0:
+        fail("a Departure without music should keep a v0 depot")
+    data = img.apd()
+    try:
+        verify(data, REG)
+    except BadImage as e:
+        fail(f"the verifier refused an image with music: {e}")
+
+
 test_hand_assembled()
+test_music()
 test_encounters()
 test_yards()
 test_manifests()

@@ -1,0 +1,44 @@
+# Every rule in docs/music.md, for the players to agree on (tests/music/check_music.py).
+
+instrument lead
+  wave pulse
+  adsr 0 9 a 6
+  pulse 40 3 20 50
+  vibrato 6 4 2
+
+instrument kick
+  wave noise =c5
+  wave pulse =c3
+  wave pulse =g2
+  adsr 0 8 0 0
+
+instrument chord
+  wave pulse
+  wave pulse +4
+  wave pulse +7
+  loop 0
+  adsr 0 0 f 4
+  pulse 80 0 80 80
+
+instrument bass
+  wave saw -12
+  wave tri+saw
+  adsr 0 6 8 4
+  pulse 10 -5 08 30
+
+pattern theme lead
+  c4/4 e4/2 g4/2 >c5/4 b4/4 a4/8 ~/4 r/4 @bass c3/2 >d3 ~ e3/70
+
+pattern beat kick
+  c4/2 r/2 c4/2 c4/2
+
+pattern chords chord
+  c3/8 f3/8 g3/16
+
+tune platform tempo 3
+  1: theme | theme+5 theme-3
+  2: r4 | beat
+  3: chords chords+2
+
+tune sting tempo 2
+  1: beat

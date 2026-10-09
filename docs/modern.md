@@ -33,12 +33,30 @@ sees a scene in one sees the same scene in all of them.
 | Rows | What |
 |---|---|
 | 0 | the status bar |
-| 1–12 | the picture, once the story has shown one (the whole screen is text during a fight) |
+| 1–12 | the picture, once the story has shown one |
 | 13–24 | the text window, word-wrapped at 40 columns, with "-- more --" before anything scrolls off unread |
 
 The screen is 640 x 400 pixels: 40 x 25 characters of 16 x 16, from an 8 x 8 font
-(`fe/modern/font8x8.h`, the public-domain font8x8) doubled. The window scales it to
-fit. Unlike the C64, it has `~`, `_` and braces.
+(`fe/modern/font8x8.h`, the public-domain font8x8) made bold as the C64's is (each stroke
+a pixel wider, unless that closes a gap: `tools/c64font.py`), doubled. The window scales it to
+fit.
+
+**A fight** has the whole screen: the battle screen with graphics (`client/tactics.c`,
+[c64.md](c64.md#the-battle-screen)), drawn exactly as the C64's VIC-II draws it, from the
+same graphics file (`BGFX`, `tools/battlegfx.py`), each C64 pixel two by two. The arrow
+keys or the keypad's digits move, Return chooses, Escape or Backspace goes back, and a
+command's first letter does it at once.
+
+**Music and sound** are the C64's ([music.md](music.md)): the same player
+(`client/music.c`) runs a frame every fiftieth of a second, and its 25 registers drive a
+synthesiser that works like the SID (`fe/modern/sid.c`): three voices, their waveforms,
+pulse widths, ring modulation and sync, their envelopes and the volume. The Departure's
+tunes are its `MUSIC` file; the fight's sound effects are the player's third voice, from
+the same table (`client/sfx.c`); which tune plays when is `client/cue.c`'s. SDL pulls the
+samples on the desktop; in the browser an AudioWorklet plays what the page makes a tenth
+of a second ahead (browsers start sound only after a key or a click).
+`apb-modern --sounds DIR` writes each sound effect as a WAV file, and `apb-modern --music
+DEPARTURE DIR` each tune.
 
 **Pictures** are in full colour. A Departure's `pictures/*.png` become `picNN.apic`
 files (`tools/apic.py`): up to 640 x 384 pixels and 256 colours each. They're stretched
@@ -50,14 +68,20 @@ too. Real art can be drawn bigger, and the C64 converter will scale it down
 
 | File | What |
 |---|---|
-| `fe/modern/screen.c` | the whole HAL on the 40 x 25 screen: text, menus, typed lines, the battle screen, pictures, files, the start menu and the receipt |
-| `fe/modern/render.c` | the screen into a 640 x 400 framebuffer |
+| `fe/modern/screen.c` | the whole HAL on the 40 x 25 screen: text, menus, typed lines, pictures, files, the start menu and the receipt |
+| `fe/modern/scene.c` | the battle screen's HAL (`client/apb_scene.h`): its characters, colours and sprites, kept for `render.c` |
+| `fe/modern/sound.c` | the music and the sound effects: the player, a frame at a time, into the SID |
+| `fe/modern/sid.c` | the SID's three voices, from its registers, as samples |
+| `fe/modern/render.c` | the screen into a 640 x 400 framebuffer; the battle screen as the VIC-II draws it (`tools/vic.py` is the reference) |
 | `fe/modern/sdl.c` | the desktop: a window, keys and clicks (SDL2) |
 | `fe/modern/web.c`, `fe/modern/web/index.html` | the browser: the page draws the framebuffer on a canvas and queues keys and clicks |
 
-A platform supplies three functions (`fe/modern/modern.h`):
+A platform supplies these (`fe/modern/modern.h`):
 - `plat_key`: wait for a key or a click;
 - `plat_show`: show the screen;
+- `plat_wait`: show it and wait some milliseconds (a fight's animations);
+- `plat_audio_start`: start pulling samples (`sound_mix`), with `plat_audio_lock` and
+  `plat_audio_unlock` to keep them apart from the game's changes;
 - `plat_saved`: a save was written.
 
 The VM waits for the player the same way everywhere: `plat_key` returns when there's a

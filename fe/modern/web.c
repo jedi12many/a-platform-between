@@ -67,6 +67,81 @@ EMSCRIPTEN_KEEPALIVE const char *web_screen_row(int row)
     return text;
 }
 
+void plat_wait(unsigned ms)
+{
+    plat_show();
+    emscripten_sleep(ms);
+}
+
+/* Sound: the page takes the music's samples (fe/modern/sound.c) a buffer at a time, on
+ * its own thread, between the game's waits: so no lock. Browsers only let sound start
+ * after a key or a click; the page wakes it on the next one (index.html). */
+static int16_t audio_buffer[4096];
+
+EMSCRIPTEN_KEEPALIVE int16_t *web_audio_fill(int n)
+{
+    if (n > (int)(sizeof(audio_buffer) / sizeof(audio_buffer[0]))) n = 0;
+    sound_mix(audio_buffer, n);
+    return audio_buffer;
+}
+
+EM_JS(void, js_audio_start, (int rate), {
+    try {
+        var Context = window.AudioContext || window.webkitAudioContext;
+        var audio = Module.audio = new Context({ sampleRate: rate });
+        var pull = function (n) {
+            var at = _web_audio_fill(n) >> 1;
+            var out = new Float32Array(n);
+            for (var i = 0; i < n; i++) out[i] = HEAP16[at + i] / 32768;
+            return out;
+        };
+        if (audio.audioWorklet && window.isSecureContext) {
+            /* An AudioWorklet plays what the page sends it; the page keeps it a tenth of a
+             * second ahead, from a timer that runs between the game's waits. */
+            var feed = "class Feed extends AudioWorkletProcessor {" +
+                " constructor() { super(); this.queue = []; this.at = 0;" +
+                "  this.port.onmessage = (e) => this.queue.push(e.data); }" +
+                " process(inputs, outputs) { const out = outputs[0][0];" +
+                "  for (let i = 0; i < out.length; i++) {" +
+                "   if (!this.queue.length) { out[i] = 0; continue; }" +
+                "   const b = this.queue[0]; out[i] = b[this.at++];" +
+                "   if (this.at >= b.length) { this.queue.shift(); this.at = 0; } }" +
+                "  return true; } }" +
+                "registerProcessor('apb-feed', Feed);";
+            var url = URL.createObjectURL(new Blob([feed], { type: "application/javascript" }));
+            audio.audioWorklet.addModule(url).then(function () {
+                var node = Module.audioNode = new AudioWorkletNode(audio, "apb-feed");
+                node.connect(audio.destination);
+                var sent = 0;
+                var ahead = Math.floor(rate / 10);
+                setInterval(function () {
+                    var played = Math.floor(audio.currentTime * rate);
+                    if (sent < played) sent = played;           /* it ran dry: start again */
+                    while (sent - played < ahead) {
+                        node.port.postMessage(pull(1024));
+                        sent += 1024;
+                    }
+                }, 25);
+            });
+        } else {
+            var node = Module.audioNode = audio.createScriptProcessor(2048, 0, 1);
+            node.onaudioprocess = function (e) {
+                e.outputBuffer.getChannelData(0).set(pull(e.outputBuffer.length));
+            };
+            node.connect(audio.destination);
+        }
+        audio.resume();
+    } catch (e) { /* no sound here: play on in silence */ }
+});
+
+void plat_audio_start(void)
+{
+    js_audio_start(SFX_RATE);
+}
+
+void plat_audio_lock(void) {}
+void plat_audio_unlock(void) {}
+
 void plat_saved(void)
 {
     js_sync_saves();

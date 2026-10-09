@@ -124,6 +124,11 @@ void hal_picture(uint8_t id, const char *name)
     (void)name;             /* no pictures in a terminal */
 }
 
+void hal_music(const char *name)
+{
+    (void)name;             /* no music in a terminal */
+}
+
 void hal_check(uint8_t rating, const apb_roll *roll)
 {
     char line[APB_VIEW_LINE];

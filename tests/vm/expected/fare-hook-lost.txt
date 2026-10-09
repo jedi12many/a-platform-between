@@ -7,6 +7,7 @@ Then a hand. It reaches through the end of everything, takes hold of whatever is
   2) Fight it
 > 1
 [picture 1 platform_bench]
+[music arrivals]
 You are sitting on a wooden bench, and you are breathing, and both of those things are wrong.
 The bench stands on a railway platform under a roof of green iron and cracked glass. Beyond the glass there is no sky, only a slow grey shimmer, like rain that has forgotten which way is down. A sign hangs from the ironwork:
 ARRIVALS -- ALL LINES
@@ -26,6 +27,7 @@ The bench creaks. Somewhere down the platform, a train whistle sounds, mournful 
 > 1
 === The Buffer Stop
 [picture 2 concourse]
+[music concourse]
 The platform opens into a great hall. Iron arches, a tiled floor worn into paths by more feet than you can imagine, and above it all a departure board, its letters flipping and clattering though no one is watching.
 Across the hall, warm light spills from a doorway under a painted sign: a rail track ending in a cheerful red barrier. THE BUFFER STOP.
   1) Read the departure board
@@ -67,6 +69,7 @@ round 3: 1's turn
 [the fight is lost; health 1]
 The world goes grey at the edges. When it comes back, you are lying on the tiles of the great hall, and something has wrapped your bites in a clean bar towel.
 [picture 2 concourse]
+[music concourse]
 The great hall. The board clatters. The Buffer Stop glows.
   1) Read the departure board
   2) Walk back to the platform edge
@@ -98,6 +101,7 @@ round 0: 2's turn
 [the fight is lost; health 1]
 You wake on the tiles of the great hall, bitten, with a bar towel wrapped round the worst of it.
 [picture 2 concourse]
+[music concourse]
 The great hall. The board clatters. The Buffer Stop glows.
   1) Read the departure board
   2) Walk back to the platform edge
@@ -135,6 +139,7 @@ round 2: 1's turn
 [the fight is lost; health 1]
 You wake on the tiles of the great hall, bitten, with a bar towel wrapped round the worst of it.
 [picture 2 concourse]
+[music concourse]
 The great hall. The board clatters. The Buffer Stop glows.
   1) Read the departure board
   2) Walk back to the platform edge
@@ -148,6 +153,7 @@ Something shifts in the luggage. Two pairs of eyes, red as banked coals: ash rat
   3) Leave them to it
 > 3
 [picture 2 concourse]
+[music concourse]
 The great hall. The board clatters. The Buffer Stop glows.
   1) Read the departure board
   2) Walk back to the platform edge
@@ -155,6 +161,7 @@ The great hall. The board clatters. The Buffer Stop glows.
   4) Try the door marked LOST PROPERTY
 > 3
 [picture 3 buffer_stop]
+[music buffer_stop]
 The Buffer Stop is warm, and crowded, and wrong in a dozen small ways that add up to cozy. A knight in rusted plate is arguing with a cloud of moths. Something made of glass is drinking something made of light.
 Behind the bar, a tree is wiping down glasses. Its bark glows faintly green, and the rag in its twig-hand keeps catching fire, and it keeps patting it out without looking.
 In the corner booth, alone, sits a tall figure in a velvet coat. A brass ledger lies closed on the table in front of it. It is watching you the way a stationmaster watches a clock.
@@ -163,6 +170,7 @@ In the corner booth, alone, sits a tall figure in a velvet coat. A brass ledger 
   3) Go to the corner booth
 > 3
 [picture 4 stationmaster]
+[music ledger]
 The figure in the velvet coat rises as you approach. It is very tall. Its face is a polite arrangement of shadow, and its voice is warm, and patient, and has never once been surprised.
 "Please, sit. You'll want to sit for this part."
 It opens the brass ledger and turns it toward you. On the page, in a careful hand, someone has begun to write your name, and stopped halfway.
@@ -184,5 +192,6 @@ Below your name, a number writes itself into the ledger, digit by digit. It is a
 "Splendid." The Stationmaster closes the ledger. Somewhere far away, a whistle answers.
 "Your first ticket will be at the window in the morning. There is no morning here, of course, but you'll know it when it comes. Fen will find you a bed."
 "Welcome back to the living, Kestrel."
+[music welcome]
 [receipt: departure 0, complete, xp 5, debt paid 0 added 50000, gained, lost, echoes]
 [level 1, xp 5, debt 50000]

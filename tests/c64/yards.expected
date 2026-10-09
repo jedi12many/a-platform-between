@@ -33,9 +33,10 @@ Which yard? Type a yard's number to go
 down one someone shared, or a blank line
 for a new one.
 > 48213
-- The Deep Yards -
+~ The Deep Yards ~
 
 [picture pic00]
+[music lift]
 At the far end of the freight lines,
 past the last lamp, a cage lift hangs
 over a shaft that goes down further than
@@ -55,6 +56,7 @@ you can."
 
 The cage grinds down and stops. Floor 1.
 
+[music bone]
 A cathedral of bone where trains are
 worshipped. A choir hums the timetable.
 
@@ -83,51 +85,20 @@ down, and something is waiting by it.
 
 The stair down is guarded.
 
+[music battle]
 -- A fight! --
-  # # # # # # # # # # # #
-  > @ . . . . . . . . . #
-  # . . . . + . . . . . #
-  # . . . . . . . . . . #
-  # . . . . - . . = . . #
-  # . . . . . . a . - + #
-  # . . . . . . . . . - #
-  # # # # # # # # # # # #
- # wall  - rough  + cover  = high ground
- > exit
- @ Kestrel  27/27
- a Ash rat  6/6  TN 60
-
 -- Round 1 --
 Ash rat moves.
-Ash rat attacks you: 5 + 30 = 35 against
-58, a miss.
-
-  # # # # # # # # # # # #
-  > @ a . . . . . . . . #
-  # . . . . + . . . . . #
-  # . . . . . . . . . . #
-  # . . . . - . . = . . #
-  # . . . . . . . . - + #
-  # . . . . . . . . . - #
-  # # # # # # # # # # # #
- # wall  - rough  + cover  = high ground
- > exit
- @ Kestrel  27/27
- a Ash rat  6/6  TN 60
-
-Where to?
-1. Stay here
-2. To the exit
-3. Into cover
-4. Wait: act at the end of the round
-5. Quick: the computer plays you
-> 5
-
+Ash rat attacks you: 5 + 30 = 35
+against 58, a miss.
+[Kestrel: choose.]
 You attack Ash rat: 87 + 20 = 107
 against 60, a hit: 24 damage.
 Ash rat is down.
+[music won]
 You won the fight.
-
+[Press a key.]
+[music bone]
 The way down is clear.
 
 You go down, and catch your breath on
@@ -137,6 +108,7 @@ known.
 
 The cage grinds down and stops. Floor 2.
 
+[music jungle]
 A jungle has eaten a depot here. Vines
 hang from the signal gantries like
 cables.
@@ -149,12 +121,13 @@ down, and something is waiting by it.
 3. Ride the cage back up
 > 3
 
+[music lift]
 The cage rattles up through the floors
 you've seen. At the top, the operator
 nods. "Floor 2. Not bad. The yard'll
 keep."
 
-- Departure complete -
+~ Departure complete ~
 
 Your receipt:
   10 XP

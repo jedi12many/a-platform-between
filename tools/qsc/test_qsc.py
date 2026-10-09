@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "registry"))
 import qs_ast as A  # noqa: E402
 import registry  # noqa: E402
 from parse import parse  # noqa: E402
+from qsc import check_music  # noqa: E402
 
 REG = registry.load()
 failures = 0
@@ -37,7 +38,9 @@ def fail(msg):
 def load(path):
     with open(path, encoding="utf-8") as f:
         source = f.read()
-    return source, parse(path, source, REG)
+    dep, diag = parse(path, source, REG)
+    check_music(path, dep, diag)
+    return source, (dep, diag)
 
 
 def markers(source):

@@ -1,0 +1,11 @@
+# The tunes tests/qsc/errors/music.qs may name.
+
+instrument lead
+  wave pulse
+  adsr 0 9 a 6
+
+pattern hum lead
+  c3/8
+
+tune night_train tempo 4
+  1: | hum

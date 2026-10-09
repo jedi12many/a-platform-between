@@ -1,0 +1,12 @@
+# For a C64 disk whose Departure has no music of its own (the Makefile uses it): the
+# player still needs a file, as the battle screen's sound effects come with it.
+
+instrument none
+  wave tri
+  adsr 0 0 0 0
+
+pattern nothing none
+  r/1
+
+tune quiet tempo 2
+  1: nothing

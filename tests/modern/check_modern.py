@@ -5,11 +5,19 @@
 Each route the C64 is tested on (tests/c64/*.choices) is played on the desktop build
 (build/apb-modern, from a choices file, with no window) and must give the C64's reviewed
 transcript (tests/c64/*.expected), except where the two machines are meant to differ:
-the C64 has no ~ (its chapter titles read "- The Static -"), and it names its pictures
-by their files (pic00, ...). A trip without a Boarding Pass takes its dice from the
+the C64 names its pictures by their files (pic00, ...). A trip without a Boarding Pass takes its dice from the
 clock, which reads 0 in the C64's emulator, so the desktop plays with --seed 0. So the
 Travel Stamps are the C64's, and the terminal's. A
 save is made on the desktop, the program stops, and a new one picks up the trip.
+
+The sound effects (client/sfx.c, fe/modern/sound.c), written as WAV files with
+--sounds, must each sound and fade out within two seconds, all differ, and have the
+pitch the SID gives them: a steady tone's frequency register is its pitch byte times
+256, and a PAL C64's SID plays register value F at F x 985248 / 2^24 Hz. Each
+Departure's tunes, written as WAV files with --music, must sound without clipping, and
+loop or end as their .music file says.
+
+The transcripts name each tune the game starts ("[music NAME]"), as the C64's do.
 
 With --web, the browser build (build/web/, in headless Chromium through Playwright,
 tests/modern/check_web.cjs) must give the desktop's transcript, line for line, on the
@@ -62,7 +70,7 @@ def desktop(departure, choices, then):
 
 
 def like_the_c64(text, departure):
-    """The desktop's transcript as the C64 shows it: '-' for '~', pictures by file."""
+    """The desktop's transcript as the C64 shows it: pictures by file."""
     with open(os.path.join(ROOT, "build", "modern", departure, "DEPOT"), "rb") as f:
         names = read_depot(f.read()).get("pictures", [])
     lines = []
@@ -72,12 +80,102 @@ def like_the_c64(text, departure):
             line = f"[picture pic{names.index(m.group(1)):02d}]"
         elif line == "[the trip is over]":
             line = "[the program ended]"
-        lines.append(line.replace("~", "-"))
+        lines.append(line)
     return lines
+
+
+def sounds():
+    import struct
+    import wave
+    with tempfile.TemporaryDirectory() as tmp:
+        p = subprocess.run([os.path.join(ROOT, "build", "apb-modern"), "--sounds", tmp],
+                           capture_output=True, text=True, timeout=60)
+        if p.returncode:
+            fail(f"apb-modern --sounds: {p.stderr.strip()}")
+            return
+        heard = []
+        for n in range(8):
+            with wave.open(os.path.join(tmp, f"sfx{n}.wav")) as w:
+                rate, count = w.getframerate(), w.getnframes()
+                data = struct.unpack(f"<{count}h", w.readframes(count))
+            heard.append(data)
+            if not 0.02 < count / rate < 2 or max(abs(v) for v in data) < 1000:
+                fail(f"sound {n}: {count / rate:.3f} s, peak {max(abs(v) for v in data)}")
+            elif max(abs(v) for v in data[-3:]) > 300:
+                fail(f"sound {n} stops with a click, not a fade")
+        if len(set(heard)) != 8:
+            fail("two sound effects are the same")
+        # Steady tones: select (triangle, pitch $28) and no (sawtooth, pitch $06). Their
+        # pitch, counted from the samples: how often the wave rises through its middle.
+        for n, pitch in ((6, 0x28), (7, 0x06)):
+            data = heard[n]
+            ups = [i for i in range(1, len(data)) if data[i - 1] < 0 <= data[i]]
+            if len(ups) < 3:
+                fail(f"sound {n}: too short to hear its pitch")
+                continue
+            got = (len(ups) - 1) * 44100 / (ups[-1] - ups[0])
+            want = pitch * 256 * 985248 / 2 ** 24
+            if abs(got - want) > want * 0.03:
+                fail(f"sound {n}: {got:.1f} Hz, where the SID plays {want:.1f} Hz")
+    print("ok  the sound effects: eight, each fading out, at the SID's pitches")
+
+
+def music():
+    """Each Departure's tunes (apb-modern --music): every one sounds and never clips; a
+    tune that loops plays the whole 20 seconds; a sting ends, quietly."""
+    import struct
+    import wave
+    sys.path.insert(0, os.path.join(ROOT, "tools", "music"))
+    import musicc
+    tunes = 0
+    for departure in sorted(os.listdir(os.path.join(ROOT, "build", "modern"))):
+        here = os.path.join(ROOT, "build", "modern", departure)
+        if not os.path.exists(os.path.join(here, "MUSIC")):
+            continue
+        src = [p for p in glob_music() if os.path.basename(p) == departure + ".music"]
+        names = musicc.build(open(src[0]).read())[1] if src else []
+        with tempfile.TemporaryDirectory() as tmp:
+            p = subprocess.run([os.path.join(ROOT, "build", "apb-modern"), "--music", here, tmp],
+                               capture_output=True, text=True, timeout=120)
+            if p.returncode:
+                fail(f"apb-modern --music {departure}: {p.stderr.strip()}")
+                continue
+            for n, name in enumerate(names):
+                with wave.open(os.path.join(tmp, f"tune{n}.wav")) as w:
+                    count = w.getnframes()
+                    data = struct.unpack(f"<{count}h", w.readframes(count))
+                peak = max(abs(v) for v in data) if data else 0
+                sting = "|" not in tune_lines(src[0], name)
+                if peak < 1000 or peak >= 32767:
+                    fail(f"{departure} {name}: peak {peak}")
+                elif sting and (count >= 20 * 44100 or max(abs(v) for v in data[-3:]) > 300):
+                    fail(f"{departure} {name}: a sting that doesn't end quietly")
+                elif not sting and count < 20 * 44100:
+                    fail(f"{departure} {name}: stops after {count / 44100:.2f} s, but loops")
+                tunes += 1
+    print(f"ok  the music: {tunes} tunes sound, loop or end as written, and never clip")
+
+
+def glob_music():
+    import glob
+    return glob.glob(os.path.join(ROOT, "content", "**", "*.music"), recursive=True)
+
+
+def tune_lines(path, name):
+    """A tune's voice lines in its .music file, as written."""
+    lines, inside = [], False
+    for line in open(path):
+        if not line[:1].isspace():
+            inside = line.split()[:2] == ["tune", name]
+        elif inside:
+            lines.append(line.split("#")[0] if line.lstrip().startswith("#") else line)
+    return "".join(lines)
 
 
 def main(argv):
     web = "--web" in argv
+    sounds()
+    music()
     for name, departure, choices, then, expected in ROUTES:
         got = desktop(departure, choices, then)
         with open(os.path.join(ROOT, "tests", "c64", expected)) as f:
