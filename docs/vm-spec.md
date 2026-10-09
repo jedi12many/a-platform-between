@@ -1,9 +1,10 @@
-# Story VM and Departure image spec (v0)
+# Story VM and Departure image spec (v1)
 
 How a compiled Departure is laid out, and how the Story VM runs it. Audience: whoever
 writes the compiler (`tools/qsc/`), the VM (`vm/`) or a platform front end.
 
-> **Status:** v0. The compiler (`tools/qsc/`) writes this format, and its verifier
+> **Status:** v1 (v1 added the music list and `MUSIC`; a Departure without music is still
+> written as v0, and the VM plays both). The compiler (`tools/qsc/`) writes this format, and its verifier
 > (`tools/qsc/image.py`) checks it; `qsc dump FILE.apd` disassembles an image. Byte layouts
 > may change until E1 ships; after that, changes bump the image version.
 
@@ -41,7 +42,7 @@ its own file (`DEPOT`, `CAR00`, `CAR01`, ...), so the loader stays trivial.
 | Field | Size | Notes |
 |---|---|---|
 | magic | 2 | `DP` |
-| image version | 1 | `0` for v0 |
+| image version | 1 | `0` for v0; `1` for v1, which adds the music list |
 | kind | 1 | `0` official, `1` branch, `2` siding ([deep-yards.md](deep-yards.md)) |
 | departure id | 2 | |
 | season | 1 | 0 for branch |
@@ -58,6 +59,7 @@ its own file (`DEPOT`, `CAR00`, `CAR01`, ...), so the loader stays trivial.
 | BPE pair table | 1 + 2 × pairs | pair count (≤ 128), then two bytes per pair |
 | picture names | 1 + … | count, then length-prefixed names; index = picture id |
 | encounters | 1 + … | count (≤ 32), then each one's length (2) and record; index = encounter id |
+| music names | 1 + … | v1 only: count (≤ 32), then length-prefixed names (1–20 letters); index = tune id. The front end finds each in the Departure's music file by name ([music.md](music.md)) |
 
 #### Encounters
 
@@ -154,6 +156,7 @@ car's code.
 | `PICTURE` | 11 | u8 picture | Show a picture |
 | `PAUSE` | 12 | — | Wait for a key |
 | `CHAPTER` | 13 | — | Show the current car's chapter title |
+| `MUSIC` | 14 | u8 tune | Fade into tune `tune` from the music list, or `FF`: fade out to silence. The VM remembers it for saves, and tells the front end again when a save is resumed |
 
 ### Menus
 
@@ -257,7 +260,7 @@ The VM stops with an error (and the front end shows *"The train has derailed: er
 car:pc"*) if any of these fail:
 
 - pc and every jump target inside the current car's code;
-- string, scene, flag, var, picture, item and Echo ids in range;
+- string, scene, flag, var, picture, tune (or `FF`), item and Echo ids in range;
 - expression stack never over- or underflows;
 - menu not over 9 options, never empty at `MENU`;
 - `GOTO` loads a car whose index and magic match;
@@ -296,7 +299,7 @@ disk. Little-endian, version 1:
 
 | Field | Size |
 |---|---|
-| magic, version | 3: `41 53 03` (version 2 added health; 3, the yard) |
+| magic, version | 3: `41 53 04` (version 2 added health; 3, the yard; 4, the music) |
 | departure id, image hash | 2 + 2: a save only loads into the image that made it |
 | car, menu offset | 1 + 2: the `MENU` instruction to show again |
 | menu entries | 1 + 4 each: string id, target |
@@ -305,6 +308,7 @@ disk. Little-endian, version 1:
 | vars | one byte per variable |
 | rng | 2 |
 | yard | 2 |
+| the tune playing | 1: an index into the music list, or `FF` for none |
 | Debt at boarding, health now, Branch Line gives | 2 + 1 + 1 |
 | rewards already paid | 1 + 3 each: car, offset |
 | receipt so far | departure 2, ticket 4, outcome 1, XP 2, Debt paid 2, added 2, items gained and lost (1 + 2 each), Echoes (1 + 4 each: id, state, state at boarding) |

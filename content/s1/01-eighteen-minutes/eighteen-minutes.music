@@ -1,0 +1,267 @@
+# Eighteen Minutes' music (docs/music.md). Story tunes are cued with `~ music NAME` in
+# eighteen-minutes.qs; the battle screen plays `battle`, then `won` or `lost`. The
+# station's theme, `kepler`, starts again on the dock every time round.
+
+instrument pad
+  wave pulse
+  adsr a 0 e a
+  pulse 40 2 20 a0
+  vibrato 30 6 4
+
+instrument lead
+  wave pulse
+  adsr 1 8 a 6
+  pulse 30 2 20 90
+  vibrato 16 5 3
+
+instrument glass
+  wave tri
+  adsr 2 9 6 9
+  vibrato 20 4 3
+
+instrument seq
+  wave pulse
+  adsr 0 6 4 3
+  pulse 20 4 10 70
+
+instrument bass
+  wave saw
+  wave tri
+  adsr 0 8 a 4
+
+instrument throb
+  wave tri+ring
+  wave tri
+  adsr 4 4 c 8
+
+instrument arpmin
+  wave pulse
+  wave pulse +3
+  wave pulse +7
+  loop 0
+  adsr 0 0 9 6
+  pulse 60 1 40 a0
+
+instrument arpmaj
+  wave pulse
+  wave pulse +4
+  wave pulse +7
+  loop 0
+  adsr 0 0 9 6
+  pulse 60 1 40 a0
+
+instrument kick
+  wave noise =c5
+  wave pulse =c3
+  wave pulse =g2
+  adsr 0 8 0 0
+
+instrument snare
+  wave noise =e6
+  wave pulse =c4
+  wave noise =c6
+  wave noise =a5
+  adsr 0 9 0 0
+
+instrument hat
+  wave noise =c7
+  adsr 0 3 0 0
+
+instrument tick
+  wave tri
+  adsr 0 4 0 0
+
+# ------------------------------------------------------------- waystation
+# The ticket window: G, E minor, C, D, slowly.
+
+pattern window_chords arpmaj
+  g3/16 @arpmin e3/16 @arpmaj c3/16 d3/16
+
+pattern window_bass bass
+  g2/16 e2/16 c2/16 d2/16
+
+pattern window_air glass
+  b4/8 d5/8 g4/16 e5/8 d5/8 f#4/16
+
+tune waystation tempo 8
+  1: r32 | window_air
+  2: | window_chords
+  3: | window_bass
+
+# ------------------------------------------------------------- journey
+# The train between: a chug, a long low line, the stars going past.
+
+pattern chug hat
+  c4/2 c4/2 @snare c4/2 @hat c4/2
+
+pattern rails bass
+  e2/4 e2/2 b2/2 e2/4 d2/4
+
+pattern stars glass
+  e5/32 b4/16 d5/16 g5/32 f#5/32
+
+tune journey tempo 5
+  1: r32 | stars
+  2: | chug
+  3: | rails rails rails+3 rails-2
+
+# ------------------------------------------------------------- kepler
+# Kepler-Nine: a running sequence in E minor round a dull red sun.
+
+pattern sequence seq
+  e4/1 b4 g4 b4 e5 b4 g4 b4 e4 b4 g4 b4 e5 b4 g4 b4
+
+pattern orbit bass
+  e2/8 e2/4 e2/4
+
+pattern beacon pad
+  b4/32 a4/16 g4/16 f#4/32 g4/16 f#4/16
+
+tune kepler tempo 5
+  1: r64 | beacon
+  2: | sequence sequence sequence-4 sequence-4 sequence-7 sequence-7 sequence-1 sequence-1
+  3: | orbit orbit orbit-4 orbit-4 orbit-7 orbit-7 orbit-1 orbit-1
+
+# ------------------------------------------------------------- countdown
+# The command deck: a clock, and a bass climbing a step at a time.
+
+pattern seconds tick
+  c6/4 r/4 c6/4 r/4
+
+pattern climb bass
+  e2/4 e2/4 e2/4 e2/4
+
+pattern strain pad
+  b3/32 c4/32
+
+tune countdown tempo 5
+  1: | seconds
+  2: | strain
+  3: | climb climb+1 climb+2 climb+3
+
+# ------------------------------------------------------------- reactor
+# The hatch corridor and the heart: heat, ticking walls, a slow throb.
+
+pattern heat throb
+  e1/16 e1/8 f1/8
+
+pattern ticking tick
+  r/6 g6/1 r/9 c#6/1 r/15
+
+pattern furnace pad
+  e3/32 f3/32
+
+tune reactor tempo 6
+  1: | ticking
+  2: | furnace
+  3: | heat
+
+# ------------------------------------------------------------- meridian
+# The station's mind: a glass voice in whole tones, tired and warm.
+
+pattern voice glass
+  e5/8 f#5/8 g#5/8 a#5/8 g#5/16 r/16
+
+pattern thought arpmaj
+  c4/32 d4/32
+
+pattern ground bass
+  c2/32 d2/32
+
+tune meridian tempo 8
+  1: | voice
+  2: | thought
+  3: | ground
+
+# ------------------------------------------------------------- last_loop
+# One more time, and it stays done: the station's theme, driven.
+
+pattern push kick
+  c4/2 @hat c4/2 @snare c4/2 @hat c4/2
+
+pattern resolve lead
+  e5/8 d5/4 b4/4 c5/8 b4/4 g4/4 a4/8 b4/4 c5/4 b4/16
+
+tune last_loop tempo 4
+  1: r32 | resolve
+  2: | sequence sequence sequence-4 sequence-4 sequence-7 sequence-7 sequence-1 sequence-1
+  3: | push
+
+# ------------------------------------------------------------- home
+# Home: C major, for whatever was saved.
+
+pattern home_air lead
+  e5/6 d5/2 c5/8 g4/8 a4/8 c5/6 d5/2 e5/8 d5/16
+
+pattern home_chords arpmaj
+  c3/16 @arpmin a2/16 @arpmaj f2/16 g2/16
+
+pattern home_bass bass
+  c2/16 a1/16 f1/16 g1/16
+
+tune home tempo 7
+  1: r16 | home_air
+  2: | home_chords
+  3: | home_bass
+
+# ------------------------------------------------------------- fin
+# The end.
+
+pattern cadence lead
+  g4/4 b4/4 d5/4 c5/24
+
+pattern cadence_chord arpmaj
+  g3/12 c3/24
+
+pattern cadence_bass bass
+  g1/12 c2/24
+
+tune fin tempo 6
+  1: cadence
+  2: cadence_chord
+  3: cadence_bass
+
+# ------------------------------------------------------------- battle, won, lost
+# A fight on the station: driving eighths in E minor, round E, C, D and B.
+
+pattern drive bass
+  e1/2 e2 e1 e2 e1 e2 e1 e2
+
+pattern beat kick
+  c4/4 @snare c4/4 @kick c4/2 c4/2 @snare c4/4
+
+pattern alarm lead
+  b4/4 e5 g5 f#5 e5/8 b4/8 c5/4 d5 e5 g5 f#5/12 r/4
+
+tune battle tempo 4
+  1: | alarm
+  2: | beat
+  3: | drive drive-4 drive-2 drive-5
+
+pattern hurrah lead
+  e5/2 g#5/2 b5/2 e6/10
+
+pattern hurrah_chord arpmaj
+  e3/16
+
+pattern hurrah_bass bass
+  e2/16
+
+tune won tempo 4
+  1: hurrah
+  2: hurrah_chord
+  3: hurrah_bass
+
+pattern fall lead
+  b4/4 a4/4 g4/4 f#4/12
+
+pattern fall_chord arpmin
+  e3/24
+
+pattern fall_bass bass
+  e1/24
+
+tune lost tempo 8
+  1: fall
+  2: fall_chord
+  3: fall_bass

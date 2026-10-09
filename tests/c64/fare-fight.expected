@@ -47,6 +47,7 @@ left of you, and pulls.
 > 1
 
 [picture pic01]
+[music arrivals]
 You are sitting on a wooden bench, and
 you are breathing, and both of those
 things are wrong.
@@ -102,6 +103,7 @@ mournful and far away.
 ~ The Buffer Stop ~
 
 [picture pic02]
+[music concourse]
 The platform opens into a great hall.
 Iron arches, a tiled floor worn into
 paths by more feet than you can imagine,
@@ -145,6 +147,7 @@ like visitors.
 3. Leave them to it
 > 1
 
+[music battle]
 -- A fight! --
 -- Round 1 --
 Ash rat moves.
@@ -173,8 +176,10 @@ against 58, a crit: 10 damage.
 You attack Ash rat: 74 + 20 = 94
 against 60, a hit: 23 damage.
 Ash rat is down.
+[music won]
 You won the fight.
 [Press a key.]
+[music concourse]
 The last rat bolts into a hole behind
 the trunks, trailing sparks.
 
@@ -205,6 +210,7 @@ Saved.
 2. Pick up a saved trip
 > 2
 
+[music concourse]
 Picking up where you left off.
 
 1. Read the departure board
@@ -213,6 +219,7 @@ Picking up where you left off.
 > 3
 
 [picture pic03]
+[music buffer_stop]
 The Buffer Stop is warm, and crowded,
 and wrong in a dozen small ways that add
 up to cozy. A knight in rusted plate is
@@ -238,6 +245,7 @@ stationmaster watches a clock.
 > 3
 
 [picture pic04]
+[music ledger]
 The figure in the velvet coat rises as
 you approach. It is very tall. Its face
 is a polite arrangement of shadow, and
@@ -302,6 +310,7 @@ it comes. Fen will find you a bed."
 
 "Welcome back to the living, Kestrel."
 
+[music welcome]
 ~ Departure complete ~
 
 Your receipt:

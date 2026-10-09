@@ -372,6 +372,7 @@ can *read* all of them, in conditions and with `{name}`, `{race}` and `{class}`.
 | Command | Does |
 |---|---|
 | `~ picture platform_bench` | show a picture (ignored where there's no picture) |
+| `~ music night_train` / `~ music off` | fade into a tune from the Departure's music file, `NAME.music` beside its `.qs` ([music.md](music.md)), or fade out to silence; a save keeps it (ignored where there's no music) |
 | `~ pause` | wait for a key before continuing |
 
 ### Ending

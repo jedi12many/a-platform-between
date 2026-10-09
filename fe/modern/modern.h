@@ -90,16 +90,36 @@ void plat_show(void);
 void plat_saved(void);
 /* Show the screen and wait `ms` milliseconds, for animation. */
 void plat_wait(unsigned ms);
-/* Play a sound: mono, 16 bits, SFX_RATE samples a second (fe/modern/sound.c). */
+/* Sound (fe/modern/sound.c): mono, 16 bits, SFX_RATE samples a second. Start pulling
+ * samples with sound_mix, from now on; and keep sound_mix out while the lock's held. */
 #define SFX_RATE 44100
-void plat_sound(const int16_t *samples, int count);
+void plat_audio_start(void);
+void plat_audio_lock(void);
+void plat_audio_unlock(void);
+
+/* sid.c: the SID's three voices from its registers. */
+typedef struct {
+    uint8_t regs[25];
+    uint32_t acc[3], noise[3], level[3];
+    uint8_t stage[3];               /* 0 attack, 1 decay and sustain, 2 release */
+} modern_sid;
+void sid_reset(modern_sid *s);
+void sid_registers(modern_sid *s, const uint8_t *regs);
+void sid_render(modern_sid *s, int16_t *out, int n);
+
+/* sound.c: the Departure's music (its MUSIC file), played as the C64 plays it. */
+void sound_setup(void);
+void sound_mix(int16_t *out, int n);
 /* A sound effect's samples (client/sfx.c), as the SID plays it: how many, up to max. */
 int sfx_render(uint8_t effect, int16_t *out, int max);
+/* A tune from a music file, alone, until it ends or `max` samples: how many. */
+int music_render(const uint8_t *data, uint16_t len, uint8_t tune, int16_t *out, int max);
 
 /* screen.c, for scene.c: a key as the story's screen takes them (from the choices file
  * in tests), with no cursor; and a line into the transcript, if there is one. */
 uint16_t modern_key(void);
 void modern_log(const char *line);
+void modern_note(const char *line);  /* the same, after the text so far, as a picture's */
 void modern_end_row(void);           /* the story's last row into the transcript */
 int modern_scripted(void);          /* keys come from a choices file */
 

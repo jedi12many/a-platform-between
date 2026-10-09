@@ -124,6 +124,14 @@ void modern_log(const char *s)
     if (transcript) fprintf(transcript, "%s\n", s);
 }
 
+void modern_note(const char *s)
+{
+    if (transcript) {
+        settle();
+        fprintf(transcript, "%s\n", s);
+    }
+}
+
 int modern_scripted(void)
 {
     return choices != NULL;
@@ -271,6 +279,7 @@ void modern_setup(const char *departure_dir, const char *saves, FILE *choice_fil
     top = 1;
     col = rows_shown = 0;
     draw_status();
+    sound_setup();
 }
 
 void hal_init(void) {}

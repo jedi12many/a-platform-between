@@ -61,7 +61,7 @@ map hatch
 === The Ticket
 
 == ticket
-~ picture concourse
+~ picture concourse ~ music waystation
 The ticket window is open. There is no morning at the Waystation, but you knew it when it
 came, and here it is.
 
@@ -136,6 +136,7 @@ The doors close without a sound.
 + [Find a seat] -> journey
 
 == journey
+~ music journey
 The train does not so much leave as stop being at the Waystation. Through the window the
 grey shimmer thins into Static, the Static into dark, the dark into stars, and the stars
 into a long silver wheel turning in front of a dull red sun.
@@ -150,7 +151,7 @@ destroyed in eighteen minutes."
 === Kepler-Nine
 
 == dock
-~ picture dock
+~ picture dock ~ music kepler
 ~ let minutes = 18
 ~ heal full
 ~ clear drone_down ~ clear helped_doctor ~ clear teo_believes
@@ -204,6 +205,7 @@ if realized
 ~ sub minutes 1
 if minutes = 0
     -> meltdown
+~ music kepler
 The ring corridor curves away in both directions, rising out of sight. People run past
 carrying the wrong things: a plant, a guitar, a box of mugs.
 
@@ -319,7 +321,7 @@ if race RAD_DRYAD
 
 == command
 ~ sub minutes 3
-~ picture command
+~ picture command ~ music countdown
 The lift opens on the command deck: a ring of dead consoles around one that still works,
 and in front of it a woman in a captain's coat, shouting at the ceiling.
 
@@ -359,7 +361,7 @@ else
 + [Take the lift back down] -> ring
 
 == meltdown
-~ picture static
+~ picture static ~ music off
 The screens reach zero.
 
 There is a moment when everything on Kepler-Nine is very bright and very quiet, and you
@@ -372,7 +374,7 @@ Then white. Then Static. Then nothing at all.
 
 == hatch_corridor
 ~ sub minutes 3
-~ picture reactor
+~ picture reactor ~ music reactor
 The corridor to the reactor runs hot. The walls tick. Halfway along, in front of the
 hatch, a maintenance drone the size of a fridge hangs in the air, its welding arm sparking
 in slow, patient arcs. It has decided that nobody goes past.
@@ -432,6 +434,7 @@ One console is lit. It says:
 === Again
 
 == realization
+~ music kepler
 You stop in the middle of the ring and let the station run past you.
 
 Eighteen minutes. A dead freighter you could set a watch by. A man who will never
@@ -461,6 +464,7 @@ You go to find the crew.
 ~ sub minutes 1
 if minutes = 0
     -> meltdown
+~ music kepler
 The ring runs past you: the same people, the same things in their arms. Every screen
 says {minutes} minutes.
 if knows_meridian and opened_safe and (knows_launch or knows_override)
@@ -567,7 +571,7 @@ The captain's quarters: a bunk, a photograph of a girl, and a safe with a keypad
 
 == heart
 ~ sub minutes 3
-~ picture reactor
+~ picture reactor ~ music meridian
 The drone in the hatch corridor drifts aside as you come. "Let them through," says the
 ceiling, softly. "They've earned it."
 
@@ -589,6 +593,7 @@ The reactor room is a cathedral of heat. One console is lit: LOCKED BY MERIDIAN.
 === The Last Loop
 
 == last_call
+~ music last_loop
 "You know all of it now," says MERIDIAN, in your ear. "So do I. One more time, then.
 This time I won't take it back. Whatever you do in the next eighteen minutes stays done."
 
@@ -659,6 +664,7 @@ and goes, out into the signal, between the stars. The ceiling is very quiet afte
 === Home
 
 == epilogue
+~ music home
 if contained
     The reactor's light holds steady. The klaxons stop, one by one. Kepler-Nine is going
     to live, and the screens don't know what to say: they show 00:00, then nothing.
@@ -712,7 +718,7 @@ The Stationmaster listens to all of it, and writes none of it down.
 -> journey_end
 
 == journey_end
-~ xp 30
+~ music fin ~ xp 30
 | -- EIGHTEEN MINUTES --
 |  The end.
 ~ end complete

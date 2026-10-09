@@ -5,6 +5,8 @@ tests/music/, alone and under a script of commands (change, fade out, effects, v
 the C player (client/music.c, built with the sanitizers as build/music_trace) and the
 6502 player (fe/c64/music.s, from build/c64/apb.prg, on py65) must write the same 25
 registers, frame by frame. Damaged files must agree too, and never crash the C player.
+No frame of a real tune may take the 6502 more than BUDGET cycles: the raster interrupt
+plays it, under the screen.
 """
 
 import glob
@@ -26,6 +28,7 @@ TRACE = os.path.join(ROOT, "build", "music_trace")
 PRG = os.path.join(ROOT, "build", "c64", "apb.prg")
 DBG = os.path.join(ROOT, "build", "c64", "apb.dbg")
 FRAMES = 400
+BUDGET = 10000      # 6502 cycles a frame a real tune may take: half a PAL frame (docs/c64.md)
 
 
 def scripts(tunes):
@@ -72,7 +75,7 @@ def first_difference(a, b):
     return None
 
 
-def compare(name, data, tune, frames, script, tmp, failures, worst):
+def compare(name, data, tune, frames, script, tmp, failures, worst, budget=None):
     path = os.path.join(tmp, "t.mu")
     with open(path, "wb") as f:
         f.write(data)
@@ -84,6 +87,8 @@ def compare(name, data, tune, frames, script, tmp, failures, worst):
         return
     six, most = c64_run(data, tune, frames, script)
     worst[0] = max(worst[0], most)
+    if budget and most > budget:
+        failures.append(f"{name}: a frame takes the 6502 {most} cycles; the most is {budget}")
     for who, got in (("C", c), ("6502", six)):
         d = first_difference(ref, got)
         if d:
@@ -112,7 +117,8 @@ def damaged(data, rng):
 
 def main():
     sources = sorted(glob.glob(os.path.join(ROOT, "content", "**", "*.music"), recursive=True)
-                     + glob.glob(os.path.join(HERE, "*.music")))
+                     + glob.glob(os.path.join(HERE, "*.music"))
+                     + glob.glob(os.path.join(ROOT, "tools", "music", "*.music")))
     failures, worst, runs = [], [0], 0
     files = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -130,11 +136,14 @@ def main():
             for tune in range(data[3]):
                 for k, script in enumerate(scripts(data[3])):
                     compare(f"{name} tune {tune} script {k}", data, tune, FRAMES, script, tmp,
-                            failures, worst)
+                            failures, worst, BUDGET)
                     runs += 1
+        real = worst[0]
         rng = random.Random(1541)
         for name, data in files:
-            for n in range(150):
+            # Many damaged copies of the tests' file, written to reach every rule; fewer
+            # of each Departure's.
+            for n in range(150 if name.startswith("tests") else 40):
                 bad = damaged(data, rng)
                 tune = rng.randrange(max(1, data[3]))
                 script = scripts(max(1, data[3]))[n % 6]
@@ -147,7 +156,7 @@ def main():
         print(f"{len(failures)} of {runs} runs failed")
         return 1
     print(f"test-music: {runs} runs from {len(files)} files: Python, C and 6502 agree "
-          f"(most 6502 cycles in a frame: {worst[0]})")
+          f"(most 6502 cycles in a frame: {real}; on a damaged file, {worst[0]})")
     return 0
 
 

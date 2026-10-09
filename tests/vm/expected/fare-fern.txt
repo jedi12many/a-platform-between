@@ -21,6 +21,7 @@ Then a hand. It reaches through the end of everything, takes hold of whatever is
 > 2
 You fight. It is like fighting the tide with your teeth. The hand doesn't mind; it has done this before.
 [picture 1 platform_bench]
+[music arrivals]
 You are sitting on a wooden bench, and you are breathing, and both of those things are wrong.
 The bench stands on a railway platform under a roof of green iron and cracked glass. Beyond the glass there is no sky, only a slow grey shimmer, like rain that has forgotten which way is down. A sign hangs from the ironwork:
 ARRIVALS -- ALL LINES
@@ -39,6 +40,7 @@ The bench creaks. Somewhere down the platform, a train whistle sounds, mournful 
 > 1
 === The Buffer Stop
 [picture 2 concourse]
+[music concourse]
 The platform opens into a great hall. Iron arches, a tiled floor worn into paths by more feet than you can imagine, and above it all a departure board, its letters flipping and clattering though no one is watching.
 Across the hall, warm light spills from a doorway under a painted sign: a rail track ending in a cheerful red barrier. THE BUFFER STOP.
   1) Read the departure board
@@ -60,11 +62,13 @@ The platform ends where the glass roof ends, and past it there is only the grey 
 Your hand goes in and comes back wet with something that isn't water. It's cold, and it's a little like being forgotten.
 Nobody leaves the Waystation that way. You understand that now.
 [picture 2 concourse]
+[music concourse]
 The great hall. The board clatters. The Buffer Stop glows.
   1) Go into the Buffer Stop
   2) Try the door marked LOST PROPERTY
 > 1
 [picture 3 buffer_stop]
+[music buffer_stop]
 The Buffer Stop is warm, and crowded, and wrong in a dozen small ways that add up to cozy. A knight in rusted plate is arguing with a cloud of moths. Something made of glass is drinking something made of light.
 Behind the bar, a tree is wiping down glasses. Its bark glows faintly green, and the rag in its twig-hand keeps catching fire, and it keeps patting it out without looking.
 In the corner booth, alone, sits a tall figure in a velvet coat. A brass ledger lies closed on the table in front of it. It is watching you the way a stationmaster watches a clock.
@@ -82,6 +86,7 @@ Fen looks at your bark, then at the poisoned glow in it, and smiles like family.
   1) Go to the corner booth
 > 1
 [picture 4 stationmaster]
+[music ledger]
 The figure in the velvet coat rises as you approach. It is very tall. Its face is a polite arrangement of shadow, and its voice is warm, and patient, and has never once been surprised.
 "Please, sit. You'll want to sit for this part."
 It opens the brass ledger and turns it toward you. On the page, in a careful hand, someone has begun to write your name, and stopped halfway.
@@ -117,5 +122,6 @@ The shadows of its face rearrange into something like amusement. "Fen is a good 
 "Splendid." The Stationmaster closes the ledger. Somewhere far away, a whistle answers.
 "Your first ticket will be at the window in the morning. There is no morning here, of course, but you'll know it when it comes. Fen will find you a bed."
 "Welcome back to the living, Fern."
+[music welcome]
 [receipt: departure 0, complete, xp 5, debt paid 0 added 50000, gained, lost, echoes]
 [level 1, xp 5, debt 50000]

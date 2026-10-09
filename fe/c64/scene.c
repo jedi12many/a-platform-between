@@ -4,7 +4,7 @@
  * sprite shapes at $EC00, all in the RAM under the KERNAL, loaded from the disk files
  * btab, bchr and bspr, tools/battlegfx.py), more sprites than the VIC's eight (planned
  * here, put up by the raster interrupt in fe/c64/sprites.s), the keyboard and a joystick in
- * port 2, and the SID's sound effects.
+ * port 2, and the sound effects (the music player plays them, fe/c64/tune.s).
  *
  * It's in the BATTLE overlay with the rules and client/tactics.c, so it's here only
  * during a fight. The story's text screen at $0400 is left as it was, and fe/c64/c64.c
@@ -24,7 +24,6 @@
 #define SPRITE_MC1 (*(volatile uint8_t *)0xD025)
 #define SPRITE_MC2 (*(volatile uint8_t *)0xD026)
 #define JOYSTICK   (*(volatile uint8_t *)0xDC00)
-#define VOICE1     ((volatile uint8_t *)0xD400)
 
 #define SHAPES_AT  176          /* sprite pointer of the shapes at $EC00, in bank 3   */
 #define SPRITES    APB_SCENE_SPRITES
@@ -40,6 +39,9 @@
 /* fe/c64/c64.c */
 void c64_scene(uint8_t on);
 
+/* fe/c64/tune.s */
+void __fastcall__ tune_effect(uint8_t effect);
+
 /* fe/c64/sprites.s */
 typedef struct {
     uint8_t top_x[8], top_y[8], top_ptr[8], top_col[8];
@@ -50,7 +52,6 @@ typedef struct {
 
 extern scene_plan scene_next;            /* tests/c64/run_c64.py draws the screen from it */
 extern volatile uint8_t scene_pending;
-extern uint8_t sfx_time, sfx_sweep, sfx_wave, sfx_freq;
 void scene_start(void);
 void scene_stop(void);
 void __fastcall__ scene_wait(uint8_t frames);
@@ -298,24 +299,8 @@ uint8_t hal_scene_key(void)
 
 /* ------------------------------------------------------------------ sound */
 
-/* The SID's first voice, a sound at a time, from client/sfx.c's table. */
+/* On the music's third voice (docs/music.md): the player has client/sfx.c's table. */
 void hal_scene_sound(uint8_t effect)
 {
-    const uint8_t *e;
-
-    if (effect >= APB_SFX_COUNT) return;
-    e = apb_sfx[effect];
-    sfx_time = 0;
-    VOICE1[4] = 0;                          /* the last one's gate shut, so this one starts */
-    VOICE1[0] = 0;
-    VOICE1[1] = e[1];
-    VOICE1[2] = 0;
-    VOICE1[3] = 8;                          /* pulse width, half */
-    VOICE1[5] = e[3];
-    VOICE1[6] = e[4];
-    sfx_freq = e[1];
-    sfx_sweep = e[2];
-    sfx_wave = (uint8_t)(e[0] & 0xFE);
-    VOICE1[4] = e[0];
-    sfx_time = e[5];
+    if (effect < APB_SFX_COUNT) tune_effect(effect);
 }

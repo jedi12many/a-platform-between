@@ -14,12 +14,14 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "..", "registry"))
+sys.path.insert(0, os.path.join(HERE, "..", "music"))
 
+import musicc  # noqa: E402
 import registry  # noqa: E402
 from codegen import CompileError, compile_departure  # noqa: E402
 from image import BadImage, disassemble, verify  # noqa: E402
 from manifest import ManifestError, manifest  # noqa: E402
-from parse import parse  # noqa: E402
+from parse import parse, suggest  # noqa: E402
 
 
 def report(diag, source_lines, out=sys.stderr):
@@ -32,11 +34,30 @@ def report(diag, source_lines, out=sys.stderr):
                 print(f"    | {source_lines[line - 1].rstrip()}", file=out)
 
 
+def check_music(path, dep, diag):
+    """Every `~ music NAME` must be a tune in the Departure's music file, NAME.music beside
+    its .qs (docs/music.md), when it has one."""
+    music = os.path.splitext(path)[0] + ".music"
+    if not dep.music or not os.path.exists(music):
+        return
+    try:
+        _, tunes = musicc.build(open(music).read())
+    except musicc.MusicError as e:
+        diag.error(dep.music[next(iter(dep.music))],
+                   f"{os.path.basename(music)} doesn't compile: {e}")
+        return
+    for name, line in dep.music.items():
+        if name not in tunes:
+            diag.error(line, f"there's no tune called '{name}' in {os.path.basename(music)}."
+                       + suggest(name, tunes))
+
+
 def load(path):
     with open(path, encoding="utf-8") as f:
         source = f.read()
     reg = registry.load()
     dep, diag = parse(path, source, reg)
+    check_music(path, dep, diag)
     report(diag, source.splitlines())
     if diag.errors:
         print(f"{len(diag.errors)} error(s), {len(diag.warnings)} warning(s)", file=sys.stderr)

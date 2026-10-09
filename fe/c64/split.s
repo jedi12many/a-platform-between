@@ -10,10 +10,15 @@
 ;   just before row 1:  bitmap $E000, screen $F400, multicolour bitmap
 ;   just before row 13: screen $F800, characters $D000, hires text, black
 ;
-; The second one also runs the KERNAL's own interrupt (keyboard, cursor, clock) once a
-; frame, in place of the CIA timer it normally runs from.
+; The second one also plays a frame of music (fe/c64/tune.s) and runs the KERNAL's own
+; interrupt (keyboard, cursor, clock), once a frame, in place of the CIA timer it
+; normally runs from. Without a picture, only the second one runs. The interrupt is on
+; from the start (irq_on) to the end (irq_off), but for fights, when the battle screen
+; has its own (fe/c64/sprites.s), which gives it back with irq_on.
 
         .export _split_on, _split_off, _pic_show, _text_screen, _font_install, _text_scroll
+        .export _irq_on, irq_on, _irq_off, _split_picture
+        .import tune_tick
         .importzp ptr1, ptr2, ptr3, ptr4, tmp1
 
 ROW_PIC   = 51 + 8 * 1 - 2          ; raster lines: a little before each row starts
@@ -27,10 +32,14 @@ COLOR_RAM  = $D800 + 40             ; row 1
 
 phase:  .byte 0                     ; 0: next is the picture's turn; 1: the text's
 back:   .byte 0
+_split_picture:                     ; (tests/c64/run_c64.py reads it)
+picture: .byte 0                    ; 1 while a picture shows
 
         .segment "CODE"
 
-_split_on:
+; The raster interrupt on, with no picture: the text's turn, once a frame.
+_irq_on:
+irq_on:
         sei
         lda #$7F
         sta $DC0D                   ; no CIA 1 timer interrupts:
@@ -40,8 +49,10 @@ _split_on:
         lda #>irq
         sta $0315
         lda #0
+        sta picture
+        lda #1
         sta phase
-        lda #ROW_PIC
+        lda #ROW_TEXT
         sta $D012
         lda $D011
         and #$7F
@@ -53,7 +64,8 @@ _split_on:
         cli
         rts
 
-_split_off:
+; And off, for good: the CIA timer runs the KERNAL again.
+_irq_off:
         sei
         lda #0
         sta $D01A
@@ -64,7 +76,32 @@ _split_off:
         lda #$EA
         sta $0315
         lda #$81
-        sta $DC0D                   ; the CIA 1 timer again
+        sta $DC0D
+        jsr text_screen
+        cli
+        rts
+
+; A picture on rows 1-12, from the next frame.
+_split_on:
+        sei
+        lda #1
+        sta picture
+        lda #0
+        sta phase
+        lda #ROW_PIC
+        sta $D012
+        cli
+        rts
+
+; Text all the way down.
+_split_off:
+        sei
+        lda #0
+        sta picture
+        lda #1
+        sta phase
+        lda #ROW_TEXT
+        sta $D012
         jsr text_screen
         cli
         rts
@@ -116,10 +153,13 @@ irq:
         jmp $EA81                   ; done: restore the registers, return
 @text:
         jsr text_screen
+        lda picture
+        beq @alone
         lda #ROW_PIC
         sta $D012
         lda #0
         sta phase
+@alone: jsr tune_tick               ; a frame of music
         jmp $EA31                   ; the KERNAL's interrupt: keys, cursor, clock
 
 _text_screen:

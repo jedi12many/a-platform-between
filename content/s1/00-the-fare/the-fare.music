@@ -1,0 +1,204 @@
+# The Fare's music (docs/music.md). Story tunes are cued with `~ music NAME` in
+# the-fare.qs; the battle screen plays `battle`, then `won` or `lost`.
+
+instrument pad
+  wave pulse
+  adsr a 0 f a
+  pulse 40 2 20 a0
+
+instrument whistle
+  wave tri
+  adsr 4 0 c 8
+  vibrato 8 4 2
+
+instrument lead
+  wave pulse
+  adsr 1 8 a 5
+  pulse 30 2 20 90
+  vibrato 16 5 3
+
+instrument bass
+  wave saw
+  wave tri
+  adsr 0 8 a 4
+
+instrument arpmin
+  wave pulse
+  wave pulse +3
+  wave pulse +7
+  loop 0
+  adsr 0 0 9 6
+  pulse 60 1 40 a0
+
+instrument arpmaj
+  wave pulse
+  wave pulse +4
+  wave pulse +7
+  loop 0
+  adsr 0 0 9 6
+  pulse 60 1 40 a0
+
+instrument kick
+  wave noise =c5
+  wave pulse =c3
+  wave pulse =g2
+  adsr 0 8 0 0
+
+instrument snare
+  wave noise =e6
+  wave pulse =c4
+  wave noise =c6
+  wave noise =a5
+  adsr 0 9 0 0
+
+instrument hat
+  wave noise =c7
+  adsr 0 3 0 0
+
+instrument tick
+  wave tri
+  adsr 0 4 0 0
+
+# ------------------------------------------------------------- arrivals
+# The bench under the green iron roof: A minor, F, C, E, and a whistle far off.
+
+pattern sigh pad
+  e4/16 f4/16 e4/16 g#4/16
+
+pattern whistle_far whistle
+  r/24 e5/6 c5/10 r/24
+
+pattern station_chords arpmin
+  a3/16 @arpmaj f3/16 c4/16 e3/16
+
+pattern low_road bass
+  a2/16 f2/16 c3/16 e2/16
+
+tune arrivals tempo 8
+  1: | sigh whistle_far
+  2: | station_chords
+  3: | low_road
+
+# ------------------------------------------------------------- concourse
+# The great hall: a walking bass in D minor, and a tune for wandering.
+
+pattern walk bass
+  d2/4 f2 a2 c3 bb1 d2 f2 a2 g1 bb1 d2 f2 a1 c#2 e2 g2
+
+pattern hall_chords arpmin
+  d3/16 @arpmaj bb2/16 @arpmin g2/16 @arpmaj a2/16
+
+pattern hall lead
+  a4/6 g4/2 f4/4 e4/4 d4/8 f4/8 g4/6 f4/2 e4/4 d4/4 c#4/8 e4/4 a3/4
+
+pattern hall_answer lead
+  d5/6 c5/2 a4/8 bb4/6 a4/2 f4/8 g4/4 a4 bb4 d5 c#5/12 r/4
+
+tune concourse tempo 6
+  1: r64 | hall hall_answer
+  2: | hall_chords
+  3: | walk
+
+# ------------------------------------------------------------- buffer_stop
+# The bar: warm, crowded, F major, with a light step to it.
+
+pattern bounce bass
+  f2/4 c3 f2 c3 bb1 f2 bb1 f2 c2 g2 c2 g2 f2 c3 f2/2 e2 d2 c2
+
+pattern tap kick
+  c4/4 @hat c4/2 c4/2 @snare c4/4 @hat c4/4
+
+pattern tavern lead
+  a4/4 c5 f5 c5 d5 c5 bb4 a4 g4 bb4 e5 d5 c5 a4 f4/8
+
+pattern tavern_turn lead
+  f5/6 e5/2 d5/4 c5/4 d5/6 c5/2 bb4/4 a4/4 g4/4 a4 bb4 g4 f4/12 r/4
+
+tune buffer_stop tempo 5
+  1: | tavern tavern_turn
+  2: | tap
+  3: | bounce
+
+# ------------------------------------------------------------- ledger
+# The Stationmaster: a slow clock, a low toll, and a chord that won't settle.
+
+pattern clock tick
+  c6/4 r/4 g5/4 r/4
+
+pattern gloom pad
+  g3/16 ab3/16 g3/16 f#3/16
+
+pattern toll bass
+  c2/32 db2/16 c2/16
+
+tune ledger tempo 9
+  1: | clock
+  2: | gloom
+  3: | toll
+
+# ------------------------------------------------------------- welcome
+# The terms accepted: a sting, up into C major, and done.
+
+pattern rise lead
+  c5/4 e5/4 g5/4 c6/16
+
+pattern rise_chord arpmaj
+  c4/28
+
+pattern rise_bass bass
+  c2/28
+
+tune welcome tempo 6
+  1: rise
+  2: rise_chord
+  3: rise_bass
+
+# ------------------------------------------------------------- battle
+# A fight: driving eighths in A minor, round A, F, G and E.
+
+pattern drive bass
+  a1/2 a2 a1 a2 a1 a2 a1 a2
+
+pattern beat kick
+  c4/4 @snare c4/4 @kick c4/2 c4/2 @snare c4/4
+
+pattern charge lead
+  e4/4 a4 b4 c5 b4/8 a4/4 g4 a4 b4 c5 d5 e5/12 r/4
+
+pattern charge_back lead
+  e5/4 d5 c5 b4 c5/8 a4/8 b4/4 c5 d5 b4 g#4/12 r/4
+
+tune battle tempo 4
+  1: | charge charge_back
+  2: | beat
+  3: | drive drive-4 drive-2 drive-5
+
+# ------------------------------------------------------------- won and lost
+
+pattern hurrah lead
+  a4/2 c#5/2 e5/2 a5/10
+
+pattern hurrah_chord arpmaj
+  a3/16
+
+pattern hurrah_bass bass
+  a2/16
+
+tune won tempo 4
+  1: hurrah
+  2: hurrah_chord
+  3: hurrah_bass
+
+pattern fall lead
+  e4/4 d4/4 c4/4 b3/12
+
+pattern fall_chord arpmin
+  a3/24
+
+pattern fall_bass bass
+  a1/24
+
+tune lost tempo 8
+  1: fall
+  2: fall_chord
+  3: fall_bass

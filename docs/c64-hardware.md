@@ -102,9 +102,10 @@ What the screen does:
 into how modern C64 games are made: music, then transitions, comfort in a fight, ELoad and
 save slots, a profiler, the art pipeline, presentation.
 
-**E10: music.** A tune for the title, one for the Waystation, one per Departure: a
-GoatTracker 2 player in the main program, subtunes for each mood, and the sound effects
-borrowing a voice ([c64-craft.md](c64-craft.md#1-music-e10)).
+**E10: music (done).** Our own player, the same on every machine ([music.md](music.md)):
+a tune file per Departure, tunes for each mood and place, cued from the story, a fight's
+own tunes, and the sound effects borrowing a voice
+([c64-craft.md](c64-craft.md#1-music-e10-done)).
 
 **E11: pictures that move.** Colour cycling and a few swapped characters per frame: the
 klaxon pulsing on Dock 3, the reactor's glow, the Static crawling, the countdown counting;

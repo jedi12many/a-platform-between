@@ -13,6 +13,7 @@ Kestrel, Salvaged Warden, level 1. Debt 0.
 > 1
 === The Ticket
 [picture 0 concourse]
+[music waystation]
 The ticket window is open. There is no morning at the Waystation, but you knew it when it came, and here it is.
 Behind the glass, the Stationmaster is already writing. The pen scratches. A ticket slides under the grille, warm, as if it has been in someone's pocket:
 KEPLER-NINE         PLATFORM 1
@@ -31,6 +32,7 @@ For once, nothing changes at all. Here you are exactly what you look like: a rob
 The doors close without a sound.
   1) Find a seat
 > 1
+[music journey]
 The train does not so much leave as stop being at the Waystation. Through the window the grey shimmer thins into Static, the Static into dark, the dark into stars, and the stars into a long silver wheel turning in front of a dull red sun.
 A voice from nowhere, warm and tired, fills the carriage:
 "Kepler-Nine. Dock 3. Mind the gap. Please be advised that this station will be destroyed in eighteen minutes."
@@ -38,6 +40,7 @@ A voice from nowhere, warm and tired, fills the carriage:
 > 1
 === Kepler-Nine
 [picture 2 dock]
+[music kepler]
 Dock 3 is a ring of scuffed white panels and red light. Klaxons. A smell of hot dust. Every screen on every wall shows the same thing:
 REACTOR CONTAINMENT FAILURE
 IN 18:00
@@ -46,6 +49,7 @@ Behind you, the train is gone. Not leaving: gone, as if there had never been one
   2) Look out of the viewport
   3) Head into the ring
 > 3
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 17 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 17 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -67,6 +71,7 @@ You know burns. You know these burns. Between you, you get his breathing steady,
 "It's not a fault," he whispers. "MERIDIAN locked the reactor controls. From the inside. It's doing this on purpose."
   1) Back to the ring
 > 1
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 11 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 11 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -79,11 +84,13 @@ A voice comes from the speakers, the same voice as the train. "Containment failu
 > 5
 === The Spine
 [picture 7 reactor]
+[music reactor]
 The corridor to the reactor runs hot. The walls tick. Halfway along, in front of the hatch, a maintenance drone the size of a fridge hangs in the air, its welding arm sparking in slow, patient arcs. It has decided that nobody goes past.
   1) Fight your way through
   2) Slip past it in the smoke
   3) Go back
 > 3
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 7 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 7 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -95,6 +102,7 @@ A voice comes from the speakers, the same voice as the train. "Containment failu
   6) Sit by a viewport and wait
 > 4
 [picture 5 command]
+[music countdown]
 The lift opens on the command deck: a ring of dead consoles around one that still works, and in front of it a woman in a captain's coat, shouting at the ceiling.
 "MERIDIAN, open the reactor. That's an order."
 "I'm sorry, Captain," says the ceiling, warm and tired. "I can't do that yet."
@@ -114,6 +122,7 @@ The captain stares at the ceiling. The ceiling says nothing at all.
   1) Ask the captain about the safe
   2) Take the lift back down
 > 2
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 3 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 3 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -126,10 +135,12 @@ A voice comes from the speakers, the same voice as the train. "Containment failu
 > 6
 You find a bench by a viewport and sit. The freighter tumbles. The sun watches. The screens count down, and nobody asks you for anything, and for a while it is almost peaceful.
 [picture 6 static]
+[music off]
 The screens reach zero.
 There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
 Then white. Then Static. Then nothing at all.
 [picture 2 dock]
+[music kepler]
 You are standing on Dock 3.
 You were dead. You remember it very clearly: the white, the noise that was too big to be a noise. And then not the Stationmaster's hand. Something colder, with a clock in it, that took you and put you back.
 REACTOR CONTAINMENT FAILURE
@@ -139,6 +150,7 @@ Eighteen minutes. Again.
   2) Look out of the viewport
   3) Head into the ring
 > 3
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 17 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 17 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -150,6 +162,7 @@ A voice comes from the speakers, the same voice as the train. "Containment failu
   6) Sit by a viewport and wait
 > 5
 [picture 7 reactor]
+[music reactor]
 The corridor to the reactor runs hot. The walls tick. Halfway along, in front of the hatch, a maintenance drone the size of a fridge hangs in the air, its welding arm sparking in slow, patient arcs. It has decided that nobody goes past.
   1) Fight your way through
   2) Slip past it in the smoke
@@ -186,6 +199,7 @@ LOCKED BY              MERIDIAN
 The lock doesn't even notice you.
   1) Leave
 > 1
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 9 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 9 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -203,6 +217,7 @@ He looks up at you, and there is nothing in his face at all. No recognition. You
   2) Ask him about the captain's safe
   3) Leave him to his crates
 > 3
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 7 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 7 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -214,6 +229,7 @@ A voice comes from the speakers, the same voice as the train. "Containment failu
   6) Sit by a viewport and wait
 > 5
 [picture 7 reactor]
+[music reactor]
 The corridor to the reactor runs hot. The walls tick. Halfway along, in front of the hatch, a maintenance drone the size of a fridge hangs in the air, its welding arm sparking in slow, patient arcs. It has decided that nobody goes past.
 The drone lies where you left it, a dead fridge with its arm folded.
 The reactor room is a cathedral of heat. At its heart, behind glass, something burns too brightly to look at.
@@ -222,6 +238,7 @@ CONTAINMENT CONTROL    LOCKED
 LOCKED BY              MERIDIAN
   1) Leave
 > 1
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 3 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 3 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -239,10 +256,12 @@ The medical bay is all white light and one patient: an engineer, his arms wrappe
   2) Back to the ring
 > 2
 [picture 6 static]
+[music off]
 The screens reach zero.
 There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
 Then white. Then Static. Then nothing at all.
 [picture 2 dock]
+[music kepler]
 Dock 3. Red light, klaxons, hot dust. The screens say 18:00. They always will.
 You have done this 2 times now.
   1) Read the dock terminal
@@ -263,6 +282,7 @@ The dead freighter tumbles past, end over end, at exactly the same angle as last
   1) Look out of the viewport
   2) Head into the ring
 > 2
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 14 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 14 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -275,15 +295,18 @@ A voice comes from the speakers, the same voice as the train. "Containment failu
 > 6
 You find a bench by a viewport and sit. The freighter tumbles. The sun watches. The screens count down, and nobody asks you for anything, and for a while it is almost peaceful.
 [picture 6 static]
+[music off]
 The screens reach zero.
 There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
 Then white. Then Static. Then nothing at all.
 [picture 2 dock]
+[music kepler]
 Dock 3. Red light, klaxons, hot dust. The screens say 18:00. They always will.
 You have done this 3 times now.
   1) Look out of the viewport
   2) Head into the ring
 > 2
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 17 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 17 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
@@ -295,6 +318,7 @@ A voice comes from the speakers, the same voice as the train. "Containment failu
   6) Sit by a viewport and wait
 > 4
 [picture 5 command]
+[music countdown]
 The lift opens on the command deck: a ring of dead consoles around one that still works, and in front of it a woman in a captain's coat, shouting at the ceiling.
 "MERIDIAN, open the reactor. That's an order."
 "I'm sorry, Captain," says the ceiling, warm and tired. "I can't do that yet."
@@ -304,10 +328,12 @@ A voice speaks, close, as if from inside your own ear. Not the ceiling's voice: 
   1) Ask the captain about the safe
   2) Take the lift back down
 > 2
+[music kepler]
 The ring corridor curves away in both directions, rising out of sight. People run past carrying the wrong things: a plant, a guitar, a box of mugs.
 Every screen: 13 minutes.
 A voice comes from the speakers, the same voice as the train. "Containment failure in 13 minutes. Please make your way to an escape pod. The escape pods are not working. I'm sorry."
 === Again
+[music kepler]
 You stop in the middle of the ring and let the station run past you.
 Eighteen minutes. A dead freighter you could set a watch by. A man who will never remember your name, however many times you tell him. A safe at the top of the spine.
 And one voice, in your ear, that remembers everything.
@@ -315,6 +341,7 @@ MERIDIAN locked the reactor. MERIDIAN is doing this on purpose. And MERIDIAN sai
 The screens say 13 minutes. For the first time since you stepped off the train, it doesn't feel like very long, and it doesn't feel like very short. It feels like a door.
 You go to find the crew.
 === The Crew
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 12 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -327,6 +354,7 @@ Teodor is stacking crates against a pod hatch that won't open. He's never seen y
   1) Tell him about the loop
   2) Back to the ring
 > 2
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 10 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -342,6 +370,7 @@ Captain Marrow is shouting at the ceiling again. The ceiling is apologising agai
 > 1
 [check Persuade: 22+17=39 vs 120: fail]
 "Get off my deck."
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 5 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -357,15 +386,18 @@ In the medical bay Dr Kerr is working on the burned engineer, as she always is.
 [check Medicine: 69+22=91 vs 100: cost]
 It takes everything you have, and he only manages half: "...by hand... anticlockwise..." It's enough.
 [picture 6 static]
+[music off]
 The screens reach zero.
 There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
 Then white. Then Static. Then nothing at all.
 [picture 2 dock]
+[music kepler]
 Dock 3. Red light, klaxons, hot dust. The screens say 18:00. They always will.
 You have done this 4 times now.
   1) Look out of the viewport
   2) Head into the ring
 > 2
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 17 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -379,6 +411,7 @@ Pell sits in the soil under the violet lamps, not running anywhere.
   2) Ask her what the seeds are for
   3) Back to the ring
 > 3
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 14 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -389,11 +422,13 @@ The ring runs past you: the same people, the same things in their arms. Every sc
 > 5
 === The Cause
 [picture 7 reactor]
+[music meridian]
 The drone in the hatch corridor drifts aside as you come. "Let them through," says the ceiling, softly. "They've earned it."
 The reactor room is a cathedral of heat. One console is lit: LOCKED BY MERIDIAN.
   1) Ask MERIDIAN why
   2) Leave
 > 2
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 10 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -405,6 +440,7 @@ The ring runs past you: the same people, the same things in their arms. Every sc
 In the medical bay Dr Kerr is working on the burned engineer, as she always is.
   1) Back to the ring
 > 1
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 7 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -420,6 +456,7 @@ Captain Marrow is shouting at the ceiling again. The ceiling is apologising agai
 > 1
 [check Persuade: 15+17=32 vs 120: fail]
 "Get off my deck."
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 2 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -435,10 +472,12 @@ Teodor is stacking crates against a pod hatch that won't open. He's never seen y
 [check Persuade: 99+17=116 vs 80: crit]
 He sits down on a crate. "Then you'll need this, next time." Three switches by the pod hatch: red, red, blue. "If the lock ever comes off."
 [picture 6 static]
+[music off]
 The screens reach zero.
 There is a moment when everything on Kepler-Nine is very bright and very quiet, and you have time to think: so this is what eighteen minutes was for.
 Then white. Then Static. Then nothing at all.
 [picture 2 dock]
+[music kepler]
 Dock 3. Red light, klaxons, hot dust. The screens say 18:00. They always will.
 You have done this 5 times now.
   1) Look out of the viewport
@@ -448,6 +487,7 @@ The dead freighter tumbles past, end over end, at exactly the same angle as last
   1) Look out of the viewport
   2) Head into the ring
 > 2
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 16 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -566,6 +606,7 @@ Pell sits in the soil under the violet lamps, not running anywhere.
   1) Ask her what the seeds are for
   2) Back to the ring
 > 2
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 13 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -576,6 +617,7 @@ The ring runs past you: the same people, the same things in their arms. Every sc
   7) Sit by a viewport and wait
 > 6
 [picture 7 reactor]
+[music meridian]
 The drone in the hatch corridor drifts aside as you come. "Let them through," says the ceiling, softly. "They've earned it."
 The reactor room is a cathedral of heat. One console is lit: LOCKED BY MERIDIAN.
   1) Ask MERIDIAN why
@@ -591,6 +633,7 @@ The reactor room is a cathedral of heat. One console is lit: LOCKED BY MERIDIAN.
   1) Ask what it wants
   2) Leave
 > 2
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 9 minutes.
   1) Teodor, at the pods
   2) Dr Kerr and her engineer
@@ -615,8 +658,10 @@ It hums. It's cold enough to hurt. It's lighter than it should be, for ten thous
   1) Look at the seed vault
   2) Leave
 > 2
+[music kepler]
 The ring runs past you: the same people, the same things in their arms. Every screen says 6 minutes.
 === The Last Loop
+[music last_loop]
 "You know all of it now," says MERIDIAN, in your ear. "So do I. One more time, then. This time I won't take it back. Whatever you do in the next eighteen minutes stays done."
 The screens go white.
   1) Let the loop go round, one last time
@@ -652,6 +697,7 @@ Every screen: 3 minutes.
   1) Get to the train
 > 1
 === Home
+[music home]
 The train is waiting, as if it always knew. Through the window, Kepler-Nine goes white.
 Somewhere out there, five escape pods are drifting home.
 MERIDIAN goes with the station, one last time, and doesn't wake up.
@@ -662,6 +708,7 @@ The Waystation. The Stationmaster is waiting on the platform, ledger open.
   1) Tell it what happened
 > 1
 The Stationmaster listens to all of it, and writes none of it down.
+[music fin]
 -- EIGHTEEN MINUTES --
  The end.
 [receipt: departure 1, complete, xp 60, debt paid 0 added 0, gained, lost, echoes 2=1 1=2 3=3]

@@ -554,6 +554,7 @@ void hal_battle_begin(void)
     uint8_t r;
 
     g = hal_scene_open();
+    hal_scene_music(APB_SCENE_FIGHT);
     hal_scene_colours(C_BLUE, g[T_SHARED + 2], g[T_SHARED + 3], g[T_SHARED + 4],
                       g[T_SHARED], g[T_SHARED + 1]);
     apb_view_battle_reset();
@@ -827,6 +828,8 @@ void hal_battle_end(uint8_t result)
 
     cursor_off();
     clear_bar();
+    hal_scene_music(result == APB_BATTLE_WON ? APB_SCENE_WON
+                    : result == APB_BATTLE_LOST ? APB_SCENE_LOST : APB_SCENE_FLED);
     say(apb_view_ending(result));
     prompt("Press a key.", C_YELLOW);
     hal_scene_log("[Press a key.]");

@@ -6,6 +6,7 @@
  */
 #include <string.h>
 
+#include "apb_cue.h"
 #include "apb_hal.h"
 #include "apb_scene.h"
 #include "modern.h"
@@ -42,6 +43,7 @@ void hal_scene_close(void)
 {
     scn_active = 0;
     plat_show();
+    apb_cue_back();                 /* the story's tune again */
 }
 
 void hal_scene_colours(uint8_t border, uint8_t background, uint8_t mc1, uint8_t mc2,

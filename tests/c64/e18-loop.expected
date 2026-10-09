@@ -32,6 +32,7 @@ trip can be stamped.
 ~ The Ticket ~
 
 [picture pic00]
+[music waystation]
 The ticket window is open. There is no
 morning at the Waystation, but you knew
 it when it came, and here it is.
@@ -78,6 +79,7 @@ The doors close without a sound.
 1. Find a seat
 > 1
 
+[music journey]
 The train does not so much leave as stop
 being at the Waystation. Through the
 window the grey shimmer thins into
@@ -99,6 +101,7 @@ be destroyed in eighteen minutes."
 ~ Kepler-Nine ~
 
 [picture pic02]
+[music kepler]
 Dock 3 is a ring of scuffed white panels
 and red light. Klaxons. A smell of hot
 dust. Every screen on every wall shows
@@ -140,6 +143,7 @@ are not working. I'm sorry."
 ~ The Spine ~
 
 [picture pic07]
+[music reactor]
 The corridor to the reactor runs hot.
 The walls tick. Halfway along, in front
 of the hatch, a maintenance drone the
@@ -153,6 +157,7 @@ past.
 3. Go back
 > 1
 
+[music battle]
 -- A fight! --
 -- Round 1 --
 [Kestrel: choose.]
@@ -190,8 +195,10 @@ Maintenance drone stands guard.
 You attack Maintenance drone: 66 + 20
 = 86 against 84, a crit: 38 damage.
 Maintenance drone is down.
+[music won]
 You won the fight.
 [Press a key.]
+[music reactor]
 The drone drops, sparking, and lies
 still.
 
@@ -216,6 +223,7 @@ The lock doesn't even notice you.
 1. Leave
 > 1
 
+[music kepler]
 The ring corridor curves away in both
 directions, rising out of sight. People
 run past carrying the wrong things: a
@@ -244,6 +252,7 @@ you for anything, and for a while it is
 almost peaceful.
 
 [picture pic06]
+[music off]
 The screens reach zero.
 
 There is a moment when everything on
@@ -255,6 +264,7 @@ Then white. Then Static. Then nothing at
 all.
 
 [picture pic02]
+[music kepler]
 You are standing on Dock 3.
 
 You were dead. You remember it very
@@ -296,6 +306,7 @@ are not working. I'm sorry."
 > 4
 
 [picture pic05]
+[music countdown]
 The lift opens on the command deck: a
 ring of dead consoles around one that
 still works, and in front of it a woman
@@ -343,6 +354,7 @@ time."
 2. Take the lift back down
 > 2
 
+[music kepler]
 The ring corridor curves away in both
 directions, rising out of sight. People
 run past carrying the wrong things: a
@@ -508,6 +520,7 @@ screen says 4 minutes.
 ~ The Cause ~
 
 [picture pic07]
+[music meridian]
 The drone in the hatch corridor drifts
 aside as you come. "Let them through,"
 says the ceiling, softly. "They've
@@ -540,6 +553,7 @@ the signal. Anything but here."
 > 2
 
 [picture pic06]
+[music off]
 The screens reach zero.
 
 There is a moment when everything on
@@ -551,6 +565,7 @@ Then white. Then Static. Then nothing at
 all.
 
 [picture pic02]
+[music kepler]
 Dock 3. Red light, klaxons, hot dust.
 The screens say 18:00. They always will.
 
@@ -704,6 +719,7 @@ screen says 2 minutes.
 
 ~ The Last Loop ~
 
+[music last_loop]
 "You know all of it now," says MERIDIAN,
 in your ear. "So do I. One more time,
 then. This time I won't take it back.
@@ -776,6 +792,7 @@ Every screen: 2 minutes.
 
 ~ Home ~
 
+[music home]
 The train is waiting, as if it always
 knew. Through the window, Kepler-Nine
 goes white.
@@ -801,6 +818,7 @@ you," it says, and means it, and writes
 something in the ledger that makes your
 Debt smaller.
 
+[music fin]
 -- EIGHTEEN MINUTES --
 The end.
 

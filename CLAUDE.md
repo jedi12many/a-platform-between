@@ -47,14 +47,18 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   in Python (`tests/c64/run_c64.py`; fights on the battle screen are read from
   `hal_scene_log`, a key a line): transcripts match `tests/c64/*.expected`, the
   Travel Stamp is the terminal's, a save survives switching off, the C stack stays
-  under 384 bytes; and no overlay may use another's code or data
+  under 384 bytes; the music plays (the harness keeps the I/O apart from the RAM under it,
+  and fires the raster interrupt), its cues in the transcripts as `[music NAME]`; and no
+  overlay may use another's code or data
   (`fe/c64/check_overlays.py`). `--shots DIR` saves pictures of the screen to look at,
   the battle screen drawn as the VIC-II would (`tools/vic.py`).
 - `make test-modern`: the modern front end (`fe/modern/`, `docs/modern.md`) must play the
   C64's test routes as the C64 does (`tests/modern/check_modern.py`), on the desktop
   (SDL2, `build/apb-modern`) and in a browser (`build/web/`, headless Chromium through
-  Playwright), and a save must survive a restart on both; the fight's sound effects
-  (`apb-modern --sounds DIR`) must sound, fade, and have the SID's pitches. Needs `libsdl2-dev`,
+  Playwright), music cues and all, and a save must survive a restart on both; the fight's
+  sound effects (`apb-modern --sounds DIR`) must sound, fade, and have the SID's pitches;
+  each tune (`--music DEPARTURE DIR`) must sound, unclipped; the browser's music must play
+  through Web Audio. Needs `libsdl2-dev`,
   `emscripten`, and Node with Playwright.
 - `make test-yards`: the Deep Yards' generator (`core/src/yard.c`, `docs/deep-yards.md`)
   must build the same maps as the reference written from the doc (`tools/yards/yard.py`),

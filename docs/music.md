@@ -1,6 +1,6 @@
 # Music
 
-The game's music, on every machine (milestone E10, [c64-craft.md](c64-craft.md#1-music-e10)):
+The game's music, on every machine (milestone E10, [c64-craft.md](c64-craft.md#1-music-e10-done)):
 a Departure's tunes written as text, compiled to one small file, and played by one player
 fifty times a second into the SID's registers. The C64 plays them on its SID; the desktop
 and the browser play the same registers through a synthesiser that works like it. One
@@ -16,7 +16,7 @@ can't. This player is ours, small, and documented here; a converter from GoatTra
 ## Writing music
 
 A Departure's music is a text file beside its `.qs`, `NAME.music`. `tools/music/musicc.py
-build NAME.music -o MUSIC` compiles it; `check` checks it. Comments start with `#`.
+build NAME.music -o MUSIC` compiles it; `check` checks it. Comments start with a `#` at the start of a word (so `f#3` is a note).
 
 ```
 instrument lead
@@ -181,15 +181,31 @@ with its gate shut until its next note starts. A new effect replaces one that's 
 
 - **The C64:** the player is in the main program (`fe/c64/music.s`, about 2.2 KB), and
   the tunes at `$D800`, under the I/O, with its note table (`$DE00`), the sound effects
-  (`$DEC0`) and its state (`$DEF0`). A raster interrupt every frame calls it with the I/O
-  switched out and copies its ghost registers to the SID ([c64.md](c64.md)).
-- **The desktop and the browser:** `client/music.c`, the same player in C, feeds a
-  three-voice synthesiser ([modern.md](modern.md)).
+  (`$DEC0`) and its state (`$DEF0`), from the disk's file `music` (`musicc.py --c64`). A
+  raster interrupt every frame calls it with the I/O switched out and copies its ghost
+  registers to the SID (`fe/c64/tune.s`, [c64.md](c64.md#music)).
+- **The desktop and the browser:** `client/music.c`, the same player in C, a frame every
+  882 samples, drives a synthesiser that works like the SID (`fe/modern/sid.c`,
+  [modern.md](modern.md)), from the Departure's file `MUSIC`.
 - **The terminal:** no music.
+
+## When it plays
+
+The same everywhere (`client/cue.c`):
+
+- `~ music NAME` fades into the tune (at once if nothing's playing); `~ music off` fades
+  out. A tune already playing isn't started again, and a name the file doesn't have
+  changes nothing. A save keeps the tune, and a resumed trip starts it again.
+- A fight starts `battle`; winning it, `won`; losing, `lost`; fleeing, the story's tune.
+  Back on the story's screen, the story's tune again. A file without these keeps
+  whatever was playing.
 
 ## Testing
 
 `make test-music`: the Python reference plays every tune in `content/` and a set of tests
 written to reach every rule above, and writes the 25 registers for each frame; the C
 player and the 6502 player (on py65) must write the same, byte for byte. Damaged files must
-play silence, never crash.
+play silence, never crash. `make test-c64` plays the music on the emulated C64 (and fails a
+trip that cues music but never sounds a note); `make test-modern` checks each tune on the
+desktop sounds without clipping and loops or ends as written, that the browser plays
+through Web Audio, and that both cue the same tunes at the same moments as the C64.

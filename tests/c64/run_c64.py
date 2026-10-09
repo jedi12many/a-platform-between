@@ -28,6 +28,14 @@ as the memory map (fe/c64/apb.cfg) only has room for 512.
 
 With --then, the machine is switched off and on again after the first run, with the
 disk as the first run left it (a save, say), and plays CHOICES2.
+
+The music (fe/c64/tune.s) runs as it does on a C64: the I/O at $D000-$DFFF and the RAM
+under it are kept apart, as the processor port ($01) says, so the tunes under the I/O
+aren't the colour RAM; and the VIC-II's raster interrupt comes when the raster reaches
+the line in $D012 (63 cycles a line, 312 lines a frame), through $0314, as the KERNAL
+calls it, back by $EA31 or $EA81. Each tune the program starts or changes to is a line,
+"[music NAME]" ("[music off]" to fade out), named from the disk's music file; and a run
+that cues music must have opened the SID's gates (notes played).
 """
 
 import os
@@ -56,6 +64,8 @@ def to_ascii(c):
 
 
 SCREEN = 0xF800             # the text screen, in VIC bank 3 (fe/c64/split.s)
+CYCLES_A_LINE = 63          # PAL
+LINES = 312
 COLS = 40
 LAST_ROW = 24
 STACK_TOP = None            # the C stack starts where the overlays do: from the map
@@ -72,6 +82,21 @@ def screen_ascii(code):
         return chr(code)
     return {0x00: "@", 0x1B: "[", 0x1C: "\\", 0x1D: "]", 0x1E: "^", 0x1F: "_", 0x40: "`",
             0x5B: "{", 0x5C: "|", 0x5D: "}", 0x5E: "~"}.get(code, "?")
+
+
+def tune_names(music):
+    """The tunes' names in the disk's music file (tools/music/musicc.py --c64): after
+    its load address and length, the tune file (docs/music.md)."""
+    if not music or len(music) < 12:
+        return []
+    d = music[4:]
+    t, n, w, p = d[3], d[4], d[5], d[6]
+    at = 8 + 8 * t + 10 * n + 2 * w + 2 * p
+    names = []
+    for _ in range(t):
+        names.append(d[at + 1:at + 1 + d[at]].decode("ascii", "replace"))
+        at += 1 + d[at]
+    return names
 
 
 def segment_start(dbg, name):
@@ -122,7 +147,16 @@ class C64:
         self.keys = []
         self.mem = ObservableMemory()
         self.mem.subscribe_to_read([KEY_COUNT], self.key_count)
+        self.io = bytearray(0x1000)                         # $D000-$DFFF when it's I/O
+        self.mem.subscribe_to_read(range(0xD000, 0xE000), self.io_read)
+        self.mem.subscribe_to_write(range(0xD000, 0xE000), self.io_write)
         self.mpu = MPU(memory=self.mem)
+        self.line = 0                                       # the raster's
+        self.music_command = symbol(dbg, "music_command")
+        self.tunes = tune_names(self.files.get("music"))
+        self.cued = False
+        self.notes = 0                                      # gates the SID saw open
+        self.music_frames = 0
         self.lfs = (0, 0, 0)
         self.name = b""
         self.open = {}              # logical file: {"name", "data", "pos", "write"}
@@ -131,6 +165,74 @@ class C64:
         self.status = 0
         self.overlays = 0
         self.ended = None
+
+    # ------------------------------------------------------------ the I/O
+
+    def io_seen(self):
+        port = self.mem._subject[1]
+        return port & 3 and port & 4
+
+    def io_read(self, address):
+        if not self.io_seen():
+            return None
+        if address in (0xD011, 0xD012):                     # where the raster is now
+            line = (self.mpu.processorCycles // CYCLES_A_LINE) % LINES
+            if address == 0xD012:
+                return line & 0xFF
+            return (self.io[0x11] & 0x7F) | (line >> 8) << 7
+        return self.io[address - 0xD000]
+
+    def io_write(self, address, value):
+        if not self.io_seen():
+            return None                                     # the RAM under it
+        i = address - 0xD000
+        if address == 0xD019:
+            self.io[i] &= ~value & 0xFF                     # acknowledged
+        else:
+            if address in (0xD404, 0xD40B, 0xD412) and value & 1 and not self.io[i] & 1:
+                self.notes += 1
+            self.io[i] = value
+        return self.mem._subject[address]                   # the RAM keeps its own
+
+    def raster(self):
+        """The raster moves on with the cycles; at $D012's line, its interrupt."""
+        m = self.mpu
+        line = (m.processorCycles // CYCLES_A_LINE) % LINES
+        if line == self.line:
+            return
+        target = self.io[0x12] | (self.io[0x11] & 0x80) << 1
+        while self.line != line:
+            self.line = (self.line + 1) % LINES
+            if self.line == target:
+                self.io[0x19] |= 0x81
+        if self.io[0x19] & 1 and self.io[0x1A] & 1 and not m.p & m.INTERRUPT:
+            pc = m.pc
+            for b in (pc >> 8, pc & 0xFF, (m.p & ~m.BREAK) | m.UNUSED, m.a, m.x, m.y):
+                self.mem[0x100 + m.sp] = b
+                m.sp = (m.sp - 1) & 0xFF
+            m.p |= m.INTERRUPT
+            m.pc = self.mem[0x314] | self.mem[0x315] << 8
+
+    def irq_return(self):
+        """$EA31 and $EA81: the KERNAL's end of an interrupt (its clock and keys are
+        answered elsewhere): Y, X, A back, and RTI."""
+        m = self.mpu
+        pull = []
+        for _ in range(6):
+            m.sp = (m.sp + 1) & 0xFF
+            pull.append(self.mem[0x100 + m.sp])
+        m.y, m.x, m.a, m.p = pull[0], pull[1], pull[2], pull[3] | m.UNUSED
+        m.pc = pull[4] | pull[5] << 8
+
+    def music_cue(self):
+        m = self.mpu
+        if m.a in (1, 2):                                   # start, change
+            self.cued = True
+            if m.x == 255:
+                self.lines.append("[music off]")
+            else:
+                name = self.tunes[m.x] if m.x < len(self.tunes) else f"#{m.x}"
+                self.lines.append(f"[music {name}]")
 
     # ------------------------------------------------------------ keyboard
 
@@ -179,7 +281,7 @@ class C64:
             return
         img = Image.new("RGB", (320, 200))
         font = self.files.get("font", b"\0\0" + bytes(2048))[2:]
-        split = self.mem[0xD01A] & 1
+        split = self.mem[symbol_cache(self, "_split_picture")]
         if split:
             at = c64pic.LOAD_AT
             pic = bytes([at & 0xFF, at >> 8]) + bytes(self.mem[at + i] for i in range(c64pic.SIZE))
@@ -403,13 +505,19 @@ class C64:
                 break
             if pc == self.newline_at:
                 self.lines.append(self.bottom_row())
+            if pc == self.music_command:
+                self.music_cue()
             if self.overlay == "ovl3" and pc in (self.scene_wait, self.scene_log,
                                                  self.scene_start, self.scene_stop):
                 self.scene_call(pc)
+            elif pc in (0xEA31, 0xEA81):
+                self.music_frames += pc == 0xEA31
+                self.irq_return()
             elif pc >= 0xE000:
                 self.kernal(pc)
             else:
                 m.step()
+                self.raster()
                 sp = self.mem[2] | (self.mem[3] << 8)
                 if self.stack_top - 0x400 < sp < self.stack_low:
                     self.stack_low = sp
@@ -458,7 +566,11 @@ def main(argv):
         print(tail)
         used = c64.stack_top - c64.stack_low
         print(f"[{steps} 6502 steps, {c64.overlays} files loaded with LOAD, "
-              f"{used} bytes of C stack]", file=sys.stderr)
+              f"{used} bytes of C stack, {c64.music_frames} frames, {c64.notes} notes]",
+              file=sys.stderr)
+        if c64.cued and not c64.notes:
+            print("[music was cued, but the SID never played a note]")
+            failed = True
         if used > STACK_LIMIT:
             print(f"[the C stack went {used} bytes deep, over {STACK_LIMIT}]")
             failed = True

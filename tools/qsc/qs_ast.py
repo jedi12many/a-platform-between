@@ -103,6 +103,7 @@ class Command:
     set/clear: [flag]            let: [var, value]       add/sub: [var, amount]
     echo: [ECHO, STATE]          give/take: [ITEM]       xp: [amount]
     debt: [mode, amount]         picture: [name]         pause: []
+    music: [name, or None for off]
     end: ['complete' | 'failed']
     """
     name: str
@@ -195,6 +196,7 @@ class Departure:
     vars: dict = field(default_factory=dict)    # name -> (initial value, line)
     chapters: List[Chapter] = field(default_factory=list)
     pictures: List[str] = field(default_factory=list)
+    music: dict = field(default_factory=dict)   # tune name -> the first line naming it
     maps: dict = field(default_factory=dict)    # name -> Map
 
     def scenes(self):

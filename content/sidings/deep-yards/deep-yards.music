@@ -1,0 +1,241 @@
+# The Deep Yards' music (docs/music.md): the lift, a tune for each of a floor's six
+# realms (cued in deep-yards.qs as the floor is described), the bottom, and the
+# battle screen's `battle`, `won` and `lost`.
+
+instrument pad
+  wave pulse
+  adsr a 0 e a
+  pulse 40 2 20 a0
+  vibrato 30 6 4
+
+instrument lead
+  wave pulse
+  adsr 1 8 a 6
+  pulse 30 2 20 90
+  vibrato 16 5 3
+
+instrument glass
+  wave tri
+  adsr 2 9 6 9
+  vibrato 20 4 3
+
+instrument ping
+  wave tri
+  adsr 0 a 0 a
+
+instrument seq
+  wave pulse
+  adsr 0 6 4 3
+  pulse 20 4 10 70
+
+instrument bass
+  wave saw
+  wave tri
+  adsr 0 8 a 4
+
+instrument drone
+  wave saw
+  adsr 6 0 c a
+  vibrato 40 7 6
+
+instrument arpmin
+  wave pulse
+  wave pulse +3
+  wave pulse +7
+  loop 0
+  adsr 0 0 9 6
+  pulse 60 1 40 a0
+
+instrument arpmaj
+  wave pulse
+  wave pulse +4
+  wave pulse +7
+  loop 0
+  adsr 0 0 9 6
+  pulse 60 1 40 a0
+
+instrument choir
+  wave pulse
+  wave pulse +7
+  wave pulse +12
+  wave pulse +7
+  loop 0
+  adsr 8 0 d a
+  pulse 80 1 60 a0
+  vibrato 24 6 5
+
+instrument kick
+  wave noise =c5
+  wave pulse =c3
+  wave pulse =g2
+  adsr 0 8 0 0
+
+instrument snare
+  wave noise =e6
+  wave pulse =c4
+  wave noise =c6
+  wave noise =a5
+  adsr 0 9 0 0
+
+instrument hat
+  wave noise =c7
+  adsr 0 3 0 0
+
+instrument clank
+  wave noise =g5
+  wave pulse =c3
+  wave noise =d5
+  adsr 0 7 0 0
+
+# ------------------------------------------------------------- lift
+# The cage over the shaft: chains, and a long way down.
+
+pattern chains clank
+  c4/8 r/4 c4/4 r/16
+
+pattern shaft bass
+  a2/8 g2/8 f2/8 e2/8
+
+pattern depth pad
+  e4/32 c4/32
+
+tune lift tempo 7
+  1: | depth
+  2: | chains
+  3: | shaft
+
+# ------------------------------------------------------------- the six realms
+
+# A drowned rail city: lamps under green water.
+pattern water_chords arpmin
+  d3/16 @arpmaj bb2/16 @arpmin g2/16 a2/16
+
+pattern lamps glass
+  a4/8 d5/8 f5/16 e5/8 c#5/8 a4/16
+
+tune drowned tempo 7
+  1: | lamps
+  2: | water_chords
+  3: | r64
+
+# Three moons, so cold the rails sing.
+pattern frost ping
+  e6/6 b5/2 r/8 a5/6 e6/2 r/24 g5/4 c6/4 r/8
+
+pattern cold_bass bass
+  a1/32 f1/32
+
+tune moons tempo 8
+  1: | frost
+  2: | depth
+  3: | cold_bass
+
+# A jungle that ate a depot.
+pattern undergrowth kick
+  c4/3 @hat c4/1 c4/2 @snare c4/2 @hat c4/2 c4/2 @kick c4/2 @hat c4/2
+
+pattern vines bass
+  g2/3 bb2/1 c3/4 d3/2 f3/2 g3/4
+
+tune jungle tempo 5
+  1: r32 | lamps-2
+  2: | undergrowth
+  3: | vines
+
+# A freight terminal made of light.
+pattern holo seq
+  c5/1 e5 g5 b5 c6 b5 g5 e5 d5 f#5 a5 c6 d6 c6 a5 f#5
+
+pattern holo_bass bass
+  c2/8 c2/8 d2/8 d2/8
+
+tune light tempo 5
+  1: | holo
+  2: | r32 depth+12
+  3: | holo_bass
+
+# A cathedral of bone, where a choir hums the timetable.
+pattern hymn choir
+  d3/16 c3/16 bb2/16 a2/16
+
+pattern psalm lead
+  a4/12 g4/4 f4/8 e4/8 d4/16 r/16
+
+tune bone tempo 9
+  1: r64 | psalm
+  2: | hymn
+  3: | r64
+
+# A dust world: sand on the sleepers, hot iron on the wind.
+pattern wind drone
+  e2/64
+
+pattern iron lead
+  e4/6 f4/2 g#4/8 a4/6 g#4/2 f4/8 e4/16 r/16
+
+tune dust tempo 6
+  1: r32 | iron
+  2: | r16 chains
+  3: | wind
+
+# ------------------------------------------------------------- bottom
+# The tenth floor: YOU CAME A LONG WAY.
+
+pattern arrive lead
+  a4/8 c#5/8 e5/8 a5/32
+
+pattern arrive_chord arpmaj
+  d3/8 e3/8 a2/40
+
+pattern arrive_bass bass
+  d2/8 e2/8 a1/40
+
+tune bottom tempo 8
+  1: arrive
+  2: arrive_chord
+  3: arrive_bass
+
+# ------------------------------------------------------------- battle, won, lost
+# A fight in the yards: driving eighths in D minor, round D, Bb, C and A.
+
+pattern drive bass
+  d1/2 d2 d1 d2 d1 d2 d1 d2
+
+pattern beat kick
+  c4/4 @snare c4/4 @kick c4/2 c4/2 @snare c4/4
+
+pattern brawl lead
+  a4/4 d5 f5 e5 d5/8 a4/8 bb4/4 c5 d5 f5 e5/12 r/4
+
+tune battle tempo 4
+  1: | brawl
+  2: | beat
+  3: | drive drive-4 drive-2 drive-5
+
+pattern hurrah lead
+  d5/2 f#5/2 a5/2 d6/10
+
+pattern hurrah_chord arpmaj
+  d3/16
+
+pattern hurrah_bass bass
+  d2/16
+
+tune won tempo 4
+  1: hurrah
+  2: hurrah_chord
+  3: hurrah_bass
+
+pattern fall lead
+  a4/4 g4/4 f4/4 e4/12
+
+pattern fall_chord arpmin
+  d3/24
+
+pattern fall_bass bass
+  d1/24
+
+tune lost tempo 8
+  1: fall
+  2: fall_chord
+  3: fall_bass

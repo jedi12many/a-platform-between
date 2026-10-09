@@ -330,13 +330,22 @@ def coverage():
 
 def joined(first, second):
     """A transcript cut at a save: drop the save and quit, and the menu the resumed half
-    shows again."""
+    shows again. A resumed save cues the tune that was playing: it must be the last one
+    the first half cued."""
     lines = first.splitlines(keepends=True)
     if lines[-3:] != ["> S\n", "* Saved.\n", "[quit]\n"]:
         return None
     lines = lines[:-3]
     while lines and re.match(r"  \d\) ", lines[-1]):
         lines.pop()
+    cued = [line for line in lines if line.startswith("[music ")]
+    playing = cued[-1] if cued and cued[-1] != "[music off]\n" else None
+    if second.startswith("[music "):
+        line, second = second.split("\n", 1)
+        if line + "\n" != playing:
+            return None
+    elif playing:
+        return None
     return "".join(lines) + second
 
 

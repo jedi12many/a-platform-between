@@ -18,6 +18,8 @@
 #include "apb_hal.h"
 #include "apb_view.h"
 #include "apb_vm.h"
+#include "apb_cue.h"
+#include "apb_scene.h"
 
 #define COLS 40
 #define ROWS 25
@@ -52,10 +54,20 @@
  * KERNAL ROM, which only the VIC and writes reach: reading it needs the ROM out). */
 void split_on(void);
 void split_off(void);
+void irq_on(void);
+void irq_off(void);
 void pic_show(void);
 void text_screen(void);
 void font_install(void);
 void __fastcall__ text_scroll(uint8_t top);
+
+/* fe/c64/tune.s: the music player's way in (docs/music.md). */
+void tune_install(void);
+void __fastcall__ tune_start(uint8_t t);
+void __fastcall__ tune_change(uint8_t t);
+uint8_t __fastcall__ tune_find(const char *ascii);
+uint8_t tune_playing(void);
+void tune_silence(void);
 
 /* ----------------------------------------------------------------- text */
 
@@ -233,7 +245,11 @@ void hal_init(void)
     /* Our font (tools/c64font.py, on every disk), loaded where the picture goes, then
      * moved under the I/O, where the VIC reads it. */
     if (cbm_load("font", 8, 0)) font_install();
+    /* The Departure's music (tools/music/musicc.py --c64), there too before the pictures
+     * need the room; then the raster interrupt that plays it, from now on. */
+    if (cbm_load("music", 8, 0)) tune_install();
     text_screen();
+    irq_on();
     top = 1;
     col = rows_shown = 0;
     draw_status();
@@ -278,6 +294,25 @@ void hal_pause(void)
 static uint8_t picture_up;      /* a picture is loaded at $E000 */
 static uint8_t picture_id;
 
+/* ----------------------------------------------------------------- music */
+
+uint8_t plat_tune_find(const char *ascii)
+{
+    return tune_find(ascii);
+}
+
+/* Into a tune: from silence at once, else after the one playing fades. */
+void plat_tune_cue(uint8_t t)
+{
+    if (t != 255 && !tune_playing()) tune_start(t);
+    else tune_change(t);
+}
+
+void hal_scene_music(uint8_t moment)
+{
+    apb_cue_scene(moment);
+}
+
 void hal_picture(uint8_t id, const char *name)
 {
     static char pic[] = "pic00";
@@ -300,6 +335,11 @@ void hal_picture(uint8_t id, const char *name)
         }
     }
     BORDER = INK_BLACK;
+}
+
+void hal_music(const char *name)
+{
+    apb_cue_story(name);
 }
 
 static char line[APB_VIEW_LINE];
@@ -447,6 +487,7 @@ void c64_scene(uint8_t on)
         if (picture_up) split_off();
         return;
     }
+    apb_cue_back();
     draw_status();
     for (row = 1; row < ROWS; ++row) memset(COLORS + row * COLS, ink, COLS);
     if (picture_up) {
@@ -616,6 +657,7 @@ int main(void)
     plat_out("(press a key)");
     end_line();
     key();
-    split_off();
+    tune_silence();
+    irq_off();
     return 0;
 }

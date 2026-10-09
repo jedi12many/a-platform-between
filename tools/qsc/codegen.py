@@ -14,7 +14,7 @@ import struct
 
 import qs_ast as A
 from opcodes import (COMPARE, FOE_NAME_MAX, KINDS, MAP_TILES, MAX_CAR, MAX_DEPOT,
-                     MAX_ENCOUNTERS, NO_KEY, NO_MENU, TXT_YARD, YARD_DEPOT_MAX,
+                     MAX_ENCOUNTERS, MUSIC_OFF, NO_KEY, NO_MENU, TXT_YARD, YARD_DEPOT_MAX,
                      NO_TITLE,
                      OFFICIAL_ONLY, OPS,
                      SKILL_RATING_BASE, STACK_DEPTH, TXT_CLASS, TXT_DEBT, TXT_LEVEL,
@@ -23,7 +23,7 @@ from parse import terminates
 from registry import REACH
 from textpack import compress
 
-IMAGE_VERSION = 0
+IMAGE_VERSION = 1          # v1 adds the music list; an image without music is still v0
 MAX_FLAGS = 512
 MAX_STRINGS = 1024
 MAX_SCENES = 1024
@@ -106,6 +106,7 @@ class Compiler:
         self.scene_offset = {}
         self.var_ids = {name: i for i, name in enumerate(dep.vars)}
         self.pictures = list(dep.pictures)
+        self.music = list(dep.music)
         self.map_ids = {name: i for i, name in enumerate(dep.maps)}
         # Flags: declared ones first, then the compiler's own.
         self.flags = {name: i for i, name in enumerate(dep.flags)}
@@ -338,6 +339,8 @@ class Compiler:
             asm.op("DEBT", {"set": 0, "add": 1, "sub": 2}[a[0]], a[1])
         elif cmd.name == "picture":
             asm.op("PICTURE", self.pictures.index(a[0]))
+        elif cmd.name == "music":
+            asm.op("MUSIC", MUSIC_OFF if a[0] is None else self.music.index(a[0]))
         elif cmd.name == "pause":
             asm.op("PAUSE")
         elif cmd.name == "end":
@@ -479,7 +482,7 @@ class Compiler:
         out = bytearray(b"DP")
         flag_count = len(self.flags) + len(self.visited_flags) + len(self.chapter_flags) + \
             len(self.once_flags)
-        out += struct.pack("<BBHBBBBBHBHHH", IMAGE_VERSION,
+        out += struct.pack("<BBHBBBBBHBHHH", IMAGE_VERSION if self.music else 0,
                            KINDS[d.kind], d.id,
                            d.season if d.kind == "official" else 0, d.tl, d.ml,
                            d.level_min, d.level_max, flag_count, len(self.var_ids),
@@ -500,6 +503,11 @@ class Compiler:
         for m in self.dep.maps.values():
             blob = self.encounter_bytes(m)
             out += struct.pack("<H", len(blob)) + blob
+        if self.music:                      # v1: the tunes `~ music` names
+            out += bytes([len(self.music)])
+            for t in self.music:
+                name = t.encode("ascii")
+                out += bytes([len(name)]) + name
         return bytes(out)
 
     def encounter_bytes(self, m):

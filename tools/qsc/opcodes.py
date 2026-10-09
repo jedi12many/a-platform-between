@@ -1,8 +1,8 @@
 """The Story VM's instruction set, as listed in docs/vm-spec.md.
 
 Operand kinds: u8, u16, s16 are plain numbers; addr is a code offset in the car;
-scene, str, flag, var, item, echo, pic are ids of that kind; rating is a stat (0-5)
-or a skill (16-27).
+scene, str, flag, var, item, echo, pic are ids of that kind; mus is a tune from the
+depot's music list, or 0xFF for none; rating is a stat (0-5) or a skill (16-27).
 """
 
 OPS = {
@@ -18,6 +18,7 @@ OPS = {
     "PICTURE":    (0x11, ["pic"]),
     "PAUSE":      (0x12, []),
     "CHAPTER":    (0x13, []),
+    "MUSIC":      (0x14, ["mus"]),
     # menus
     "MENU_CLEAR": (0x18, []),
     "OPTION":     (0x19, ["str", "addr"]),
@@ -62,7 +63,7 @@ OPS = {
 
 BY_CODE = {code: (name, operands) for name, (code, operands) in OPS.items()}
 
-WIDTH = {"u8": 1, "var": 1, "key": 1, "pic": 1, "rating": 1, "enc": 1,
+WIDTH = {"u8": 1, "var": 1, "key": 1, "pic": 1, "mus": 1, "rating": 1, "enc": 1,
          "u16": 2, "s16": 2, "addr": 2, "scene": 2, "str": 2, "flag": 2, "item": 2,
          "echo": 2}
 
@@ -72,6 +73,7 @@ OFFICIAL_ONLY = {"DEBT", "ECHO_SET"}
 COMPARE = {"=": "EQ", "!=": "NE", "<": "LT", "<=": "LE", ">": "GT", ">=": "GE"}
 
 SKILL_RATING_BASE = 16      # RATING 16 + n is skill n
+MUSIC_OFF = 0xFF            # MUSIC's operand for "fade out to silence"
 NO_MENU = 0xFFFF            # a scene's menu offset when it has no menu
 NO_TITLE = 0xFFFF           # a car's title string when its chapter has none
 STACK_DEPTH = 16

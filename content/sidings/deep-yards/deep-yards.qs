@@ -28,7 +28,7 @@ yard depths
 === The Deep Yards
 
 == lift
-~ picture yards
+~ picture yards ~ music lift
 At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft
 that goes down further than the Waystation does. A brass plate on the gate says
 YARD {yard}. Someone has scratched a number under it: 10.
@@ -49,17 +49,23 @@ You leave the lift to someone braver. It will be here. It always is.
 The cage grinds down and stops. Floor {floor}.
 
 if realm = 1
+    ~ music drowned
     A drowned rail city: green water to the platform edge, lamps burning underneath it.
 else if realm = 2
+    ~ music moons
     A marshalling yard under three moons, so cold the rails sing when you touch them.
 else if realm = 3
+    ~ music jungle
     A jungle has eaten a depot here. Vines hang from the signal gantries like cables.
 else if realm = 4
+    ~ music light
     A freight terminal made of light: every crate a hologram, every sign in a language
     that rearranges itself to be polite.
 else if realm = 5
+    ~ music bone
     A cathedral of bone where trains are worshipped. A choir hums the timetable.
 else
+    ~ music dust
     A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
 
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
@@ -149,7 +155,7 @@ You go down, and catch your breath on the stair. The cage is waiting at the bott
 -> landing
 
 == bottom
-~ picture bottom
+~ picture bottom ~ music bottom
 The tenth floor. There's no stair down from here, only a buffer stop, and painted on it in
 letters older than the Waystation: YOU CAME A LONG WAY.
 
@@ -159,10 +165,12 @@ in a book. "Not many get here."
 ~ end complete
 
 == surface
+~ music lift
 The cage rattles up through the floors you've seen. At the top, the operator nods.
 "Floor {floor}. Not bad. The yard'll keep."
 ~ end complete
 
 == pulled_up
+~ music off
 You lie there a while, breathing. The yard keeps what you didn't finish.
 ~ end failed

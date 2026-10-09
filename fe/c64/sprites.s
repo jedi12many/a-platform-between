@@ -1,11 +1,12 @@
 ; The battle screen's raster interrupt (fe/c64/scene.c, docs/c64.md): the sprites, more
-; of them than the VIC-II's eight, and the clock, keys and sound once a frame.
+; of them than the VIC-II's eight, and the clock, keys and music once a frame.
 ;
 ; scene.c works out where every sprite goes in a frame (its "plan") and hands it over in
 ; _scene_next; the interrupt takes it at the next frame's start. Then, a frame at a time:
 ;
 ;   line 250 (under the screen): the plan's first eight sprites, one to each of the
-;       VIC's, and the KERNAL's own interrupt (keyboard and clock);
+;       VIC's, a frame of music (fe/c64/tune.s, sound effects and all), and the
+;       KERNAL's own interrupt (keyboard and clock);
 ;   on down the screen: each time one of the eight has finished drawing its sprite,
 ;       the next sprite that was planned for it: its shape, colour and place. scene.c
 ;       plans no sprite closer under the one before it than this has time for.
@@ -20,7 +21,7 @@
 
         .export _scene_start, _scene_stop, _scene_wait, _hal_scene_log
         .export _scene_next, _scene_pending
-        .export _sfx_time, _sfx_sweep, _sfx_wave, _sfx_freq
+        .import tune_tick, irq_on
         .importzp ptr1, ptr2
 
 FRAME_LINE = 250
@@ -53,10 +54,6 @@ live:           .res PLAN           ; the plan being shown
 evi:            .res 1              ; the next event
 frames:         .res 1              ; counts up a frame at a time
 count:          .res 1
-_sfx_time:      .res 1              ; frames until the sound effect's gate closes
-_sfx_sweep:     .res 1              ; added to its pitch each frame
-_sfx_wave:      .res 1              ; its waveform (gate off)
-_sfx_freq:      .res 1              ; its pitch (high byte)
 
         .segment "OVERLAY3"
 
@@ -72,14 +69,10 @@ _scene_start:
         sta _scene_pending
         sta live + EVN
         sta live + TEN
-        sta _sfx_time
         sta $D015
         sta $D017
         sta $D01D
         sta $D01B
-        sta $D404
-        lda #$0F
-        sta $D418                   ; the SID's volume up
         lda #$7F
         sta $DC0D
         lda $DC0D
@@ -107,31 +100,23 @@ _scene_start:
         cli
         rts
 
-; And off: the story's text screen back, as fe/c64/split.s shows it, and the CIA timer.
+; And off: the story's text screen back, as fe/c64/split.s shows it, with its interrupt.
 _scene_stop:
         sei
         jsr text_back
         lda #0
         sta $D01A
         sta $D015
-        sta $D404
         sta $D020
         sta $D021
         lda #$FF
         sta $D019
-        lda #$31
-        sta $0314
-        lda #$EA
-        sta $0315
-        lda #$81
-        sta $DC0D
         lda #$E4                    ; screen $F800, characters $D000 (bank 3 still)
         sta $D018
         lda $D016
         and #$EF
         sta $D016
-        cli
-        rts
+        jmp irq_on                  ; (which lets interrupts in again)
 
 ; The text screen to $FC00 and back, with the KERNAL's ROM out (interrupts are off).
 keep_text:
@@ -271,17 +256,5 @@ frame:
         lda live + EL
 @set:   sta $D012
         inc frames
-        lda _sfx_time               ; the sound effect: its pitch slides, its gate closes
-        beq @kernal
-        dec _sfx_time
-        bne @slide
-        lda _sfx_wave
-        sta $D404
-        jmp @kernal
-@slide: lda _sfx_freq
-        clc
-        adc _sfx_sweep
-        sta _sfx_freq
-        sta $D401
-@kernal:
+        jsr tune_tick               ; a frame of music
         jmp $EA31                   ; the KERNAL's interrupt: keys, clock

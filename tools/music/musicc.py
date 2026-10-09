@@ -2,9 +2,11 @@
 every player plays.
 
     python3 tools/music/musicc.py check NAME.music
-    python3 tools/music/musicc.py build NAME.music -o MUSIC [--prg ADDR]
+    python3 tools/music/musicc.py build NAME.music -o MUSIC [--c64]
 
---prg writes it as a C64 program file that loads at ADDR (hex), for a disk.
+--c64 writes the C64 disk's MUSIC file (fe/c64/tune.s): a program file that loads at
+$E000, holding the file's length (2 bytes), the file padded to 1536 bytes, then the
+player's note table (96 low bytes, 96 high) and the sound effects (client/sfx.c).
 Messages are for musicians: they say what's wrong and where, in plain words.
 """
 
@@ -62,7 +64,7 @@ def parse(text):
     order_i, order_p, order_t = [], [], []
     current = None
     for n, raw in enumerate(text.splitlines(), 1):
-        line = raw.split("#")[0].rstrip()
+        line = re.split(r"(?:^|\s)#", raw)[0].rstrip()     # a sharp (f#3) is not a comment
         if not line.strip():
             continue
         words = line.split()
@@ -88,6 +90,9 @@ def parse(text):
             elif head == "tune":
                 if len(words) != 4 or words[2] != "tempo" or not NAME.match(words[1]):
                     raise MusicError(n, "write 'tune NAME tempo N' (N frames a row, 2-31)")
+                if len(words[1]) > 20 or words[1] == "off":
+                    raise MusicError(n, f"a tune's name is up to 20 letters, and not 'off' "
+                                        f"(Quest Script's '~ music off' stops the music)")
                 if words[1] in tunes:
                     raise MusicError(n, f"there's already a tune called {words[1]}")
                 try:
@@ -376,6 +381,18 @@ def build(text):
     return bytes(out), order_t
 
 
+def c64_file(data):
+    """The C64 disk's MUSIC file (fe/c64/tune.s), from a compiled tune file."""
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import player
+    out = bytes([0x00, 0xE0, len(data) & 0xFF, len(data) >> 8])
+    out += data + bytes(MAX_FILE - len(data))
+    out += bytes(n & 0xFF for n in player.NOTES) + bytes(n >> 8 for n in player.NOTES)
+    out += bytes(b for e in player.effects() for b in e)
+    return out
+
+
 def main(argv):
     if len(argv) >= 3 and argv[1] in ("check", "build"):
         try:
@@ -388,9 +405,8 @@ def main(argv):
                 print(__doc__)
                 return 2
             out = argv[argv.index("-o") + 1]
-            if "--prg" in argv:
-                at = int(argv[argv.index("--prg") + 1], 16)
-                data = bytes([at & 0xFF, at >> 8]) + data
+            if "--c64" in argv:
+                data = c64_file(data)
             with open(out, "wb") as f:
                 f.write(data)
         print(f"{argv[2]}: {len(data)} bytes, tunes: {', '.join(names)}")

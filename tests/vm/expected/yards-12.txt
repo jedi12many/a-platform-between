@@ -1,11 +1,13 @@
 === The Deep Yards
 [picture 0 yards]
+[music lift]
 At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft that goes down further than the Waystation does. A brass plate on the gate says YARD 52114. Someone has scratched a number under it: 10.
 The operator, a man made mostly of rust and patience, doesn't look up. "Ten floors," he says. "Every one a different place. Come back up when you like. If you can."
   1) Step into the cage
   2) Not today
 > 1
 The cage grinds down and stops. Floor 1.
+[music drowned]
 A drowned rail city: green water to the platform edge, lamps burning underneath it.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A wagon with its doors sealed
@@ -34,6 +36,7 @@ round 1: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 2.
+[music light]
 A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A brazier, and an empty bench
@@ -62,6 +65,7 @@ round 1: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 3.
+[music light]
 A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A wagon with its doors sealed
@@ -90,6 +94,7 @@ round 1: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 4.
+[music light]
 A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A wagon with its doors sealed
@@ -121,6 +126,7 @@ round 2: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 5.
+[music drowned]
 A drowned rail city: green water to the platform edge, lamps burning underneath it.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A wagon with its doors sealed
@@ -159,6 +165,7 @@ round 2: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 6.
+[music jungle]
 A jungle has eaten a depot here. Vines hang from the signal gantries like cables.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A dark siding: something nests there
@@ -207,6 +214,7 @@ round 3: 2's turn
   0 is down
 [the fight is lost; health 1]
 The yard takes you. Something hauls you up the shaft by the collar, and drops you on the Waystation's cold floor.
+[music off]
 You lie there a while, breathing. The yard keeps what you didn't finish.
 [receipt: departure 1000, failed, xp 58, debt paid 0 added 0, gained, lost, echoes]
 [level 1, xp 58, debt 0]

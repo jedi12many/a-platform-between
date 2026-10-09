@@ -1,11 +1,13 @@
 === The Deep Yards
 [picture 0 yards]
+[music lift]
 At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft that goes down further than the Waystation does. A brass plate on the gate says YARD 2450. Someone has scratched a number under it: 10.
 The operator, a man made mostly of rust and patience, doesn't look up. "Ten floors," he says. "Every one a different place. Come back up when you like. If you can."
   1) Step into the cage
   2) Not today
 > 1
 The cage grinds down and stops. Floor 1.
+[music moons]
 A marshalling yard under three moons, so cold the rails sing when you touch them.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A brazier, and an empty bench
@@ -33,6 +35,7 @@ round 1: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 2.
+[music light]
 A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A shrine built out of signal lamps
@@ -61,6 +64,7 @@ round 1: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 3.
+[music light]
 A freight terminal made of light: every crate a hologram, every sign in a language that rearranges itself to be polite.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A shrine built out of signal lamps
@@ -86,6 +90,7 @@ round 1: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 4.
+[music moons]
 A marshalling yard under three moons, so cold the rails sing when you touch them.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A dark siding: something nests there
@@ -114,6 +119,7 @@ round 1: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 5.
+[music dust]
 A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A brazier, and an empty bench
@@ -152,6 +158,7 @@ round 2: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 6.
+[music drowned]
 A drowned rail city: green water to the platform edge, lamps burning underneath it.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A brazier, and an empty bench
@@ -198,6 +205,7 @@ round 4: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 7.
+[music moons]
 A marshalling yard under three moons, so cold the rails sing when you touch them.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A wagon with its doors sealed
@@ -207,6 +215,7 @@ Ahead, past the buffers, a stair goes down, and something is waiting by it.
 The wagon's seal is old. It gives with a sigh.
 Nothing but a ticket stub, punched for a line that doesn't exist.
 The cage grinds down and stops. Floor 7.
+[music moons]
 A marshalling yard under three moons, so cold the rails sing when you touch them.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) Take the stairs down
@@ -253,6 +262,7 @@ round 4: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 8.
+[music moons]
 A marshalling yard under three moons, so cold the rails sing when you touch them.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A dark siding: something nests there
@@ -294,6 +304,7 @@ round 3: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 9.
+[music bone]
 A cathedral of bone where trains are worshipped. A choir hums the timetable.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A wagon with its doors sealed
@@ -358,6 +369,7 @@ round 6: 0's turn
 The way down is clear.
 You go down, and catch your breath on the stair. The cage is waiting at the bottom of the stair, as if it had always known.
 The cage grinds down and stops. Floor 10.
+[music bone]
 A cathedral of bone where trains are worshipped. A choir hums the timetable.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A shrine built out of signal lamps
@@ -445,6 +457,7 @@ round 10: 0's turn
 [the fight is won; health 25]
 The way down is clear.
 [picture 1 bottom]
+[music bottom]
 The tenth floor. There's no stair down from here, only a buffer stop, and painted on it in letters older than the Waystation: YOU CAME A LONG WAY.
 The rust-and-patience man is waiting with the cage. "Yard 2450," he says, and writes it in a book. "Not many get here."
 [receipt: departure 1000, complete, xp 170, debt paid 0 added 0, gained 7, lost, echoes]

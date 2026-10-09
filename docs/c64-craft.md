@@ -62,28 +62,33 @@ is the part players notice most.
 
 In order. Each step is playable and tested on its own, like E9's.
 
-### 1. Music (E10)
+### 1. Music (E10): done
 
-- **The player:** GoatTracker 2's, kept in the main program, called once a frame from the
-  raster interrupt. It is the one tracker documented for games: three calls (start a
-  tune, play a frame, start an effect) and a volume control for fades.
-- **The music:** one song file for each Departure, loaded with it, holding subtunes for
-  each mood: travel, tension, a fight, and short stingers for winning, losing and big
-  story moments. Silence is a tool too.
-- **Sound effects:** they move to GoatTracker's effect format and borrow a voice from the
-  music. GoatTracker gives them priority by address, so a hit outranks a menu blip.
-  `client/sfx.c` stays the one source: the build writes the effects in GoatTracker's
-  format, and a Python reference checks the bytes.
-- **The desktop and the browser:** run the C64's own packed tune, on a small 6502 core,
-  into our SID synthesiser. Then the music is note-for-note the same everywhere, and
-  testable like everything else. It also avoids the GPL of libsidplayfp. The synthesiser
-  may need more of the SID (filters, pulse width sweeps) for that.
-- **Measure first:** the player's rastertime and size with a real tune, in the py65
-  harness; and whether music keeps time while the KERNAL loads (it may stutter, and the
-  answer decides whether we need an interrupt-driven loader).
-- **The composer:** commission it. Get the `.sng` sources with the `.sid`, and agree in
-  writing on the platforms (C64, desktop, browser) and the credit. Tunes from the HVSC
-  collection can't be used without their composers' permission.
+Built as [music.md](music.md) says, with one change from the first plan: **our own
+player**, not GoatTracker 2's. GoatTracker's player is GPL, and its packer runs only
+inside its own window, so a build couldn't make a tune from source. Ours is small enough
+to write three times and test against itself:
+
+- **The player:** a tune file of at most 1.5 KB, written as text (`NAME.music`) and
+  compiled by `tools/music/musicc.py`; instruments with wavetables, pulse sweeps and
+  vibrato, patterns, looping voices and stings; fades between tunes. The same player in
+  Python (the reference), C (desktop and browser) and 6502 (the C64, in the main program,
+  run once a frame from the raster interrupt), and `make test-music` holds all three to
+  the same 25 registers, frame by frame, and each real tune's frame to half a PAL frame.
+- **The music:** one file per Departure, with tunes for its moods and places, cued from
+  Quest Script (`~ music NAME`, `~ music off`); a fight plays `battle`, then `won` or
+  `lost`. The Fare has eight, *Eighteen Minutes* twelve, the Deep Yards eleven (one for
+  each realm a floor can be). Silence is a cue too: Kepler-Nine's meltdown cuts to it.
+- **Sound effects:** `client/sfx.c` stays the one table; the player plays an effect on its
+  third voice, which goes back to the music after.
+- **The desktop and the browser:** the C player into a synthesiser that works like the
+  SID, from the same registers; so the music is the same everywhere, and testable.
+- **Measured:** about 1,700 cycles a frame (27 raster lines), up to 8,200 when all three
+  voices start new patterns, in the bottom border. Loading is still the KERNAL's, whose
+  serial routines hold interrupts off byte by byte, so the music may stutter while a file
+  loads; not yet heard on real hardware.
+- **Still to do:** the composer. The tunes in the repository are ours, written to the
+  scenes; a commissioned score would replace them file by file, in the same notation.
 
 ### 2. Transitions
 

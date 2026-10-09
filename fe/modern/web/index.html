@@ -71,24 +71,9 @@
       document.querySelectorAll("#pick button").forEach(function (b) { b.disabled = false; });
       if (Module.onReady) Module.onReady();
     },
-    /* A sound effect (fe/modern/sound.c): 16-bit samples, played at once, cutting off
-     * the one before, as the C64's SID does. Browsers start sound only after a key or a
-     * click, so the first one wakes it. */
+    /* The music and the sound effects (fe/modern/sound.c, web.c): Web Audio, started by
+     * the game; browsers keep it quiet until a key or a click, so each one wakes it. */
     audio: null,
-    voice: null,
-    playSound: function (samples, rate) {
-      try {
-        if (!Module.audio) Module.audio = new (window.AudioContext || window.webkitAudioContext)();
-        var buffer = Module.audio.createBuffer(1, samples.length, rate);
-        var data = buffer.getChannelData(0);
-        for (var i = 0; i < samples.length; i++) data[i] = samples[i] / 32768;
-        if (Module.voice) Module.voice.stop();
-        Module.voice = Module.audio.createBufferSource();
-        Module.voice.buffer = buffer;
-        Module.voice.connect(Module.audio.destination);
-        Module.voice.start();
-      } catch (e) { /* no sound here: play on in silence */ }
-    },
     onTripOver: function () {
       statusLine.textContent = "The trip is over. Reload the page to travel again.";
       Module.keepStamp();
@@ -204,6 +189,7 @@
   });
 
   canvas.addEventListener("click", function (e) {
+    if (Module.audio && Module.audio.state === "suspended") Module.audio.resume();
     var r = canvas.getBoundingClientRect();
     Module.keys.push(0x100 | Math.floor((e.clientY - r.top) / r.height * 25));
   });

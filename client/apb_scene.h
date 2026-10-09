@@ -52,6 +52,11 @@ void hal_scene_show(uint8_t frames);
 /* Show it all and wait for a key: APB_KEY_*, or ASCII. */
 uint8_t hal_scene_key(void);
 void hal_scene_sound(uint8_t effect);
+/* The fight's music (docs/music.md): the Departure's tune `battle` as it starts, then
+ * `won` or `lost`; after a flight, or back on the story's screen, the story's tune again.
+ * Front ends without music ignore it. */
+enum { APB_SCENE_FIGHT = 0, APB_SCENE_WON, APB_SCENE_LOST, APB_SCENE_FLED };
+void hal_scene_music(uint8_t moment);
 /* A line for the record (the transcripts tests read): shown nowhere. ASCII. */
 void hal_scene_log(const char *ascii);
 

@@ -56,7 +56,7 @@ mind; it has done this before.
 -> bench
 
 == bench
-~ picture platform_bench
+~ picture platform_bench ~ music arrivals
 You are sitting on a wooden bench, and you are breathing, and both of those
 things are wrong.
 
@@ -135,7 +135,7 @@ mournful and far away.
 === The Buffer Stop
 
 == concourse
-~ picture concourse
+~ picture concourse ~ music concourse
 if not visited concourse
     The platform opens into a great hall. Iron arches, a tiled floor worn into
     paths by more feet than you can imagine, and above it all a departure
@@ -181,7 +181,7 @@ Nobody leaves the Waystation that way. You understand that now.
 -> concourse
 
 == bar
-~ picture buffer_stop
+~ picture buffer_stop ~ music buffer_stop
 The Buffer Stop is warm, and crowded, and wrong in a dozen small ways
 that add up to cozy. A knight in rusted plate is arguing with a cloud of
 moths. Something made of glass is drinking something made of light.
@@ -222,7 +222,7 @@ way a stationmaster watches a clock.
 + [Go to the corner booth] -> stationmaster
 
 == stationmaster
-~ picture stationmaster
+~ picture stationmaster ~ music ledger
 The figure in the velvet coat rises as you approach. It is very tall. Its
 face is a polite arrangement of shadow, and its voice is warm, and patient,
 and has never once been surprised.
@@ -288,7 +288,7 @@ a bed."
 
 "Welcome back to the living, {name}."
 
-~ xp 5
+~ music welcome ~ xp 5
 ~ end complete
 
 === Lost Property

@@ -1,11 +1,13 @@
 === The Deep Yards
 [picture 0 yards]
+[music lift]
 At the far end of the freight lines, past the last lamp, a cage lift hangs over a shaft that goes down further than the Waystation does. A brass plate on the gate says YARD 638. Someone has scratched a number under it: 10.
 The operator, a man made mostly of rust and patience, doesn't look up. "Ten floors," he says. "Every one a different place. Come back up when you like. If you can."
   1) Step into the cage
   2) Not today
 > 1
 The cage grinds down and stops. Floor 1.
+[music dust]
 A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A brazier, and an empty bench
@@ -35,6 +37,7 @@ round 1: 0's turn
 [the fight is fled; health 24]
 You run back up to the landing. Whatever it was stays by the stairs.
 The cage grinds down and stops. Floor 1.
+[music dust]
 A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A brazier, and an empty bench
@@ -64,6 +67,7 @@ round 1: 0's turn
 [the fight is fled; health 6]
 You run back up to the landing. Whatever it was stays by the stairs.
 The cage grinds down and stops. Floor 1.
+[music dust]
 A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) A brazier, and an empty bench
@@ -72,6 +76,7 @@ Ahead, past the buffers, a stair goes down, and something is waiting by it.
 > 1
 You sit by the brazier a while. Nobody comes. It's the best kind of nobody.
 The cage grinds down and stops. Floor 1.
+[music dust]
 A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) Take the stairs down
@@ -100,6 +105,7 @@ round 1: 0's turn
 [the fight is fled; health 3]
 You run back up to the landing. Whatever it was stays by the stairs.
 The cage grinds down and stops. Floor 1.
+[music dust]
 A dust world. Sand drifts over the sleepers, and the wind smells of hot iron.
 Ahead, past the buffers, a stair goes down, and something is waiting by it.
   1) Take the stairs down
@@ -121,6 +127,7 @@ round 1: 1's turn
   0 is down
 [the fight is lost; health 1]
 The yard takes you. Something hauls you up the shaft by the collar, and drops you on the Waystation's cold floor.
+[music off]
 You lie there a while, breathing. The yard keeps what you didn't finish.
 [receipt: departure 1000, failed, xp 0, debt paid 0 added 0, gained, lost, echoes]
 [level 3, xp 0, debt 0]
