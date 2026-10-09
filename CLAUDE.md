@@ -66,8 +66,13 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   are spent and stats rolled as the references say (`tests/waystation/check_site.py`);
   travelers are kept with notes, chosen to land a stamp, and, on the site signed in (a
   stand-in for claude.ai's store), kept on the player's account and boarded from the list.
+- `make test-music`: the music players (`docs/music.md`) must write the same SID registers
+  frame by frame: the Python reference (`tools/music/player.py`), the C player
+  (`client/music.c`, under the sanitizers) and the C64's 6502 player (`fe/c64/music.s`, on
+  py65), for every tune in `content/` and `tests/music/` under scripts of commands, and for
+  damaged files. `tools/music/musicc.py build NAME.music -o FILE` compiles a tune file.
 
-Run all fifteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+Run all sixteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website

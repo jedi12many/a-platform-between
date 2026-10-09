@@ -25,6 +25,9 @@ uint8_t apb_check(apb_rng *rng, uint8_t rating, int16_t bonus, int16_t tn, apb_r
     return out->result;
 }
 
+#ifndef APB_PLAY_ONLY
+/* APB_PLAY_ONLY (the C64): only what playing a trip needs. Making and levelling a
+ * traveler happens at the Waystation (docs/waystation-web.md). */
 int16_t apb_defense_tn(int16_t defense, int16_t reduce)
 {
     int16_t d = (int16_t)(defense - reduce);
@@ -45,9 +48,12 @@ uint8_t apb_chance(int16_t rating_and_bonus, int16_t tn)
     return wins;
 }
 
+#endif
+
 /* -------------------------------------------------------- characters */
 
 
+#ifndef APB_PLAY_ONLY
 void apb_character_init(apb_character *ch, const char *name, uint8_t race,
                         uint8_t cls)
 {
@@ -62,6 +68,8 @@ void apb_character_init(apb_character *ch, const char *name, uint8_t race,
         ch->stat[i] = APB_BUY_BASE;
     }
 }
+
+#endif
 
 uint8_t apb_health_max(const apb_character *ch)
 {
@@ -82,6 +90,7 @@ uint8_t apb_skill(const apb_character *ch, uint8_t skill)
 
 /* Race and class bonuses and tags come from the registry (registry.c). */
 
+#ifndef APB_PLAY_ONLY
 uint8_t apb_pointbuy_valid(const uint8_t *base)
 {
     uint8_t i;
@@ -151,6 +160,8 @@ uint8_t apb_character_create(apb_character *ch, const char *name, uint8_t race,
 
 /* ------------------------------------------------------- progression */
 
+#endif
+
 uint16_t apb_xp_award(uint16_t base, uint8_t level, uint8_t band_max)
 {
     uint8_t over;
@@ -166,6 +177,7 @@ uint8_t apb_skill_points_per_level(const apb_character *ch)
     return (uint8_t)(1 + ch->stat[APB_WITS] / 20);
 }
 
+#ifndef APB_PLAY_ONLY
 uint8_t apb_skill_raise_cost(uint8_t rating)
 {
     if (rating < 50) return 1;
@@ -173,6 +185,8 @@ uint8_t apb_skill_raise_cost(uint8_t rating)
     if (rating < 90) return 3;
     return 4;
 }
+
+#endif
 
 uint8_t apb_gain_xp(apb_character *ch, uint16_t amount)
 {
@@ -198,6 +212,7 @@ uint8_t apb_gain_xp(apb_character *ch, uint16_t amount)
     return gained;
 }
 
+#ifndef APB_PLAY_ONLY
 uint8_t apb_raise_stat(apb_character *ch, uint8_t stat)
 {
     if (stat >= APB_STAT_COUNT || ch->stat_points == 0
@@ -224,3 +239,4 @@ uint8_t apb_raise_skill(apb_character *ch, uint8_t skill)
     add_capped(&ch->training[skill], (uint8_t)((ch->tags >> skill) & 1u ? 2 : 1));
     return 1;
 }
+#endif

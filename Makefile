@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -50,9 +50,9 @@ build/demo.prg: demo/demo.c $(CORE_SRC) $(CORE_HDR) | build
 # The game on the Commodore 64 (docs/c64.md): the main program plus three overlays,
 # loaded from disk when the VM asks (LOAD, PASS and BATTLE), on cc65's overlay memory
 # map (fe/c64/apb.cfg). The linker fails the build if anything doesn't fit.
-C64_DEFS   := -DAPB_OVERLAYS -DAPB_FIGHT_BORROWS_CAR -DAPB_VM_DEPOT_MAX=2048 -g
-C64_MAIN   := fe/c64/c64.c fe/c64/split.s vm/vm.c client/view.c core/src/rng.c core/src/names.c \
-              core/src/rules.c core/src/registry.c core/src/translate.c core/src/echo.c
+C64_DEFS   := -DAPB_OVERLAYS -DAPB_FIGHT_BORROWS_CAR -DAPB_PLAY_ONLY -DAPB_VM_DEPOT_MAX=2048 -g
+C64_MAIN   := fe/c64/c64.c fe/c64/split.s fe/c64/music.s vm/vm.c client/view.c core/src/rng.c core/src/names.c \
+              core/src/rules.c core/src/registry.c core/src/echo.c
 C64_LOAD   := core/src/yard.c
 C64_PASS   := client/desk.c core/src/passport.c client/receipt_view.c
 # Nothing in a fight is recursive, so its C is built with its locals static (-Cl): smaller.
@@ -414,6 +414,15 @@ build/battle.sim: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | 
 build/battle.asan: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
 		-o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)
+
+# The music players (E10, docs/music.md): the Python reference, the C player (with the
+# sanitizers) and the C64's 6502 player (on py65) must write the same SID registers.
+test-music: build/music_trace build/c64/apb.prg
+	python3 tests/music/check_music.py
+
+build/music_trace: tests/music/trace.c client/music.c client/sfx.c client/apb_music.h $(CORE_HDR) | build
+	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(INC) \
+		-o $@ tests/music/trace.c client/music.c client/sfx.c
 
 # The Deep Yards' generator (E7, docs/deep-yards.md): the C core against the reference
 # written from the doc, natively and on sim65; every map valid, every foe reachable.
