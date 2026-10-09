@@ -98,7 +98,13 @@ What the screen does:
 - Sound effects through the SID: a step, a swing, a shot, a hit, a miss, a death.
 - The rules don't change: every battle test and transcript stays as it is.
 
-**E10: music.** A tune for the title, one for the Waystation, one per Departure.
+**After E9**, the order and the reasons are in [c64-craft.md](c64-craft.md), from research
+into how modern C64 games are made: music, then transitions, comfort in a fight, ELoad and
+save slots, a profiler, the art pipeline, presentation.
+
+**E10: music.** A tune for the title, one for the Waystation, one per Departure: a
+GoatTracker 2 player in the main program, subtunes for each mood, and the sound effects
+borrowing a voice ([c64-craft.md](c64-craft.md#1-music-e10)).
 
 **E11: pictures that move.** Colour cycling and a few swapped characters per frame: the
 klaxon pulsing on Dock 3, the reactor's glow, the Static crawling, the countdown counting;
