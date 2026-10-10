@@ -100,18 +100,18 @@ async function keys() {
   await page.mouse.click(box.x + box.width / 2, box.y + (row + 0.5) * box.height / 25);
   await page.waitForTimeout(300);
   rows = await screen(page);
-  expect("a click on a menu line picks it", rows.some((r) => r.includes("Passport")));
-  await page.keyboard.type("4PB794AR0A0105AM7HDX");
+  expect("a click on a menu line picks it", rows.some((r) => r.includes("Boarding Pass")));
+  await page.keyboard.type("G0000000FG87R49CPEJX");
   await page.keyboard.press("Backspace");
-  await page.keyboard.type("T");
+  await page.keyboard.type("Z");
   await page.waitForTimeout(200);
   rows = await screen(page);
   expect("typing (and backspace) reaches the game",
-         rows[24].startsWith("> 4PB794AR0A0105AM7HDT"));
+         rows[24].startsWith("> G0000000FG87R49CPEJZ"));
   await page.keyboard.press("Enter");
   await page.waitForTimeout(200);
   rows = await screen(page);
-  expect("Enter ends the line", rows.some((r) => r.startsWith("> 4PB794AR0A0105AM7HDT")) &&
+  expect("Enter ends the line", rows.some((r) => r.startsWith("> G0000000FG87R49CPEJZ")) &&
                                 rows[24].startsWith("> "));
   const pixels = await page.evaluate(() => {
     const c = document.querySelector("canvas").getContext("2d").getImageData(0, 0, 640, 16).data;
@@ -120,10 +120,10 @@ async function keys() {
     return lit;
   });
   expect("the screen is drawn on the canvas (the status bar)", pixels > 1000);
-  // On through boarding (as tests/c64/fare-edge.choices answers) to the bench, where the
+  // On through boarding (the rest of tests/c64/fare-edge.choices' Boarding Pass) to the bench, where the
   // music starts (fe/modern/sound.c, web.c): Web Audio pulls the SID's samples.
-  for (const answer of ["8V40-0000-0000-K60M-2A4A", "50200810HJB", "", "1",
-                        "20000000f-GC2683W26"]) {
+  for (const answer of ["8NG0M020AN8F2THP800E", "00000016C184M8A0400W", "G0FZKR7", "",
+                        "1"]) {
     if (answer.length > 1) {
       await page.keyboard.type(answer);
       await page.keyboard.press("Enter");

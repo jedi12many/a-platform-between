@@ -70,37 +70,49 @@ that true live on the server, never in a client: anyone can read a C64 disk, and
 player holds is a key a player can share.
 
 1. **Board at the Waystation website.** Pick the character and the Departure; the server
-   issues a **Boarding Pass**: one line of 18 symbols holding the Departure, a one-time
-   ticket number, a check of the character as boarded, and the dice seed for the trip.
-2. **Give the client your Passport and the Boarding Pass.** On a C64 you type both (from
-   your phone screen); a modern client fetches them when you sign in. The client checks
-   the pass is for this Departure and this character as they are now; a pass from before
-   their last trip is refused, and the website issues a new one.
+   issues a **Boarding Pass**: the trip (the Departure, a one-time ticket number, the dice
+   seed for the trip) and the character as they are now, in one password.
+2. **Give the client the Boarding Pass.** It's the only code a player types to board: on
+   a C64, line by line like a Passport (from your phone screen); a modern client fetches
+   it when you sign in. The client checks the pass is for this Departure, and boards the
+   character it carries.
 3. **The receipt carries the ticket number.** The server accepts it only for the character
    the ticket was issued to, only once, and only within that Departure's possible rewards.
 
 The server's secret is the ticket itself: a random 32-bit number it draws and remembers,
 with the character and Departure it was issued for. A forged or borrowed receipt would
 have to guess a live ticket issued to that very character. That protects receipts the way
-a signature would, with nothing secret in the client and a pass short enough to type.
+a signature would, with nothing secret in the client.
+
+A pass carries the character as they were when it was issued, and a receipt is a list of
+changes, not a snapshot. So a pass kept back and played after another trip has landed is
+no different from two trips taken at once: both receipts land, each on the character as
+it is by then.
+
+A player can still board with just their Passport, at the same prompt: the desk says so,
+and that nothing earned on the trip can be stamped. (Tests do that, and so does the
+browser until the website issues passes, W2.)
 
 ### Boarding Pass format
 
-Version 1. The Passport alphabet and line check ([passport-spec.md](passport-spec.md)),
-one line: 17 data symbols and a check symbol.
+Format 2 (format 1, a short pass typed beside the Passport, is retired). The Passport
+alphabet, lines and line check ([passport-spec.md](passport-spec.md)): the bits below,
+zero bits to a whole byte, a CRC-16 over every byte (as the Passport's), and zero bits to
+a whole symbol. Kestrel's pass for *The Fare* is 67 symbols, in four lines.
 
 | Field | Bits | Notes |
 |---|---|---|
-| version | 4 | 1 |
+| kind | 4 | 8: a Boarding Pass. A Passport's first four bits are its version (2), so a client can tell which it was given from the first symbol, and take either at one prompt |
 | Departure | 16 | the image's id |
 | ticket | 32 | random, drawn by the server |
-| character check | 16 | the Passport's own CRC-16 (`apb_passport_check`): any change to the character changes it |
 | seed | 16 | the dice for this trip, so the server can replay an online trip and a player can't re-roll by boarding again |
 | Rewind | 1 | 1: a replay of a Departure the character has played ([seasons.md](seasons.md)); the train forgets that Departure's Echoes before play |
+| character | | the Passport's fields, exactly as in a Passport, from its version on |
 
-`apb_pass_encode` / `apb_pass_decode` in the rules core; `tools/passport/boarding.py` is
-the reference and issues passes for testing until the website exists. A player can travel
-without a pass (the desk warns that nothing earned can be stamped); tests use that too.
+`apb_pass_encode` / `apb_pass_decode` and `apb_password_kind` in the rules core;
+`tools/passport/boarding.py` is the reference, written from this page, and issues passes
+for testing until the website does. The server keeps each ticket's character as boarded
+(`apb_passport_check` names that version of them).
 
 ### Reward manifests
 

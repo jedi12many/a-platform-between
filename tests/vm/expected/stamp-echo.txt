@@ -1,18 +1,18 @@
-* Your Passport, please: one line at a time, then a blank line.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
-< 4PB794AR0A0105AM7HDT
+< G007ZZZZZZR0589CPEJD
 * Line 2:
-< 8V4000000000K60M2A4A
+< 8NG0M020AN8F2THP800E
 * Line 3:
-< 50200810HJB
+< 00000016C184M8A0400W
 * Line 4:
+< G0FY90Y
+* Line 5:
 < 
 Kestrel, Salvaged Warden, level 1. Debt 0.
   1) Board
   2) Start over
 > 1
-* Your Boarding Pass, please, or a blank line to travel without one:
-< 2007ZZZZZZW26802MS
 === One
 [picture 0 hall]
 + This line starts with a plus and is plain text.

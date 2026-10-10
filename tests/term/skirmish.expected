@@ -1,7 +1,8 @@
 A PLATFORM BETWEEN
 
-Your Passport, please: one line at a
-time, then a blank line.
+Your Boarding Pass, please, one line at
+a time, then a blank line. (Or your
+Passport, to travel without one.)
 Line 1:
 > 4pb794ar0a0105am7hdt
 Line 2:
@@ -13,19 +14,13 @@ Line 4:
 Kestrel, Salvaged Warden, level 1. Debt
 0.
 
+That's a Passport, not a Boarding Pass:
+nothing you earn on this trip can be
+stamped.
 1. Board
 2. Start over
 > 1
 
-
-Your Boarding Pass, please, or a blank
-line to travel without one:
-> 
-Without a pass, nothing you earn on this
-trip can be stamped.
-1. Travel without a pass
-2. Type a pass
-> 1
 
 The yard is quiet. Then it isn't.
 

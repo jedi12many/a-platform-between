@@ -25,7 +25,7 @@ static unsigned checks = 0;
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static apb_character ch;
 static apb_character back;
-static char pw[APB_PASSWORD_BUF];
+static char pw[APB_PASS_BUF];
 static char spaced[APB_PASSWORD_BUF + 16];
 static char typo[APB_PASSWORD_BUF];
 static apb_character traveler;
@@ -471,36 +471,60 @@ static void test_passport(void)
     CHECK(apb_passport_encode(&ch, pw) == APB_PP_RANGE);
 }
 
-/* Golden values from tools/passport/boarding.py, the Python reference:
- *   issue "<Kestrel's Passport>" 901 3141592653 7  ->  20W5QD0ECKC26800EW
- * and from the same fields with version 2, or as a Rewind (the last bit set). */
+/* Golden values from tools/passport/boarding.py, the Python reference, for Kestrel with
+ * the pulse rifle (Passport 4PB794AR0A0105AM7HDT 8V40000000000K60M2A4A 50200810HJB):
+ *   encode(901, 3141592653, 7, rewind, Kestrel), rewind 0 and 1. */
+static const char pass_kestrel[] =
+    "G0W5QD0ECK800W9CPEJK8NG0M020AN8F2THP800E00000016C184M8A0400WG0ARW8Y";
+static const char pass_rewind[] =
+    "G0W5QD0ECK800Y9CPEJ98NG0M020AN8F2THP800E00000016C184M8A0400WG05Q9GB";
+static char typed[APB_PASS_BUF + 16];
+
 static void test_boarding_pass(void)
 {
+    static apb_character carried;
+    uint8_t bad;
+
     make_kestrel(&traveler);
     traveler.equipped[0] = APB_ITEM_PULSE_RIFLE;
     CHECK(apb_passport_check(&traveler) == 33330u);
 
     pass.departure = 901;
     pass.ticket = 3141592653UL;
-    pass.check = 33330u;
     pass.seed = 7;
     pass.rewind = 0;
-    CHECK(apb_pass_encode(&pass, pw) == APB_PP_OK && strcmp(pw, "20W5QD0ECKC26800EW") == 0);
+    CHECK(apb_pass_encode(&pass, &traveler, pw) == APB_PP_OK && strcmp(pw, pass_kestrel) == 0);
     pass.rewind = 1;
-    CHECK(apb_pass_encode(&pass, pw) == APB_PP_OK && strcmp(pw, "20W5QD0ECKC26800FX") == 0);
+    CHECK(apb_pass_encode(&pass, &traveler, pw) == APB_PP_OK && strcmp(pw, pass_rewind) == 0);
 
+    /* Typed in lower case, in its four lines with spaces and dashes. */
     memset(&pass, 0, sizeof(pass));
-    CHECK(apb_pass_decode("20w5-qd0e-ckc2-68oo-ew", &pass) == APB_PP_OK);
-    CHECK(pass.departure == 901 && pass.ticket == 3141592653UL && pass.check == 33330u
-          && pass.seed == 7);
-    CHECK(apb_pass_decode("20W5QD0ECKC26800FW", &pass) == APB_PP_LINE_CHECK);
-    CHECK(apb_pass_decode("20W5QD0ECKC26800E", &pass) == APB_PP_LENGTH);
-    CHECK(apb_pass_decode("20W5QD0ECKC26800EWW", &pass) == APB_PP_LENGTH);
-    CHECK(apb_pass_decode("20W5QD0ECKC26800E!", &pass) == APB_PP_SYMBOL);
-    CHECK(apb_pass_decode("40W5QD0ECKC26800EY", &pass) == APB_PP_VERSION);
-    CHECK(apb_pass_decode("20W5QD0ECKC26800FX", &pass) == APB_PP_OK && pass.rewind == 1);
-    pass.rewind = 0;
-    CHECK(apb_pass_decode("20W5QD0ECKC26800EW", &pass) == APB_PP_OK && pass.rewind == 0);
+    strcpy(typed, "g0w5-qd0e-ck80-0w9c-pejk 8ng0m020an8f2thp800e 00000016c184m8a0400w g0arw8y");
+    CHECK(apb_pass_decode(typed, &pass, &carried, 0) == APB_PP_OK);
+    CHECK(pass.departure == 901 && pass.ticket == 3141592653UL && pass.seed == 7
+          && pass.rewind == 0);
+    CHECK(memcmp(&carried, &traveler, sizeof(carried)) == 0);
+    CHECK(apb_pass_decode(pass_rewind, &pass, &carried, 0) == APB_PP_OK && pass.rewind == 1);
+
+    /* A typo names its line; a short pass, a stray letter and a Passport are refused. */
+    strcpy(typed, pass_kestrel);
+    typed[25] = typed[25] == 'A' ? 'B' : 'A';
+    bad = 0;
+    CHECK(apb_pass_decode(typed, &pass, &carried, &bad) == APB_PP_LINE_CHECK && bad == 2);
+    strcpy(typed, pass_kestrel);
+    typed[strlen(typed) - 2] = '\0';
+    CHECK(apb_pass_decode(typed, &pass, &carried, 0) != APB_PP_OK);
+    strcpy(typed, pass_kestrel);
+    typed[3] = '!';
+    CHECK(apb_pass_decode(typed, &pass, &carried, 0) == APB_PP_SYMBOL);
+    CHECK(apb_passport_encode(&traveler, pw) == APB_PP_OK);
+    CHECK(apb_pass_decode(pw, &pass, &carried, 0) == APB_PP_VERSION);
+
+    /* Which is which, from the first symbol. */
+    CHECK(apb_password_kind(pass_kestrel) == APB_KIND_PASS);
+    CHECK(apb_password_kind(" g0w5") == APB_KIND_PASS);
+    CHECK(apb_password_kind(pw) == APB_KIND_PASSPORT);
+    CHECK(apb_password_kind("  ") == APB_KIND_NONE);
 
     /* Anything about the character changing changes the check. */
     traveler.debt = 1;

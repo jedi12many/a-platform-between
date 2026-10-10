@@ -192,10 +192,10 @@ const commands = {
         for (let r = 0; r < 25; ++r) if (Module.UTF8ToString(Module._web_screen_row(r)).includes(w)) return true;
         return false;
       }, words, { timeout: 20000 });
-      // Board (1), and when the desk asks for the Passport, have it typed from the list.
+      // Board (1), and when the desk asks, have the traveler's Passport typed from the list.
       await onScreen("1. Board");
       await play.locator("canvas").press("1");
-      await onScreen("Your Passport, please");
+      await onScreen("Your Boarding Pass, please");
       await play.locator("#board-type").click();
       await frame.waitForFunction((first) => {
         for (let r = 0; r < 25; ++r) {

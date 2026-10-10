@@ -77,7 +77,7 @@ def board_the_fare(text):
         typed_pass = boarding.issue(text, 0, 424242, 1985)
         choices = os.path.join(tmp, "choices")
         with open(choices, "w") as f:
-            f.write("\n".join(passport.lines(text) + ["", "1", typed_pass] + FARE_PICKS) + "\n")
+            f.write("\n".join(passport.lines(typed_pass) + ["", "1"] + FARE_PICKS) + "\n")
         out = subprocess.run(["build/apb", "--choices", choices, apd], cwd=ROOT,
                              capture_output=True, text=True, timeout=60).stdout
     m = re.search(r"into your Passport:\n\n((?:  \w+\n)+)", out)

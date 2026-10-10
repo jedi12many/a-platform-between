@@ -426,31 +426,42 @@ enum {
 };
 
 uint8_t apb_passport_encode(const apb_character *ch, char *out);
-/* The Passport's own CRC-16: a check of everything about the character, carried in
- * Boarding Passes to say which version of the character boarded. 0 if it can't be
- * encoded. */
+/* The Passport's own CRC-16: a check of everything about the character, which the
+ * Waystation keeps with each ticket to know which version of the character boarded.
+ * 0 if it can't be encoded. */
 uint16_t apb_passport_check(const apb_character *ch);
 /* bad_line receives the 1-based line number on APB_PP_LINE_CHECK; may be NULL. */
 uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line);
 
 /* ------------------------------------------------------- Boarding Pass */
 
-/* Issued by the Waystation for one trip (docs/boarding.md). One line of 18 symbols in
- * the Passport alphabet. The ticket is a random number the server draws and remembers:
- * a receipt only counts if it quotes a ticket issued to that character, once. */
-#define APB_PASS_VERSION 1
-#define APB_PASS_LEN     18
-#define APB_PASS_BUF     (APB_PASS_LEN + 1)
+/* Issued by the Waystation for one trip (docs/boarding.md): the trip and the character
+ * in one password, typed in lines like a Passport. The ticket is a random number the
+ * server draws and remembers: a receipt only counts if it quotes a ticket issued to that
+ * character, once. Its first four bits are APB_PASS_KIND, where a Passport has its
+ * version, so a client can take either at one prompt (apb_password_kind). */
+#define APB_PASS_KIND 8
+#define APB_PASS_MAX  180   /* the longest possible pass, in symbols: 9 lines */
+#define APB_PASS_BUF  (APB_PASS_MAX + 1)
 
 typedef struct {
     uint16_t departure;
     uint32_t ticket;
-    uint16_t check;      /* apb_passport_check of the character as boarded */
     uint16_t seed;       /* the dice for this trip                          */
     uint8_t  rewind;     /* 1: a replay of a Departure they have played     */
 } apb_pass;
 
-uint8_t apb_pass_encode(const apb_pass *pass, char *out);
+/* The pass for `pass`'s trip, carrying `ch`: APB_PP_OK, or APB_PP_RANGE if a field of
+ * the character doesn't fit. */
+uint8_t apb_pass_encode(const apb_pass *pass, const apb_character *ch, char *out);
+/* Both filled on APB_PP_OK; otherwise APB_PP_SYMBOL, _LENGTH, _LINE_CHECK (bad_line
+ * receives the 1-based line; may be NULL), _CHECKSUM or _VERSION. */
+uint8_t apb_pass_decode(const char *in, apb_pass *pass, apb_character *ch, uint8_t *bad_line);
+
+enum { APB_KIND_NONE = 0, APB_KIND_PASSPORT, APB_KIND_PASS };
+/* What a typed password is, from its first symbol: a Boarding Pass, a Passport (or
+ * neither, if it's empty or starts with something that isn't a symbol). */
+uint8_t apb_password_kind(const char *in);
 
 /* ------------------------------------------------------- Travel Stamp */
 
@@ -467,7 +478,5 @@ uint8_t apb_stamp_encode(const apb_receipt *r, char *out);
  * _LINE_CHECK (bad_line receives the 1-based line; may be NULL), _CHECKSUM or
  * _VERSION. */
 uint8_t apb_stamp_decode(const char *in, apb_receipt *r, uint8_t *bad_line);
-/* Returns APB_PP_OK, _SYMBOL, _LENGTH, _LINE_CHECK or _VERSION. */
-uint8_t apb_pass_decode(const char *in, apb_pass *pass);
 
 #endif

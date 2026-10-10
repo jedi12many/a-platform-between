@@ -46,7 +46,7 @@ drive. Characters travel by Passport password or Travel Stamp, as before.
 
 Every player uses the Waystation website, including C64 players: they'll have a phone or
 another computer nearby. That keeps the clients simple. A client only needs to take a
-Passport and a Boarding Pass, play, and hand back a receipt; character creation, levelling
+Boarding Pass (which carries the Passport), play, and hand back a receipt; character creation, levelling
 up and everything else happens at the station.
 
 A modern client can still play a Departure without a connection once boarded; its receipt

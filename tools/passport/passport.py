@@ -65,8 +65,8 @@ def new_character():
     }
 
 
-def _payload(ch):
-    """The Passport's fields as bytes, before the CRC (docs/passport-spec.md)."""
+def field_bits(ch):
+    """The Passport's fields as bits, from its version on (docs/passport-spec.md)."""
     bits = []
 
     def put(value, n):
@@ -108,10 +108,18 @@ def _payload(ch):
     for eid, state in ch["echoes"]:
         put(eid, 10)
         put(state, 2)
+    return bits
 
-    while len(bits) % 8:
-        bits.append(0)
+
+def to_bytes(bits):
+    """Bits, padded with zeros to a whole byte, as bytes."""
+    bits = bits + [0] * (-len(bits) % 8)
     return bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, len(bits), 8))
+
+
+def _payload(ch):
+    """The Passport's fields as bytes, before the CRC."""
+    return to_bytes(field_bits(ch))
 
 
 def check(ch):
@@ -148,7 +156,8 @@ def lines(password):
     return [password[i:i + 20] for i in range(0, len(password), 20)]
 
 
-def decode(text):
+def read_symbols(text, what="Passport"):
+    """A typed password's data bits, each line's check symbol checked."""
     values = []
     for c in text:
         if c in " -\n\r\t":
@@ -159,7 +168,7 @@ def decode(text):
         elif u in "IL":
             u = "1"
         if u not in SYMBOLS:
-            raise PassportError(f"'{c}' isn't a Passport symbol")
+            raise PassportError(f"'{c}' isn't a {what} symbol")
         values.append(SYMBOLS.index(u))
 
     data = []
@@ -170,9 +179,16 @@ def decode(text):
         if line_check(line[:-1]) != line[-1]:
             raise PassportError(f"line {n} has a typo")
         data.extend(line[:-1])
+    return [(v >> (4 - i)) & 1 for v in data for i in range(5)]
 
-    bits = [(v >> (4 - i)) & 1 for v in data for i in range(5)]
-    pos = 0
+
+def decode(text):
+    return read_character(read_symbols(text), 0)
+
+
+def read_character(bits, pos):
+    """The character from `bits[pos:]` (its version, its fields), then the CRC-16 over
+    every byte of `bits` before it."""
 
     def get(n):
         nonlocal pos

@@ -27,7 +27,7 @@ Packed most-significant bit first, in this order.
 
 | Field | Bits | Notes |
 |---|---|---|
-| Format version | 4 | `2` |
+| Format version | 4 | `2`. Passports keep to 1-7: 8 starts a Boarding Pass ([boarding.md](boarding.md)), which carries a Passport's fields after its own |
 | Name | 40 | 8 symbols from ` ABCDEFGHIJKLMNOPQRSTUVWXYZ-'.!?`, space-padded |
 | Race | 5 | |
 | Class | 4 | |

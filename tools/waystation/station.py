@@ -53,7 +53,7 @@ def played(ledger, character, departure):
 
 
 def issue(ledger, character, passport_text, departure, ticket=None, seed=None):
-    """A Boarding Pass for this character as they are now. Tickets are random and never
+    """A Boarding Pass carrying this character as they are now. Tickets are random and never
     reused, so a stamp can't be forged or borrowed without guessing a live one. A
     Departure they've already played is a Rewind (docs/seasons.md)."""
     passport.decode(passport_text)                       # refuse a bad Passport now

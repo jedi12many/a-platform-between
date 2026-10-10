@@ -153,5 +153,5 @@ Characters are never made in a client; they're made at the Waystation website
 `python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM] [ECHO=STATE...]`
 makes one,
 and `python3 tools/passport/boarding.py issue "PASSPORT" DEPARTURE TICKET SEED` issues it a
-Boarding Pass. `tools/waystation/station.py` is a prototype of the website's side: it issues
+Boarding Pass, which carries the Passport: the one code a player types to board. `tools/waystation/station.py` is a prototype of the website's side: it issues
 passes into a ticket ledger and lands Travel Stamps against it and the reward manifest.
