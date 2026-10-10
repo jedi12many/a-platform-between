@@ -122,7 +122,8 @@ go through the same decoder.
   correction). The line check symbols ride along (QR corrects errors itself; they cost 5%
   and keep one text for every carrier). The Waystation prints one on each Passport and
   Boarding Pass ([tabletop.md](tabletop.md)); the C64 draws the Travel Stamp's in its view
-  at a trip's end, for a phone to scan back to the Waystation.
+  at a trip's end, for a phone to scan back to the Waystation (level L, versions 1-4,
+  mask 0: [cartridge.md](cartridge.md#the-story-vm)).
 - **File.** On a disk, the boarding desk first loads `PASS` (a SEQ or PRG file of the
   text, any line breaks and spaces ignored) from the drive the game came from: on an
   SD2IEC, from the game's folder or its disk image. With no file, it asks for the lines.

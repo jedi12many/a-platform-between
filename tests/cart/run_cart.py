@@ -1,6 +1,7 @@
 """Play the cartridge, or its disk, without a C64 (docs/cartridge.md, "Building and testing").
 
     python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--c64 TRANSCRIPT]
+                                   [--c64-story TRANSCRIPT]
                                    [--pictures DIR] [--shot FILE.png] [--update]
 
 IMAGE is the EasyFlash cartridge (build/apb.crt) or the disk (build/apb-disk.d64); LABELS
@@ -20,8 +21,10 @@ the C64 around it played in Python:
   the KERNAL's own handler (A, X and Y pushed, 29 cycles) and $0314. Bad lines and
   sprites' cycles aren't played: the split's lines (176-178) have neither;
 - the disk: the program APB loaded at its address and started at disk_start (as RUN
-  would), and the KERNAL's SETNAM, SETLFS and LOAD answered from the .d64. A load takes
-  its time all at once, so the frame it ends in isn't held to the split's timing (on a
+  would), and the KERNAL's SETNAM, SETLFS and LOAD answered from the .d64; and OPEN,
+  CHKIN, CHRIN, READST, CLRCHN and CLOSE for a file read a byte at a time (a missing
+  one gives the drive's error, status $42). A load takes its time all at once, so the
+  frame it ends in isn't held to the split's timing (on a
   real C64 the KERNAL's serial routines hold interrupts off at times too).
 
 - the keyboard: CIA 1's matrix, as the C64's is wired (port A's bit selects a row, port B
@@ -66,6 +69,7 @@ SPLIT_LAST = (179, 11)              # ...and no later (line 179's bad line stops
 TEXT, VIEW, CHARS, FONT, STAGING = 0xC000, 0xC400, 0xC800, 0xD000, 0x8000
 MEM_FRAMES, MEM_VIEW, MEM_PICTURE = 0x04, 0x12, 0x18
 BITMAP, PICTURE_TOP = 0xE000, 2         # a picture: the bitmap, its first row in the view
+QR_MATRIX = 0x0400                      # qr.s's modules (cart/mem.inc)
 LOG_TOP, LOG_ROWS, LOG_COLS = 16, 8, 25
 
 failures = 0
@@ -348,6 +352,21 @@ class C64:
                 m.processorCycles += 20 * len(data)         # (it takes its time)
                 self.load_spans.append((start, m.processorCycles))
                 m.p &= ~m.CARRY
+        elif pc == 0xFFC0:                                  # OPEN: a file to read
+            data = self.files.get(self.name.split(",")[0])
+            self.reading = list(data) if data else None     # (its bytes, raw)
+            self.status = 0
+            m.p &= ~m.CARRY
+        elif pc in (0xFFC6, 0xFFCC, 0xFFC3):                # CHKIN, CLRCHN, CLOSE
+            m.p &= ~m.CARRY
+        elif pc == 0xFFCF:                                  # CHRIN
+            if not self.reading:                            # no file: the drive's error
+                m.a, self.status = 0x0D, 0x42
+            else:
+                m.a = self.reading.pop(0)
+                self.status = 0x40 if not self.reading else 0
+        elif pc == 0xFFB7:                                  # READST
+            m.a = self.status
         else:
             raise RuntimeError(f"the program called ${pc:04X} in the KERNAL, not emulated")
         lo = self.ram[0x100 + ((m.sp + 1) & 0xFF)]
@@ -452,18 +471,8 @@ def shot(c, path):
         else:
             scr.put(i % 40, i // 40, 0, 0)
     img = scr.image()
-    if view_regs(c)[0] == MEM_PICTURE:                     # a picture: multicolour bitmap
-        back = view_regs(c)[2] & 15
-        for cell in range(640):
-            cy, cx = divmod(cell, 40)
-            both = c.ram[VIEW + cell]
-            options = [back, both >> 4, both & 15, io[0x800 + cell] & 15]
-            for y in range(8):
-                b = c.ram[BITMAP + cy * 320 + cx * 8 + y]
-                for x in range(4):
-                    ink = c64pic.PALETTE[options[(b >> (6 - 2 * x)) & 3]]
-                    img.putpixel((cx * 8 + x * 2, cy * 8 + y), ink)
-                    img.putpixel((cx * 8 + x * 2 + 1, cy * 8 + y), ink)
+    if view_regs(c)[0] == MEM_PICTURE:                     # a bitmap: a picture, a code
+        img.paste(view_image(c), (0, 0))
     font = bytes(c.ram[FONT:FONT + 2048])
     for row in range(16, 25):
         for x in range(40):
@@ -479,12 +488,95 @@ def shot(c, path):
 
 
 def view_regs(c):
-    """The view's registers as line 250 last set them: $D018, $D011, $D021."""
+    """The view's registers as line 250 last set them: $D018, $D011, $D021 (and $D016,
+    for a fourth)."""
     last = {}
     for a, v, cyc in c.writes:
         if 245 <= (cyc // LINE) % LINES <= 260:
             last[a] = v
-    return last.get(0xD018), last.get(0xD011), last.get(0xD021)
+    return last.get(0xD018), last.get(0xD011), last.get(0xD021), last.get(0xD016)
+
+
+def scan(gray):
+    """A QR code's text, read off an image (8-bit grey) by OpenCV: its standard detector,
+    or, if that finds nothing, its second (Aruco), which reads some codes the first
+    misses even drawn by the qrcode library itself."""
+    import cv2
+    big = cv2.resize(gray, None, fx=4, fy=4, interpolation=cv2.INTER_NEAREST)
+    return cv2.QRCodeDetector().detectAndDecode(big)[0] or \
+        cv2.QRCodeDetectorAruco().detectAndDecode(big)[0]
+
+
+def view_image(c):
+    """The view (rows 0-15) as the VIC shows a bitmap there: 320 x 128 RGB, multicolour
+    or hires as $D016 says."""
+    import c64pic
+    from PIL import Image
+    mem, ctrl1, back, ctrl2 = view_regs(c)
+    img = Image.new("RGB", (320, 128))
+    for cell in range(640):
+        cy, cx = divmod(cell, 40)
+        both = c.ram[VIEW + cell]
+        for y in range(8):
+            b = c.ram[BITMAP + cy * 320 + cx * 8 + y]
+            if ctrl2 is not None and not ctrl2 & 0x10:             # hires
+                for x in range(8):
+                    ink = both >> 4 if b >> (7 - x) & 1 else both & 15
+                    img.putpixel((cx * 8 + x, cy * 8 + y), c64pic.PALETTE[ink])
+                continue
+            options = [back & 15, both >> 4, both & 15, c.io[0x800 + cell] & 15]
+            for x in range(4):
+                ink = c64pic.PALETTE[options[(b >> (6 - 2 * x)) & 3]]
+                img.putpixel((cx * 8 + x * 2, cy * 8 + y), ink)
+                img.putpixel((cx * 8 + x * 2 + 1, cy * 8 + y), ink)
+    return img
+
+
+def check_qr(c, what):
+    """The trip's end: the Travel Stamp the log shows is the QR code in the view. Its
+    modules (qr.s's, at QR_MATRIX) are the qrcode library's for the same text,
+    alphanumeric, level L, mask 0, the smallest version; the view is hires, the code
+    black on white; and OpenCV, reading the view as the VIC shows it, gets the stamp
+    back. (Not segno: it puts a zero byte after the data the standard doesn't, when the
+    terminator ends on a byte.)"""
+    try:
+        import qrcode
+        import cv2
+        import numpy
+    except ImportError as e:
+        fail(f"{what}: the QR code can't be checked without {e.name} (pip install qrcode "
+             f"opencv-python-headless)")
+        return
+    text = " ".join(c.lines)
+    after = text[text.index("Your Travel Stamp."):]
+    at = max(i for i, ln in enumerate(c.lines) if ln.endswith("Passport:")) + 2
+    stamp = ""                                              # its lines, after a blank
+    while at < len(c.lines) and c.lines[at].startswith("  "):
+        stamp += c.lines[at].strip()
+        at += 1
+    version = next(v for v, top in ((1, 25), (2, 47), (3, 77), (4, 114)) if len(stamp) <= top)
+    qr = qrcode.QRCode(version=version, error_correction=qrcode.constants.ERROR_CORRECT_L,
+                       mask_pattern=0, border=0)
+    qr.add_data(qrcode.util.QRData(stamp, mode=qrcode.util.MODE_ALPHA_NUM))
+    qr.make(fit=False)
+    want = [[1 if v else 0 for v in row] for row in qr.get_matrix()]
+    size = c.ram[c.syms["qr_size"]]
+    got = [[c.ram[QR_MATRIX + y * size + x] & 1 for x in range(size)] for y in range(size)]
+    problems = []
+    if size != len(want) or got != want:
+        diff = sum(a != b for ra, rb in zip(got, want) for a, b in zip(ra, rb))
+        problems.append(f"its modules aren't qrcode's ({size} a side, qrcode's "
+                        f"{len(want)}; {diff} differ)")
+    if view_regs(c) != (MEM_PICTURE, 0x3B, 0, 0x08):
+        problems.append(f"the view's registers {view_regs(c)}, not a hires bitmap")
+    read = scan(numpy.array(view_image(c).convert("L")))
+    if read != stamp:
+        problems.append(f"scanned, it reads {read!r}")
+    if problems or "Waystation" not in after:
+        fail(f"{what}: the QR code of {stamp!r}: {'; '.join(problems)}")
+    else:
+        ok(f"{what}: the Travel Stamp's QR code, version {version}, {size} modules a side: "
+           f"the qrcode library's, module for module; scanned off the screen, it reads {stamp}")
 
 
 def check_picture(c, what):
@@ -519,7 +611,7 @@ def check_picture(c, what):
     bars = bytes(c.ram[BITMAP:top]) + bytes(c.ram[top + 3840:BITMAP + 16 * 320])
     bar_ink = bytes(c.io[0x800:0x800 + 80]) + bytes(c.io[0x800 + 560:0x800 + 640])
     problems = []
-    if view_regs(c) != (MEM_PICTURE, 0x3B, at(c64pic.BACK, 1)[0]):
+    if view_regs(c)[:3] != (MEM_PICTURE, 0x3B, at(c64pic.BACK, 1)[0]):
         problems.append(f"the view's registers {view_regs(c)}")
     if bytes(c.ram[top:top + 3840]) != at(c64pic.BITMAP, 3840):
         problems.append("the bitmap")
@@ -546,7 +638,7 @@ def check(c):
                 if not any(a <= w[2] <= b + FRAME for a, b in c.load_spans)]
     # The split, every frame.
     frames_regs = [w for w in c.writes if (w[0] == 0xD018 and w[1] == MEM_FRAMES)
-                   or (w[0] == 0xD016 and w[1] == 0x08)
+                   or (w[0] == 0xD016 and w[1] == 0x08 and 100 < (w[2] // LINE) % LINES < 200)
                    or (w[0] == 0xD011 and 100 < (w[2] // LINE) % LINES < 200)]
     late = [(hex(a), (cyc // LINE) % LINES, cyc % LINE) for a, v, cyc in frames_regs
             if not SPLIT_FIRST <= ((cyc // LINE) % LINES, cyc % LINE) <= SPLIT_LAST]
@@ -579,10 +671,10 @@ def check(c):
         fail(f"{what}: the tiles' table isn't tools/battlegfx.py's")
     else:
         ok(f"{what}: the font, the map's characters and its tiles, from asset 0, where they go")
-    if disk and (c.loads[:2] != ["a00", "a01"] or any(n[0] != "a" for n in c.loads)):
-        fail(f"{what}: loaded {c.loads}, not a00 (the graphics), a01 (the depot) and the cars")
+    if disk and (c.loads[:2] != ["a00", "a02"] or any(n[0] != "a" for n in c.loads)):
+        fail(f"{what}: loaded {c.loads}, not a00 (the graphics), a02 (the depot) and the rest")
     elif disk:
-        ok(f"{what}: the graphics, the depot and the cars loaded as files {', '.join(sorted(set(c.loads)))}")
+        ok(f"{what}: the graphics, the depot, the cars, the pictures and the ending loaded as files {', '.join(sorted(set(c.loads)))}")
     # The view: the demo's map, 2 x 2 characters a square, 20 x 8 of them.
     themap = bytes(c.ram[syms["platform_map"]:syms["platform_map"] + 160])
     screen, colours = c.desk_view
@@ -598,7 +690,10 @@ def check(c):
         fail(f"{what}: at the desk, the view's tiles differ from the map at {bad[:5]}")
     else:
         ok(f"{what}: at the desk, the view shows the map, 20 x 8 squares of 2 x 2 characters")
-    check_picture(c, what)
+    if "Your Travel Stamp. Type" in " ".join(c.lines):
+        check_qr(c, what)
+    else:
+        check_picture(c, what)
     # The frames.
     line = "".join(c.screen(TEXT, r, 1, 25) for r in range(16, 24))
     party = c.screen(TEXT, 16, 9, 26)
@@ -627,7 +722,7 @@ def check(c):
         para.append(line)
         if not ended:
             continue
-        if wrap(" ".join(para), LOG_COLS) != para and not para[0].startswith(">"):
+        if wrap(" ".join(para), LOG_COLS) != para and not para[0].startswith((">", "  ")):
             bad.append(para)
         para = []
     if bad:
@@ -641,24 +736,36 @@ def check(c):
            f"{c.mores} times -- more --)")
 
 
-def c64_matches(lines, path):
-    """The C64 version (the C engine) tells the same story: its transcript (tests/c64/*.
-    expected, made by tests/c64/run_c64.py) from the boarding desk to the trip's end, but
-    for what the cartridge doesn't have yet: the start menu (the cartridge's saves are
-    passwords: A6) and the receipt (A3c)."""
+def c64_story_matches(lines, path):
+    """As c64_matches, from the first chapter's title on (the boarding desk aside: a PASS
+    file boards without typing)."""
     theirs = open(path).read().split("\n")
+    start = next(i for i, ln in enumerate(theirs) if ln.startswith("~ "))
+    ours = lines[next(i for i, ln in enumerate(lines) if ln.startswith("~ ")):]
+    c64_matches(ours, path, theirs[start:])
+
+
+def c64_matches(lines, path, theirs=None):
+    """The C64 version (the C engine) tells the same story: its transcript (tests/c64/*.
+    expected, made by tests/c64/run_c64.py) from the boarding desk to its last "(press a
+    key)", receipt and Travel Stamp and all; but for what the cartridge doesn't have: the
+    start menu (the cartridge's saves are passwords: A6). The cartridge's own lines after
+    the stamp (its QR code's) come after that."""
+    theirs = theirs or open(path).read().split("\n")
     if theirs[:3] == ["1. Board", "2. Pick up a saved trip", "> 1"]:
         theirs = theirs[3:]
-    for end in ("~ Departure complete ~", "[end of input]"):
+    for end in ("(press a key)", "[end of input]"):
         if end in theirs:
-            theirs = theirs[:theirs.index(end)]
-    ours = lines[:len(theirs)]
+            theirs = theirs[:len(theirs) - theirs[::-1].index(end) - 1]
+            break
+    ours = [ln for ln in lines if ln != "Or scan the code above."][:len(theirs)]
     if ours != theirs:
         import difflib
         fail(f"the story differs from the C64's ({path}):\n" + "".join(difflib.unified_diff(
             [t + "\n" for t in theirs], [t + "\n" for t in ours], "C64", "cartridge", n=1)))
     else:
-        ok(f"the story is the C64's, word for word, roll for roll ({path}: {len(theirs)} lines)")
+        ok(f"the story is the C64's, word for word, roll for roll, stamp and all ({path}: "
+           f"{len(theirs)} lines)")
 
 
 def main(argv):
@@ -689,6 +796,8 @@ def main(argv):
         ok(f"{argv[1]}: the transcript is {argv[4]}'s ({len(c.lines)} lines)")
     if "--c64" in argv:
         c64_matches(c.lines, argv[argv.index("--c64") + 1])
+    if "--c64-story" in argv:
+        c64_story_matches(c.lines, argv[argv.index("--c64-story") + 1])
     check(c)
     if "--shot" in argv:
         shot(c, argv[argv.index("--shot") + 1])

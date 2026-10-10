@@ -37,6 +37,9 @@ zp_ip           = $3A           ; 2: the next byte of the running code (CAR_AT +
 zp_str          = $3C           ; 2: the string being expanded
 zp_out          = $3E           ; 2: where its text goes
 
+; qr.s, qrview.s (at a trip's end)
+zp_qr           = $40           ; 2: a module's place in the QR code, or the view's bitmap
+
 ; scratch: arguments and loop counters
 zp_t0           = $24
 zp_t1           = $25

@@ -13,7 +13,7 @@
         .include "char.inc"
 
         .export password_decode, passport_encode, traveler, pass, password_kind
-        .import pw_read, pw_write, bits_clear, bits_rewind, bits_get, bits_put, bits_crc
+        .import pw_close, pw_read, pw_write, bits_clear, bits_rewind, bits_get, bits_put, bits_crc
         .import pw_pos, pw_len, crc
 
 VERSION = 2
@@ -539,46 +539,9 @@ passport_encode:
         beq @fits
         lda #PW_TOO_BIG
         rts
-@fits:  lda pw_pos                  ; zero bits to a byte
-        and #7
-        beq @whole
-        lda #0
-        ldx #1
-        jsr put_a
-        jmp @fits
-@whole: jsr pos_bytes               ; the CRC of the bytes
-        jsr bits_crc
-        lda crc
-        sta zp_pw_value
-        lda crc + 1
-        sta zp_pw_value + 1
-        lda #16
-        jsr put
-@five:  lda pw_pos                  ; zero bits to a symbol: pw_pos a multiple of 5
-        sta zp_t0
-        lda pw_pos + 1
-        sta zp_t1
-@mod5:  lda zp_t1                   ; (take 5s away; 2048 bits at most: quick enough)
-        bne @take
-        lda zp_t0
-        cmp #5
-        bcc @rest
-@take:  lda zp_t0
-        sec
-        sbc #5
-        sta zp_t0
-        bcs @mod5
-        dec zp_t1
-        jmp @mod5
-@rest:  lda zp_t0
-        beq @text
-        lda #0
-        ldx #1
-        jsr put_a
-        jmp @five
-@text:  lda zp_t2
+@fits:  lda zp_t2
         ldx zp_t3
-        jsr pw_write
+        jsr pw_close
         lda #PW_OK
         rts
 

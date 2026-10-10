@@ -18,7 +18,7 @@
         .include "mem.inc"
 
         .export irq_ram, irq_kernal, nmi, split_on, frames
-        .export view_mode
+        .export view_mode, view_mode_hires
         .import keys_scan
 
 FRAME_LINE  = 250
@@ -55,13 +55,24 @@ split_on:
         rts
 
 ; ----------------------------------------------------------------------------------------
-; view_mode: what the view shows from the next frame: the map's characters (MEM_VIEW,
-; CTRL1_TEXT, BLACK) or a picture's bitmap (MEM_PICTURE, CTRL1_BITMAP, its background).
+; view_mode: what the view shows from the next frame, in multicolour: the map's characters
+; (MEM_VIEW, CTRL1_TEXT, BLACK) or a picture's bitmap (MEM_PICTURE, CTRL1_BITMAP, its
+; background). view_mode_hires: the same in hires (a QR code: qrview.s).
 ;   Takes:   A = its $D018, X = its $D011, Y = its background.
 ;   Changes: nothing else.
 view_mode:
-        php                         ; (all four for the same frame)
+        php                         ; (all five for the same frame)
         sei
+        pha
+        lda #CTRL2_MULTI
+        bne mode                    ; (always)
+view_mode_hires:
+        php
+        sei
+        pha
+        lda #CTRL2_HIRES
+mode:   sta view_ctrl2
+        pla
         sta view_mem
         stx view_ctrl1
         sty view_back

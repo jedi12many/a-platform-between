@@ -11,12 +11,15 @@
 ;   RAM under it. Interrupts stay on.
 ;   On a disk (an SD2IEC, a 1541), asset n is the file "ANN" (NN in hex), loaded there
 ;   with the KERNAL from the device the game was loaded from.
+;
+; And on a disk, the player's Boarding Pass may be beside the game, as the file PASS
+; (pass_file).
 
         .include "hw.inc"
         .include "mem.inc"
         .include "zp.inc"
 
-        .export asset_fetch, asset_media, media, staged
+        .export asset_fetch, asset_media, media, staged, pass_file
 
         .segment "RESIDENT"
 
@@ -131,6 +134,92 @@ disk_fetch:
 @failed:
         rts                         ; (C set; nothing staged)
 
+; ----------------------------------------------------------------------------------------
+; pass_file: the file PASS from the game's disk, as text (docs/passport-spec.md,
+; "Carriers"): read a byte at a time (never LOADed: a long file would run on past the
+; buffer), at most Y bytes. Printable ASCII is kept, PETSCII's capitals ($C1-$DA) become
+; ASCII's; anything else (a load address, a control byte) a space, which the decoder
+; ignores.
+;   Takes:   A/X = where the text goes (low/high); Y = the most it may have (1-255).
+;   Before:  $01 = $35.
+;   After:   C clear: the text there, ending in 0 (maybe nothing but spaces); or C set: no
+;            file (a cartridge, no disk, no PASS, a drive error). $01 = $35.
+;   Changes: A, X, Y; zp_dst; on a disk, the KERNAL's zero page ($90-$FF).
+pass_file:
+        sta zp_dst
+        stx zp_dst + 1
+        sty file_room
+        lda media
+        bne @disk
+        sec
+        rts
+@disk:  lda #PORT_KERNAL
+        sta CPU_PORT
+        lda #PASS_NAME_LEN
+        ldx #<pass_name
+        ldy #>pass_name
+        jsr KERNAL_SETNAM
+        lda #PASS_FILE              ; logical file 2, our device, a data channel
+        ldx device
+        ldy #PASS_FILE
+        jsr KERNAL_SETLFS
+        jsr KERNAL_OPEN
+        bcs @none
+        ldx #PASS_FILE
+        jsr KERNAL_CHKIN
+        bcs @close
+        ldy #0
+        sty file_len
+@byte:  jsr KERNAL_CHRIN
+        sta file_byte
+        jsr KERNAL_READST
+        sta file_status
+        and #%10111111              ; anything but the end of the file: an error (no
+        bne @close                  ; file there): as if there were none
+        lda file_byte
+        cmp #$C1                    ; PETSCII capitals
+        bcc @ascii
+        cmp #$DB
+        bcs @space
+        and #%01111111
+        bne @put                    ; (always)
+@ascii: cmp #$20                    ; printable ASCII, else a space
+        bcc @space
+        cmp #$7F
+        bcc @put
+@space: lda #' '
+@put:   ldy file_len
+        cpy file_room
+        bcs @full
+        sta (zp_dst), y
+        inc file_len
+@full:  lda file_status             ; to the end of the file
+        beq @byte
+        jsr finish
+        ldy file_len
+        lda #0
+        sta (zp_dst), y
+        clc
+        rts
+@close: jsr finish
+@none:  lda #PORT_GAME
+        sta CPU_PORT
+        sec
+        rts
+
+; finish: the file closed, the keyboard and screen the KERNAL's channels again, $01 the
+; game's. Changes A, X, Y.
+finish: jsr KERNAL_CLRCHN
+        lda #PASS_FILE
+        jsr KERNAL_CLOSE
+        lda #PORT_GAME
+        sta CPU_PORT
+        rts
+
+PASS_FILE       = 2
+PASS_NAME_LEN   = 8
+pass_name:      .byte "PASS,P,R"
+
 hex:    .byte "0123456789ABCDEF"
 name:   .byte "A00"
 
@@ -138,3 +227,7 @@ name:   .byte "A00"
 media:  .res 1                      ; MEDIA_CART or MEDIA_DISK
 device: .res 1                      ; the disk's device
 staged: .res 1                      ; the asset staged, or $FF
+file_room:      .res 1              ; pass_file: room for the text
+file_len:       .res 1              ; how much there is
+file_status:    .res 1              ; the KERNAL's status after the last byte
+file_byte:      .res 1

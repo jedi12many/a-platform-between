@@ -10,12 +10,13 @@
 
         .export desk_run, name_text
         .import log_print, line_ask, menu_ask, number_text
-        .import password_decode, traveler, pass, password_kind, pw_bad_line
+        .import password_decode, traveler, pass, password_kind, pw_bad_line, pass_file
         .import race_lo, race_hi, class_lo, class_hi
         .importzp RACE_COUNT, CLASS_COUNT   ; (8-bit numbers: "zero page" to ca65)
 
 LINES   = 9                         ; a Boarding Pass is 9 lines at most
 TYPED   = 36                        ; a typed line, spaces and dashes and all
+FILE_ROOM = 255                     ; a PASS file's text: `joined` has room
 SLOT    = TYPED + 1                 ; its room in `typed_lines`
 
         .segment "RESIDENT"
@@ -30,6 +31,41 @@ SLOT    = TYPED + 1                 ; its room in `typed_lines`
 desk_run:
         sta departure
         stx departure + 1
+        lda #<joined                ; a disk's PASS file first (assets.s): no typing
+        ldx #>joined
+        ldy #FILE_ROOM
+        jsr pass_file
+        bcs start
+        ldy #0                      ; (nothing in it but spaces: as if there were none)
+@look:  lda joined, y
+        beq start
+        iny
+        cmp #' '
+        beq @look
+        lda #<joined
+        ldx #>joined
+        jsr password_decode
+        cmp #PW_OK
+        bne @bad_file
+        lda #<from_file
+        ldx #>from_file
+        jsr log_print
+        jmp decoded
+@bad_file:
+        pha
+        lda #<file_wrong
+        ldx #>file_wrong
+        jsr log_print
+        pla
+        cmp #PW_LINE                ; a typo: on which line
+        bne @say
+        lda pw_bad_line
+        ldx #<file_typo
+        ldy #>file_typo
+        jsr say_line
+        jmp start
+@say:   tax
+        jsr say_wrong
 start:  lda #<greeting
         ldx #>greeting
         jsr log_print
@@ -89,11 +125,12 @@ lengths:                            ; every line 20 symbols but the last, which 
         jsr retype
         jmp lengths
 @read:  cmp #PW_OK
-        beq @good
+        beq decoded
 @wrong: tax                         ; what's wrong, in words, then the desk again
         jsr say_wrong
         jmp start
-@good:  lda password_kind
+decoded:                            ; read, from what was typed or the file
+        lda password_kind
         cmp #KIND_PASS
         bne @show
         lda pass + PASS_DEPARTURE   ; a pass for this Departure?
@@ -396,6 +433,11 @@ slot_hi:
 greeting:
         .byte "Your Boarding Pass, please, one line at a time, then a blank line. "
         .byte "(Or your Passport, to travel without one.)", 10, 0
+from_file:
+        .byte "Your Boarding Pass is on the disk (PASS).", 10, 0
+file_wrong:
+        .byte "There's a PASS file on the disk, but it doesn't read.", 10, 0
+file_typo:      .byte " of it has a typo. Let's type it instead.", 10, 0
 too_few:
         .byte "A pass or a Passport is at least 3 lines. Let's start again.", 10, 0
 other_departure:

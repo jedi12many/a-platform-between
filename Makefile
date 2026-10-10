@@ -169,7 +169,7 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 # Flash, and the same game on a disk for an SD2IEC. Modules common to both, then each one's
 # start-up; tools/crt.py makes the .crt of the linked chips.
 CART_COMMON := main assets copy split text screen view keys command password passport number desk play \
-               depot vm expand reward rules dice party picture asset0
+               depot vm expand reward rules dice party picture receipt stamp qr qrview asset0
 CART_INC    := $(wildcard cart/*.inc)
 CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
                $(CART_INC) cart/cart.cfg cart/disk.cfg build/cart/tiles16 build/cart/font build/cart/names.s \
@@ -187,24 +187,30 @@ build/cart/tiles16: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt
 	@mkdir -p build/cart
 	python3 tools/battlegfx.py build/cart/battle.bgfx --cart16 $@
 
-build/apb.crt build/apb-disk.d64: $(CART_DEPS) tools/d64.py
+build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CART_DEPS) tools/d64.py \
+                                                         tests/cart/kestrel.pass tests/cart/typo.pass
 	@mkdir -p build/cart
 	python3 tools/qsc/qsc.py build content/s1/00-the-fare/the-fare.qs -o build/cart/the-fare.apd \
 	    --split build/cart/fare
 	rm -rf build/cart/assets
-	python3 tools/cart/departure.py build/cart/fare content/s1/00-the-fare/pictures build/cart/assets 1
+	python3 tools/cart/departure.py build/cart/fare content/s1/00-the-fare/pictures build/cart/assets 2
 	@for m in $(CART_COMMON) boot start diskstart diskaddr; do \
 	    ca65 -I cart --bin-include-dir build -g -o build/cart/$$m.o cart/$$m.s || exit 1; done
 	ca65 -I cart -g -o build/cart/names.o build/cart/names.s
 	ld65 -C cart/cart.cfg -o build/cart/apb -m build/cart/apb.map -Ln build/cart/apb.lbl \
 	    --dbgfile build/cart/apb.dbg $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) names boot start))
 	python3 tools/crt.py build/apb.crt "A PLATFORM BETWEEN" build/cart/apb.b00:0:LH \
-	    build/cart/apb.a00:1:L --assets build/cart/assets
+	    build/cart/apb.a00:1:L build/cart/apb.a01:1:H --assets build/cart/assets
 	ld65 -C cart/disk.cfg -o build/cart/apb-disk -m build/cart/apb-disk.map -Ln build/cart/apb-disk.lbl \
 	    $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) names diskstart diskaddr))
 	python3 tools/d64.py write build/apb-disk.d64 "a platform" ab build/cart/apb-disk=apb \
-	    build/cart/apb-disk.a00=a00 \
+	    build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01 \
 	    $$(for f in build/cart/assets/a*.prg; do n=$$(basename $$f .prg); echo $$f=$$n; done)
+	for pass in kestrel typo; do python3 tools/d64.py write build/apb-$$pass.d64 "a platform" ab \
+	    build/cart/apb-disk=apb build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01 \
+	    tests/cart/$$pass.pass=pass \
+	    $$(for f in build/cart/assets/a*.prg; do n=$$(basename $$f .prg); echo $$f=$$n; done) \
+	    || exit 1; done
 
 cart: build/apb.crt
 	@echo "Cartridge: build/apb.crt (Kung Fu Flash, or x64sc -cartcrt build/apb.crt); disk: build/apb-disk.d64"
@@ -225,6 +231,11 @@ test-cart: build/apb.crt build/the-fare.d64
 	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/desk.choices \
 	    tests/cart/desk.expected --c64 build/cart/desk.c64 \
 	    --pictures content/s1/00-the-fare/pictures
+	python3 tests/cart/run_cart.py build/apb-kestrel.d64 build/cart/apb-disk.lbl \
+	    tests/cart/kestrel-file.choices tests/cart/kestrel-file.expected --c64-story tests/c64/fare-edge.expected
+	python3 tests/cart/run_cart.py build/apb-typo.d64 build/cart/apb-disk.lbl \
+	    tests/cart/fare-edge.choices tests/cart/typo-file.expected --c64-story tests/c64/fare-edge.expected
+	python3 tests/cart/test_ending.py build/apb.crt build/cart/apb.lbl --cases 40
 	cd tests/cart && python3 test_damage.py ../../build/apb.crt ../../build/cart/apb.lbl fare-edge.choices \
 	    --cases 8
 	python3 tests/cart/test_passwords.py build/apb.crt build/cart/apb.lbl --cases 100

@@ -16,8 +16,16 @@ DEPOT_AT        = $B800         ; 2 KB
 DEPOT_MAX       = 2048
 EXPAND_AT       = $0400         ; to $0FFF
 EXPAND_MAX      = $0BFF
-ASSET_DEPOT     = 1             ; the Departure's assets: its depot, then its cars
-ASSET_CAR0      = 2
+; At a trip's end, the same room is the QR code's (qr.s): its modules, a byte each (33 x
+; 33 at most), the Galois field's tables, the codewords, the generator.
+QR_MATRIX       = EXPAND_AT             ; 1089
+QR_EXP          = EXPAND_AT + $0500     ; 256
+QR_LOG          = EXPAND_AT + $0600     ; 256
+QR_CODEWORDS    = EXPAND_AT + $0700     ; 100
+QR_GENERATOR    = EXPAND_AT + $0780     ; 21
+ASSET_ENDING    = 1             ; code: a trip's end (receipt.s, stamp.s, qr.s), run here
+ASSET_DEPOT     = 2             ; the Departure's assets: its depot, then its cars (and
+ASSET_CAR0      = 3             ; its pictures: the depot says where)
 
 ; ------------------------------------------------------------------ VIC bank 3
 TEXT_SCREEN     = $C000         ; the frames (and the status row)

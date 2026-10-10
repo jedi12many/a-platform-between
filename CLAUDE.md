@@ -99,20 +99,25 @@ against. For `cart/`:
   damaged files. `tools/music/musicc.py build NAME.music -o FILE` compiles a tune file.
 
 - `make test-cart`: the cartridge (`build/apb.crt`) and its disk (`build/apb-disk.d64`)
-  boot on a 6502 emulator that plays an EasyFlash, or the KERNAL's loads
+  boot on a 6502 emulator that plays an EasyFlash, or the KERNAL's loads and file reads
   (`tests/cart/run_cart.py`): keys typed on the emulated keyboard from
   `tests/cart/*.choices` must give `tests/cart/*.expected` on both (`--update` rewrites
   it: read the diff), and the story the C64 version tells (`--c64`: The Fare's
   `tests/c64/fare-edge.expected`, and the desk's route played by `build/the-fare.d64`),
-  word for word and roll for roll; every raster split's writes land in the gap between the
-  view's last line and row 16's fetch, to the cycle; the graphics are the tools'; the
-  view (the story's pictures as `tools/c64pic.py` converts them) and the frames are
-  right; paragraphs wrap at 25; nothing scrolls off unread.
-  `--shot FILE` draws the screen. `tests/cart/test_damage.py`: damaged Departures stop
-  the story VM cleanly, never run wild. And `tests/cart/test_passwords.py`: the
-  cartridge's Passports and Boarding Passes must decode, encode and refuse damage as the
-  Python reference does, on random travelers. The cartridge plays The Fare from
-  `content/` (`tools/cart/departure.py` makes its assets).
+  word for word and roll for roll, receipt and Travel Stamp and all; a disk with a `PASS`
+  file boards without typing, and one with a typo in it says so and asks; every raster
+  split's writes land in the gap between the view's last line and row 16's fetch, to the
+  cycle; the graphics are the tools'; the view (the story's pictures as
+  `tools/c64pic.py` converts them; at a trip's end the Travel Stamp's QR code, the
+  `qrcode` library's module for module, and scanned back off the screen by OpenCV) and
+  the frames are right; paragraphs wrap at 25; nothing scrolls off unread. `--shot FILE`
+  draws the screen. `tests/cart/test_ending.py`: Travel Stamps of random receipts read
+  back through `tools/passport/stamp.py`, and QR codes of every version 1-4 match
+  `qrcode` and scan. `tests/cart/test_damage.py`: damaged Departures stop the story VM
+  cleanly, never run wild. And `tests/cart/test_passwords.py`: the cartridge's Passports
+  and Boarding Passes must decode, encode and refuse as the Python reference does. The
+  cartridge plays The Fare from `content/` (`tools/cart/departure.py` makes its assets).
+  Needs `pip install qrcode opencv-python-headless`.
 
 Run all seventeen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.

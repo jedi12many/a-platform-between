@@ -1,6 +1,7 @@
-; The game (docs/cartridge.md): the Departure's depot opened, the boarding desk, the trip;
-; then the desk again, for the next. (A3c: the receipt and the Travel Stamp at a trip's
-; end; A3b: the story's pictures in the view, where the platform's map is till then.)
+; The game (docs/cartridge.md): the Departure's depot opened, the boarding desk, the trip,
+; its receipt and Travel Stamp (receipt.s); then the desk again, for the next. The view
+; has the platform's map at the desk, the story's pictures on the trip, and the Travel
+; Stamp's QR code at its end.
 
         .include "hw.inc"
         .include "mem.inc"
@@ -8,7 +9,7 @@
 
         .export play, platform_map
         .import vm_open, vm_board, vm_run, vm_error, dep_id, desk_run, view_map
-        .import log_print, keys_clear, key_wait, frames
+        .import log_print, keys_clear, key_wait, frames, asset_fetch, ending
 
         .segment "RESIDENT"
 
@@ -40,7 +41,16 @@ play:
         jsr cant_board
         jmp @trip
 @run:   jsr vm_run
-        jsr press_key
+        cmp #$FF
+        beq @again                  ; (derailed: vm_run said so)
+        lda #ASSET_ENDING           ; the end: the receipt, the Travel Stamp (receipt.s,
+        jsr asset_fetch             ; run from the staging RAM)
+        bcs @again
+        jsr ending
+@again: jsr press_key
+        lda #<platform_map          ; the platform again, for the next
+        ldx #>platform_map
+        jsr view_map
         jmp @trip
 
 ; press_key: "(press a key)", and a key. Changes A, X, Y; text.s's zero page; zp_t0-zp_t2.

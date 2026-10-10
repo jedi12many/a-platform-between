@@ -11,7 +11,7 @@
         .include "zp.inc"
         .include "char.inc"
 
-        .export pw_read, pw_write, bits_clear, bits_rewind, bits_get, bits_put, bits_crc
+        .export pw_read, pw_write, pw_close, bits_clear, bits_rewind, bits_get, bits_put, bits_crc
         .export pw_buffer, pw_pos, pw_len, pw_bad_line, crc
         .export symbols
 
@@ -222,6 +222,67 @@ pw_write:
         sta (zp_pw_text), y
         rts
 
+; ----------------------------------------------------------------------------------------
+; pw_close: the end of a password's bits, and the password: zero bits to a whole byte, the
+; CRC-16 of the bytes so far, zero bits to a whole symbol; then the text (pw_write).
+;   Takes:   A/X = where the text goes (low/high); the fields put (pw_pos after them).
+;   Changes: A, X, Y; zp_pw_text, zp_pw_value, zp_pw_n, zp_pw_sum; zp_t0-zp_t2.
+pw_close:
+        sta close_to
+        stx close_to + 1
+@byte:  lda pw_pos                  ; zero bits to a byte
+        and #7
+        beq @whole
+        jsr zero_bit
+        jmp @byte
+@whole: lda pw_pos + 1              ; the CRC of the bytes: pw_pos / 8 of them
+        sta zp_t1
+        lda pw_pos
+        lsr zp_t1
+        ror a
+        lsr zp_t1
+        ror a
+        lsr zp_t1
+        ror a
+        jsr bits_crc
+        lda crc
+        sta zp_pw_value
+        lda crc + 1
+        sta zp_pw_value + 1
+        lda #16
+        jsr bits_put
+@five:  lda pw_pos                  ; zero bits to a symbol: pw_pos a multiple of 5
+        sta zp_t0
+        lda pw_pos + 1
+        sta zp_t1
+@mod5:  lda zp_t1                   ; (5s taken away: 2048 bits at most, quick enough)
+        bne @take
+        lda zp_t0
+        cmp #5
+        bcc @rest
+@take:  lda zp_t0
+        sec
+        sbc #5
+        sta zp_t0
+        bcs @mod5
+        dec zp_t1
+        jmp @mod5
+@rest:  lda zp_t0
+        beq @text
+        jsr zero_bit
+        jmp @five
+@text:  lda close_to
+        ldx close_to + 1
+        jmp pw_write
+
+; zero_bit: one 0 bit put. Changes A, X, Y; zp_pw_value, zp_pw_n.
+zero_bit:
+        lda #0
+        sta zp_pw_value
+        sta zp_pw_value + 1
+        lda #1
+        jmp bits_put
+
 ; put_char: A at the text, and on one. Changes Y.
 put_char:
         ldy #0
@@ -403,6 +464,7 @@ pw_buffer:      .res 256            ; the bits
 pw_pos:         .res 2              ; the next bit to read or write
 pw_len:         .res 2              ; how many there are
 pw_bad_line:    .res 1              ; the line a PW_LINE is on, from 1
+close_to:       .res 2              ; pw_close: where the text goes
 crc:            .res 2
 values:         .res MAX_SYMBOLS    ; the symbols read, as values
 count:          .res 1              ; how many

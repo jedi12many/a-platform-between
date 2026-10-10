@@ -62,6 +62,12 @@ EF_LED          = $80
 KERNAL_SETLFS   = $FFBA
 KERNAL_SETNAM   = $FFBD
 KERNAL_LOAD     = $FFD5
+KERNAL_READST   = $FFB7
+KERNAL_OPEN     = $FFC0
+KERNAL_CLOSE    = $FFC3
+KERNAL_CHKIN    = $FFC6
+KERNAL_CLRCHN   = $FFCC
+KERNAL_CHRIN    = $FFCF
 KERNAL_DEVICE   = $BA           ; the device it last used: the one we were loaded from
 
 ; ------------------------------------------------------------------ vectors

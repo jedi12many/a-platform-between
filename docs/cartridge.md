@@ -112,10 +112,22 @@ No other module knows where an asset came from:
   serial routines hold interrupts off at times, so a split may come late for a frame:
   assets are fetched between scenes.
 
-**The story's assets**: asset 0 is the screen's graphics; a Departure's depot is asset
-1, and its car k (a chapter) asset 2 + k (`tools/cart/departure.py`, from `qsc.py build
---split`): the file's length in 2 bytes, then the file. The VM copies the depot to $B800
-and the car it's in to $A000, so the staging RAM is free again.
+**The assets**: asset 0 is the screen's graphics; asset 1 is code, a trip's end (the
+receipt, the Travel Stamp, its QR code: `receipt.s`, `stamp.s`, `qr.s`, `qrview.s`),
+linked at $8000 and run there once it's staged: nothing else is fetched while it runs.
+A Departure's depot is asset 2, its car k (a chapter) asset 3 + k, and its pictures the
+assets after the cars (`tools/cart/departure.py`, from `qsc.py build --split`): the
+file's length in 2 bytes, then the file (the depot's with the asset of its first picture
+between). The VM copies the depot to $B800 and the car it's in to $A000, so the staging
+RAM is free again.
+
+**The player's pass, on a disk**: before it asks for typing, the boarding desk reads the
+file `PASS` from the game's disk, if there is one (`pass_file`, `assets.s`): a byte at
+a time with the KERNAL's OPEN and CHRIN (`PASS,P,R`), never LOADed, so a long file can't
+run past the desk's buffer, and only so much of it is kept. Printable ASCII stays,
+PETSCII's capitals become ASCII's, anything else (a load address) a space. A pass that
+reads boards the traveler with no typing; one that doesn't is said to ("Line 2 of it has
+a typo"), and the desk asks for the lines. A cartridge has no file: it always asks.
 
 `asset_fetch` remembers what's staged and doesn't fetch it again. Assets are linked at
 $8000 (`cart/cart.cfg`, `cart/disk.cfg`), so the same bytes are the cartridge's chip and
@@ -138,7 +150,8 @@ Each module owns its part; nothing else touches it.
 | $36-$37 | `number.s` | the number being written |
 | $38-$39 | `rules.s` | a rule's working number |
 | $3A-$3F | `vm.s`, `depot.s`, `expand.s` | the next byte of code ($3A-$3B), the string being expanded ($3C-$3D), where its text goes ($3E-$3F) |
-| $40-$8F | free (the fight, the music will take theirs from here) | |
+| $40-$41 | `qr.s`, `qrview.s` | a module's place in the QR code, or a byte of the view's bitmap |
+| $42-$8F | free (the fight, the music will take theirs from here) | |
 | $90-$FF | the KERNAL's, on a disk (while it loads) | |
 
 The interrupt (`split.s`) uses no zero page at all.
@@ -157,7 +170,8 @@ The interrupt (`split.s`) uses no zero page at all.
   and cars, loaded and checked), `vm.s` (the story VM), `expand.s` (the story's strings),
   `reward.s` (items, XP, Debt, Echoes, the receipt), `rules.s` (the dice, checks, health,
   XP), `dice.s` (the dice log), `party.s` (the party frame), `picture.s` (the story's
-  pictures), and more as they come
+  pictures), `receipt.s` (a trip's end), `stamp.s` (the Travel Stamp), `qr.s` (a QR
+  code), `qrview.s` (a QR code in the view), and more as they come
   (`sprites.s`, `combat.s`, `music.s`). The registry's names are generated into `build/cart/names.s`
   (`tools/registry/registry_asm.py`), never written by hand.
   Assets are files of their own (`asset0.s`, ...).
@@ -286,11 +300,17 @@ engine also walks a whole car once when it loads; the cartridge finds the same f
 it reaches them.) A fault stops the VM with vm.c's words: "The train has derailed: bad
 jump 1:24". A runaway (20000 instructions without a menu) stops it too.
 
+At a trip's end, the receipt and the Travel Stamp, as the C64 version prints them
+(`receipt.s`, `stamp.s`), and the stamp's QR code in the view (`qr.s`, `qrview.s`): the
+stamp's text in alphanumeric mode, error correction level L, the smallest of versions 1
+to 4 it fits (21 to 33 modules), mask 0 (any reader takes it; choosing the mask by the
+standard's penalty is an encoder's nicety). It's drawn in hires, black modules on a white
+square with a quiet zone of 4 modules, 4 pixels a module if it fits, else 3. The view
+goes back to the platform's map at the desk.
+
 Until the later milestones: a tune is only a record for the tests (`[music
 concourse]`, as the C64 version's transcripts have them; so is each picture shown,
-`[picture pic02]`); a
-fight stops the VM ("no fights yet", A4); at a trip's end there's "(press a key)" and the
-desk again, for the receipt and the Travel Stamp are A3c's.
+`[picture pic02]`); a fight stops the VM ("no fights yet", A4).
 
 ## Building and testing
 
@@ -312,7 +332,14 @@ and then (`tests/c64/run_c64.py`). It checks the split's timing every frame, the
 against the tools' own files, the view (the map at the desk; at the end, the last picture
 as `tools/c64pic.py` converts it), the frames (the party, the last roll), that every
 paragraph is wrapped at 25 as the rule says, and that nothing scrolled off unread.
-`--shot FILE` saves the screen as the VIC-II would show it. `tests/cart/test_damage.py`
+A trip that ends shows its Travel Stamp's QR code: its modules must be the `qrcode`
+library's for the same text, and OpenCV, reading the view as the VIC shows it, must get
+the stamp back (`segno` isn't the reference: it adds a byte the standard doesn't, when the
+data's terminator ends on a byte). Disks with a `PASS` file (`tests/cart/kestrel.pass`,
+`typo.pass`) board from it, or say why not. `tests/cart/test_ending.py` checks the
+stamp encoder against `tools/passport/stamp.py` on random receipts, and QR codes of every
+version. `--shot FILE` saves the screen as the VIC-II would show it.
+`tests/cart/test_damage.py`
 breaks bytes of the depot, the cars and the pictures and plays them: the VM must stop cleanly or play
 on, and never run anything but its own code.
 
@@ -329,7 +356,8 @@ on, and never run anything but its own code.
 - **A3a, the story VM** (done): Quest Script's bytecode in assembly, chapters as
   assets, the story told as the C64 version tells it.
 - **A3b, pictures** (done): the story's pictures in the view.
-- **A3c, the receipt**: the trip's end, the Travel Stamp, a pass's Rewind.
+- **A3c, the receipt** (done): the trip's end, the Travel Stamp as lines and as a QR
+  code, a disk's `PASS` file; a pass's Rewind (in A3a's VM).
 - **A4, sprites and the fight**: the multiplexer, the battle map, the combat rules
   (checked against `tools/rules/combat.py`).
 - **A5, music**: the player (`fe/c64/music.s`) moved over, tunes in banks.
