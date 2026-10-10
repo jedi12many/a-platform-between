@@ -30,7 +30,8 @@ from cases import damaged, impossible, random_traveler, reference  # noqa: E402
 import boarding  # noqa: E402
 
 STOP = 0x0300                       # a routine "returns" here: the run stops
-TEXT, OUT = 0xA000, 0xA800          # RAM the game doesn't use yet
+TEXT, OUT = 0xA0A5, 0xA800          # RAM the game doesn't use yet (the text off a
+                                    # page's start: its low byte isn't 0)
 PW = {"ok": 0, "symbol": 1, "line": 2, "length": 3, "checksum": 4, "version": 5, "too big": 6}
 NAMES = {v: k for k, v in PW.items()}
 

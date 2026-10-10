@@ -29,8 +29,8 @@ VERSION = 2
 ;            filled in.
 ;   Changes: A, X, Y; password.s's zero page; zp_t0-zp_t3.
 password_decode:
-        lda #0
-        sta refused
+        ldy #0                      ; (A/X: the text)
+        sty refused
         jsr pw_read
         beq @read
         rts
