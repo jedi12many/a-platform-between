@@ -347,7 +347,7 @@ web: build/web/apb.js
 # The Waystation website (W1, waystation/): static pages and the rules core as
 # WebAssembly. Serve build/waystation/ and open it.
 WS_FLAGS := -O2 -sALLOW_MEMORY_GROWTH -sEXPORTED_RUNTIME_METHODS=ccall \
-            -sEXPORTED_FUNCTIONS=_ws_traveler,_ws_create,_ws_roll,_ws_load,_ws_raise_stat,_ws_raise_skill,_ws_stamp,_ws_rules
+            -sEXPORTED_FUNCTIONS=_ws_traveler,_ws_create,_ws_roll,_ws_load,_ws_raise_stat,_ws_raise_skill,_ws_stamp,_ws_rules,_ws_issue
 
 build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) waystation/site/* \
                         waystation/registry_json.py registry/*.txt

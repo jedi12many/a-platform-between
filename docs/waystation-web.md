@@ -110,11 +110,22 @@ Dock 3"), so nobody has to copy twenty-letter lines around.
 - **Landing a Travel Stamp:** *Whose Passport* lists them; choose one and their Passport is
   read (and a stamp waiting with them is filled in). The stamped Passport replaces theirs,
   and the old one is kept (the last five), in case a stamp was landed by mistake.
-- **Boarding a train** in the browser: under the screen, *Your travelers* and *Type their
-  Passport* types it in, a line at a time, when the desk asks for it. A trip that ends in
-  a Travel Stamp keeps the stamp with that traveler, to land at the Waystation.
-- **The platform page** (`site/index.html`) lists them: notes to edit, Passports to copy,
-  a mark on anyone with a stamp to land, and *Remove*.
+- **Boarding a train** from the platform page: each traveler has the missions (The Fare,
+  Eighteen Minutes, the Deep Yards) and *Board*. Nobody types a code. The page issues the
+  traveler a Boarding Pass with the Waystation's own rules (`ws_issue` in
+  `waystation/ws.c`, loaded on the page when someone first boards), keeps its random
+  ticket on the traveler, and opens the train with it (`play/index.html#departure=...&pass=...`):
+  the game boards with the pass, with no desk. When the receipt comes up, the game hands its
+  Travel Stamp to the page (a message, `trip-over`), which lands it on the traveler whose
+  ticket it quotes, as the Waystation lands one typed in: their new Passport replaces the
+  old (kept, the last five), with a line about the trip. A mission they've brought a stamp
+  home from before is a Rewind. With no server (W2) to remember tickets, the page trusts the
+  ones it keeps, on the player's account or in this browser.
+- **Boarding by hand** still works: *Board a train*, then type a Boarding Pass or a
+  Passport, or have one typed in under the screen from *Your travelers*. A trip boarded
+  that way keeps its stamp with the traveler, to land at the Waystation.
+- **The platform page** (`site/index.html`) lists them: missions to board, notes to edit,
+  Passports to copy, a mark on anyone with a stamp to land, and *Remove*.
 
 **Signing in.** The site is the platform page with the Waystation and the train in a frame
 under it (`make site`, `build/site/`). Published on claude.ai, the platform page is signed
@@ -131,7 +142,8 @@ their account.
 chosen to land a stamp, and replaced by the stamped Passport; and on the site, signed in
 (claude.ai's store stood in for in the browser), a traveler saved in the Waystation's frame
 is kept in the player's own place, shown on the platform, and boards the train from the
-list.
+list; then, from the platform, *Board* on her card plays The Fare with no codes typed, and
+its stamp lands on her as `tools/passport/receipt.py` says it should.
 
 ## Open questions
 

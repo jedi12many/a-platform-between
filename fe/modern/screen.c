@@ -600,6 +600,15 @@ static void show_receipt(const apb_receipt *r)
     }
 }
 
+/* A Boarding Pass the platform gave us (modern_give_pass): boarded without the desk. */
+static char given[APB_PASS_BUF];
+
+void modern_give_pass(const char *text)
+{
+    strncpy(given, text, sizeof(given) - 1);
+    given[sizeof(given) - 1] = '\0';
+}
+
 static uint8_t board(uint16_t seed)
 {
     uint8_t with_pass;
@@ -610,8 +619,14 @@ static uint8_t board(uint16_t seed)
         end_line();
         return 1;
     }
-    with_pass = apb_desk_run(apb_vm_departure(), &traveler, &pass);
-    end_line();
+    if (given[0] && apb_pass_decode(given, &pass, &traveler, 0) == APB_PP_OK
+        && pass.departure == apb_vm_departure()) {
+        with_pass = 1;                  /* the platform issued it: no codes to type */
+    } else {
+        with_pass = apb_desk_run(apb_vm_departure(), &traveler, &pass);
+        end_line();
+    }
+    given[0] = '\0';
     if (!with_pass && apb_vm_siding()) seed = apb_desk_yard(seed);   /* a Siding's yard */
     if ((with_pass ? apb_vm_board_pass(&traveler, &pass) : apb_vm_board(&traveler, seed)) != 0) {
         out("This Departure can't be boarded: ");
@@ -640,10 +655,12 @@ void modern_play(uint16_t seed)
             break;
         }
     }
+    stamp[0] = '\0';
     if (apb_vm_run() != APB_VM_ERROR) {
         draw_status();
         show_receipt(apb_vm_receipt());
     }
+    plat_trip_over(stamp);
     out("(press a key)");
     end_line();
     key();

@@ -83,6 +83,11 @@ uint16_t plat_key(void)
 
 void plat_saved(void) {}
 
+void plat_trip_over(const char *stamp)
+{
+    (void)stamp;                            /* the receipt on the screen says it all */
+}
+
 /* Sound: an SDL audio device that pulls the music's samples (fe/modern/sound.c). */
 static SDL_AudioDeviceID audio;
 

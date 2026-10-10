@@ -165,7 +165,7 @@ const commands = {
 
   // The site, signed in: claude.ai's user and db, stood in for by an in-memory store in the
   // top page (not the frames: they must ask the page for their travelers).
-  async shell(text) {
+  async shell(text, picks) {
     ROOT = path.join(__dirname, "..", "..", "build", "site");
     return session(async (page) => {
       if (process.env.STEP) console.error("1 who"); await page.waitForFunction(() => /on your account/.test(document.getElementById("who").textContent));
@@ -208,7 +208,26 @@ const commands = {
         typed = (await frame.evaluate((r) => Module.UTF8ToString(Module._web_screen_row(r)), r))
           .includes(text.slice(0, 20));
       }
-      return JSON.stringify({ shown, choices, typed, docs: await page.evaluate(() => window.__docs) });
+      // Then the way it's meant to be: back on the platform, The Fare (the first mission)
+      // and Board on her card. The page issues her pass; the trip (its answers scripted,
+      // the start menu's Board first) ends in a stamp that lands on her by itself.
+      const before = JSON.stringify(await page.evaluate(() => window.__docs));
+      await page.click("#home");
+      await page.evaluate((c) => { window.APB_TEST_CHOICES = c; }, picks);
+      const said = [];
+      page.on("console", (m) => said.push(m.text()));      // the scripted trip's transcript
+      await page.click("#list li .board button");
+      const issued = await page.waitForFunction(() => Object.values(window.__docs)
+        .some((d) => d.tickets && Object.keys(d.tickets).length), null, { timeout: 30000 })
+        .then(() => true, () => false);
+      await page.waitForFunction(() => Object.values(window.__docs).some((d) => d.landed),
+                                 null, { timeout: 120000 }).catch(() => null);
+      const bar = await page.textContent("#place-name");
+      const told = said.join("\n");
+      const desk = told.includes("Static.") && !told.includes("Boarding Pass, please")
+        ? "aboard" : "the desk asked, or no story: " + told.slice(0, 300);
+      return JSON.stringify({ shown, choices, typed, before: JSON.parse(before), issued, desk, bar, told,
+                              docs: await page.evaluate(() => window.__docs) });
     }, () => {
       if (window.top !== window) return;
       const docs = {};

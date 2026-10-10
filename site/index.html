@@ -52,6 +52,12 @@ ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
 .list input { font: inherit; font-size: 0.95rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0.35rem 0.5rem; width: 100%; }
 .list pre { margin: 0; font: 0.85rem/1.4 var(--mono); white-space: pre; overflow-x: auto; color: var(--ink); }
 .list .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.list .board { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.list .board select { font: inherit; font-size: 0.95rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0.35rem 0.5rem; max-width: 100%; }
+.list .board .go { margin-top: 0; }
+.list .last { margin: 0; font-size: 0.9rem; color: var(--ink); }
+.list details summary { cursor: pointer; font-size: 0.85rem; color: var(--muted); }
+.list .problem { margin: 0; font-size: 0.9rem; color: var(--danger); }
 .empty { margin: 0; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 6px; padding: 0.9rem; }
 button.small { font: inherit; font-size: 0.85rem; background: none; color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 0.2rem 0.6rem; cursor: pointer; }
 button.small.danger { color: var(--danger); }
@@ -115,9 +121,10 @@ body.away #place { display: flex; }
     </li>
     <li>
       <h2>Board the train</h2>
-      <p>Choose <em>Departure 00: The Fare</em>, then <kbd>1</kbd> to board. When it asks for
-        your Passport, pick your traveler under the screen and press <em>Type their
-        Passport</em>.</p>
+      <p>Pick a mission on your traveler above and press <em>Board</em>: the Waystation
+        issues their Boarding Pass and the train takes them straight on, with no codes to
+        type. When the trip ends, its Travel Stamp lands on them by itself.</p>
+      <p>Playing with a Boarding Pass or a Passport from elsewhere? Board here and type it in.</p>
       <button class="go" type="button" data-place="play">Board a train</button>
     </li>
     <li>
@@ -127,8 +134,8 @@ body.away #place { display: flex; }
         <li>Press <kbd>S</kbd> at a menu to save. <em>Pick up a saved trip</em> carries on from there.</li>
         <li>In a fight: the arrow keys or the keypad move, <kbd>Enter</kbd> chooses, and a
           command's first letter does it (<kbd>M</kbd>ove, <kbd>A</kbd>im, <kbd>Q</kbd>uick...).</li>
-        <li>A trip that ends in a Travel Stamp keeps it with the traveler who boarded: land it
-          at the Waystation, on <em>Travel Stamp</em>, by choosing them.</li>
+        <li>Press <em>&larr; Platform</em> when the trip is over: your traveler is waiting
+          there with what they earned, ready for the next mission.</li>
       </ul>
     </li>
   </ol>
@@ -247,8 +254,34 @@ function draw() {
       save(copy);
     });
     note.append(input);
+    var boardRow = document.createElement("div");
+    boardRow.className = "board";
+    var pick = document.createElement("select");
+    pick.setAttribute("aria-label", "Mission for " + (t.name || "this traveler"));
+    MISSIONS.forEach(function (m, i) {
+      var o = document.createElement("option");
+      o.value = String(i);
+      o.textContent = m.name + ((t.played || []).indexOf(m.id) >= 0 ? " (again: a Rewind)" : "");
+      pick.append(o);
+    });
+    var go = document.createElement("button");
+    go.type = "button";
+    go.className = "go";
+    go.textContent = "Board";
+    go.addEventListener("click", function () { board(t, MISSIONS[+pick.value], go); });
+    boardRow.append(pick, go);
+    var last = null;
+    if (t.last) {
+      last = document.createElement("p");
+      last.className = "last";
+      last.textContent = t.last;
+    }
+    var details = document.createElement("details");
+    var summary = document.createElement("summary");
+    summary.textContent = "Their Passport";
     var pre = document.createElement("pre");
     pre.textContent = lines(t.passport || "");
+    details.append(summary, pre);
     var actions = document.createElement("div");
     actions.className = "actions";
     var copyBtn = document.createElement("button");
@@ -272,7 +305,9 @@ function draw() {
       setTimeout(function () { delete del.dataset.sure; del.textContent = "Remove"; }, 4000);
     });
     actions.append(copyBtn, del);
-    li.append(top, note, pre, actions);
+    li.append(top, boardRow);
+    if (last) li.append(last);
+    li.append(note, details, actions);
     ul.append(li);
   });
 }
@@ -281,12 +316,142 @@ function draw() {
 
 var PLACES = { waystation: ["waystation/index.html", "THE WAYSTATION"], play: ["play/index.html", "PLATFORM"] };
 
-function go(place) {
+function go(place, hash, name) {
   var p = PLACES[place];
   if (!p) return;
-  $("frame").src = p[0];
-  $("place-name").textContent = p[1];
+  $("frame").src = p[0] + (hash || "");
+  $("place-name").textContent = name || p[1];
   document.body.classList.add("away");
+}
+
+/* -------------------------------------------- boarding from the list */
+
+/* The missions on the train (fe/modern/web: their directories) and their Departure ids. */
+var MISSIONS = [
+  { dir: "the-fare", id: 0, name: "Departure 00: The Fare" },
+  { dir: "eighteen-minutes", id: 1, name: "Departure 01: Eighteen Minutes" },
+  { dir: "deep-yards", id: 1000, name: "The Deep Yards (ten floors down)" }
+];
+
+/* The Waystation's rules (waystation/ws.js, the rules core as WebAssembly), loaded the first
+ * time a traveler boards: they issue Boarding Passes and land Travel Stamps. */
+var rulesReady = null;
+function rules() {
+  if (rulesReady) return rulesReady;
+  var loaded = new Promise(function (done, failed) {
+    window.Module = {
+      locateFile: function (p) { return "waystation/" + p; },
+      onRuntimeInitialized: function () { done(); }
+    };
+    var script = document.createElement("script");
+    script.src = "waystation/ws.js";
+    script.onerror = function () { failed(new Error("the Waystation's rules didn't load")); };
+    document.head.append(script);
+  });
+  rulesReady = Promise.all([loaded, fetch("waystation/registry.json").then(function (r) { return r.json(); })])
+    .then(function (got) {
+      return {
+        reg: got[1],
+        call: function (name, types, args) {
+          var out = window.Module.ccall(name, "string", types || [], args || []);
+          return out.charAt(0) === "{" || out.charAt(0) === "[" ? JSON.parse(out) : out;
+        }
+      };
+    });
+  rulesReady.catch(function () { rulesReady = null; });
+  return rulesReady;
+}
+
+function random(bits) {
+  var n = new Uint32Array(1);
+  do { crypto.getRandomValues(n); } while (n[0] === 0);
+  return bits === 32 ? n[0] : n[0] & 0xFFFF;
+}
+
+function problem(text) {
+  var p = document.createElement("p");
+  p.className = "problem";
+  p.textContent = text;
+  return p;
+}
+
+/* Board a traveler: the Waystation issues a pass for the mission (docs/boarding.md), with a
+ * random ticket kept on the traveler, so the stamp that comes back can be known; a mission
+ * they've already brought a stamp home from is a Rewind. Then onto the train with it. */
+function board(t, mission, button) {
+  button.disabled = true;
+  rules().then(function (ws) {
+    var got = ws.call("ws_load", ["string"], [t.passport]);
+    if (!got.ok) throw new Error("their Passport can't be read (" + got.error + ")");
+    var ticket = random(32);
+    var rewind = (t.played || []).indexOf(mission.id) >= 0;
+    var pass = ws.call("ws_issue", ["number", "number", "number", "number", "number"],
+                       [mission.id, ticket >>> 16, ticket & 0xFFFF, random(16), rewind ? 1 : 0]);
+    if (!pass) throw new Error("no pass could be issued");
+    var copy = JSON.parse(JSON.stringify(t));
+    copy.tickets = copy.tickets || {};
+    copy.tickets[String(ticket)] = { departure: mission.id, name: mission.name, rewind: rewind,
+                                     issued: new Date().toISOString() };
+    return save(copy).then(function () {
+      button.disabled = false;
+      go("play", "#departure=" + mission.dir + "&pass=" + encodeURIComponent(pass)
+         + (window.APB_TEST_CHOICES ? "&choices=" + encodeURIComponent(window.APB_TEST_CHOICES) : ""),
+         (t.name || "A traveler").toUpperCase() + " - " + mission.name.toUpperCase());
+    });
+  }).catch(function (e) {
+    button.disabled = false;
+    button.parentNode.after(problem("They can't board just now: " + e.message + "."));
+  });
+}
+
+/* A trip is over: its stamp lands on the traveler whose ticket it quotes, as the Waystation
+ * lands one typed in. (There's no server here to check a stamp, W2: this page trusts its own
+ * tickets, kept on the player's account or in this browser.) */
+function land(stamp, tries) {
+  if (!stamp) return;
+  tries = tries || 0;
+  rules().then(function (ws) {
+    var t = null, r = null;
+    list.forEach(function (x) {
+      if (t || !x.tickets) return;
+      ws.call("ws_load", ["string"], [x.passport]);
+      var read = ws.call("ws_stamp", ["string", "number"], [stamp, 0]);
+      if (read.ok && x.tickets[String(read.ticket)]) { t = x; r = read; }
+    });
+    if (!t) {
+      // The ticket was issued a moment ago: the store may not have said so yet.
+      if (tries < 20) setTimeout(function () { land(stamp, tries + 1); }, 250);
+      return;
+    }
+    var ticket = t.tickets[String(r.ticket)];
+    if (ticket.departure !== r.departure) return;
+    ws.call("ws_load", ["string"], [t.passport]);
+    r = ws.call("ws_stamp", ["string", "number"], [stamp, ticket.rewind ? 1 : 0]);
+    if (!r.ok) return;
+    var after = ws.call("ws_traveler");
+    var copy = JSON.parse(JSON.stringify(t));
+    if (copy.passport !== after.passport) {
+      copy.previous = [copy.passport].concat(copy.previous || []).slice(0, 5);
+    }
+    copy.passport = after.passport;
+    copy.about = ws.reg.races[after.race].name + " " + ws.reg.classes[after.class].name +
+      ", level " + after.level;
+    delete copy.tickets[String(r.ticket)];
+    copy.played = (copy.played || []).filter(function (d) { return d !== r.departure; }).concat([r.departure]);
+    var said = [ticket.name + (r.outcome ? ": the trip failed" : ": complete")];
+    if (r.xp) said.push(r.xp + " XP" + (r.levels ? " (level up!)" : ""));
+    if (r.debt_added) said.push(r.debt_added + " Debt added");
+    if (r.debt_paid) said.push(r.debt_paid + " Debt paid");
+    if (r.gained.length) said.push(r.gained.length + " item" + (r.gained.length > 1 ? "s" : "") + " gained");
+    copy.last = "Last trip: " + said.join(", ") + ".";
+    copy.landed = stamp;                    /* the last stamp landed, for the record */
+    copy.updated = new Date().toISOString();
+    return save(copy).then(function () {
+      $("place-name").textContent = "STAMPED: " + (copy.name || "").toUpperCase() + " IS HOME";
+    });
+  }).catch(function (e) {
+    $("place-name").textContent = "THE STAMP DIDN'T LAND: " + String(e.message || e).toUpperCase();
+  });
 }
 document.querySelectorAll("[data-place]").forEach(function (b) {
   b.addEventListener("click", function () { go(b.dataset.place); });
@@ -301,6 +466,10 @@ window.addEventListener("message", function (e) {
   var m = e.data;
   var frame = $("frame").contentWindow;
   if (!m || typeof m !== "object" || e.source !== frame) return;
+  if (m.apb === "trip-over") {
+    land(typeof m.stamp === "string" ? m.stamp : "");
+    return;
+  }
   if (m.apb === "travelers-hello") {
     frame.postMessage({ apb: "travelers-hello", where: where }, "*");
     return;

@@ -72,6 +72,9 @@ void modern_setup(const char *dir, const char *save_dir, FILE *choices, FILE *tr
 extern void (*modern_on_wait)(void);
 /* The trip: the start menu, boarding, the story and the receipt. Returns at the end. */
 void modern_play(uint16_t seed);
+/* Board with this Boarding Pass when the player chooses Board, with no codes to type (the
+ * browser's platform page issues it). */
+void modern_give_pass(const char *text);
 
 /* ------------------------------------------------- what a platform supplies */
 
@@ -88,6 +91,8 @@ uint16_t plat_key(void);
 void plat_show(void);
 /* A save was written: make it last (the browser copies it to IndexedDB). */
 void plat_saved(void);
+/* The trip is over: its Travel Stamp, or "" if it has none (no pass, or no trip). */
+void plat_trip_over(const char *stamp);
 /* Show the screen and wait `ms` milliseconds, for animation. */
 void plat_wait(unsigned ms);
 /* Sound (fe/modern/sound.c): mono, 16 bits, SFX_RATE samples a second. Start pulling

@@ -213,6 +213,24 @@ EMSCRIPTEN_KEEPALIVE const char *ws_stamp(const char *text, int rewind)
     return json;
 }
 
+/* A Boarding Pass for the loaded traveler (docs/boarding.md): the platform page issues
+ * one when they board from Your travelers, and keeps the ticket to know the stamp that
+ * comes back. The ticket comes in two halves, as JavaScript's numbers are doubles. */
+EMSCRIPTEN_KEEPALIVE const char *ws_issue(int departure, unsigned ticket_hi, unsigned ticket_lo,
+                                          unsigned seed, int rewind)
+{
+    static char issued[APB_PASS_BUF];
+    apb_pass pass;
+
+    if (!have_traveler) return "";
+    pass.departure = (uint16_t)departure;
+    pass.ticket = ((uint32_t)(ticket_hi & 0xFFFFu) << 16) | (ticket_lo & 0xFFFFu);
+    pass.seed = (uint16_t)seed;
+    pass.rewind = (uint8_t)(rewind != 0);
+    if (apb_pass_encode(&pass, &traveler, issued) != APB_PP_OK) return "";
+    return issued;
+}
+
 /* The creation rules' numbers, for the creator's page. */
 EMSCRIPTEN_KEEPALIVE const char *ws_rules(void)
 {

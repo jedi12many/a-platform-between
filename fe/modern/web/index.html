@@ -71,26 +71,31 @@
       statusLine.textContent = "";
       document.querySelectorAll("#pick button").forEach(function (b) { b.disabled = false; });
       if (Module.onReady) Module.onReady();
+      /* Sent here by the platform page (site/index.html) with a mission and a Boarding Pass
+       * it issued: straight onto the train, no codes to type. */
+      var sent = new URLSearchParams(location.hash.slice(1));
+      if (sent.get("departure")) {
+        Module.start(sent.get("departure"), sent.has("choices") ? sent.get("choices") : undefined,
+                     sent.get("pass") || "");
+      }
     },
     /* The music and the sound effects (fe/modern/sound.c, web.c): Web Audio, started by
      * the game; browsers keep it quiet until a key or a click, so each one wakes it. */
     audio: null,
     onTripOver: function () {
-      statusLine.textContent = "The trip is over. Reload the page to travel again.";
-      Module.keepStamp();
-    },
-    /* The trip's Travel Stamp, read off the screen (two spaces, then 20 letters a line), kept
-     * with the traveler who boarded from Your travelers, to land at the Waystation. */
-    boardedAs: null,
-    keepStamp: function () {
-      if (!Module.boardedAs) return;
-      var stamp = "";
-      for (var row = 0; row < 25; row++) {
-        var text = Module.UTF8ToString(Module._web_screen_row(row));    /* not ccall: the game is waiting */
-        if (/^  [0-9A-Z]{20}\s*$/.test(text)) stamp += text.trim();
-        else if (stamp) break;
+      if (!statusLine.textContent) {
+        statusLine.textContent = "The trip is over. Reload the page to travel again.";
       }
-      if (!stamp) return;
+    },
+    /* The trip's Travel Stamp (web.c), as the receipt comes up. Sent by the platform page,
+     * it goes back there, to land on the traveler who boarded. Typed in here from Your
+     * travelers, it waits with that traveler to land at the Waystation. */
+    boardedAs: null,
+    onStamp: function (stamp) {
+      if (window.parent !== window) {
+        window.parent.postMessage({ apb: "trip-over", stamp: stamp }, "*");
+      }
+      if (!stamp || !Module.boardedAs) return;
       var who = Module.boardedAs;
       who.stamp = stamp;
       Travelers.save(who).then(function () {
@@ -99,7 +104,7 @@
       });
     },
     /* Start a trip: from the buttons, or from a test with a choices file. */
-    start: function (departure, choices) {
+    start: function (departure, choices, pass) {
       var seed = Date.now() % 65536;
       var file = "";
       if (choices !== undefined) {
@@ -109,7 +114,7 @@
       }
       document.getElementById("pick").style.display = "none";
       canvas.style.display = "block";
-      if (choices === undefined) drawTravelers();
+      if (choices === undefined && !pass) drawTravelers();
       canvas.focus();
       /* A choices file that runs out ends the game with exit(): that's the end, too. */
       var ended = function (e) {
@@ -117,8 +122,8 @@
         Module.onTripOver();
       };
       try {
-        Promise.resolve(Module.ccall("web_start", null, ["string", "number", "string"],
-                                     [departure, seed, file], { async: true })).catch(ended);
+        Promise.resolve(Module.ccall("web_start", null, ["string", "number", "string", "string"],
+                                     [departure, seed, file, pass || ""], { async: true })).catch(ended);
       } catch (e) {
         ended(e);
       }
