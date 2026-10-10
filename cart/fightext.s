@@ -116,8 +116,8 @@ t_attack:
 @damage:
         jsr colon
         jsr put_value
-        lda #<damage
-        ldx #>damage
+        lda #<damage_text
+        ldx #>damage_text
         jmp put_sentence
 
 t_down: lda ev_target
@@ -143,8 +143,8 @@ t_hazard:
         jsr put
 @hurt:  jsr colon
         jsr put_value
-        lda #<damage
-        ldx #>damage
+        lda #<damage_text
+        ldx #>damage_text
         jmp put_sentence
 
 t_guard:
@@ -360,7 +360,7 @@ tries:          .byte " tries", 0
 dot:            .byte ".", 0
 one_space:      .byte " ", 0
 colon_space:    .byte ": ", 0
-damage:         .byte " damage.", 0
+damage_text:    .byte " damage.", 0
 is_down:        .byte " is down.", 0
 you_down:       .byte "You are down.", 0
 ground:         .byte "The ground hurts ", 0

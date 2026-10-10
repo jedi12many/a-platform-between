@@ -118,13 +118,13 @@ set_up: lda encounters_at           ; the record: past the ones before it
         bcc @ok11
         jmp @bad
 @ok11:
-        sta map_w
+        sta enc_w
         jsr take
         bcc @ok10
         jmp @bad
 @ok10:
-        sta map_h
-        lda map_w
+        sta enc_h
+        lda enc_w
         bne @ok9
         jmp @bad
 @ok9:
@@ -132,7 +132,7 @@ set_up: lda encounters_at           ; the record: past the ones before it
         bcc @ok8
         jmp @bad
 @ok8:
-        lda map_h
+        lda enc_h
         bne @ok7
         jmp @bad
 @ok7:
@@ -140,8 +140,8 @@ set_up: lda encounters_at           ; the record: past the ones before it
         bcc @ok6
         jmp @bad
 @ok6:
-        lda map_w
-        ldx map_h
+        lda enc_w
+        ldx enc_h
         jsr battle_init
         lda #0
         sta nibble
@@ -171,11 +171,11 @@ set_up: lda encounters_at           ; the record: past the ones before it
         jsr battle_set_tile
         inc sq_x
         lda sq_x
-        cmp map_w
+        cmp enc_w
         bcc @col
         inc sq_y
         lda sq_y
-        cmp map_h
+        cmp enc_h
         bcc @row
         ; The starts: 1-4, the traveler at the first.
         jsr take
@@ -415,8 +415,8 @@ surprise:       .res 1
 health:         .res 1
 who:            .res 1
 enc_end:        .res 2
-map_w:          .res 1
-map_h:          .res 1
+enc_w:          .res 1
+enc_h:          .res 1
 sq_x:           .res 1
 sq_y:           .res 1
 nibble:         .res 1

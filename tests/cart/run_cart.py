@@ -128,11 +128,19 @@ def ok(msg):
 
 
 def labels(path):
-    out = {}
+    """The linker's labels, by name. A name two modules both have for different addresses
+    (a local `health` in each) is left out, so a test that reads one fails, rather than
+    reading the wrong one."""
+    out, twice = {}, set()
     for line in open(path):
         parts = line.split()
         if len(parts) == 3 and parts[0] == "al":
-            out[parts[2].lstrip(".")] = int(parts[1], 16)
+            name, at = parts[2].lstrip("."), int(parts[1], 16)
+            if out.get(name, at) != at:
+                twice.add(name)
+            out[name] = at
+    for name in twice:
+        del out[name]
     return out
 
 
@@ -758,7 +766,7 @@ def check(c):
     dice = (c.screen(TEXT, 22, 14, 26).rstrip(), c.screen(TEXT, 23, 14, 26).rstrip())
     want_dice = tuple(rolls[-1].split(" vs ")) if rolls else ("", "")
     want_dice = (want_dice[0], "vs " + want_dice[1]) if rolls else want_dice
-    want_bar, want_ink = health_bar(c.lines)
+    want_bar, want_ink = health_bar(c)
     if line != "|" * 8:
         fail(f"{what}: the line between the frames: {line!r}")
     elif party != " Kestrel " or bar != want_bar or bar_ink != {want_ink}:
@@ -795,30 +803,20 @@ def check(c):
            f"{c.mores} times -- more --)")
 
 
-def health_bar(lines):
-    """The party frame's health bar (its cells, their colour) after a transcript: the
-    traveler's most health by the rules (docs/rules-v0.md: 10 + Grit / 4 + 2 a level, from
-    the Passport typed at the desk), less what the fights' sentences say they took."""
-    sys.path.insert(0, os.path.join(ROOT, "tools", "passport"))
-    import boarding
-    import passport
-    typed = []
-    for ln in lines:
-        if ln.startswith("> ") and not typed or typed and ln.startswith("> ") and len(ln) > 3:
-            typed.append(ln[2:])
-        elif typed and not ln.startswith(("Line ", "> ")):
-            break
-    text = "".join(typed)
-    try:
-        ch = boarding.decode(text)["character"]
-    except Exception:
-        ch = passport.decode(text)
-    most = 10 + ch["stats"][2] // 4 + 2 * ch["level"]
+def health_bar(c):
+    """The party frame's health bar (its cells, their colour) after a trip: the traveler's
+    most health by the rules (docs/rules-v0.md: 10 + Grit / 4 + 2 a level; their Grit and
+    level from the cartridge's record of them, cart/char.inc, which test_passwords.py holds
+    to the reference), less what the fights' sentences say they took."""
+    record = c.ram[c.syms["traveler"]:c.syms["traveler"] + 18]
+    lines = c.lines
+    most = 10 + record[12 + 2] // 4 + 2 * record[10]
     health = most
     for ln in " ".join(lines).split(". "):
         m = re.search(r"(?:attacks you: .*?|The ground hurts you): (\d+) damage", ln)
         if m:
             health = max(0, health - int(m.group(1)))
+    health = max(1, health)                 # (a lost fight leaves 1: docs/vm-spec.md)
     halves = health * 10 // most or (1 if health else 0)
     cells = bytes(0x63 if halves >= 2 * k + 2 else 0x62 if halves == 2 * k + 1 else 0x61
                   for k in range(5))
