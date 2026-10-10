@@ -353,7 +353,7 @@ its reviewed transcript (`tests/cart/*.expected`; `--update` writes it), the sam
 the cartridge and the disk. Each route must also tell the story the C64 version (the C
 engine) tells, word for word and roll for roll (`--c64`): *The Fare* by
 `tests/c64/fare-edge.expected`, and the desk's route and the fight's (`fare-fight`, into
-Lost Property: a Move, an Aim, then Quick) by the C64 program playing them there and then
+Lost Property: a Move, a Wait, a Wait refused, an Aim, then Quick) by the C64 program playing them there and then
 (`tests/c64/run_c64.py`). A choices line `joy right` or `joy fire` pushes the joystick in
 port 2 instead (the C64's run of the route has the keypad's key for it). It checks the split's timing every frame, the graphics
 against the tools' own files, the view (the map at the desk; at the end, the last picture
