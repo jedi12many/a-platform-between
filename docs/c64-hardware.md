@@ -111,6 +111,15 @@ own tunes, and the sound effects borrowing a voice
 klaxon pulsing on Dock 3, the reactor's glow, the Static crawling, the countdown counting;
 the border flashing red as the minutes run out, and white at the meltdown.
 
+**E12: frames.** One framed screen for the whole game: the view (picture, room or battle
+map) over the story log, the party and the dice log ([frames.md](frames.md)), with a
+simpler battle view: 32-pixel squares and flat tiles.
+
+**E13: rooms.** Scenes as rooms the party walks round, acting on what's in reach.
+
+**E14: the party.** Up to four travelers. On a real C64 they're the player's own four, by
+rule: original hardware is offline, so there's no multiplayer budget on it.
+
 Along the way: our own font for all text, and the joystick everywhere.
 
 ## The desktop and the browser
