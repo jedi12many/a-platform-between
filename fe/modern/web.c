@@ -89,6 +89,13 @@ EM_JS(void, js_audio_start, (int rate), {
     try {
         var Context = window.AudioContext || window.webkitAudioContext;
         var audio = Module.audio = new Context({ sampleRate: rate });
+        var processor = function () {
+            var node = Module.audioNode = audio.createScriptProcessor(2048, 0, 1);
+            node.onaudioprocess = function (e) {
+                e.outputBuffer.getChannelData(0).set(pull(e.outputBuffer.length));
+            };
+            node.connect(audio.destination);
+        };
         var pull = function (n) {
             var at = _web_audio_fill(n) >> 1;
             var out = new Float32Array(n);
@@ -122,13 +129,9 @@ EM_JS(void, js_audio_start, (int rate), {
                         sent += 1024;
                     }
                 }, 25);
-            });
+            }).catch(processor);            /* a page that won't load the worklet */
         } else {
-            var node = Module.audioNode = audio.createScriptProcessor(2048, 0, 1);
-            node.onaudioprocess = function (e) {
-                e.outputBuffer.getChannelData(0).set(pull(e.outputBuffer.length));
-            };
-            node.connect(audio.destination);
+            processor();
         }
         audio.resume();
     } catch (e) { /* no sound here: play on in silence */ }
