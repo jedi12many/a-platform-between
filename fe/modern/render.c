@@ -1,11 +1,13 @@
 /*
  * Drawing the modern front end's screen (fe/modern/modern.h): 40 x 25 characters of
- * 16 x 16 pixels (the 8 x 8 font, doubled), and the picture on rows 1-12, stretched to
- * the C64's shape (a 160 x 96 picture's pixels come out four wide and two high, as on
- * the C64), in its own full colours.
+ * 16 x 16 pixels (the 8 x 8 font, doubled), and in the view either the picture on rows
+ * 1-12, stretched to the C64's shape (a 160 x 96 picture's pixels come out four wide and
+ * two high, as on the C64), in its own full colours, or a fight's map on rows 0-15.
  */
 #include "font8x8.h"
 #include "modern.h"
+
+#define APB_VIEW_ROWS 16        /* a fight's map: rows 0-15 (client/apb_scene.h) */
 
 /* Pepto's measured C64 palette, as tools/c64pic.py uses it. */
 const uint32_t modern_palette[16] = {
@@ -22,6 +24,14 @@ static unsigned bold(unsigned row)
     return (row | ((row << 1) & ~row & ~(row >> 1))) & 0xFFu;
 }
 
+/* The frames' own glyphs (tools/c64font.py has the same): bit 0 is the left. */
+static const unsigned char frame_glyphs[4][8] = {
+    { 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08 },     /* the line between frames */
+    { 0x7E, 0x42, 0x42, 0x42, 0x42, 0x7E, 0x00, 0x00 },     /* a bar's cell: empty */
+    { 0x7E, 0x4E, 0x4E, 0x4E, 0x4E, 0x7E, 0x00, 0x00 },     /* half */
+    { 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x00, 0x00 },     /* full */
+};
+
 static void draw_cell(uint32_t *fb, int row, int col, uint8_t ch, uint32_t ink, int cursor)
 {
     const unsigned char *glyph;
@@ -33,14 +43,18 @@ static void draw_cell(uint32_t *fb, int row, int col, uint8_t ch, uint32_t ink, 
     unsigned bits;
 
     ch &= 0x7F;
-    if (ch < 0x20 || ch > 0x7E) ch = ' ';
-    glyph = font8x8[ch - 0x20];
+    if (ch >= SCR_GLYPH_LINE && ch <= SCR_GLYPH_FULL) {
+        glyph = frame_glyphs[ch - SCR_GLYPH_LINE];
+    } else {
+        if (ch < 0x20 || ch > 0x7E) ch = ' ';
+        glyph = font8x8[ch - 0x20];
+    }
     if (cursor) {
         fg = BACKGROUND;
         bg = ink;
     }
     for (y = 0; y < 16; ++y) {
-        bits = bold(glyph[y / 2]);
+        bits = ch < 0x20 ? glyph[y / 2] : bold(glyph[y / 2]);
         p = fb + (row * 16 + y) * SCR_W + col * 16;
         for (x = 0; x < 16; ++x) p[x] = (bits >> (x / 2)) & 1 ? fg : bg;
     }
@@ -65,16 +79,17 @@ static void draw_picture(uint32_t *fb)
     }
 }
 
-/* The battle screen: the C64's multicolour character mode and its sprites, as the VIC-II
- * draws them (tools/vic.py), each C64 pixel two by two. */
+/* A fight's map in the view: the C64's multicolour character mode and its sprites, as the
+ * VIC-II draws them (tools/vic.py), each C64 pixel two by two; nothing under row 16. */
+#define VIEW_H (APB_VIEW_ROWS * 8)
 static void plot(uint8_t *px, int x, int y, uint8_t c)
 {
-    if (x >= 0 && x < 320 && y >= 0 && y < 200) px[y * 320 + x] = c;
+    if (x >= 0 && x < 320 && y >= 0 && y < VIEW_H) px[y * 320 + x] = c;
 }
 
 static void render_scene(uint32_t *fb)
 {
-    static uint8_t px[320 * 200];
+    static uint8_t px[320 * VIEW_H];
     int row, col, y, x, n;
     uint8_t ch, colour, b, v, c;
     const uint8_t *glyph;
@@ -82,7 +97,7 @@ static void render_scene(uint32_t *fb)
     const modern_sprite *s;
     uint32_t bits;
 
-    for (row = 0; row < SCR_ROWS; ++row) {
+    for (row = 0; row < APB_VIEW_ROWS; ++row) {
         for (col = 0; col < SCR_COLS; ++col) {
             ch = scn_char[row][col];
             colour = scn_colour[row][col];
@@ -124,7 +139,7 @@ static void render_scene(uint32_t *fb)
             }
         }
     }
-    for (y = 0; y < SCR_H; ++y) {
+    for (y = 0; y < VIEW_H * 2; ++y) {
         for (x = 0; x < SCR_W; ++x) fb[y * SCR_W + x] = modern_palette[px[(y / 2) * 320 + x / 2] & 15];
     }
 }
@@ -136,10 +151,10 @@ void modern_render(uint32_t *fb)
 
     if (scn_active) {
         render_scene(fb);
-        return;
+        picture = 0;
     }
 
-    for (row = 0; row < SCR_ROWS; ++row) {
+    for (row = scn_active ? APB_VIEW_ROWS : 0; row < SCR_ROWS; ++row) {
         if (picture && row >= PIC_TOP && row < PIC_TOP + PIC_ROWS) continue;
         for (col = 0; col < SCR_COLS; ++col) {
             draw_cell(fb, row, col, scr_char[row][col], modern_palette[scr_ink[row][col] & 15],

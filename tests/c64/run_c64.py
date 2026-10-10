@@ -6,19 +6,21 @@ answers instead, from the disk image: the screen (CHROUT), the keyboard (GETIN a
 key buffer that conio's cgetc reads), and the 1541 (SETLFS, SETNAM, OPEN, CHKIN, CHRIN,
 READST, CHKOUT, CLOSE, CLRCHN, LOAD). Any other ROM call stops the run, loudly.
 
-The front end writes text straight into screen memory, at the bottom row of its
-window, and scrolls the window up in newline(). So the transcript is the bottom row,
-read each time newline() starts (its address comes from the linker's debug file,
-SYMBOLS). Loading a picture adds a line "[picture picNN]".
+The screen is framed (docs/frames.md). The front end writes the story straight into
+screen memory, at the bottom row of the story log (row 23, columns 0-24), and scrolls the
+log up in newline(). So the transcript is that row, read each time newline() starts (its
+address comes from the linker's debug file, SYMBOLS). Loading a picture adds a line
+"[picture picNN]". Rolls go to the dice log, and each one's record to hal_scene_log,
+which the harness reads (the C64 shows it nowhere), a line "[Wits 119 vs 74: pass]".
 
-A fight is on the battle screen (fe/c64/scene.c): its words come from hal_scene_log,
-which the harness reads (the C64 shows them nowhere), its waits for frames are skipped
-(there are no interrupts here), and each line of the choices file is one key. The
-picture the C64 loads again after a fight isn't a new picture, so isn't in the record.
+A fight is in the view (fe/c64/scene.c), the story log going on under it: its prompts
+come from hal_scene_log too, its waits for frames are skipped (there are no interrupts
+here), and each line of the choices file is one key. The picture the C64 loads again
+after a fight isn't a new picture, so isn't in the record.
 
 Keys come from a choices file like the terminal's (tests/term/*.choices), one line per
-answer: at a "> " prompt (a typed line) the whole line and RETURN; at a menu the line's
-first character; at "-- more --" a space, without using a line.
+answer: at a "> " prompt on the command row (a typed line) the whole line and RETURN; at
+a menu the line's first character; at "-- more --" a space, without using a line.
 
 The C stack is watched too: a run that uses more than STACK_LIMIT bytes of it fails,
 as the memory map (fe/c64/apb.cfg) only has room for 512.
@@ -67,7 +69,9 @@ SCREEN = 0xF800             # the text screen, in VIC bank 3 (fe/c64/split.s)
 CYCLES_A_LINE = 63          # PAL
 LINES = 312
 COLS = 40
-LAST_ROW = 24
+LAST_ROW = 23               # the story log's bottom row (fe/c64/c64.c)
+LOG_COLS = 25
+INPUT_ROW = 24              # the command row
 STACK_TOP = None            # the C stack starts where the overlays do: from the map
 STACK_LIMIT = 384
 
@@ -236,20 +240,27 @@ class C64:
 
     # ------------------------------------------------------------ keyboard
 
+    def row_text(self, row, width):
+        at = SCREEN + row * COLS
+        return "".join(screen_ascii(self.mem[at + i]) for i in range(width)).rstrip()
+
     def bottom_row(self):
-        at = SCREEN + LAST_ROW * COLS
-        return "".join(screen_ascii(self.mem[at + i]) for i in range(COLS)).rstrip()
+        return self.row_text(LAST_ROW, LOG_COLS)
 
     def scene_shot(self):
-        """The battle screen, as the VIC-II draws it (tools/vic.py): bank 3's characters
-        and screen, the colour RAM, and the sprites as scene.c planned them."""
+        """The battle screen, as the VIC-II draws it (tools/vic.py): in the view, bank 3's
+        characters and screen, the colour RAM, and the sprites as scene.c planned them;
+        under the split, the story's frames."""
         import vic
-        m = self.mem
-        r = lambda a: m[a] & 15                             # noqa: E731
-        scr = vic.Screen(bytes(m[0xE000 + i] for i in range(2048)), r(0xD021), r(0xD022),
+        m = self.io
+        r = lambda a: m[a - 0xD000] & 15                    # noqa: E731
+        scr = vic.Screen(bytes(self.mem[0xE000 + i] for i in range(2048)), r(0xD021), r(0xD022),
                          r(0xD023), r(0xD025), r(0xD026))
-        for i in range(1000):
-            scr.put(i % 40, i // 40, m[0xE800 + i], m[0xD800 + i] & 15)
+        m = self.mem
+        for i in range(640):
+            scr.put(i % 40, i // 40, m[0xE800 + i], self.io[0x800 + i] & 15)
+        for i in range(640, 1000):
+            scr.put(i % 40, i // 40, 0, 0)
         # The sprites as the raster interrupt puts them up (fe/c64/sprites.s): the plan's
         # first eight, then each event's, on its VIC sprite; a lower one is on top.
         plan = [m[symbol_cache(self, "_scene_next") + i] for i in range(180)]
@@ -266,7 +277,27 @@ class C64:
             at = 0xC000 + 64 * ptr
             scr.sprite(x + 256 * msb - 24, y - 50, bytes(m[at + i] for i in range(63)),
                        colour & 15, multi)
-        return scr.image(r(0xD020)).resize((768, 528))
+        img = scr.image()
+        self.draw_text(img, range(16, 25))
+        from PIL import Image
+        framed = Image.new("RGB", (384, 264), vic.PALETTE[self.io[0x20] & 15])
+        framed.paste(img, (32, 32))
+        return framed.resize((768, 528))
+
+    def draw_text(self, img, rows):
+        """Rows of the story's text screen onto img, in the game's own font (the disk's
+        file font) and the colour RAM's colours."""
+        import c64pic
+        font = self.files.get("font", b"\0\0" + bytes(2048))[2:]
+        for row in rows:
+            for x in range(40):
+                code = self.mem[SCREEN + row * COLS + x]
+                ink = c64pic.PALETTE[self.io[0x800 + row * COLS + x] & 15]
+                for y in range(8):
+                    bits = font[code * 8 + y]
+                    for dx in range(8):
+                        img.putpixel((x * 8 + dx, row * 8 + y),
+                                     ink if (bits >> (7 - dx)) & 1 else (0, 0, 0))
 
     def shot(self):
         """What the screen shows now: the status bar, the picture (when the raster split
@@ -280,23 +311,12 @@ class C64:
             self.scene_shot().save(os.path.join(self.shot_dir, f"screen{self.shots:03d}.png"))
             return
         img = Image.new("RGB", (320, 200))
-        font = self.files.get("font", b"\0\0" + bytes(2048))[2:]
         split = self.mem[symbol_cache(self, "_split_picture")]
         if split:
             at = c64pic.LOAD_AT
             pic = bytes([at & 0xFF, at >> 8]) + bytes(self.mem[at + i] for i in range(c64pic.SIZE))
             img.paste(c64pic.render(pic), (0, 8))
-        for row in range(25):
-            if split and 1 <= row <= 12:
-                continue
-            for x in range(40):
-                code = self.mem[SCREEN + row * COLS + x]
-                ink = c64pic.PALETTE[self.mem[0xD800 + row * COLS + x] & 15]
-                for y in range(8):
-                    bits = font[code * 8 + y]
-                    for dx in range(8):
-                        img.putpixel((x * 8 + dx, row * 8 + y),
-                                     ink if (bits >> (7 - dx)) & 1 else (0, 0, 0))
+        self.draw_text(img, [row for row in range(25) if not (split and 1 <= row <= 12)])
         img = img.resize((640, 400), Image.NEAREST)
         self.shots += 1
         img.save(os.path.join(self.shot_dir, f"screen{self.shots:03d}.png"))
@@ -311,7 +331,7 @@ class C64:
                 return []
             answer = self.choices.pop(0)
             return [self.petscii(answer[0]) if answer else 0x0D]
-        line = self.bottom_row()
+        line = self.row_text(INPUT_ROW, COLS)
         if line.endswith("-- more --"):
             return [0x20]
         if not self.choices:
@@ -507,8 +527,8 @@ class C64:
                 self.lines.append(self.bottom_row())
             if pc == self.music_command:
                 self.music_cue()
-            if self.overlay == "ovl3" and pc in (self.scene_wait, self.scene_log,
-                                                 self.scene_start, self.scene_stop):
+            if pc == self.scene_log or (self.overlay == "ovl3" and pc in (
+                    self.scene_wait, self.scene_start, self.scene_stop)):
                 self.scene_call(pc)
             elif pc in (0xEA31, 0xEA81):
                 self.music_frames += pc == 0xEA31

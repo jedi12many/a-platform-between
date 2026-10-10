@@ -44,8 +44,9 @@ Design docs live in `docs/`; the rules core lives in `core/`.
 - `make test-c64`: the C64 program from the `.d64` must play The Fare, Eighteen Minutes
   and the Deep Yards on a 6502 emulator
   (py65: `pip install py65`; the disk's pictures need Pillow) with the KERNAL answered
-  in Python (`tests/c64/run_c64.py`; fights on the battle screen are read from
-  `hal_scene_log`, a key a line): transcripts match `tests/c64/*.expected`, the
+  in Python (`tests/c64/run_c64.py`; the story log is read row by row, and rolls and a
+  fight's prompts from `hal_scene_log`; in a fight, a key a line): transcripts match
+  `tests/c64/*.expected`, the
   Travel Stamp is the terminal's, a save survives switching off, the C stack stays
   under 384 bytes; the music plays (the harness keeps the I/O apart from the RAM under it,
   and fires the raster interrupt), its cues in the transcripts as `[music NAME]`; and no

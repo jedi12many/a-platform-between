@@ -1,19 +1,23 @@
 /*
- * The battle screen with graphics (docs/c64-hardware.md, E9): what a front end that has
+ * The battle screen with graphics (docs/frames.md, E12): what a front end that has
  * graphics supplies, for client/tactics.c to draw a fight with. A front end without them
  * (the terminal) links client/battle_view.c instead, the text screen.
  *
- * The screen is the C64's in multicolour character mode: 40 x 25 characters from the
- * set in the battle graphics (tools/battlegfx.py, the .bgfx file), each with a colour
- * (0-7 hires, 8-15 multicolour), and sprites over them, 24 x 21. Every front end shows it
- * the same, pixel for pixel; tools/vic.py is the reference.
+ * The screen is framed (docs/frames.md): the battle map is the view at the top, rows 0-15,
+ * the C64's multicolour character mode, 40 x 16 characters from the set in the battle
+ * graphics (tools/battlegfx.py, the .bgfx file), each with a colour (0-7 hires, 8-15
+ * multicolour), and sprites over them, 24 x 21, kept to the view. Every front end shows it
+ * the same, pixel for pixel; tools/vic.py is the reference. Under it stay the story's
+ * frames, the same as in the story: the story log, the party, the dice log and the
+ * command row, which tactics.c writes through the hal_frame_ calls.
  */
 #ifndef APB_SCENE_H
 #define APB_SCENE_H
 
 #include "apb.h"
 
-#define APB_SCENE_TABLES  512   /* the graphics file's tables (tools/battlegfx.py)  */
+#define APB_SCENE_TABLES  640   /* the graphics file's tables (tools/battlegfx.py)  */
+#define APB_SCENE_ROWS    16    /* the view: the map's rows of characters           */
 #define APB_SCENE_SPRITES 24    /* sprites the screen uses; 0 is drawn on top      */
 
 /* Keys the battle screen asks for. Anything else comes as its ASCII code, letters as
@@ -59,5 +63,24 @@ enum { APB_SCENE_FIGHT = 0, APB_SCENE_WON, APB_SCENE_LOST, APB_SCENE_FLED };
 void hal_scene_music(uint8_t moment);
 /* A line for the record (the transcripts tests read): shown nowhere. ASCII. */
 void hal_scene_log(const char *ascii);
+
+/* The frames under the view (docs/frames.md), the story's and a fight's alike. The
+ * front end keeps them; all text is ASCII. */
+#define APB_FRAME_LOG_COLS  25  /* the story log's width                            */
+#define APB_FRAME_SIDE_COLS 14  /* the party's and the dice log's                   */
+#define APB_FRAME_NAME      7   /* a name in the party frame                        */
+/* A sentence into the story log, word-wrapped, with no "-- more --": a fight's. */
+void hal_frame_say(const char *ascii);
+/* A roll into the dice log, in two short lines (APB_FRAME_SIDE_COLS); `record` is the
+ * whole of it, for the transcript. */
+void hal_frame_roll(const char *top, const char *bottom, const char *record);
+/* Traveler `slot` (0-3) in the party frame: name, health and its most, and how they are
+ * shown. A name of "" empties the slot. */
+enum { APB_MEMBER_READY = 0, APB_MEMBER_TURN, APB_MEMBER_DOWN };
+void hal_frame_member(uint8_t slot, const char *name, uint8_t health, uint8_t max,
+                      uint8_t state);
+/* The command row: `ascii` in `colour`, characters from..to-1 of it in white (the chosen
+ * command); the rest of the row blank. */
+void hal_frame_command(const char *ascii, uint8_t colour, uint8_t from, uint8_t to);
 
 #endif

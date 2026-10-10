@@ -17,7 +17,8 @@
 ; has its own (fe/c64/sprites.s), which gives it back with irq_on.
 
         .export _split_on, _split_off, _pic_show, _text_screen, _font_install, _text_scroll
-        .export _irq_on, irq_on, _irq_off, _split_picture
+        .export _irq_on, irq_on, _irq_off, _split_picture, _hal_scene_log
+        .export _scroll_last, _scroll_left, _scroll_right
         .import tune_tick
         .importzp ptr1, ptr2, ptr3, ptr4, tmp1
 
@@ -34,6 +35,9 @@ phase:  .byte 0                     ; 0: next is the picture's turn; 1: the text
 back:   .byte 0
 _split_picture:                     ; (tests/c64/run_c64.py reads it)
 picture: .byte 0                    ; 1 while a picture shows
+_scroll_last:  .byte 24             ; text_scroll: the row under the last to scroll,
+_scroll_left:  .byte 0              ; the first column,
+_scroll_right: .byte 40             ; and the one after the last
 
         .segment "CODE"
 
@@ -208,13 +212,19 @@ _font_install:
         cli
         rts
 
-; Scroll the text window (rows A to 24) up a row: the screen, from under the KERNAL
-; (so with the ROM out), and its colours. A row at a time, with interrupts let in between,
-; so the raster split never misses a frame.
+; A line for the tests' record (client/apb_scene.h): shown nowhere. tests/c64/run_c64.py
+; reads it here (A/X: the text), so don't rename it. Changes nothing.
+_hal_scene_log:
+        rts
+
+; Scroll a frame up a row (docs/frames.md): rows A to _scroll_last - 1 each take the row
+; under them, columns _scroll_left to _scroll_right - 1: the screen, from under the
+; KERNAL (so with the ROM out), and its colours. A row at a time, with interrupts let in
+; between, so the raster split never misses a frame. Changes A, X, Y, ptr1-ptr4, tmp1.
 _text_scroll:
         sta tmp1                    ; the row being filled
 @row:   lda tmp1
-        cmp #24
+        cmp _scroll_last
         bcs @done
         tax
         lda rows_lo, x              ; ptr1: this row; ptr2: the one under it
@@ -238,13 +248,14 @@ _text_scroll:
         pha
         lda #$35                    ; RAM under the KERNAL, the I/O for colours
         sta $01
-        ldy #39
-@copy:  lda (ptr2), y
+        ldy _scroll_right
+@copy:  dey
+        lda (ptr2), y
         sta (ptr1), y
         lda (ptr4), y
         sta (ptr3), y
-        dey
-        bpl @copy
+        cpy _scroll_left
+        bne @copy
         pla
         sta $01
         cli

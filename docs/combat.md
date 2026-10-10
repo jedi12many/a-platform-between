@@ -203,8 +203,11 @@ PC and the 6502, re-checks every roll against the Python reference, and runs ran
 battles under the sanitizers.
 
 On the C64, the desktop and in the browser, a fight is the battle screen with graphics
-(`client/tactics.c`, [c64.md](c64.md#the-battle-screen)): the map in tiles, the fighters
-as sprites, a roster, the log and a command bar, **Move Aim Guard Wait Flee Quick Done**.
+(`client/tactics.c`, [c64.md](c64.md#the-battle-screen)), in the framed screen
+([frames.md](frames.md)): the map in the view, in flat tiles of 32 pixels, the fighters as
+sprites; under it, what happens in the story log, each roll in the dice log ("Kestrel
+94" over "vs 60: hit 23"), the travelers' health in the party frame, and the command bar,
+**Move Aim Guard Wait Flee Quick Done**.
 Move walks a cursor over the squares the rules allow this turn (they're marked); Aim
 cycles through the foes in reach from there, with the TN; Wait only before moving; Quick
 plays you until T takes over.

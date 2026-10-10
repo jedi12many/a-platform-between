@@ -2,8 +2,9 @@
  * The modern front end (milestone E6): the same game on a desktop (SDL2, fe/modern/sdl.c)
  * and in a browser (WebAssembly, fe/modern/web.c), from one screen.
  *
- * The screen is the C64's (docs/c64.md): 40 x 25 characters, a status bar on row 0, the
- * picture on rows 1-12, and a text window under it. fe/modern/screen.c implements the
+ * The screen is the C64's, framed (docs/frames.md): 40 x 25 characters, a status bar on
+ * row 0, the view under it (the picture on rows 1-12, a fight's map on rows 0-15), and the
+ * frames under that: the story log, the party, the dice log, the command row. fe/modern/screen.c implements the
  * whole HAL on that screen; fe/modern/render.c draws it, 640 x 400 pixels, with the
  * pictures in full colour. A platform supplies only the few functions at the bottom of
  * this file: a window, the keyboard and mouse, and where saves live.
@@ -24,8 +25,13 @@
 #define PIC_TOP 1               /* the picture's rows on the screen */
 #define PIC_ROWS 12
 
-/* What the screen holds, for render.c: a character (ASCII, 0x80 set for reverse) and a
- * colour (0..15, the C64's palette) in each cell, and the picture. */
+/* What the screen holds, for render.c: a character (ASCII, 0x80 set for reverse, or one
+ * of the frames' glyphs below) and a colour (0..15, the C64's palette) in each cell, and
+ * the picture. */
+#define SCR_GLYPH_LINE  0x10    /* the line between the frames      */
+#define SCR_GLYPH_EMPTY 0x11    /* a health bar's cells: empty...   */
+#define SCR_GLYPH_HALF  0x12    /* ...half full...                  */
+#define SCR_GLYPH_FULL  0x13    /* ...full                          */
 extern uint8_t scr_char[SCR_ROWS][SCR_COLS];
 extern uint8_t scr_ink[SCR_ROWS][SCR_COLS];
 extern uint8_t scr_cursor_row, scr_cursor_col, scr_cursor_on;
@@ -41,8 +47,9 @@ extern modern_picture scr_picture;
 extern uint8_t scr_picture_shown;      /* drawn on rows 1-12 */
 
 /* The battle screen with graphics (client/apb_scene.h, fe/modern/scene.c): while a fight
- * is on, render.c draws this instead, the C64's multicolour character screen and its
- * sprites, from the battle graphics (tools/battlegfx.py), twice the C64's size. */
+ * is on, render.c draws this in the view (rows 0-15), the C64's multicolour character
+ * screen and its sprites, from the battle graphics (tools/battlegfx.py), twice the C64's
+ * size; the frames under it are the story's. */
 #define SCN_SPRITES 24
 typedef struct {
     int16_t x, y;
@@ -126,6 +133,7 @@ uint16_t modern_key(void);
 void modern_log(const char *line);
 void modern_note(const char *line);  /* the same, after the text so far, as a picture's */
 void modern_end_row(void);           /* the story's last row into the transcript */
+void modern_view_back(void);         /* after a fight: the view and party as they were */
 int modern_scripted(void);          /* keys come from a choices file */
 
 #endif

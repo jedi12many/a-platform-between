@@ -1,39 +1,41 @@
-"""The battle screen's graphics (docs/c64-hardware.md, E9): one file every front end with
-graphics loads for a fight, built from the art below and checked against the C64's rules.
+"""The battle map's graphics (docs/frames.md, E12): one file every front end with graphics
+loads for a fight, built from the art below and checked against the C64's rules.
 
     python3 tools/battlegfx.py OUT.bgfx [--sheet SHEET.png] [--c64 DIR]
 
---c64 also writes it as the C64 loads it (fe/c64/scene.c), three program files with
-their load addresses: btab (the tables, loaded where the program says), bchr (the
-characters, at $E000) and bspr (the sprite shapes, at $EC00), both in VIC bank 3, under
-the KERNAL's ROM, where the VIC sees them; the story's text waits at $FC00 meanwhile.
+--c64 also writes it as the C64 loads it (fe/c64/scene.c), four program files with their
+load addresses: btab (the tables, loaded where the program says), bchr (the characters,
+at $E000), and the sprite shapes in two parts, bspr (at $EC00, 48 shapes) and bspr2 (at
+$FC00, the rest, up to 15): all in VIC bank 3, under the KERNAL's ROM, where the VIC sees
+them, around the story's text screen at $F800, which stays on under the map.
 
-The screen is the C64's multicolour character mode: 40 x 25 characters from one set of
-256, each cell either hires (colours 0-7: the text) or multicolour (the tiles: three
-colours shared by the screen and one of the cell's own, from the first eight), and
-sprites on top: 24 x 21, multicolour, with two colours shared by all sprites and one
-each. Every figure is two sprites, a multicolour body and, over it, a hires outline in
-black (worked out here from the body, a pixel wide), so figures stand out of any floor.
+The map is the top of the framed screen, rows 0-15: the C64's multicolour character
+mode, ten squares across and four down, each 32 x 32 pixels (4 x 4 characters), each
+cell multicolour (three colours shared by the screen and one of the cell's own, from the
+first eight); and sprites on top: 24 x 21, multicolour, with two colours shared by all
+sprites and one each. Every figure is two sprites, a multicolour body and, over it, a
+hires outline in black (worked out here from the body, a pixel wide), so figures stand
+out of any floor. The frames under the map (the story, the party, the dice) are text, in
+the story's font.
 
 The file (all bytes):
 
-    0    "BG", version 1
+    0    "BG", version 2
     3    sprite shared colours (2), screen background, tile shared colours (2)
-    8    tiles: 8 x (9 characters, 9 colours), left to right, top to bottom; a colour
+    8    tiles: 8 x (16 characters, 16 colours), left to right, top to bottom; a colour
          with 8 added is multicolour
-    152  the marked centre of each tile (8), a square you can reach this turn
-    160  looks: 16 x (body, outline, down body, down outline, colour): the races at
+    264  each tile's middle four characters (2 x 2) with a dot on them, a square you can
+         reach this turn: 8 x 4
+    296  looks: 16 x (body, outline, down body, down outline, colour): the races at
          their ids (0-6), a stranger at 7, foe n at 7 + n (8-15)
-    240  effects: the cursor, a bolt, a spark, a slash (sprite shapes)
-    244  (zeros to 256)
-    256  the foes' names, 8 x 32 bytes: a length, then the bestiary's display name in
+    376  effects: the cursor, a bolt, a spark, a slash (sprite shapes)
+    380  (zeros to 384)
+    384  the foes' names, 8 x 32 bytes: a length, then the bestiary's display name in
          ASCII ("Ash rat"), as an encounter record has it: a fighter's look is found
          by its name (an unknown name is a stranger)
-    512  the characters: 256 x 8 bytes
-    2560 the sprite shapes: 64 bytes each (the last unused), as many as the looks need
-
-Characters 0-31 are the frames, bars and marks; 32-127 the font, at their ASCII codes;
-128 and up the tiles.
+    640  the characters: 256 x 8 bytes (0 is blank)
+    2688 the sprite shapes: 64 bytes each (the last unused), as many as the looks need,
+         up to 63
 """
 
 import os
@@ -41,7 +43,8 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TABLES = 512                    # the tables, before the characters (client/apb_scene.h)
+TABLES = 640                    # the tables, before the characters (client/apb_scene.h)
+SHAPES_LOW = 48                 # sprite shapes at $EC00, the rest at $FC00
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "registry"))
 from c64pic import PALETTE  # noqa: E402
@@ -77,152 +80,98 @@ def glyph(rows):
     return out
 
 
-# ------------------------------------------------------------------ the UI
-
-def hires(rows):
-    return [int(r.replace(".", "0").replace("#", "1"), 2) for r in rows]
-
-
-UI = {
-    0: ["........"] * 8,
-    1: ["........", "........", "........", "...#####", "...#....", "...#.###", "...#.#..", "...#.#.."],  # corner
-    2: ["........", "........", "........", "########", "........", "########", "........", "........"],  # top
-    3: ["........", "........", "........", "#####...", "....#...", "###.#...", "..#.#...", "..#.#..."],
-    4: ["...#.#..", "...#.#..", "...#.#..", "...#.#..", "...#.#..", "...#.#..", "...#.#..", "...#.#.."],  # side
-    5: ["...#.#..", "...#.#..", "...#.###", "...#....", "...#####", "........", "........", "........"],
-    6: ["..#.#...", "..#.#...", "###.#...", "....#...", "#####...", "........", "........", "........"],
-    7: ["..#.#...", "..#.#...", "..#.#...", "..#.#...", "..#.#...", "..#.#...", "..#.#...", "..#.#..."],  # right side
-    8: ["........", "........", "########", "........", "########", "........", "........", "........"],  # bottom
-    9: [".######.", "#......#", "#......#", "#......#", "#......#", ".######."] + ["........"] * 2,  # bar: empty
-    10: [".######.", "########", "########", "########", "########", ".######."] + ["........"] * 2,  # full
-    11: [".######.", "####...#", "####...#", "####...#", "####...#", ".######."] + ["........"] * 2,  # half
-    12: ["........", "........", "...##...", "..####..", "..####..", "...##...", "........", "........"],  # a dot
-}
-
 # ------------------------------------------------------------------ tiles
-# Each tile is 12 multicolour dots wide and 24 rows tall (3 x 3 characters): letters
+# Each tile is 16 multicolour dots wide and 32 rows tall (4 x 4 characters): letters
 # k (the background, black), d and g (the shared dark grey and grey), o (the tile's own
 # colour). The tiles are the battle map's squares (docs/combat.md): open, wall, pit,
-# rough, cover, hazard, high ground, exit.
+# rough, cover, hazard, high ground, exit. Flat, so the squares that matter stand out.
 
-def blank(c="d"):
-    return [[c] * 12 for _ in range(24)]
+TW, TH = 16, 32
+
+
+def blank(c="g"):
+    return [[c] * TW for _ in range(TH)]
+
+
+def fill(t, x0, y0, x1, y1, c):
+    for y in range(y0, y1 + 1):
+        for x in range(x0, x1 + 1):
+            t[y][x] = c
 
 
 def slab_floor():
-    t = blank("d")
-    for y in range(24):
-        for x in range(12):
-            sx, sy = x % 6, y % 12
-            if sx == 5 or sy == 11:
-                t[y][x] = "k"                       # the seams between slabs
-            elif sx == 0 or sy == 0:
-                t[y][x] = "g"                       # each slab's lit edge
-    for x, y in ((2, 4), (8, 15), (3, 19), (9, 6)):
-        t[y][x] = "g"                               # wear
+    t = blank("g")
+    fill(t, TW - 1, 0, TW - 1, TH - 1, "d")         # a faint seam right and below
+    fill(t, 0, TH - 1, TW - 1, TH - 1, "d")
     return t
 
 
 def wall():
-    t = blank("g")
-    for y in range(24):
-        for x in range(12):
-            if y < 6:
-                t[y][x] = ("o" if y == 0 else "g") if y < 5 else "k"   # its top, lit
-            else:
-                r = (y - 6) % 6
-                off = 0 if ((y - 6) // 6) % 2 else 3
-                if r == 5 or (x + off) % 6 == 5:
-                    t[y][x] = "k"                   # mortar
-                elif r == 0:
-                    t[y][x] = "d"
+    t = blank("d")
+    fill(t, 0, TH - 1, TW - 1, TH - 1, "k")         # its foot
     return t
 
 
 def pit():
     t = slab_floor()
-    for y in range(3, 22):
-        for x in range(1, 11):
-            t[y][x] = "k"
-    for x in range(1, 11):
-        t[3][x] = "g"
-    for y in range(4, 22):
-        t[y][1] = "d"
-    for y in range(8, 21, 4):
-        for x in range(3, 10, 3):
-            t[y][x] = "o"                           # far down, something glints
+    fill(t, 1, 3, 14, 28, "k")
+    fill(t, 1, 3, 14, 4, "d")                       # the far rim, in shadow
+    for x, y in ((4, 10), (10, 15), (6, 21), (11, 24)):
+        t[y][x] = "o"                               # far down, something glints
     return t
 
 
 def rough():
     t = slab_floor()
-    for (x, y, w, h, c) in ((1, 3, 4, 3, "g"), (7, 2, 3, 2, "o"), (2, 10, 3, 3, "o"),
-                            (7, 9, 4, 4, "g"), (1, 17, 3, 2, "g"), (6, 16, 4, 3, "o"),
-                            (9, 20, 2, 2, "g")):
-        for dy in range(h):
-            for dx in range(w):
-                t[y + dy][x + dx] = c
-        for dx in range(w):
-            if y + h < 24:
-                t[y + h][x + dx] = "k"              # each lump's shadow
+    for (x, y, w, h) in ((2, 4, 4, 3), (9, 3, 3, 2), (4, 13, 5, 4), (11, 12, 3, 3),
+                         (2, 22, 3, 3), (8, 21, 5, 4)):
+        fill(t, x, y, x + w - 1, y + h - 1, "d")
+        fill(t, x, y + h, x + w - 1, y + h, "k")    # each lump's shadow
     return t
 
 
 def cover():
     t = slab_floor()
-    for y in range(4, 22):
-        for x in range(1, 11):
-            t[y][x] = "o"                           # a crate
-    for x in range(1, 11):
-        t[4][x] = "g"
-        t[12][x] = "k"
-        t[21][x] = "k"
-    for y in range(4, 22):
-        t[y][1] = "g"
-        t[y][10] = "k"
-    for y, x in ((6, 3), (6, 8), (16, 3), (16, 8)):
-        t[y][x] = "k"                               # nails
+    fill(t, 2, 5, 13, 27, "k")                      # a crate, outlined
+    fill(t, 3, 6, 12, 26, "o")
+    fill(t, 3, 16, 12, 16, "k")                     # its planks
     return t
 
 
 def hazard():
     t = slab_floor()
-    for y in range(2, 22):
-        for x in range(1, 11):
-            t[y][x] = "o" if ((x + y // 2) % 4) < 2 else "k"   # warning chevrons
+    for top in (7, 15, 23):                         # three waves
+        for x in range(2, 14):
+            y = top + (0, 1, 2, 1)[(x // 2) % 4]
+            t[y][x] = t[y + 1][x] = "o"
+            t[y + 2][x] = "k"
     return t
 
 
 def high():
     t = blank("g")
-    for y in range(24):
-        for x in range(12):
-            if y >= 18:
-                t[y][x] = "d" if y < 23 else "k"    # the raised step's front
-            elif y == 0 or x == 0:
-                t[y][x] = "o"                       # its lit edge
-            elif x == 11 or y == 17:
-                t[y][x] = "d"
+    fill(t, 0, 0, TW - 1, 1, "o")                   # its lit edge
+    fill(t, 0, 0, 0, 25, "o")
+    fill(t, 0, 26, TW - 1, 30, "d")                 # the raised step's front
+    fill(t, 0, TH - 1, TW - 1, TH - 1, "k")
     return t
 
 
 def exit_():
     t = slab_floor()
-    for y in range(1, 23):
-        for x in range(1, 11):
-            t[y][x] = "o"                           # a lit doorway
-    arrow = ["....k.....", "...kk.....", "..kkkkkkk.", ".kkkkkkkk.", "..kkkkkkk.",
-             "...kk.....", "....k....."]
+    fill(t, 1, 1, 14, 29, "o")                      # a lit doorway
+    arrow = ["....kk......", "...kkk......", "..kkkkkkkkk.", ".kkkkkkkkkk.", ".kkkkkkkkkk.",
+             "..kkkkkkkkk.", "...kkk......", "....kk......"]
     for dy, row in enumerate(arrow):
         for dx, c in enumerate(row):
             if c == "k":
-                t[8 + dy][1 + dx] = "k"
+                t[12 + dy][2 + dx] = "k"            # this way out
     return t
 
 
 TILES = [  # (art, its own colour)
-    (slab_floor(), BLACK), (wall(), WHITE), (pit(), BLUE), (rough(), RED),
-    (cover(), RED), (hazard(), YELLOW), (high(), WHITE), (exit_(), YELLOW),
+    (slab_floor(), BLACK), (wall(), BLACK), (pit(), BLUE), (rough(), BLACK),
+    (cover(), RED), (hazard(), YELLOW), (high(), WHITE), (exit_(), GREEN),
 ]
 
 # ------------------------------------------------------------------ figures
@@ -381,11 +330,11 @@ def fallen(rows):
 
 
 def tile_chars(art, own):
-    """A tile's 9 characters (bytes) and colours, checked against the cell rule."""
+    """A tile's 16 characters (bytes) and colours, checked against the cell rule."""
     code = {"k": 0, "d": 1, "g": 2, "o": 3}
     chars, colours = [], []
-    for cy in range(3):
-        for cx in range(3):
+    for cy in range(4):
+        for cx in range(4):
             data = []
             for y in range(8):
                 b = 0
@@ -400,19 +349,26 @@ def tile_chars(art, own):
     return chars, colours
 
 
+MIDDLE = (5, 6, 9, 10)          # a tile's middle four characters
+
+
+def marked(art):
+    """The tile with a reach dot in its middle: black, 2 dots wide, 4 rows tall."""
+    art = [list(r) for r in art]
+    fill(art, 7, 14, 8, 17, "k")
+    return art
+
+
 def build():
     charset = [[0] * 8 for _ in range(256)]
-    for n, rows in UI.items():
-        charset[n] = hires(rows)
-    for i, rows in enumerate(font8x8()):
-        charset[32 + i] = glyph(rows)
     tiles = bytearray()
-    marked = bytearray()
-    next_char = 128
-    centres = []
+    marks = bytearray()
+    next_char = 1
     for art, own in TILES:
         if own > 7:
             raise Problem("a tile's own colour must be one of the first eight")
+        if len(art) != TH or any(len(r) != TW for r in art):
+            raise Problem(f"a tile must be {TW} dots wide and {TH} rows tall")
         chars, colours = tile_chars(art, own)
         codes = []
         for data in chars:
@@ -420,17 +376,12 @@ def build():
             codes.append(next_char)
             next_char += 1
         tiles += bytes(codes) + bytes(colours)
-        centres.append(chars[4])
-    for data in centres:                       # each tile's centre with a reach dot on it
-        dotted = list(data)
-        dotted[2] = (dotted[2] & 0b11000011)                    # a black ring...
-        dotted[5] = (dotted[5] & 0b11000011)
-        for y in (3, 4):
-            dotted[y] = (dotted[y] & 0b00000000) | 0b00111100   # ...round a spot of the
-                                                                # tile's own colour
-        charset[next_char] = dotted
-        marked.append(next_char)
-        next_char += 1
+    for art, own in TILES:                     # each tile's middle with a reach dot on it
+        chars, _ = tile_chars(marked(art), own)
+        for k in MIDDLE:
+            charset[next_char] = chars[k]
+            marks.append(next_char)
+            next_char += 1
     shapes = []
 
     def add(data):
@@ -453,48 +404,53 @@ def build():
     looks += bytes(5 * (16 - len(order)))
     effects = bytes([add(hires_sprite(EFFECTS["CURSOR"], 20)), add(mc_sprite(EFFECTS["BOLT"])),
                      add(hires_sprite(EFFECTS["SPARK"], 12)), add(hires_sprite(EFFECTS["SLASH"], 12))])
-    if len(shapes) > 64:
-        raise Problem(f"{len(shapes)} sprite shapes: the C64 has room for 64")
-    head = bytes(b"BG\x01") + bytes(SPRITE_SHARED) + bytes([SCREEN_BG]) + bytes(TILE_SHARED)
-    out = head + bytes(tiles) + bytes(marked) + bytes(looks) + effects
-    out += bytes(256 - len(out))
+    if len(shapes) > 63:
+        raise Problem(f"{len(shapes)} sprite shapes: the C64 has room for 63")
+    head = bytes(b"BG\x02") + bytes(SPRITE_SHARED) + bytes([SCREEN_BG]) + bytes(TILE_SHARED)
+    out = head + bytes(tiles) + bytes(marks) + bytes(looks) + effects
+    out += bytes(384 - len(out))
     names = bytearray()
     for n in FOES:
         shown = REG["foes"][n]["display"].encode("ascii")[:20]
         names += bytes([len(shown)]) + shown + bytes(31 - len(shown))
     out += bytes(names) + bytes(256 - len(names))
+    assert len(out) == TABLES
     out += bytes(b for ch in charset for b in ch)
     out += bytes(b for s in shapes for b in s)
     return out, len(shapes)
 
 
 def sheet(data, path):
-    """Everything in the file, drawn as the C64 would: the tiles, then every sprite."""
+    """Everything in the file, drawn as the C64 would: each tile, plain and marked, then
+    every sprite."""
     from PIL import Image
     shared = data[3:8]
-    chars = data[512:2560]
-    sprites = data[2560:]
+    chars = data[TABLES:TABLES + 2048]
+    sprites = data[TABLES + 2048:]
     n = len(sprites) // 64
-    img = Image.new("RGB", (8 * 30 * 2, 40 + ((n + 9) // 10) * 26), (40, 40, 48))
+    img = Image.new("RGB", (8 * 40, 80 + ((n + 9) // 10) * 26), (40, 40, 48))
 
     def dot(x, y, c, w=2):
         for dx in range(w):
             img.putpixel((x + dx, y), PALETTE[c])
 
     for t in range(8):
-        codes, colours = data[8 + t * 18:8 + t * 18 + 9], data[17 + t * 18:17 + t * 18 + 9]
-        for k in range(9):
-            ch = chars[codes[k] * 8:codes[k] * 8 + 8]
-            own = colours[k] & 7
-            for y in range(8):
-                for x in range(4):
-                    v = (ch[y] >> (6 - 2 * x)) & 3
-                    c = (shared[2], shared[3], shared[4], own)[v]
-                    dot(4 + t * 30 + (k % 3) * 8 + x * 2, 4 + (k // 3) * 8 + y, c)
+        codes, colours = data[8 + t * 32:8 + t * 32 + 16], data[24 + t * 32:24 + t * 32 + 16]
+        for shown in range(2):
+            for k in range(16):
+                code = codes[k]
+                if shown and k in MIDDLE:
+                    code = data[264 + t * 4 + MIDDLE.index(k)]
+                ch = chars[code * 8:code * 8 + 8]
+                own = colours[k] & 7
+                for y in range(8):
+                    for x in range(4):
+                        v = (ch[y] >> (6 - 2 * x)) & 3
+                        c = (shared[2], shared[3], shared[4], own)[v]
+                        dot(4 + t * 40 + (k % 4) * 8 + x * 2, 4 + shown * 36 + (k // 4) * 8 + y, c)
     for s in range(n):
         spr = sprites[s * 64:s * 64 + 63]
-        ox, oy = 4 + (s % 10) * 30, 36 + (s // 10) * 26
-        mc = any(b & 0x55 and b & 0xAA for b in spr) or s % 2 == 0
+        ox, oy = 4 + (s % 10) * 30, 76 + (s // 10) * 26
         for y in range(21):
             bits = (spr[y * 3] << 16) | (spr[y * 3 + 1] << 8) | spr[y * 3 + 2]
             for x in range(24):
@@ -520,14 +476,13 @@ def main(argv):
     if "--c64" in argv:
         out = argv[argv.index("--c64") + 1]
         os.makedirs(out, exist_ok=True)
+        shapes = data[TABLES + 2048:]
         for name, at, part in (("btab", 0x0000, data[:TABLES]),
                                ("bchr", 0xE000, data[TABLES:TABLES + 2048]),
-                               ("bspr", 0xEC00, data[TABLES + 2048:])):
-            if at and at + len(part) > 0xFC00:
-                raise SystemExit(f"battlegfx: {name} runs past $FC00, where the story's "
-                                 "text waits during a fight")
+                               ("bspr", 0xEC00, shapes[:SHAPES_LOW * 64]),
+                               ("bspr2", 0xFC00, shapes[SHAPES_LOW * 64:])):
             with open(os.path.join(out, name), "wb") as f:
-                f.write(bytes([at & 0xFF, at >> 8]) + part)
+                f.write(bytes([at & 0xFF, at >> 8]) + (part or bytes(64)))
     print(f"{argv[1]}: {len(data)} bytes, {n} sprite shapes")
     return 0
 

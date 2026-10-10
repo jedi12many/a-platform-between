@@ -99,6 +99,10 @@ async function keys() {
   const box = await page.locator("canvas").boundingBox();
   await page.mouse.click(box.x + box.width / 2, box.y + (row + 0.5) * box.height / 25);
   await page.waitForTimeout(300);
+  for (let wait = 0; wait < 10 && (await screen(page)).some((r) => r.includes("-- more --")); ++wait) {
+    await page.keyboard.press(" ");                 // the desk's greeting fills the story log
+    await page.waitForTimeout(100);
+  }
   rows = await screen(page);
   expect("a click on a menu line picks it", rows.some((r) => r.includes("Boarding Pass")));
   await page.keyboard.type("G0000000FG87R49CPEJX");

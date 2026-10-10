@@ -1,14 +1,17 @@
 /*
- * The battle screen on the C64 (client/apb_scene.h, docs/c64.md): the VIC-II's
- * multicolour character mode in bank 3 (the characters at $E000, the screen at $E800, the
- * sprite shapes at $EC00, all in the RAM under the KERNAL, loaded from the disk files
- * btab, bchr and bspr, tools/battlegfx.py), more sprites than the VIC's eight (planned
- * here, put up by the raster interrupt in fe/c64/sprites.s), the keyboard and a joystick in
- * port 2, and the sound effects (the music player plays them, fe/c64/tune.s).
+ * The battle screen on the C64 (client/apb_scene.h, docs/c64.md): the map in the view at
+ * the top of the framed screen (docs/frames.md), rows 0-15, in the VIC-II's multicolour
+ * character mode in bank 3 (the characters at $E000, the screen at $E800, the sprite
+ * shapes at $EC00 and $FC00, round the story's text screen at $F800, all in the RAM under
+ * the KERNAL, loaded from the disk files btab, bchr, bspr and bspr2, tools/battlegfx.py),
+ * more sprites than the VIC's eight (planned here, put up by the raster interrupt in
+ * fe/c64/sprites.s, which splits the screen at row 16 for the story's frames), the
+ * keyboard and a joystick in port 2, and the sound effects (the music player plays them,
+ * fe/c64/tune.s).
  *
  * It's in the BATTLE overlay with the rules and client/tactics.c, so it's here only
- * during a fight. The story's text screen at $0400 is left as it was, and fe/c64/c64.c
- * puts its colours and picture back after (c64_scene).
+ * during a fight. The story's frames at $F800 stay on under the map, fe/c64/c64.c's all
+ * along, and it puts the view's colours and picture back after (c64_scene).
  */
 #include <cbm.h>
 #include <string.h>
@@ -25,11 +28,14 @@
 #define SPRITE_MC2 (*(volatile uint8_t *)0xD026)
 #define JOYSTICK   (*(volatile uint8_t *)0xDC00)
 
-#define SHAPES_AT  176          /* sprite pointer of the shapes at $EC00, in bank 3   */
+#define SHAPES_AT  176          /* sprite pointer of the shapes at $EC00, in bank 3,  */
+#define SHAPES_LOW 48           /* 48 of them; the rest at $FC00 (pointer 240)        */
+#define SHAPES_HI  240
 #define SPRITES    APB_SCENE_SPRITES
 #define TOP        50           /* the screen's top and left, in the VIC's sprite     */
 #define LEFT       24           /* coordinates                                        */
-#define LAST_LINE  250          /* a sprite starting here or lower isn't seen         */
+#define LAST_LINE  (TOP + APB_SCENE_ROWS * 8)  /* a sprite starting here or lower is
+                                                 under the view: it isn't shown       */
 #define TALL       21
 #define LEAD       3            /* lines between one sprite's end and the next's start
                                    on the same VIC sprite: time to set it up         */
@@ -72,13 +78,13 @@ const uint8_t *hal_scene_open(void)
     c64_scene(1);
     BORDER = 12;
     if (!cbm_load("btab", 8, tables) || !cbm_load("bchr", 8, 0) || !cbm_load("bspr", 8, 0)
-        || tables[0] != 0x42 || tables[1] != 0x47) {
+        || !cbm_load("bspr2", 8, 0) || tables[0] != 0x42 || tables[1] != 0x47) {
         BORDER = 0;
         c64_scene(0);
         return 0;
     }
-    memset(SCREEN, 0x20, 1000);
-    memset(COLOURS, 1, 1000);
+    memset(SCREEN, 0, APB_SCENE_ROWS * 40);
+    memset(COLOURS, 8, APB_SCENE_ROWS * 40);
     memset(scene_mode, APB_SPR_OFF, sizeof(scene_mode));
     scene_start();
     return tables;
@@ -105,7 +111,7 @@ void hal_scene_put(uint8_t col, uint8_t row, uint8_t ch, uint8_t colour)
 {
     uint16_t at;
 
-    if (col >= 40 || row >= 25) return;
+    if (col >= 40 || row >= APB_SCENE_ROWS) return;
     at = (uint16_t)(row * 40 + col);
     SCREEN[at] = ch;
     COLOURS[at] = colour;
@@ -123,6 +129,12 @@ void hal_scene_sprite(uint8_t n, int16_t x, int16_t y, uint8_t shape, uint8_t co
 }
 
 /* ------------------------------------------------------------------ the plan */
+
+/* A shape's sprite pointer: the first SHAPES_LOW at $EC00, the rest at $FC00. */
+static uint8_t pointer(uint8_t shape)
+{
+    return (uint8_t)(shape < SHAPES_LOW ? SHAPES_AT + shape : SHAPES_HI - SHAPES_LOW + shape);
+}
 
 /* Twenty-four sprites on eight: sorted down the screen, each takes a VIC sprite that's
  * free (none yet, or one whose last sprite has finished, LEAD lines before this one
@@ -182,7 +194,7 @@ static void plan(void)
             used |= bit;
             p->top_x[s] = (uint8_t)x;
             p->top_y[s] = line_of[i];
-            p->top_ptr[s] = (uint8_t)(SHAPES_AT + scene_shape[i]);
+            p->top_ptr[s] = pointer(scene_shape[i]);
             p->top_col[s] = scene_colour[i];
             if (x > 255) p->top_msb |= bit;
             if (scene_mode[i] == APB_SPR_MULTI) p->top_mc |= bit;
@@ -212,7 +224,7 @@ static void plan(void)
             r_slot[j] = s;
             r_x[j] = (uint8_t)x;
             r_y[j] = line_of[i];
-            r_ptr[j] = (uint8_t)(SHAPES_AT + scene_shape[i]);
+            r_ptr[j] = pointer(scene_shape[i]);
             r_col[j] = scene_colour[i];
             r_bits[j] = (uint8_t)((x > 255 ? 1 : 0) | (scene_mode[i] == APB_SPR_MULTI ? 2 : 0));
             ++ev;

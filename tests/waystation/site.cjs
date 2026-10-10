@@ -195,19 +195,11 @@ const commands = {
       // Board (1), and when the desk asks, have the traveler's Passport typed from the list.
       await onScreen("1. Board");
       await play.locator("canvas").press("1");
-      await onScreen("Your Boarding Pass, please");
+      await onScreen("Your Boarding Pass");
       await play.locator("#board-type").click();
-      await frame.waitForFunction((first) => {
-        for (let r = 0; r < 25; ++r) {
-          if (Module.UTF8ToString(Module._web_screen_row(r)).includes(first)) return true;
-        }
-        return false;
-      }, text.slice(0, 20), { timeout: 20000 }).catch(() => null);
-      let typed = false;
-      for (let r = 0; r < 25 && !typed; ++r) {
-        typed = (await frame.evaluate((r) => Module.UTF8ToString(Module._web_screen_row(r)), r))
-          .includes(text.slice(0, 20));
-      }
+      // Typed and read: the desk answers a Passport (the story log is short, and the
+      // typed lines have scrolled on by now).
+      const typed = await onScreen("That's a Passport, not a").then(() => true, () => false);
       // Then the way it's meant to be: back on the platform, The Fare (the first mission)
       // and Board on her card. The page issues her pass; the trip (its answers scripted,
       // the start menu's Board first) ends in a stamp that lands on her by itself.

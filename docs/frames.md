@@ -1,4 +1,4 @@
-# The framed screen (E12)
+# The framed screen (E12, done)
 
 One screen for the whole game, made of frames that stay put: a **view** at the top (the
 story's picture, the room the party walks round, or the battle map), the **story log**
@@ -8,8 +8,9 @@ dice log, health in the party frame. The pictures and the map take turns in the 
 nothing else moves when a fight starts or ends.
 
 Each machine gets its own version, optimized for it, all of them retro: the C64's is the
-40 x 25 grid below; the desktop and the browser get more room (a wider story log), in the
-same frames, font and colours.
+40 x 25 grid below. The desktop and the browser have the same grid for now, so the tests
+can hold them to the C64's transcripts line for line; they can have more room (a wider
+story log) later, in the same frames, font and colours.
 
 ## On the C64
 
@@ -28,10 +29,26 @@ characters of the font, and sprites (the party, foes, the cursor) live only in t
 | 20-23, columns 26-39 | the dice log: each roll in two lines; scrolls | hires text |
 | 24 | the commands, or the prompt | hires text |
 
-The raster interrupt switches the VIC at the top of the view and again at row 16 (scanline
-179); it plays the music once a frame, as it does now ([music.md](music.md)). A picture
-and a map never show at once: the view loads whichever the moment needs, which costs
-nothing on an SD2IEC.
+In the story, the raster interrupt shows the picture's bitmap on rows 1-12 and the text
+screen round it (`fe/c64/split.s`); in a fight, the map's multicolour characters and
+sprites on rows 0-15 and the text screen from row 16 (line 177, `fe/c64/sprites.s`). Both
+play the music once a frame ([music.md](music.md)). A picture and a map never show at
+once: the view loads whichever the moment needs, which costs nothing on an SD2IEC. The
+frames are the same text screen all along ($F800, our font at $D000), so nothing in them
+moves when a fight starts or ends.
+
+**What goes where.** The story's prose, menus and a fight's sentences go into the story
+log, which waits with "-- more --" (on the command row) before anything scrolls off
+unread; a fight's sentences don't wait, the player's turns pace them. Every roll, a check
+or a blow, goes into the dice log as two short lines (`client/view.c`,
+`apb_view_roll`): what rolled and its total, "Wits 119", then the target and the outcome,
+"vs 74: pass" (fail, cost, pass, crit; a blow's miss, graze, hit or crit and its damage),
+the newest bright, the one before it grey. The party frame has each traveler's name and
+health as a bar of five cells, in halves, red at a third or less; ">" and yellow on
+whoever's turn it is in a fight; "down" when they are. Lines are typed on the command row
+and then go into the story log, "> " and all, so the transcript has them; a fight's
+commands and prompts are there too. The shared code draws through `client/apb_scene.h`'s
+`hal_frame_` calls, which each front end keeps its own way.
 
 **The map's look** (the battle screen first, rooms with E13): squares of 32 pixels; flat
 tiles, a plain floor with faint seams and solid walls, so only the squares that matter
@@ -47,7 +64,7 @@ Until E14, the party frame shows the one traveler.
 
 ## Milestones
 
-- **E12 Frames:** the framed screen on every machine, with the simpler battle view.
+- **E12 Frames (done):** the framed screen on every machine, with the simpler battle view.
 - **E13 Rooms:** a scene can be a room the party walks round, acting on things in reach
   (open, pick a lock, look, take) instead of choosing from a menu.
 - **E14 The party:** up to four of the player's own travelers board together; each keeps

@@ -40,7 +40,9 @@ import receipt  # noqa: E402
 import stamp  # noqa: E402
 
 SITE = os.path.join(ROOT, "tests", "waystation", "site.cjs")
-FARE_PICKS = ["1", "1", "1", "1", "1", "2", "2", "2", "3", "1", "1", "2", "2"]
+# The Fare's answers, from "Let it" to the end, by a way with no checks on it: a trip from
+# the platform has a seed of its own, and a failed check would take another way.
+FARE_PICKS = ["1", "1", "1", "1", "1", "2", "3", "1", "1", "2", "2"]
 failures = 0
 
 

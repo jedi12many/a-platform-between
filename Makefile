@@ -50,7 +50,7 @@ build/demo.prg: demo/demo.c $(CORE_SRC) $(CORE_HDR) | build
 # The game on the Commodore 64 (docs/c64.md): the main program plus three overlays,
 # loaded from disk when the VM asks (LOAD, PASS and BATTLE), on cc65's overlay memory
 # map (fe/c64/apb.cfg). The linker fails the build if anything doesn't fit.
-C64_DEFS   := -DAPB_OVERLAYS -DAPB_FIGHT_BORROWS_CAR -DAPB_PLAY_ONLY -DAPB_VM_DEPOT_MAX=2048 -g
+C64_DEFS   := -DAPB_OVERLAYS -DAPB_FIGHT_BORROWS_CAR -DAPB_PLAY_ONLY -DAPB_FRAMED -DAPB_VM_DEPOT_MAX=2048 -g
 C64_MAIN   := fe/c64/c64.c fe/c64/split.s fe/c64/music.s fe/c64/tune.s client/cue.c vm/vm.c client/view.c \
               core/src/rng.c core/src/names.c \
               core/src/rules.c core/src/registry.c
@@ -92,7 +92,7 @@ build/the-fare.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/00-the-fare
 	python3 tools/c64pic.py disk build/c64/fare/DEPOT content/s1/00-the-fare/pictures build/c64/fare-pics
 	python3 tools/d64.py write $@ "the fare" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/bspr2=bspr2 build/c64/bgfx/font=font \
 	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(python3 tools/music/musicc.py build $$(ls content/s1/00-the-fare/the-fare.music 2>/dev/null || echo tools/music/quiet.music) \
 	       -o build/c64/fare-music --c64 >&2 && echo build/c64/fare-music=music) \
@@ -110,7 +110,7 @@ build/eighteen-minutes.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/01-
 	python3 tools/c64pic.py disk build/c64/e18/DEPOT content/s1/01-eighteen-minutes/pictures build/c64/e18-pics
 	python3 tools/d64.py write $@ "eighteen minutes" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/bspr2=bspr2 build/c64/bgfx/font=font \
 	    $$(for f in build/c64/e18/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(python3 tools/music/musicc.py build $$(ls content/s1/01-eighteen-minutes/eighteen-minutes.music 2>/dev/null || echo tools/music/quiet.music) \
 	       -o build/c64/e18-music --c64 >&2 && echo build/c64/e18-music=music) \
@@ -128,7 +128,7 @@ build/deep-yards.d64: build/c64/apb.prg build/c64/bgfx/btab content/sidings/deep
 	python3 tools/c64pic.py disk build/c64/yards/DEPOT content/sidings/deep-yards/pictures build/c64/yards-pics
 	python3 tools/d64.py write $@ "the deep yards" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/bspr2=bspr2 build/c64/bgfx/font=font \
 	    $$(for f in build/c64/yards/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(python3 tools/music/musicc.py build $$(ls content/sidings/deep-yards/deep-yards.music 2>/dev/null || echo tools/music/quiet.music) \
 	       -o build/c64/yards-music --c64 >&2 && echo build/c64/yards-music=music) \

@@ -70,6 +70,9 @@ void apb_view_status(char *out, const apb_character *ch, uint8_t health)
 }
 
 static const char *const stat_names[] = { "Might", "Grace", "Grit", "Wits", "Presence", "Fate" };
+static const char *const outcomes[] = { "fail", "cost", "pass", "crit" };
+
+#ifndef APB_FRAMED                  /* a framed screen has its rolls in the dice log */
 static const char *const results[] = { "fail", "success at a cost", "success", "critical success" };
 
 void apb_view_check(char *out, uint8_t rating, const apb_roll *roll)
@@ -89,4 +92,47 @@ void apb_view_check(char *out, uint8_t rating, const apb_roll *roll)
     out = apb_view_put(out, ": ");
     out = apb_view_put(out, results[roll->result & 3]);
     apb_view_put(out, "]");
+}
+#endif
+
+void apb_view_roll(char *top, char *bottom, char *record, const char *who,
+                   const apb_roll *roll, const char *outcome)
+{
+    /* Static: cc65 makes far less code of them. */
+    static char total[8];
+    static const char *last;
+    static const char *p;
+    static uint8_t room;
+    static uint8_t n;
+
+    apb_view_num(total, roll->total);
+    room = (uint8_t)(APB_VIEW_ROLL - 2 - strlen(total));
+    last = who;
+    n = (uint8_t)strlen(who);
+    if (n > room) {
+        for (p = who; *p; ++p) {
+            if (*p == ' ') last = p + 1;
+        }
+        n = (uint8_t)strlen(last);
+        if (n > room) {
+            last = who;
+            n = room;
+        }
+    }
+    memcpy(top, last, n);
+    top[n] = ' ';
+    apb_view_put(top + n + 1, total);
+    apb_view_put(apb_view_put(apb_view_num(apb_view_put(bottom, "vs "), roll->tn), ": "), outcome);
+    p = apb_view_put(apb_view_put(apb_view_put(apb_view_put(record, "["), who), " "), total);
+    apb_view_put(apb_view_put(apb_view_put((char *)p, " "), bottom), "]");
+}
+
+void apb_view_check_roll(char *top, char *bottom, char *record, uint8_t rating,
+                         const apb_roll *roll)
+{
+    apb_view_roll(top, bottom, record,
+                  rating < 6 ? stat_names[rating]
+                  : rating >= 16 && rating < 16 + APB_SKILL_COUNT
+                    ? apb_skill_names[rating - 16] : (const char *)"?",
+                  roll, outcomes[roll->result & 3]);
 }
