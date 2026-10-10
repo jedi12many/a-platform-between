@@ -15,8 +15,9 @@
         .export pw_buffer, pw_pos, pw_len, pw_bad_line, crc
         .export symbols
 
-MAX_SYMBOLS = 224                   ; the most a password may have: every list full, in a
-                                    ; pass, is 215
+MAX_SYMBOLS = 163                   ; the longest Boarding Pass (every list full); more is
+                                    ; the wrong length
+PASSPORT_LONGEST = 149              ; and the longest Passport (docs/passport-spec.md)
 LINE        = 20                    ; symbols a line: 19 data, 1 check
 
         .segment "RESIDENT"
@@ -75,8 +76,19 @@ pw_read:
 @found: txa
         ldx count
         cpx #MAX_SYMBOLS
-        bcc @keep
-        lda #PW_LENGTH
+        bcs @long
+        cpx #PASSPORT_LONGEST       ; past a Passport's longest: only a pass, whose first
+        bcc @keep                   ; symbol's top 4 bits say so
+        pha
+        lda values
+        lsr a
+        cmp #KIND_PASS
+        bne @too_long
+        pla
+        jmp @keep
+@too_long:
+        pla
+@long:  lda #PW_LENGTH
         rts
 @keep:  sta values, x
         inc count

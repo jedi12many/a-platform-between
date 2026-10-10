@@ -11,8 +11,9 @@ reference writes, symbol for symbol. Typed the forgiving way (small letters, das
 spaces, O for 0, I and L for 1), they must read the same. Damaged ones (a symbol changed,
 one that isn't in the alphabet, a line or the last symbols gone, two lines swapped) must
 be refused as the reference refuses them: a typo on the right line, an unknown symbol,
-too short, a checksum, a different version. And a traveler with a field too big must not
-be written.
+too short, a checksum, a different version. So must travelers no game has, with right
+checksums (a list too long, a repeat, an empty entry, a number out of range: the spec's
+"What's refused"). And a traveler with a field too big must not be written.
 """
 
 import os
@@ -22,10 +23,11 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "tests", "cart"))
 sys.path.insert(0, os.path.join(ROOT, "tools", "passport"))
+sys.path.insert(0, os.path.join(ROOT, "tests", "passport"))
 import run_cart  # noqa: E402
 import passport  # noqa: E402
+from cases import damaged, impossible, random_traveler, reference  # noqa: E402
 import boarding  # noqa: E402
-from passport import PassportError  # noqa: E402
 
 STOP = 0x0300                       # a routine "returns" here: the run stops
 TEXT, OUT = 0xA000, 0xA800          # RAM the game doesn't use yet
@@ -110,50 +112,6 @@ def record_of(ch):
     return bytes(r)
 
 
-def random_traveler(rnd):
-    ch = passport.new_character()
-    ch["name"] = "".join(rnd.choice(passport.NAME_ALPHABET) for _ in range(rnd.randint(1, 8))).rstrip()
-    ch["race"], ch["class"] = rnd.randrange(32), rnd.randrange(16)
-    ch["level"], ch["xp"] = rnd.randrange(128), rnd.randrange(128)
-    ch["stats"] = [rnd.randrange(128) for _ in range(6)]
-    ch["stat_points"], ch["skill_points"] = rnd.randrange(256), rnd.randrange(256)
-    ch["debt"], ch["flags"] = rnd.randrange(65536), rnd.randrange(128)
-    ch["tags"] = sorted(rnd.sample(range(12), rnd.randint(0, 12)))
-    big = rnd.random() < 0.3                                    # now and then, everything
-    ch["training"] = {s: rnd.randrange(1, 128) for s in rnd.sample(range(16), 15 if big else rnd.randint(0, 6))}
-    ch["powers"] = [(rnd.randrange(256), rnd.randrange(128)) for _ in range(15 if big else rnd.randint(0, 4))]
-    for key in ("equipped", "pack"):
-        ch[key] = {slot: rnd.randrange(1024) for slot in rnd.sample(range(8), 7 if big else rnd.randint(0, 3))}
-    ch["echoes"] = [(rnd.randrange(1024), rnd.randrange(4)) for _ in range(15 if big else rnd.randint(0, 4))]
-    return ch
-
-
-def reference(text):
-    """What the reference makes of a typed password: ("ok", fields, pass) or (error, line)."""
-    try:
-        bits = passport.read_symbols(text)
-    except PassportError as e:
-        msg = str(e)
-        if "isn't a" in msg:
-            return ("symbol", 0)
-        if "typo" in msg:
-            return ("line", int(msg.split()[1]))
-        return ("length", 0)
-    kind = int("".join(map(str, bits[:4])), 2) if len(bits) >= 4 else None
-    try:
-        if kind == boarding.KIND:
-            p = boarding.decode(text)
-            return ("ok", p["character"], p)
-        return ("ok", passport.decode(text), None)
-    except PassportError as e:
-        msg = str(e)
-        if "too short" in msg:
-            return ("length", 0)
-        if "version" in msg:
-            return ("version", 0)
-        return ("checksum", 0)
-
-
 def check_one(cart, text, what):
     want = reference(text)
     got = cart.decode(text)
@@ -200,25 +158,6 @@ def forgiving(rnd, text):
     return "".join(out)
 
 
-def damaged(rnd, text):
-    kind = rnd.randrange(5)
-    lines = passport.lines(text)
-    if kind == 0:                                           # a symbol changed
-        i = rnd.randrange(len(text))
-        return text[:i] + rnd.choice([c for c in passport.SYMBOLS if c != text[i]]) + text[i + 1:]
-    if kind == 1:                                           # one not in the alphabet
-        i = rnd.randrange(len(text))
-        return text[:i] + rnd.choice("U#*") + text[i + 1:]
-    if kind == 2 and len(lines) > 1:                        # a line gone
-        del lines[rnd.randrange(len(lines))]
-        return "".join(lines)
-    if kind == 3 and len(lines) > 1:                        # two lines swapped
-        i = rnd.randrange(len(lines) - 1)
-        lines[i], lines[i + 1] = lines[i + 1], lines[i]
-        return "".join(lines)
-    return text[:-rnd.randint(1, 3)]                         # the last symbols gone
-
-
 def main(argv):
     if len(argv) < 3:
         print(__doc__)
@@ -226,7 +165,7 @@ def main(argv):
     cases = int(argv[argv.index("--cases") + 1]) if "--cases" in argv else 60
     cart = Cart(argv[1], argv[2])
     rnd = random.Random(1979)
-    n = {"travelers": 0, "passes": 0, "typed": 0, "damaged": 0, "written": 0}
+    n = {"travelers": 0, "passes": 0, "typed": 0, "damaged": 0, "written": 0, "impossible": 0, "long": 0}
     for k in range(cases):
         ch = random_traveler(rnd)
         text = passport.encode(ch)
@@ -247,6 +186,28 @@ def main(argv):
         for _ in range(3):
             if check_one(cart, damaged(rnd, rnd.choice([text, p])), f"damaged {k}"):
                 n["damaged"] += 1
+    # Travelers no game has, with right checksums: refused as the reference refuses them.
+    for k in range(cases // 2):
+        ch, rule = impossible(rnd)
+        text = passport.encode(ch)
+        p = boarding.encode(1, 2, 3, False, ch)
+        if (check_one(cart, text, f"impossible Passport {k} ({rule})")
+                and check_one(cart, p, f"impossible pass {k} ({rule})")
+                and reference(text)[0] in ("checksum", "length")):
+            n["impossible"] += 1
+        else:
+            fail(f"impossible traveler {k} ({rule}) not refused by both")
+    # Longer than any there can be (a line of zeros added, its check right): the wrong
+    # length, as the reference says.
+    for k in range(10):
+        text = rnd.choice([passport.encode, lambda ch: boarding.encode(1, 2, 3, False, ch)])(
+            random_traveler(rnd))
+        while len(text) <= (passport.PASS_LONGEST if text[0] in "GH" else passport.PASSPORT_LONGEST):
+            text += "0" * 20
+        if check_one(cart, text, f"too long {k}") and reference(text)[0] == "length":
+            n["long"] += 1
+        else:
+            fail(f"too long {k}: not the wrong length")
     # The real thing: Kestrel's pass, as the C64's tests type it.
     kestrel = "G0000000FG87R49CPEJZ 8NG0M020AN8F2THP800E 00000016C184M8A0400W G0FZKR7"
     if check_one(cart, kestrel, "Kestrel's pass"):
@@ -260,7 +221,8 @@ def main(argv):
         print("ok   a traveler with a field too big for its bits isn't written")
     print(f"ok   {n['travelers']} Passports and {n['passes']} Boarding Passes read as the reference "
           f"reads them; {n['written']} Passports written as it writes them; {n['typed']} typed the "
-          f"forgiving way; {n['damaged']} damaged ones refused as it refuses them")
+          f"forgiving way; {n['damaged']} damaged ones refused as it refuses them; "
+          f"{n['impossible']} travelers no game has refused by both; {n['long']} too long")
     print(f"cart passwords: {failures} failed")
     return 1 if failures else 0
 

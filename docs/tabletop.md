@@ -27,7 +27,8 @@ your head:
 
 ### 1. A printed character sheet
 
-Type or paste a Passport password into the Passport Office (or the sheet tool) and print:
+Scan a Passport's QR code with a phone, or type or paste its password, into the Passport
+Office (or the sheet tool) and print:
 
 - name, race, class, level, XP;
 - stats, and every **skill's rating already worked out** (half stat + training), with
@@ -37,7 +38,9 @@ Type or paste a Passport password into the Passport Office (or the sheet tool) a
 - gear, with how each item **Translates** at different Tech and Magic Levels;
 - Echoes, listed by name ("Spared Jace Cutter"), as **codewords**;
 - unspent stat and skill points;
-- the password itself, and a **QR code** of it, at the bottom.
+- the password itself, and a **QR code** of it, at the bottom: what boards the traveler,
+  scanned, and what a player types only if they want to (a Boarding Pass printed for a
+  session carries one too).
 
 The sheet tool will build on the Python Passport reference in `tools/passport/`.
 

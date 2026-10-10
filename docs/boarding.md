@@ -72,10 +72,11 @@ player holds is a key a player can share.
 1. **Board at the Waystation website.** Pick the character and the Departure; the server
    issues a **Boarding Pass**: the trip (the Departure, a one-time ticket number, the dice
    seed for the trip) and the character as they are now, in one password.
-2. **Give the client the Boarding Pass.** It's the only code a player types to board: on
-   a C64, line by line like a Passport (from your phone screen); a modern client fetches
-   it when you sign in. The client checks the pass is for this Departure, and boards the
-   character it carries.
+2. **Give the client the Boarding Pass.** It's the only code a player needs to board: on
+   a C64 from an SD2IEC, the file `PASS` beside the game, or typed line by line like a
+   Passport; at the table, scanned from its QR code; a modern client fetches it when you
+   sign in ([passport-spec.md](passport-spec.md#carriers)). The client checks the pass
+   is for this Departure, and boards the character it carries.
 3. **The receipt carries the ticket number.** The server accepts it only for the character
    the ticket was issued to, only once, and only within that Departure's possible rewards.
 
@@ -144,8 +145,8 @@ receipts.
 | Where | How the receipt travels |
 |---|---|
 | Modern client | Sent to the Waystation as soon as the Departure ends, with the choices and seed that produced it, so the server can replay and verify it. |
-| Retro | A **Travel Stamp**: a short password holding the ticket number and the receipt (about 25-35 characters for a typical Departure), with a check code against typos. Enter it at the Waystation website. |
-| Tabletop | The Conductor's receipt, entered at the Waystation; Boarding Passes are issued for tabletop sessions too. |
+| Retro | A **Travel Stamp**: a short password holding the ticket number and the receipt (about 25-35 characters for a typical Departure), with a check code against typos. Shown at the trip's end as a QR code and as its lines: scan it at the Waystation website, or type it. |
+| Tabletop | The Conductor's receipt, entered at the Waystation; Boarding Passes are issued for tabletop sessions too, with QR codes on them. |
 
 ### Travel Stamp format
 
@@ -187,5 +188,5 @@ through the terminal.
   Passport Office merge the same way.
 - The VM takes the Boarding Pass alongside the Passport and copies its ticket number into
   the receipt.
-- The Travel Stamp and Boarding Pass formats are specified with milestone E2, alongside
-  the Passport; the reward manifest with the compiler.
+- The Travel Stamp and Boarding Pass formats are above, the reward manifest with the
+  compiler; what every decoder refuses is in [passport-spec.md](passport-spec.md#whats-refused).

@@ -37,7 +37,7 @@ def issue(passport_text, departure, ticket, seed, rewind=False):
 
 def decode(text):
     """The trip, and the character it carries (under "character")."""
-    bits = passport.read_symbols(text, "Boarding Pass")
+    bits = passport.read_symbols(text, "Boarding Pass", passport.PASS_LONGEST)
 
     def field(start, n):
         if start + n > len(bits):

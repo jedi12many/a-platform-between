@@ -29,6 +29,8 @@ VERSION = 2
 ;            filled in.
 ;   Changes: A, X, Y; password.s's zero page; zp_t0-zp_t3.
 password_decode:
+        lda #0
+        sta refused
         jsr pw_read
         beq @read
         rts
@@ -62,7 +64,9 @@ password_decode:
         beq @fields
         lda #PW_VERSION
         rts
-@short: lda #PW_LENGTH
+@short: lda refused                 ; reading stopped: a rule broken, or the bits ran
+        bne @wrong                  ; out
+        lda #PW_LENGTH
         rts
 @fields:
         jsr read_traveler
@@ -98,15 +102,20 @@ password_decode:
         tax
         lda pw_len + 1
         sbc pw_pos + 1
-        bne @wrong
+        bne @long
         cpx #5
-        bcs @wrong
+        bcs @long
         txa
         beq @ok
         jsr get
         lda zp_pw_value
         bne @wrong
-@ok:    lda #PW_OK
+@ok:    jsr fields_fit              ; the numbers in range
+        lda refused
+        bne @wrong
+        lda #PW_OK
+        rts
+@long:  lda #PW_LENGTH
         rts
 @wrong: lda #PW_CHECKSUM
         rts
@@ -124,18 +133,30 @@ pos_bytes:
         ror a
         rts
 
-; get: bits_get, keeping X. Takes A; returns as bits_get.
+; get: bits_get, keeping X; or, once a rule is broken (`refused`), C set: reading stops
+; there, as the C engine's does. Takes A; returns as bits_get.
 get:
         stx get_x
+        pha
+        lda refused
+        bne @stop
+        pla
         jsr bits_get
         ldx get_x
         rts
+@stop:  pla
+        ldx get_x
+        sec
+        rts
 
 ; read_traveler: the Passport's fields after its version, into `traveler`, cleared first.
-; C set if the bits ran out. Changes A, X, Y; zp_pw_value, zp_pw_n; zp_t0-zp_t2.
+; A list longer than it can be, or an entry repeated or empty (docs/passport-spec.md,
+; "What's refused"), sets `refused` where the C engine finds it, and reading stops there
+; (get). C set if reading stopped. Changes A, X, Y; zp_pw_value, zp_pw_n; zp_t0-zp_t2.
 read_traveler:
         ldx #CH_SIZE - 1            ; a clean record: nothing left from the last one
         lda #0
+        sta refused
 @clear: sta traveler, x
         dex
         cpx #$FF
@@ -177,19 +198,30 @@ read_traveler:
         jsr get
         bcs @out
         lda zp_pw_value
+        ldx #SKILLS_MAX
+        jsr at_most
         sta zp_t0
         beq @powers
 @trained:
-        lda #4
+        lda #4                      ; a skill, once, then its training, 1 or more
         jsr get
         bcs @out
         lda zp_pw_value
         sta zp_t1
-        lda #7
+        ldx #SKILLS_MAX - 1
+        jsr at_most
+        tax
+        lda traveler + CH_TRAINING, x
+        beq @new
+        jsr refuse                  ; (trained already)
+@new:   lda #7
         jsr get
         bcs @out
         ldx zp_t1
         lda zp_pw_value
+        bne @trains
+        jsr refuse                  ; (no training)
+@trains:
         sta traveler + CH_TRAINING, x
         dec zp_t0
         bne @trained
@@ -198,12 +230,14 @@ read_traveler:
         jsr get
         bcs @out
         lda zp_pw_value
+        ldx #POWERS_MAX
+        jsr at_most
         sta traveler + CH_POWER_COUNT
         sta zp_t0
         ldx #0
         lda zp_t0
         beq @items
-@power: lda #8
+@power: lda #8                      ; a power (never 0), then its rank
         jsr get
         bcs @out2
         lda zp_pw_value
@@ -213,6 +247,10 @@ read_traveler:
         bcs @out2
         lda zp_pw_value
         sta traveler + CH_POWERS + 1, x
+        lda traveler + CH_POWERS, x
+        bne @power_id
+        jsr refuse                  ; (power 0)
+@power_id:
         inx
         inx
         dec zp_t0
@@ -227,11 +265,13 @@ read_traveler:
         jsr get
         bcs @out2
         lda zp_pw_value
+        ldx #ECHOES_MAX
+        jsr at_most
         sta traveler + CH_ECHO_COUNT
         sta zp_t0
         beq @done
         ldx #0
-@echo:  lda #10
+@echo:  lda #10                     ; an Echo (never 0), then its state
         jsr get
         bcs @out2
         lda zp_pw_value
@@ -243,6 +283,11 @@ read_traveler:
         bcs @out2
         lda zp_pw_value
         sta traveler + CH_ECHOES + 2, x
+        lda traveler + CH_ECHOES, x
+        ora traveler + CH_ECHOES + 1, x
+        bne @echo_id
+        jsr refuse                  ; (Echo 0)
+@echo_id:
         inx
         inx
         inx
@@ -250,6 +295,62 @@ read_traveler:
         bne @echo
 @done:  clc
 @out2:  rts
+
+; fields_fit: the numbers in range (apb's fields_fit), checked after the checksum: level
+; 1-100, XP under 100, the stats, the training and the powers' ranks 100 at most;
+; `refused` if not. After: C
+; clear. Changes A, X.
+fields_fit:
+        lda traveler + CH_LEVEL
+        beq @refuse
+        cmp #LEVEL_TOP + 1
+        bcs @refuse
+        lda traveler + CH_XP
+        cmp #XP_PER_LEVEL
+        bcs @refuse
+        ldx #5
+@stat:  lda traveler + CH_STATS, x
+        cmp #RATING_TOP + 1
+        bcs @refuse
+        dex
+        bpl @stat
+        ldx #SKILLS_MAX - 1
+@skill: lda traveler + CH_TRAINING, x
+        cmp #RATING_TOP + 1
+        bcs @refuse
+        dex
+        bpl @skill
+        ldx #POWERS_MAX * 2 - 1     ; (the ranks: every second byte)
+@rank:  lda traveler + CH_POWERS, x
+        cmp #RATING_TOP + 1
+        bcs @refuse
+        dex
+        dex
+        bpl @rank
+        clc
+        rts
+@refuse:
+        jsr refuse
+        clc
+        rts
+
+; at_most: A over X? Then `refused`. Keeps A, X; after, the flags are A's (as a load
+; leaves them).
+at_most:
+        stx most
+        cmp most
+        beq @fine
+        bcc @fine
+        jsr refuse
+@fine:  ora #0
+        rts
+
+; refuse: `refused` set. Keeps A, X, Y.
+refuse: pha
+        lda #1
+        sta refused
+        pla
+        rts
 
 ; read_slots: an item list (equipped or pack) into its 8 slots at `traveler` + Y: all
 ; empty, then each slot (3 bits) and item (10). C set if the bits ran out. Changes A, X,
@@ -266,21 +367,34 @@ read_slots:
         jsr get
         bcs @out
         lda zp_pw_value
+        ldx #ITEMS_MAX
+        jsr at_most
         sta zp_t0
         beq @done
-@slot:  lda #3
-        jsr get
+@slot:  lda #3                      ; a slot (one of 6, empty till now), then its item
+        jsr get                     ; (never 0)
         bcs @out
         lda zp_pw_value
+        ldx #ITEMS_MAX - 1
+        jsr at_most
         asl a
         clc
         adc zp_t2
         sta zp_t1
-        lda #10
+        tay
+        lda traveler + 1, y
+        cmp #EMPTY_SLOT
+        beq @free
+        jsr refuse                  ; (taken already)
+@free:  lda #10
         jsr get
         bcs @out
         ldy zp_t1
         lda zp_pw_value
+        ora zp_pw_value + 1
+        bne @item
+        jsr refuse                  ; (item 0)
+@item:  lda zp_pw_value
         sta traveler, y
         lda zp_pw_value + 1
         sta traveler + 1, y
@@ -542,6 +656,15 @@ put:
 
 ; The fixed fields after the name: (bits, place in `traveler`), to a 0. Over 8 bits, the
 ; value's high byte is the next place.
+; What a Passport may hold (docs/passport-spec.md).
+SKILLS_MAX      = 12
+POWERS_MAX      = 8
+ITEMS_MAX       = 6
+ECHOES_MAX      = 8
+LEVEL_TOP       = 100
+XP_PER_LEVEL    = 100
+RATING_TOP      = 100
+
 fixed_fields:
         .byte 5, CH_RACE, 4, CH_CLASS, 7, CH_LEVEL, 7, CH_XP
         .byte 7, CH_STATS, 7, CH_STATS + 1, 7, CH_STATS + 2
@@ -566,5 +689,7 @@ pass:           .res PASS_SIZE + 1  ; (+1: the Rewind bit is put as a 16-bit val
 password_kind:  .res 1
 too_big:        .res 1
 get_x:          .res 1
+refused:        .res 1              ; read_traveler: a character no game has
+most:           .res 1
 keep:           .res 2
 pos8:           .res 2

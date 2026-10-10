@@ -414,6 +414,8 @@ uint16_t apb_yard_build(uint16_t yard, uint8_t floor, const uint8_t *pool, uint1
 #define APB_PASSWORD_LINE    20   /* 19 data symbols + 1 check symbol; the last line may be shorter */
 #define APB_PASSWORD_MAX     160  /* the longest possible password, in symbols */
 #define APB_PASSWORD_BUF     (APB_PASSWORD_MAX + 1)
+#define APB_PASSPORT_LONGEST 149  /* the longest Passport any character has: longer is
+                                     refused as the wrong length */
 
 enum {
     APB_PP_OK = 0,
@@ -443,6 +445,7 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
 #define APB_PASS_KIND 8
 #define APB_PASS_MAX  180   /* the longest possible pass, in symbols: 9 lines */
 #define APB_PASS_BUF  (APB_PASS_MAX + 1)
+#define APB_PASS_LONGEST 163 /* the longest Boarding Pass: longer is the wrong length */
 
 typedef struct {
     uint16_t departure;

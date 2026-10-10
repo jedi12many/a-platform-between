@@ -245,13 +245,18 @@ crosscheck: build/demo build/demo.sim
 	@echo "crosscheck: native and 6502 output identical"
 
 # The Python Passport reference must read what the C engine writes.
-test-python: build/demo
+test-python: build/demo build/passport-decode
 	./build/demo > build/demo.native.txt
 	python3 tools/passport/check_against_demo.py build/demo.native.txt
+	python3 tests/passport/check_refusals.py build/passport-decode
 	python3 tools/registry/test_registry.py
 	python3 tools/qsc/test_qsc.py
 	python3 tools/qsc/test_build.py
 	python3 tools/test_pictures.py
+
+# The rules core's decoder, a password a line (tests/passport/check_refusals.py).
+build/passport-decode: tests/passport/decode.c $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/passport/decode.c $(CORE_SRC)
 
 # Regenerate the C registry from registry/*.txt after editing them.
 registry:

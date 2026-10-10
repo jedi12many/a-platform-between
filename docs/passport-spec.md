@@ -1,11 +1,13 @@
 # Passport spec
 
-The portable character record. One logical format, three carriers:
+The portable character record. One logical format, the same text everywhere; what changes
+is how it travels ([Carriers](#carriers)):
 
 | Carrier | Where |
 |---|---|
-| **Password** | Every retro build; works on real hardware and any emulator |
-| **File** | Disk saves where available; modern builds |
+| **QR code** | The everyday way: printed on a Passport or a Boarding Pass, shown on a phone, drawn on the C64's screen at a trip's end; scanned with a phone |
+| **File** | A file the game reads at the boarding desk (an SD2IEC's `PASS`); modern builds |
+| **Typed** | The old-school way, and the fallback: the lines, typed at the boarding desk |
 | **Hub account** | Online; holds the full Legend |
 
 The web **Passport Office** converts between carriers.
@@ -66,12 +68,36 @@ Packed most-significant bit first, in this order.
   checksum, different version.
 - Encoding refuses a character whose fields don't fit, rather than silently truncating.
 
+### What's refused
+
+Every decoder (the rules core, `core/src/passport.c`; the Python reference,
+`tools/passport/`; the cartridge, `cart/passport.s`) refuses the same passwords, the same
+way; `make test-python` and `make test-cart` hold them to it.
+
+- **The wrong length**: more symbols than the longest there can be (149 for a Passport,
+  163 for a Boarding Pass, 84 for a Travel Stamp), counted as they're read; a last line
+  of one symbol; the bits running out before the fields, the padding and the CRC are all
+  read; or 5 bits or more left after the CRC.
+- **A checksum**: the CRC wrong, a padding bit that isn't 0; or a character no game has,
+  whatever its CRC. A list longer than it can be (12 trained skills, 8 powers, 6 items
+  equipped and 6 in the pack, 8 Echoes); a skill past the last or trained twice, a
+  training of 0; a power 0; an item slot past the sixth or used twice, an item 0; an
+  Echo 0. Reading stops at the first of these, as each entry is read: a skill or slot is
+  judged when it's read, before what follows it; a training, power, item or Echo when its
+  entry is whole. After the CRC: a level outside 1-100, XP of 100 or more, a stat, a
+  training or a power's rank over 100.
+- A Travel Stamp's lists hold 8 at most, refused as they're read.
+
+A Boarding Pass is told from a Passport by its first symbol (the top 4 bits of its value:
+8), so a game can take either at one prompt.
+
 ### How long
 
 | Character | Symbols | Lines |
 |---|---|---|
 | New: 3 tagged skills, 1 item, 1 Echo | 55 | 3 |
 | Longest possible: everything trained, 8 powers, 12 items, 8 Echoes | 149 | 8 |
+| The longest Boarding Pass, carrying that | 163 | 9 |
 
 A new character from the test suite:
 
@@ -81,15 +107,37 @@ A new character from the test suite:
 502008208GRN703
 ```
 
-Long passwords are fine to type once in a while. For everyday use: disk saves on retro
-machines, files and accounts on modern ones, and a QR code on printed sheets.
+Long passwords are fine to type once in a while, but nobody should have to. For everyday
+use: a QR code (on the printed sheet, or a phone's screen), a file on the SD card, an
+account on modern clients.
+
+## Carriers
+
+The text is the same however it travels, so a scanned code, a file and a typed one all
+go through the same decoder.
+
+- **QR code.** The password's lines joined, no spaces, in QR's alphanumeric mode: our
+  alphabet is part of it, so the code is the text itself, about 5.5 bits a symbol. A
+  Boarding Pass fits a version 4 QR, a Travel Stamp a version 2 or 3 (low error
+  correction). The line check symbols ride along (QR corrects errors itself; they cost 5%
+  and keep one text for every carrier). The Waystation prints one on each Passport and
+  Boarding Pass ([tabletop.md](tabletop.md)); the C64 draws the Travel Stamp's in its view
+  at a trip's end, for a phone to scan back to the Waystation.
+- **File.** On a disk, the boarding desk first loads `PASS` (a SEQ or PRG file of the
+  text, any line breaks and spaces ignored) from the drive the game came from: on an
+  SD2IEC, from the game's folder or its disk image. With no file, it asks for the lines.
+  A Kung Fu Flash has no way for a running cartridge to read its card; a cartridge image
+  with the pass written into it is a later option. The game never writes a file: saves
+  are passwords.
+- **Typed.** The lines, typed at the boarding desk, the old-school way: forgiving of case,
+  spaces, dashes, `O` and `I`/`L`, and naming the line of a typo.
 
 ## Receipts and Travel Stamps
 
 A Departure doesn't return a new Passport; it returns a **receipt** of what changed, which
 is applied to the character as they are now. On retro platforms and at the table the
-receipt travels as a short **Travel Stamp** password. See [boarding.md](boarding.md); the
-stamp format comes with milestone E2.
+receipt travels as a short **Travel Stamp** password, as a QR code or typed. See
+[boarding.md](boarding.md).
 
 ## Registries
 
