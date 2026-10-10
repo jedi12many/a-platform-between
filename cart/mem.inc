@@ -29,6 +29,18 @@ VIEW_TO_COLOUR  = COLOUR_RAM - VIEW_SCREEN      ; $1400
 ; ------------------------------------------------------------------ the frames
 COLS            = 40
 VIEW_ROWS       = 16            ; rows 0-15
+
+; The view's squares (view.s): 16 x 16 pixels, 2 x 2 characters, 20 across, 8 down.
+SQUARE          = 16
+SQUARES_ACROSS  = 20
+SQUARES_DOWN    = 8
+TILE_RECORD     = 8             ; a tile in the table: 4 characters, then 4 colours
+TILES_SIZE      = 8 * TILE_RECORD + 8 * 4   ; and each tile's 4 with the reach dot
+; A figure (24 x 21 sprite) on its square: centred across, its feet near the square's
+; foot and its head over the square above. Its last line must be over the view's last
+; three (raster 176 at most: split.s's timing); with these, the bottom row's is 176.
+FIGURE_DX       = -4
+FIGURE_DY       = -7
 LOG_TOP         = 16            ; the story log: rows 16-23, columns 0-24
 LOG_ROWS        = 8
 LOG_LAST        = LOG_TOP + LOG_ROWS - 1

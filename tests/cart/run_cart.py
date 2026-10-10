@@ -237,6 +237,12 @@ class C64:
             raise RuntimeError(f"read ${a:04X}: the KERNAL's ROM (pc ${self.mpu.pc:04X})")
         return None
 
+    def in_irq(self):
+        """The running instruction is the raster interrupt's (split.s: irq_ram to nmi)."""
+        return self.syms["irq_ram"] <= self.pc0 <= self.syms["nmi"]
+
+    pc0 = 0
+
     def access(self):
         """The cycle the running instruction reads or writes on: its last."""
         return self.start + self.mpu.cycletime[self.op] - 1
@@ -277,7 +283,7 @@ class C64:
             self.mode = v & 7 if v & 4 else 5
         else:
             self.io[i] = v
-        if a in (0xD011, 0xD016, 0xD018):
+        if a in (0xD011, 0xD016, 0xD018) and self.in_irq():
             self.writes.append((a, v, self.access()))
         return self.ram[a]                                  # the RAM keeps its own
 
@@ -403,7 +409,7 @@ class C64:
             if pc >= 0xE000 and self.kernal_in():
                 self.kernal(pc)
                 continue
-            self.start, self.op = m.processorCycles, self.mem[pc]
+            self.start, self.op, self.pc0 = m.processorCycles, self.mem[pc], pc
             m.step()
             self.raster()
         return self.ended
@@ -449,9 +455,8 @@ def check(c):
                 if not any(a <= w[2] <= b + FRAME for a, b in c.load_spans)]
     # The split, every frame.
     frames_regs = [w for w in c.writes if (w[0] == 0xD018 and w[1] == MEM_FRAMES)
-                   or (w[0] == 0xD016 and w[1] == 0x08) or (w[0] == 0xD011 and w[1] == 0x1B
-                                                            and (w[2] // LINE) % LINES > 100
-                                                            and (w[2] // LINE) % LINES < 200)]
+                   or (w[0] == 0xD016 and w[1] == 0x08)
+                   or (w[0] == 0xD011 and 100 < (w[2] // LINE) % LINES < 200)]
     late = [(hex(a), (cyc // LINE) % LINES, cyc % LINE) for a, v, cyc in frames_regs
             if not SPLIT_FIRST <= ((cyc // LINE) % LINES, cyc % LINE) <= SPLIT_LAST]
     n = sum(1 for a, v, _ in frames_regs if a == 0xD018)
@@ -473,14 +478,13 @@ def check(c):
         ok(f"{what}: at rest with $01 = $35" + ("" if disk else ", bank 0 (and its shadow)"))
     # The graphics, against the tools' own files.
     font = open(os.path.join(ROOT, "build", "cart", "font"), "rb").read()[2:]
-    gfx = open(os.path.join(ROOT, "build", "battle.bgfx"), "rb").read()
-    tables, charset = gfx[:640], gfx[640:640 + 2048]
-    tile_table = tables[8:8 + 256]
+    gfx = open(os.path.join(ROOT, "build", "cart", "tiles16"), "rb").read()
+    charset, tile_table = gfx[:2048], gfx[2048:2048 + 96]
     if bytes(c.ram[FONT:FONT + 2048]) != font:
         fail(f"{what}: the font under the I/O isn't tools/c64font.py's")
     elif bytes(c.ram[CHARS:CHARS + 2048]) != charset:
         fail(f"{what}: the map's characters aren't tools/battlegfx.py's")
-    elif bytes(c.ram[syms["tiles"]:syms["tiles"] + 256]) != tile_table:
+    elif bytes(c.ram[syms["tiles"]:syms["tiles"] + 96]) != tile_table:
         fail(f"{what}: the tiles' table isn't tools/battlegfx.py's")
     else:
         ok(f"{what}: the font, the map's characters and its tiles, from asset 0, where they go")
@@ -488,20 +492,20 @@ def check(c):
         fail(f"the disk: loaded {c.loads}, not a00 then a01")
     elif disk:
         ok("the disk: assets 0 and 1 loaded as files a00 and a01")
-    # The view: the demo's map, 4 x 4 characters a square.
-    themap = bytes(c.ram[syms["demo_map"]:syms["demo_map"] + 40])
+    # The view: the demo's map, 2 x 2 characters a square, 20 x 8 of them.
+    themap = bytes(c.ram[syms["demo_map"]:syms["demo_map"] + 160])
     bad = []
-    for sq in range(40):
+    for sq in range(160):
         t = themap[sq]
-        for k in range(16):
-            row, col = (sq // 10) * 4 + k // 4, (sq % 10) * 4 + k % 4
-            want_ch, want_col = tile_table[t * 32 + k], tile_table[t * 32 + 16 + k]
+        for k in range(4):
+            row, col = (sq // 20) * 2 + k // 2, (sq % 20) * 2 + k % 2
+            want_ch, want_col = tile_table[t * 8 + k], tile_table[t * 8 + 4 + k]
             if c.ram[VIEW + row * 40 + col] != want_ch or c.io[0x800 + row * 40 + col] & 15 != want_col & 15:
                 bad.append((sq, k))
     if bad:
         fail(f"{what}: the view's tiles differ from the map at {bad[:5]}")
     else:
-        ok(f"{what}: the view shows the map, 10 x 4 squares of 4 x 4 characters")
+        ok(f"{what}: the view shows the map, 20 x 8 squares of 2 x 2 characters")
     # The frames.
     line = "".join(c.screen(TEXT, r, 1, 25) for r in range(16, 24))
     party = c.screen(TEXT, 16, 14, 26)

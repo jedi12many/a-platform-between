@@ -2,7 +2,8 @@
 ; map's tiles and their characters in, from asset 0, and the colours.
 ;
 ; Asset 0 (cart/asset0.s): the font (2 KB), the map's characters (2 KB) and the tiles'
-; table (256 bytes: 8 tiles of 16 characters and 16 colours, tools/battlegfx.py).
+; table (96 bytes: 8 tiles of 4 characters and 4 colours, then each one's 4 characters
+; with the reach dot; tools/battlegfx.py --cart16).
 
         .include "hw.inc"
         .include "mem.inc"
@@ -53,11 +54,11 @@ screen_install:
         ldx #>A0_CHARS
         ldy #>VIEW_CHARS
         jsr copy_2k
-        ldx #0                      ; the tiles' table
+        ldx #TILES_SIZE - 1         ; the tiles' table
 @tiles: lda A0_TILES, x
         sta tiles, x
-        inx
-        bne @tiles
+        dex
+        bpl @tiles
         clc
         rts
 
@@ -74,4 +75,5 @@ copy_2k:
         jmp mem_copy
 
         .segment "BSS"
-tiles:  .res 256                    ; 8 tiles: 16 characters, then 16 colours, each
+tiles:  .res TILES_SIZE             ; 8 tiles: 4 characters, then 4 colours; then the
+                                    ; marked characters, 4 a tile

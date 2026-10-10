@@ -171,11 +171,15 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 CART_COMMON := main assets copy split text screen view keys command demo asset0 asset1
 CART_INC    := $(wildcard cart/*.inc)
 CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
-               $(CART_INC) cart/cart.cfg cart/disk.cfg build/battle.bgfx build/cart/font tools/crt.py
+               $(CART_INC) cart/cart.cfg cart/disk.cfg build/cart/tiles16 build/cart/font tools/crt.py
 
 build/cart/font: tools/c64font.py tools/battlegfx.py fe/modern/font8x8.h
 	@mkdir -p build/cart
 	python3 tools/c64font.py $@
+
+build/cart/tiles16: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt)
+	@mkdir -p build/cart
+	python3 tools/battlegfx.py build/cart/battle.bgfx --cart16 $@
 
 build/apb.crt build/apb-disk.d64: $(CART_DEPS) tools/d64.py
 	@mkdir -p build/cart

@@ -1,7 +1,9 @@
 """The battle map's graphics (docs/frames.md, E12): one file every front end with graphics
 loads for a fight, built from the art below and checked against the C64's rules.
 
-    python3 tools/battlegfx.py OUT.bgfx [--sheet SHEET.png] [--c64 DIR]
+    python3 tools/battlegfx.py OUT.bgfx [--sheet SHEET.png] [--c64 DIR] [--cart16 FILE]
+
+--cart16 also writes the cartridge's map graphics, squares of 16 pixels (build16 below).
 
 --c64 also writes it as the C64 loads it (fe/c64/scene.c), four program files with their
 load addresses: btab (the tables, loaded where the program says), bchr (the characters,
@@ -173,6 +175,141 @@ TILES = [  # (art, its own colour)
     (slab_floor(), BLACK), (wall(), BLACK), (pit(), BLUE), (rough(), BLACK),
     (cover(), RED), (hazard(), YELLOW), (high(), WHITE), (exit_(), GREEN),
 ]
+
+# ------------------------------------------------------------------ the cartridge's tiles
+# The cartridge's map (docs/cartridge.md, "The view") has squares of 16 pixels: each tile
+# 8 multicolour dots wide and 16 rows tall (2 x 2 characters), the same eight, as flat.
+
+T16W, T16H = 8, 16
+
+
+def blank16(c="g"):
+    return [[c] * T16W for _ in range(T16H)]
+
+
+def floor16():
+    t = blank16("g")
+    fill(t, T16W - 1, 0, T16W - 1, T16H - 1, "d")   # a faint seam right and below
+    fill(t, 0, T16H - 1, T16W - 1, T16H - 1, "d")
+    return t
+
+
+def wall16():
+    t = blank16("d")
+    fill(t, 0, T16H - 1, T16W - 1, T16H - 1, "k")   # its foot
+    return t
+
+
+def pit16():
+    t = floor16()
+    fill(t, 1, 2, 6, 13, "k")
+    fill(t, 1, 2, 6, 2, "d")                        # the far rim
+    t[7][3] = t[10][5] = "o"                        # something glints
+    return t
+
+
+def rough16():
+    t = floor16()
+    for (x, y, w, h) in ((1, 2, 2, 2), (4, 6, 3, 2), (1, 10, 3, 2)):
+        fill(t, x, y, x + w - 1, y + h - 1, "d")
+        fill(t, x, y + h, x + w - 1, y + h, "k")    # each lump's shadow
+    return t
+
+
+def cover16():
+    t = floor16()
+    fill(t, 1, 2, 6, 13, "k")                       # a crate, outlined
+    fill(t, 2, 3, 5, 12, "o")
+    fill(t, 2, 7, 5, 7, "k")                        # its planks
+    return t
+
+
+def hazard16():
+    t = floor16()
+    for top in (3, 9):                              # two waves
+        for x in range(1, 7):
+            y = top + (0, 1, 2, 1)[x % 4]
+            t[y][x] = "o"
+            t[y + 1][x] = "k"
+    return t
+
+
+def high16():
+    t = blank16("g")
+    fill(t, 0, 0, T16W - 1, 0, "o")                 # its lit edge
+    fill(t, 0, 0, 0, 11, "o")
+    fill(t, 0, 12, T16W - 1, 14, "d")               # the raised step's front
+    fill(t, 0, T16H - 1, T16W - 1, T16H - 1, "k")
+    return t
+
+
+def exit16():
+    t = floor16()
+    fill(t, 1, 1, 6, 14, "o")                       # a lit doorway
+    for dy, row in enumerate(["..k...", ".kkkk.", ".kkkk.", "..k..."]):
+        for dx, c in enumerate(row):
+            if c == "k":
+                t[6 + dy][1 + dx] = "k"             # this way out
+    return t
+
+
+TILES16 = [  # (art, its own colour), in the same order as TILES
+    (floor16(), BLACK), (wall16(), BLACK), (pit16(), BLUE), (rough16(), BLACK),
+    (cover16(), RED), (hazard16(), YELLOW), (high16(), WHITE), (exit16(), GREEN),
+]
+
+
+def marked16(art):
+    """The tile with a reach dot in its middle: black, 2 dots wide, 4 rows tall, across
+    all four of its characters."""
+    art = [list(r) for r in art]
+    fill(art, 3, 6, 4, 9, "k")
+    return art
+
+
+def chars16(art, own):
+    """A 16-pixel tile's 4 characters (bytes) and colours, checked against the cell rule."""
+    code = {"k": 0, "d": 1, "g": 2, "o": 3}
+    chars = []
+    for cy in range(2):
+        for cx in range(2):
+            data = []
+            for y in range(8):
+                b = 0
+                for x in range(4):
+                    ch = art[cy * 8 + y][cx * 4 + x]
+                    if ch not in code:
+                        raise Problem(f"a tile has '{ch}': use k d g o")
+                    b = (b << 2) | code[ch]
+                data.append(b)
+            chars.append(data)
+    return chars, [own | 8] * 4
+
+
+def build16():
+    """The cartridge's map graphics: the characters (2 KB: 0 blank, then each tile's four,
+    then each tile's four with the reach dot) and the table (96 bytes: 8 x (4 characters,
+    4 colours), then 8 x the 4 marked characters). Characters left to right, top to
+    bottom."""
+    charset = [[0] * 8 for _ in range(256)]
+    table, marks = bytearray(), bytearray()
+    at = 1
+    for art, own in TILES16:
+        if len(art) != T16H or any(len(r) != T16W for r in art):
+            raise Problem(f"a 16-pixel tile must be {T16W} dots wide and {T16H} rows tall")
+        chars, colours = chars16(art, own)
+        table += bytes(range(at, at + 4)) + bytes(colours)
+        for data in chars:
+            charset[at] = data
+            at += 1
+    for art, own in TILES16:
+        chars, _ = chars16(marked16(art), own)
+        marks += bytes(range(at, at + 4))
+        for data in chars:
+            charset[at] = data
+            at += 1
+    return bytes(b for ch in charset for b in ch) + bytes(table) + bytes(marks)
+
 
 # ------------------------------------------------------------------ figures
 # 12 multicolour dots wide, 21 tall: a and b the sprites' shared dark grey and light
@@ -473,6 +610,9 @@ def main(argv):
         f.write(data)
     if "--sheet" in argv:
         sheet(data, argv[argv.index("--sheet") + 1])
+    if "--cart16" in argv:
+        with open(argv[argv.index("--cart16") + 1], "wb") as f:
+            f.write(build16())
     if "--c64" in argv:
         out = argv[argv.index("--c64") + 1]
         os.makedirs(out, exist_ok=True)

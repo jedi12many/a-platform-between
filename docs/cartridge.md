@@ -152,6 +152,23 @@ The interrupt (`split.s`) uses no zero page at all.
   codes as it's printed (`text.s`), so the same strings can come from the Quest Script
   compiler.
 
+## The view
+
+The battle map (and, with E13, rooms) is a grid of **squares of 16 x 16 pixels**, each a
+tile of 2 x 2 multicolour characters: 20 squares across and 8 down fill the view's 40 x
+16 characters (`cart/view.s`). A square's characters are at twice its column and twice
+its row, so every place is worked out with shifts, never a multiplication. The tiles are
+the eight of the rules' terrain (open, wall, pit, rough, cover, hazard, high ground,
+exit), flat, in `tools/battlegfx.py --cart16`: 2 KB of characters (0 blank, each tile's
+four, each tile's four with the reach dot) and a 96-byte table (each tile's 4
+characters and 4 colours, then its 4 marked ones), in asset 0.
+
+A figure is the C version's, a sprite of 24 x 21 (A4): centred on its square across
+(`FIGURE_DX`, -4) and standing on it, its feet near the square's foot and its head over
+the square above (`FIGURE_DY`, -7), so figures overlap the scenery behind them. That
+also keeps every figure clear of the view's last two lines, which the split needs
+(`cart/mem.inc`).
+
 ## Keys
 
 The game reads the keyboard itself (`cart/keys.s`), once a frame from the raster
@@ -215,6 +232,7 @@ nothing scrolled off unread. `--shot FILE` saves the screen as the VIC-II would 
 - **A0, the framework** (done): the cartridge boots, and so does the disk; the engine
   copies itself to RAM; assets are fetched from either; the raster split shows a map of
   tiles over the frames; the story log prints and scrolls.
+- **The 16-pixel grid** (done): the view's squares 2 x 2 characters, 20 x 8 of them.
 - **A1, keys and the command row** (done): the keyboard matrix read in the interrupt,
   "-- more --", menus, typing a line.
 - **A2, passwords**: the Passport and the Boarding Pass decoded and encoded in assembly,

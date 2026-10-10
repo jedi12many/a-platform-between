@@ -100,13 +100,17 @@ demo:
         jsr menu_ask
         jmp @story
 
-; The map: 10 x 4 tiles, row by row (tools/battlegfx.py: 0 floor, 1 wall, 2 pit, 3 rough,
+; The map: 20 x 8 tiles, row by row (tools/battlegfx.py: 0 floor, 1 wall, 2 pit, 3 rough,
 ; 4 cover, 5 hazard, 6 high ground, 7 exit).
 demo_map:
-        .byte 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-        .byte 7, 0, 0, 4, 0, 0, 5, 0, 6, 1
-        .byte 1, 0, 3, 0, 0, 2, 5, 0, 0, 1
-        .byte 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        .byte 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+        .byte 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 6, 1
+        .byte 7, 0, 0, 4, 0, 1, 0, 0, 5, 5, 0, 0, 0, 0, 3, 0, 0, 0, 6, 1
+        .byte 1, 0, 0, 4, 0, 0, 0, 0, 5, 5, 0, 2, 2, 0, 0, 0, 4, 0, 0, 1
+        .byte 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 4, 0, 0, 1
+        .byte 1, 0, 3, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1
+        .byte 1, 0, 3, 3, 0, 1, 0, 0, 0, 4, 0, 0, 0, 0, 5, 0, 0, 0, 0, 7
+        .byte 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 
 traveler:       .byte ">Kestrel", 0
 bar:            .byte ASCII_BAR_FULL, ASCII_BAR_FULL, ASCII_BAR_FULL, ASCII_BAR_FULL

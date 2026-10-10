@@ -50,7 +50,9 @@ and then go into the story log, "> " and all, so the transcript has them; a figh
 commands and prompts are there too. The shared code draws through `client/apb_scene.h`'s
 `hal_frame_` calls, which each front end keeps its own way.
 
-**The map's look** (the battle screen first, rooms with E13): squares of 32 pixels; flat
+**The map's look** (the battle screen first, rooms with E13): squares of 32 pixels in the C
+version, 16 pixels (2 x 2 characters, 20 x 8 in view) on the cartridge
+([cartridge.md](cartridge.md#the-view)); flat
 tiles, a plain floor with faint seams and solid walls, so only the squares that matter
 stand out (cover, a hazard, the exit, a pit); enemies only on the map, never in the party
 frame. The figures are the C64's hardware sprites, 24 x 21.
