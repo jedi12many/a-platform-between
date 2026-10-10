@@ -69,14 +69,14 @@ def main(argv):
 
         def watched():
             pc = c.mpu.pc
-            if c.started and pc not in resident and not (pc in ending and c.ending):
-                wild.append(pc)
             if pc == syms["main"]:
                 c.started = True
             if pc == syms["ending"]:                # the ending asset, run where it's staged
                 c.ending = True
             elif pc == syms["asset_fetch"]:
                 c.ending = False
+            if c.started and pc not in resident and not (pc in ending and c.ending):
+                wild.append(pc)
             step()
 
         c.started = c.ending = False
