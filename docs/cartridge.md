@@ -121,7 +121,7 @@ Each module owns its part; nothing else touches it.
 | $10-$17 | `text.s` | the string being printed ($10-$11), the log's column ($12), the word's length ($13), a row pointer ($14-$15) and the one under it, or its colours ($16-$17) |
 | $18-$1B | `view.s` | where a tile goes ($18-$19), its colours ($1A-$1B) |
 | $1C-$21 | `copy.s`, `assets.s` | a copy's source ($1C-$1D), destination ($1E-$1F) and length ($20-$21) |
-| $22-$23 | free | |
+| $22-$23 | `command.s` | the line being typed |
 | $24-$2F | scratch | arguments and counters (`zp_t0`...): any routine, between calls; never kept across a call |
 | $30-$8F | free (the VM, the rules, the music will take theirs from here) | |
 | $90-$FF | the KERNAL's, on a disk (while it loads) | |
@@ -134,8 +134,10 @@ The interrupt (`split.s`) uses no zero page at all.
   `diskstart.s` (each medium's start-up), `main.s` (the main program, the vectors),
   `assets.s` (fetching assets: the only module that knows the medium), `copy.s` (copying
   RAM), `screen.s` (the VIC and its graphics), `split.s` (the raster interrupt), `text.s`
-  (the frames' text), `view.s` (the view's tiles), `demo.s` (A0's demonstration), and
-  more as they come (`keys.s`, `sprites.s`, `password.s`, `vm.s`, `combat.s`, `music.s`).
+  (the frames' text), `view.s` (the view's tiles), `keys.s` (the keyboard), `command.s`
+  (the command row: waiting for keys, "-- more --", menus, typed lines), `demo.s` (the
+  demonstration), and more as they come (`sprites.s`, `password.s`, `vm.s`, `combat.s`,
+  `music.s`).
   Assets are files of their own (`asset0.s`, ...).
 - **No medium in the game's logic**: no `$DE00`, `$DE02` or KERNAL call outside
   `assets.s` (and the start-ups).
@@ -149,6 +151,25 @@ The interrupt (`split.s`) uses no zero page at all.
 - **Text** is ASCII in the source (`.byte "..."`, ca65's default), turned into screen
   codes as it's printed (`text.s`), so the same strings can come from the Quest Script
   compiler.
+
+## Keys
+
+The game reads the keyboard itself (`cart/keys.s`), once a frame from the raster
+interrupt, on either medium: CIA 1's matrix, a row at a time. Each key newly down goes
+into a buffer of 8, as ASCII (capitals with SHIFT), or a code for RETURN, DEL, RUN/STOP
+and the cursor keys (`KEY_` in `cart/mem.inc`); `key_get` takes the next. A joystick in
+port 1 reads like keys (it shares the matrix's columns); the one in port 2 will be read
+apart (A4).
+
+The command row (`cart/command.s`), row 24, is where the game waits for keys:
+
+- `key_wait`: a key, with a cursor blinking where the next character would go.
+- `-- more --`: before the story log scrolls, if its top row was printed since the last
+  key (7 rows over the bottom one), it waits for a key first, in reverse on the command
+  row. So nothing goes off the top unread, and a page is 8 rows.
+- `menu_ask`: a digit from 1 to the menu's count; the answer goes into the log ("> 2").
+- `line_ask`: a line typed on the command row after "> ", DEL to take one back, RETURN
+  to end it; then into the log, "> " and all, so the log keeps everything said.
 
 ## The split's timing
 
@@ -181,17 +202,21 @@ on a 6502 emulator (py65) that plays a C64 with an EasyFlash, or a disk drive
 on `$DE02` and `$01`, keeps the I/O apart from the RAM under it, stops on any read of a
 ROM the game must not touch, times every register access to its cycle, and fires the
 raster interrupt at `$D012`'s line; for the disk, it answers the KERNAL's loads from the
-`.d64`. It checks the split's timing, the graphics against the tools' own files, the
-view, the frames and the story log. `--shot FILE` saves the screen as the VIC-II would
-show it.
+`.d64`. Keys go in through the emulated keyboard matrix, from a choices file
+(`tests/cart/demo.choices`, an answer a line; "-- more --" is answered by itself), and the
+story log, read as it scrolls, must match its reviewed transcript
+(`tests/cart/demo.expected`; `--update` writes it), the same from the cartridge and the
+disk. It checks the split's timing every frame, the graphics against the tools' own files,
+the view, the frames, that every paragraph is wrapped at 25 as the rule says, and that
+nothing scrolled off unread. `--shot FILE` saves the screen as the VIC-II would show it.
 
 ## Milestones
 
 - **A0, the framework** (done): the cartridge boots, and so does the disk; the engine
   copies itself to RAM; assets are fetched from either; the raster split shows a map of
   tiles over the frames; the story log prints and scrolls.
-- **A1, keys and the command row**: the keyboard matrix read in the interrupt, "-- more
-  --", menus, typing a line.
+- **A1, keys and the command row** (done): the keyboard matrix read in the interrupt,
+  "-- more --", menus, typing a line.
 - **A2, passwords**: the Passport and the Boarding Pass decoded and encoded in assembly,
   checked against `tools/passport/`.
 - **A3, the story VM**: Quest Script's bytecode, chapters in banks, pictures.

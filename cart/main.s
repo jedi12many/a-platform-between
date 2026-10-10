@@ -1,12 +1,12 @@
 ; The game's main program (docs/cartridge.md): in RAM, from either start-up (start.s,
 ; diskstart.s). It clears its variables, puts the vectors in, the cartridge and the
-; KERNAL out ($01 = $35), the graphics in, and the raster split on, then loops.
+; KERNAL out ($01 = $35), the graphics in, and the raster split on, then plays.
 
         .include "hw.inc"
         .include "mem.inc"
         .include "zp.inc"
 
-        .export main, main_idle
+        .export main
         .import __BSS_RUN__, __BSS_SIZE__
         .import irq_ram, irq_kernal, nmi, asset_media
         .import screen_install, frames_clear, split_on, demo
@@ -68,6 +68,4 @@ main:
         jsr screen_install
         jsr frames_clear
         jsr split_on
-        jsr demo
-main_idle:                          ; (tests/cart/run_cart.py waits for this)
-        jmp main_idle
+        jmp demo                    ; (it never returns)

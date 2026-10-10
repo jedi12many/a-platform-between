@@ -168,7 +168,7 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 # The cartridge (docs/cartridge.md): 6502 assembly, an EasyFlash image for a Kung Fu
 # Flash, and the same game on a disk for an SD2IEC. Modules common to both, then each one's
 # start-up; tools/crt.py makes the .crt of the linked chips.
-CART_COMMON := main assets copy split text screen view demo asset0 asset1
+CART_COMMON := main assets copy split text screen view keys command demo asset0 asset1
 CART_INC    := $(wildcard cart/*.inc)
 CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
                $(CART_INC) cart/cart.cfg cart/disk.cfg build/battle.bgfx build/cart/font tools/crt.py
@@ -194,8 +194,10 @@ cart: build/apb.crt
 	@echo "Cartridge: build/apb.crt (Kung Fu Flash, or x64sc -cartcrt build/apb.crt); disk: build/apb-disk.d64"
 
 test-cart: build/apb.crt
-	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl --shot build/cart-shot.png
-	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl --shot build/cart-disk-shot.png
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/demo.choices \
+	    tests/cart/demo.expected --shot build/cart-shot.png
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/demo.choices \
+	    tests/cart/demo.expected --shot build/cart-disk-shot.png
 
 clean:
 	rm -rf build

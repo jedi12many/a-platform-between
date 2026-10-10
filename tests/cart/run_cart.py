@@ -1,6 +1,6 @@
 """Play the cartridge, or its disk, without a C64 (docs/cartridge.md, "Building and testing").
 
-    python3 tests/cart/run_cart.py IMAGE LABELS [--frames N] [--shot FILE.png]
+    python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--shot FILE.png] [--update]
 
 IMAGE is the EasyFlash cartridge (build/apb.crt) or the disk (build/apb-disk.d64); LABELS
 the linker's label file (ld65 -Ln). The machine code runs on a 6502 emulator (py65), with
@@ -23,14 +23,24 @@ the C64 around it played in Python:
   its time all at once, so the frame it ends in isn't held to the split's timing (on a
   real C64 the KERNAL's serial routines hold interrupts off at times too).
 
-The run boots, waits for main_idle, plays more frames, and checks: every change to the
-frames' registers lands between line 178's last character and line 179's fetch of row 16
-(cycles 56 of line 178 to 11 of line 179), and the view's in the bottom border; the font,
-the map's characters and tiles are where they go (against tools/c64font.py and
-tools/battlegfx.py's files); the view shows the map; the frames have their line, the
-party, the dice; and the story log has the story, word-wrapped at 25 columns as
-docs/frames.md says (worked out here, from the text). --shot saves the screen as the VIC-II
-would show it (tools/vic.py).
+- the keyboard: CIA 1's matrix, as the C64's is wired (port A's bit selects a row, port B
+  reads its columns, SHIFT where it is), each key held down for two frames and let go
+  for two. Keys come from CHOICES, one line an answer, as the C64's tests have them:
+  each time the game waits for a key (key_wait), the command row says what for: at
+  "-- more --" a space, without using a line; at "> " (a line to type) the whole line and
+  RETURN; at anything else (a menu) the line's first character.
+
+The transcript is the story log's bottom row, read each time it scrolls (log_newline), and
+each roll's record. It must match EXPECTED (--update writes it: read the diff). The run
+ends when CHOICES does, and checks: every change to the frames' registers lands between
+line 178's last character and line 179's fetch of row 16 (cycles 56 of line 178 to 11 of
+line 179), and the view's in the bottom border; the font, the map's characters and tiles
+are where they go (against tools/c64font.py and tools/battlegfx.py's files); the view
+shows the map; the frames have their line, the party, the dice; every paragraph of the
+transcript is word-wrapped at 25 columns as docs/frames.md says (wrapped again here, it
+comes out the same); and no row went off the top of the log unread (never more than 8
+rows printed between keys). --shot saves the screen at the end as the VIC-II would show it
+(tools/vic.py).
 """
 
 import os
@@ -55,6 +65,35 @@ MEM_FRAMES, MEM_VIEW = 0x04, 0x12
 LOG_TOP, LOG_ROWS, LOG_COLS = 16, 8, 25
 
 failures = 0
+
+# The C64's keyboard: MATRIX[row][column], row the bit of $DC00 written 0, column the bit of
+# $DC01 read 0 (the C64 Programmer's Reference Guide's table). SHIFT is the left one.
+MATRIX = [
+    ["DEL", "RETURN", "RIGHT", "F7", "F1", "F3", "F5", "DOWN"],
+    ["3", "w", "a", "4", "z", "s", "e", "LSHIFT"],
+    ["5", "r", "d", "6", "c", "f", "t", "x"],
+    ["7", "y", "g", "8", "b", "h", "u", "v"],
+    ["9", "i", "j", "0", "m", "k", "o", "n"],
+    ["+", "p", "l", "-", ".", ":", "@", ","],
+    ["POUND", "*", ";", "HOME", "RSHIFT", "=", "^", "/"],
+    ["1", "LEFTARROW", "CTRL", "2", " ", "C=", "q", "STOP"],
+]
+SHIFTED = {"!": "1", '"': "2", "#": "3", "$": "4", "%": "5", "&": "6", "'": "7", "(": "8",
+           ")": "9", "<": ",", ">": ".", "?": "/", "[": ":", "]": ";"}
+LSHIFT = (1, 7)
+
+
+def key_of(ch):
+    """The matrix positions to hold down for an ASCII character (or "RETURN")."""
+    shift = False
+    if ch in SHIFTED:
+        ch, shift = SHIFTED[ch], True
+    elif len(ch) == 1 and ch.isupper():
+        ch, shift = ch.lower(), True
+    for r, row in enumerate(MATRIX):
+        if ch in row:
+            return [(r, row.index(ch))] + ([LSHIFT] if shift else [])
+    raise ValueError(f"no key for {ch!r}")
 
 
 def fail(msg):
@@ -139,6 +178,14 @@ class C64:
         self.line = 0
         self.writes = []                    # (register, value, cycle) of the VIC's
         self.loads = []
+        self.held = []                      # matrix positions down now
+        self.presses = []                   # [(positions, first frame, last frame)]
+        self.lines = []                     # the transcript
+        self.choices = []
+        self.printed = 0                    # rows into the log since the last key wait
+        self.most_printed = 0
+        self.mores = 0
+        self.ended = None
         self.load_spans = []                # (first, last cycle) of each KERNAL load
         if image[:16] == b"C64 CARTRIDGE   ":
             self.chips, kind = crt.read_bytes(image)
@@ -204,7 +251,17 @@ class C64:
             return (self.access() // LINE) % LINES & 0xFF
         if a == 0xD011:
             return (self.io[i] & 0x7F) | (((self.access() // LINE) % LINES) >> 8) << 7
-        if 0xDC00 <= a <= 0xDC01:
+        if a == 0xDC01:                                     # the columns of the rows selected
+            frame = self.access() // FRAME
+            rows = ~self.io[0xC00] & 0xFF
+            value = 0xFF
+            for keys, first, last in self.presses:
+                if first <= frame <= last:
+                    for r, col in keys:
+                        if rows >> r & 1:
+                            value &= ~(1 << col) & 0xFF
+            return value
+        if a == 0xDC00:
             return 0xFF
         return self.io[i]
 
@@ -301,23 +358,55 @@ class C64:
         m.sp = 0xF6
         m.pc = self.syms["disk_start"]
 
-    def run(self, until, frames_after):
+    def row23(self):
+        return self.screen(TEXT, 23, LOG_COLS).rstrip()
+
+    def command_row(self):
+        return self.screen(TEXT, 24).rstrip()
+
+    def answer(self):
+        """The keys for what the game waits for now (the command row says), pressed from
+        the next frame on: each held two frames, let go two."""
+        row = self.command_row()
+        self.most_printed = max(self.most_printed, self.printed)
+        if row.endswith("-- more --"):
+            keys = [" "]
+            self.mores += 1
+        else:
+            if not self.choices:
+                self.ended = "[end of input]"
+                return
+            line = self.choices.pop(0)
+            keys = list(line) + ["RETURN"] if row.startswith(">") else [line[:1] or "RETURN"]
+        self.printed = 0
+        frame = self.mpu.processorCycles // FRAME + 1
+        for k in keys:
+            self.presses.append((key_of(k), frame, frame + 1))
+            frame += 4
+        self.answer_until = frame * FRAME
+
+    answer_until = 0
+
+    def run(self, max_frames=3000):
         m = self.mpu
-        idle_at = None
-        while True:
+        wait, wait_end = self.syms["key_wait"], self.syms["log_more"]
+        newline = self.syms["log_newline"]
+        while not self.ended:
             pc = m.pc
-            if pc == until and idle_at is None:
-                idle_at = m.processorCycles
-            if idle_at is not None and m.processorCycles - idle_at > frames_after * FRAME:
-                return True
-            if m.processorCycles > 60 * FRAME:
-                return False
+            if wait <= pc < wait_end and m.processorCycles >= self.answer_until:
+                self.answer()                               # (key_wait, waiting)
+            elif pc == newline:
+                self.lines.append(self.row23())
+                self.printed += 1
+            if m.processorCycles > max_frames * FRAME:
+                self.ended = f"[still running after {max_frames} frames]"
             if pc >= 0xE000 and self.kernal_in():
                 self.kernal(pc)
                 continue
             self.start, self.op = m.processorCycles, self.mem[pc]
             m.step()
             self.raster()
+        return self.ended
 
     def screen(self, base, row, n=40, at=0):
         return "".join(screen_ascii(self.ram[base + row * 40 + at + i]) for i in range(n))
@@ -425,34 +514,53 @@ def check(c):
         fail(f"{what}: the dice log: {dice!r}")
     else:
         ok(f"{what}: the frames: their line, the party ({party.strip()}), the dice ({' / '.join(d.strip() for d in dice)})")
-    # The story log, against the text in asset 1, wrapped here.
-    text = bytes(c.ram[STAGING:STAGING + 2000]).split(b"\0")[0].decode("ascii")
-    want = wrap(text, LOG_COLS)[-LOG_ROWS:]
-    want = [""] * (LOG_ROWS - len(want)) + want
-    got = [c.screen(TEXT, LOG_TOP + r, LOG_COLS).rstrip() for r in range(LOG_ROWS)]
-    if got != want:
-        fail(f"{what}: the story log:\n  got  {got}\n  want {want}")
+    # The transcript's paragraphs, wrapped again here: the same.
+    bad = []
+    para = []
+    for line in c.lines + [""]:
+        menu = line[:1].isdigit() and line[1:2] == "."
+        if line and not line.startswith("[") and not line.startswith(">") and not menu:
+            para.append(line)
+            continue
+        if para and wrap(" ".join(para), LOG_COLS) != para:
+            bad.append(para)
+        para = []
+    if bad:
+        fail(f"{what}: paragraphs not wrapped at 25 as docs/frames.md says: {bad[:2]}")
     else:
-        ok(f"{what}: the story log, word-wrapped at 25 and scrolled: {got[-2]!r}")
+        ok(f"{what}: every paragraph word-wrapped at 25 columns")
+    if c.most_printed > LOG_ROWS or not c.mores:
+        fail(f"{what}: {c.most_printed} rows printed between keys, {c.mores} -- more --")
+    else:
+        ok(f"{what}: nothing scrolled off unread (at most {c.most_printed} rows between keys; "
+           f"{c.mores} times -- more --)")
 
 
 def main(argv):
-    if len(argv) < 3:
+    if len(argv) < 5:
         print(__doc__)
         return 2
     image = open(argv[1], "rb").read()
     syms = labels(argv[2])
-    frames = int(argv[argv.index("--frames") + 1]) if "--frames" in argv else 30
     c = C64(image, syms)
+    c.choices = [line.rstrip("\n") for line in open(argv[3])]
     c.boot()
     try:
-        idle = c.run(syms["main_idle"], frames)
+        ended = c.run()
     except RuntimeError as e:
         fail(f"{argv[1]}: stopped: {e}")
         return 1
-    if not idle:
-        fail(f"{argv[1]}: never reached main_idle")
-        return 1
+    got = "\n".join(c.lines + [ended]) + "\n"
+    if "--update" in argv:
+        with open(argv[4], "w") as f:
+            f.write(got)
+    if got != open(argv[4]).read():
+        import difflib
+        fail(f"{argv[1]}: the transcript differs from {argv[4]}:\n" + "".join(
+            difflib.unified_diff(open(argv[4]).read().splitlines(True), got.splitlines(True),
+                                 "expected", "got", n=1)))
+    else:
+        ok(f"{argv[1]}: the transcript is {argv[4]}'s ({len(c.lines)} lines)")
     check(c)
     if "--shot" in argv:
         shot(c, argv[argv.index("--shot") + 1])

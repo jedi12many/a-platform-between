@@ -100,9 +100,12 @@ against. For `cart/`:
 
 - `make test-cart`: the cartridge (`build/apb.crt`) and its disk (`build/apb-disk.d64`)
   boot on a 6502 emulator that plays an EasyFlash, or the KERNAL's loads
-  (`tests/cart/run_cart.py`): every raster split's writes land in the gap between the
+  (`tests/cart/run_cart.py`): keys typed on the emulated keyboard from
+  `tests/cart/demo.choices` must give `tests/cart/demo.expected` on both (`--update`
+  rewrites it: read the diff); every raster split's writes land in the gap between the
   view's last line and row 16's fetch, to the cycle; the graphics are the tools'; the
-  view, the frames and the story log are right. `--shot FILE` draws the screen.
+  view and the frames are right; paragraphs wrap at 25; nothing scrolls off unread.
+  `--shot FILE` draws the screen.
 
 Run all seventeen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.

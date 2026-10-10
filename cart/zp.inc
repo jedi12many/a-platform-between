@@ -17,6 +17,9 @@ zp_src          = $1C           ; 2: a copy's source...
 zp_dst          = $1E           ; 2: ...its destination...
 zp_len          = $20           ; 2: ...and its length
 
+; command.s
+zp_line         = $22           ; 2: the line being typed
+
 ; scratch: arguments and loop counters
 zp_t0           = $24
 zp_t1           = $25

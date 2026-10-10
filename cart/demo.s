@@ -1,22 +1,26 @@
-; A0's demonstration (docs/cartridge.md, "Milestones"): a map in the view, the traveler in
+; The demonstration (docs/cartridge.md, "Milestones"): a map in the view, the traveler in
 ; the party frame, a roll in the dice log, and the start of The Fare in the story log,
-; fetched as asset 1. It shows the framework working; the story VM (A3) replaces it.
+; fetched as asset 1, with its first menu, "-- more --", and a line to type (A1). It
+; shows the framework working; the story VM (A3) replaces it.
 
         .include "hw.inc"
         .include "mem.inc"
         .include "zp.inc"
 
         .export demo, demo_map
-        .import view_map, text_at, log_print, asset_fetch
+        .import view_map, text_at, log_print, asset_fetch, menu_ask, line_ask
+        .import story_static, story_choices, story_fought, story_bench, story_name
+        .import story_named, story_again
 
 ASSET_STORY = 1
+NAME_MAX    = 16
 
         .segment "RESIDENT"
 
 ; ----------------------------------------------------------------------------------------
-; demo: the framed screen, filled in.
+; demo: the framed screen, filled in, then the story, round and round.
 ;   Before:  $01 = $35; the screen set up and the split on.
-;   Changes: A, X, Y; the zero page of view.s, text.s and assets.s; zp_t0-zp_t3.
+;   After:   never returns.
 demo:
         lda #<demo_map
         ldx #>demo_map
@@ -59,11 +63,42 @@ demo:
         jsr text_at
         lda #ASSET_STORY            ; the story, from asset 1
         jsr asset_fetch
-        bcs @none
-        lda #<STAGING
-        ldx #>STAGING
-        jmp log_print
-@none:  rts
+        bcc @story
+@stuck: jmp @stuck                  ; (no story to tell: the border is red)
+@story: lda #<story_static
+        ldx #>story_static
+        jsr log_print
+        lda #<story_choices
+        ldx #>story_choices
+        jsr log_print
+        lda #2
+        jsr menu_ask
+        beq @let
+        lda #<story_fought
+        ldx #>story_fought
+        jsr log_print
+@let:   lda #<story_bench
+        ldx #>story_bench
+        jsr log_print
+        lda #<story_name
+        ldx #>story_name
+        jsr log_print
+        lda #<name
+        ldx #>name
+        ldy #NAME_MAX
+        jsr line_ask
+        lda #<story_named
+        ldx #>story_named
+        jsr log_print
+        lda #<name
+        ldx #>name
+        jsr log_print
+        lda #<story_again
+        ldx #>story_again
+        jsr log_print
+        lda #1
+        jsr menu_ask
+        jmp @story
 
 ; The map: 10 x 4 tiles, row by row (tools/battlegfx.py: 0 floor, 1 wall, 2 pit, 3 rough,
 ; 4 cover, 5 hazard, 6 high ground, 7 exit).
@@ -78,3 +113,6 @@ bar:            .byte ASCII_BAR_FULL, ASCII_BAR_FULL, ASCII_BAR_FULL, ASCII_BAR_
                 .byte ASCII_BAR_HALF, 0
 roll_top:       .byte "Kestrel 94", 0
 roll_bottom:    .byte "vs 60: hit 23", 0
+
+        .segment "BSS"
+name:           .res NAME_MAX + 1

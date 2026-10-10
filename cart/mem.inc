@@ -47,6 +47,15 @@ ASCII_BAR_EMPTY = $11           ; a health bar's cells
 ASCII_BAR_HALF  = $12
 ASCII_BAR_FULL  = $13
 
+; ------------------------------------------------------------------ keys (keys.s)
+KEY_UP          = 1             ; the cursor keys
+KEY_DOWN        = 2
+KEY_LEFT        = 3
+KEY_RIGHT       = 4
+KEY_DELETE      = 8             ; INST/DEL
+KEY_RETURN      = 13
+KEY_STOP        = 27            ; RUN/STOP
+
 ; ------------------------------------------------------------------ colours
 BLACK           = 0
 WHITE           = 1

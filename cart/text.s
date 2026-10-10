@@ -9,6 +9,7 @@
 
         .export frames_clear, log_print, log_newline, text_at, ascii_screen
         .export row_lo, row_hi, log_ink
+        .import log_more
 
         .segment "RESIDENT"
 
@@ -128,10 +129,13 @@ log_putc:
 
 ; ----------------------------------------------------------------------------------------
 ; log_newline: the story log up a row (columns 0-24, the characters and their colours),
-; its bottom row blank, the cursor at its start.
+; its bottom row blank, the cursor at its start; first "-- more --", if the row going off
+; the top hasn't been read (command.s). tests/cart/run_cart.py reads the bottom row as
+; this starts, so don't rename it.
 ;   Before:  $01 = $35.
-;   Changes: A, X, Y; zp_row, zp_row_next.
+;   Changes: A, X, Y; zp_row, zp_row_next; zp_t0-zp_t2.
 log_newline:
+        jsr log_more
         ldx #LOG_TOP
 @row:   lda row_lo, x
         sta zp_row
@@ -233,7 +237,8 @@ ascii_screen:
 @braces:
         cmp #$7F
         bcs @blank
-        sbc #$20                    ; {|}~ (C set)
+        sec                         ; (the compare left C clear)
+        sbc #$20                    ; {|}~
         rts
 @below60:
         cmp #$40

@@ -3,6 +3,7 @@
 ;
 ;   line 250, under the screen: the view's registers ($D018, $D016, $D011: the map's
 ;       multicolour characters, or a picture's bitmap), for the next frame's rows 0-15;
+;       then the keyboard (keys.s);
 ;   line 176: wait for line 178, the view's last line, and change to the frames' (our
 ;       font, hires, text) after its last character is drawn and before line 179 fetches
 ;       row 16's: in that gap, wherever in it they land, the changes can't be seen.
@@ -16,6 +17,7 @@
 
         .export irq_ram, irq_kernal, nmi, split_on, frames
         .export view_mem, view_ctrl1, view_ctrl2
+        .import keys_scan
 
 FRAME_LINE  = 250
 SPLIT_IRQ   = 176
@@ -76,6 +78,7 @@ irq_kernal:
         sta VIC_RASTER
         lda #1
         sta phase
+        jsr keys_scan
         jmp done
 
 ; Line 176: wait for line 178, then for the end of its characters. Line 178's character
