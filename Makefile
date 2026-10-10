@@ -169,11 +169,11 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 # Flash, and the same game on a disk for an SD2IEC. Modules common to both, then each one's
 # start-up; tools/crt.py makes the .crt of the linked chips.
 CART_COMMON := main assets copy split text screen view keys command password passport number desk play \
-               depot vm expand reward rules dice party asset0
+               depot vm expand reward rules dice party picture asset0
 CART_INC    := $(wildcard cart/*.inc)
 CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
                $(CART_INC) cart/cart.cfg cart/disk.cfg build/cart/tiles16 build/cart/font build/cart/names.s \
-               tools/crt.py tools/cart/departure.py content/s1/00-the-fare/the-fare.qs
+               tools/crt.py tools/cart/departure.py tools/c64pic.py content/s1/00-the-fare/the-fare.qs $(FARE_PICS)
 
 build/cart/font: tools/c64font.py tools/battlegfx.py fe/modern/font8x8.h
 	@mkdir -p build/cart
@@ -192,7 +192,7 @@ build/apb.crt build/apb-disk.d64: $(CART_DEPS) tools/d64.py
 	python3 tools/qsc/qsc.py build content/s1/00-the-fare/the-fare.qs -o build/cart/the-fare.apd \
 	    --split build/cart/fare
 	rm -rf build/cart/assets
-	python3 tools/cart/departure.py build/cart/fare build/cart/assets 1
+	python3 tools/cart/departure.py build/cart/fare content/s1/00-the-fare/pictures build/cart/assets 1
 	@for m in $(CART_COMMON) boot start diskstart diskaddr; do \
 	    ca65 -I cart --bin-include-dir build -g -o build/cart/$$m.o cart/$$m.s || exit 1; done
 	ca65 -I cart -g -o build/cart/names.o build/cart/names.s
@@ -214,13 +214,17 @@ test-cart: build/apb.crt build/the-fare.d64
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
 	    > build/cart/desk.c64
 	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/fare-edge.choices \
-	    tests/cart/fare-edge.expected --c64 tests/c64/fare-edge.expected --shot build/cart-shot.png
+	    tests/cart/fare-edge.expected --c64 tests/c64/fare-edge.expected \
+	    --pictures content/s1/00-the-fare/pictures --shot build/cart-shot.png
 	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/fare-edge.choices \
-	    tests/cart/fare-edge.expected --c64 tests/c64/fare-edge.expected --shot build/cart-disk-shot.png
+	    tests/cart/fare-edge.expected --c64 tests/c64/fare-edge.expected \
+	    --pictures content/s1/00-the-fare/pictures --shot build/cart-disk-shot.png
 	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/desk.choices \
-	    tests/cart/desk.expected --c64 build/cart/desk.c64
+	    tests/cart/desk.expected --c64 build/cart/desk.c64 \
+	    --pictures content/s1/00-the-fare/pictures
 	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/desk.choices \
-	    tests/cart/desk.expected --c64 build/cart/desk.c64
+	    tests/cart/desk.expected --c64 build/cart/desk.c64 \
+	    --pictures content/s1/00-the-fare/pictures
 	cd tests/cart && python3 test_damage.py ../../build/apb.crt ../../build/cart/apb.lbl fare-edge.choices \
 	    --cases 8
 	python3 tests/cart/test_passwords.py build/apb.crt build/cart/apb.lbl --cases 100

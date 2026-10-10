@@ -21,7 +21,7 @@
         .import echo_get, echo_set, rewind_echoes, receipt
         .import traveler, pass, rng_seed, check, skill_rating, health_max, chk_result
         .import dice_roll, record_line, party_show, log_print, menu_ask, key_wait, keys_clear
-        .import number_text, skill_lo, skill_hi, item_tier, echo_default
+        .import picture_show, number_text, skill_lo, skill_hi, item_tier, echo_default
         .importzp ITEM_COUNT, ECHO_COUNT
         .importzp SKILL_COUNT
 
@@ -504,8 +504,9 @@ op_picture:
         lda #<msg_bad_picture
         ldx #>msg_bad_picture
         jmp vm_fail
-@good:  ldx #'0' - 1                ; its file, "picNN" (A3b shows it; for now, the
-@tens:  inx                         ; record)
+@good:  pha
+        ldx #'0' - 1                ; its record, "[picture picNN]" (as the C64 version
+@tens:  inx                         ; names its file)
         sec
         sbc #10
         bcs @tens
@@ -514,7 +515,9 @@ op_picture:
         sta picture_name + 4
         lda #<picture_record
         ldx #>picture_record
-        jmp record_line
+        jsr record_line
+        pla                         ; and in the view
+        jmp picture_show
 
 op_music:
         jsr fetch8

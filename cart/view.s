@@ -8,7 +8,7 @@
         .include "zp.inc"
 
         .export view_tile, view_map
-        .import tiles, row_lo, row_hi
+        .import tiles, row_lo, row_hi, view_mode
 
         .segment "RESIDENT"
 
@@ -59,10 +59,15 @@ two:    lda tiles, x
 ; view_map: the whole view from a map of 20 x 8 tiles, row by row.
 ;   Takes:   A/X = the map (low/high), 160 bytes.
 ;   Before:  $01 = $35; the tiles in.
+;   After:   the view shows the map's characters, from the next frame.
 ;   Changes: A, X, Y; zp_tile_at, zp_tile_col; zp_t0-zp_t3 (zp_t2-zp_t3: the map's row).
 view_map:
         sta zp_t2
         stx zp_t3
+        lda #MEM_VIEW
+        ldx #CTRL1_TEXT
+        ldy #BLACK
+        jsr view_mode
         lda #0
         sta zp_t1                   ; the row
 @row:   lda #0

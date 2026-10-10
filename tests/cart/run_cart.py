@@ -1,7 +1,7 @@
 """Play the cartridge, or its disk, without a C64 (docs/cartridge.md, "Building and testing").
 
     python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--c64 TRANSCRIPT]
-                                   [--shot FILE.png] [--update]
+                                   [--pictures DIR] [--shot FILE.png] [--update]
 
 IMAGE is the EasyFlash cartridge (build/apb.crt) or the disk (build/apb-disk.d64); LABELS
 the linker's label file (ld65 -Ln). The machine code runs on a 6502 emulator (py65), with
@@ -64,7 +64,8 @@ SPLIT_FIRST = (178, 56)             # the frames' registers change in here...
 SPLIT_LAST = (179, 11)              # ...and no later (line 179's bad line stops the 6502)
 
 TEXT, VIEW, CHARS, FONT, STAGING = 0xC000, 0xC400, 0xC800, 0xD000, 0x8000
-MEM_FRAMES, MEM_VIEW = 0x04, 0x12
+MEM_FRAMES, MEM_VIEW, MEM_PICTURE = 0x04, 0x12, 0x18
+BITMAP, PICTURE_TOP = 0xE000, 2         # a picture: the bitmap, its first row in the view
 LOG_TOP, LOG_ROWS, LOG_COLS = 16, 8, 25
 
 failures = 0
@@ -191,6 +192,7 @@ class C64:
         self.most_printed = 0
         self.mores = 0
         self.ended = None
+        self.desk_view = None               # the view's screen and colours at the first key
         self.load_spans = []                # (first, last cycle) of each KERNAL load
         if image[:16] == b"C64 CARTRIDGE   ":
             self.chips, kind = crt.read_bytes(image)
@@ -288,7 +290,7 @@ class C64:
             self.mode = v & 7 if v & 4 else 5
         else:
             self.io[i] = v
-        if a in (0xD011, 0xD016, 0xD018) and self.in_irq():
+        if a in (0xD011, 0xD016, 0xD018, 0xD021) and self.in_irq():
             self.writes.append((a, v, self.access()))
         return self.ram[a]                                  # the RAM keeps its own
 
@@ -379,6 +381,8 @@ class C64:
         """The keys for what the game waits for now (the command row says), pressed from
         the next frame on: each held two frames, let go two."""
         row = self.command_row()
+        if self.desk_view is None:                          # the view at the desk: the map
+            self.desk_view = (bytes(self.ram[VIEW:VIEW + 640]), bytes(self.io[0x800:0x800 + 640]))
         self.most_printed = max(self.most_printed, self.printed)
         if row.endswith("-- more --"):
             keys = [" "]
@@ -448,6 +452,18 @@ def shot(c, path):
         else:
             scr.put(i % 40, i // 40, 0, 0)
     img = scr.image()
+    if view_regs(c)[0] == MEM_PICTURE:                     # a picture: multicolour bitmap
+        back = view_regs(c)[2] & 15
+        for cell in range(640):
+            cy, cx = divmod(cell, 40)
+            both = c.ram[VIEW + cell]
+            options = [back, both >> 4, both & 15, io[0x800 + cell] & 15]
+            for y in range(8):
+                b = c.ram[BITMAP + cy * 320 + cx * 8 + y]
+                for x in range(4):
+                    ink = c64pic.PALETTE[options[(b >> (6 - 2 * x)) & 3]]
+                    img.putpixel((cx * 8 + x * 2, cy * 8 + y), ink)
+                    img.putpixel((cx * 8 + x * 2 + 1, cy * 8 + y), ink)
     font = bytes(c.ram[FONT:FONT + 2048])
     for row in range(16, 25):
         for x in range(40):
@@ -460,6 +476,64 @@ def shot(c, path):
     framed = Image.new("RGB", (384, 264), vic.PALETTE[io[0x20] & 15])
     framed.paste(img, (32, 32))
     framed.resize((768, 528), Image.NEAREST).save(path)
+
+
+def view_regs(c):
+    """The view's registers as line 250 last set them: $D018, $D011, $D021."""
+    last = {}
+    for a, v, cyc in c.writes:
+        if 245 <= (cyc // LINE) % LINES <= 260:
+            last[a] = v
+    return last.get(0xD018), last.get(0xD011), last.get(0xD021)
+
+
+def check_picture(c, what):
+    """The view at the end shows the last picture the story named, as tools/c64pic.py
+    converts its PNG for the C64 version: the bitmap's 12 rows on the view's rows 2-13,
+    each cell's colours, the background; black bars of colour-RAM pixels over and under.
+    And the split turns the background black only under the lower bar."""
+    import c64pic
+    sys.path.insert(0, os.path.join(ROOT, "tools", "qsc"))
+    import image
+    shown = [ln for ln in c.lines if ln.startswith("[picture pic")]
+    backs = [((cyc // LINE) % LINES, v) for a, v, cyc in c.writes
+             if a == 0xD021 and not 245 <= (cyc // LINE) % LINES <= 260]
+    if any(not 51 + 8 * 14 <= ln <= 178 or v != 0 for ln, v in backs) or not backs:
+        fail(f"{what}: the frames' background set outside the view's lower bar: "
+             f"{sorted(set(backs))[:6]}")
+    else:
+        ok(f"{what}: the frames' background set black under the view's lower bar "
+           f"(lines {min(b[0] for b in backs)}-{max(b[0] for b in backs)})")
+    if not shown or not c.pictures:
+        return
+    n = int(shown[-1][len("[picture pic"):-1])
+    names = image.read_depot(open(os.path.join(ROOT, "build", "cart", "fare", "DEPOT"),
+                                  "rb").read())["pictures"]
+    pic, _ = c64pic.convert(c64pic.load(os.path.join(c.pictures, names[n] + ".png")))
+    data = pic[2:]
+
+    def at(address, size):
+        return data[address - c64pic.LOAD_AT:address - c64pic.LOAD_AT + size]
+
+    top = BITMAP + PICTURE_TOP * 320
+    bars = bytes(c.ram[BITMAP:top]) + bytes(c.ram[top + 3840:BITMAP + 16 * 320])
+    bar_ink = bytes(c.io[0x800:0x800 + 80]) + bytes(c.io[0x800 + 560:0x800 + 640])
+    problems = []
+    if view_regs(c) != (MEM_PICTURE, 0x3B, at(c64pic.BACK, 1)[0]):
+        problems.append(f"the view's registers {view_regs(c)}")
+    if bytes(c.ram[top:top + 3840]) != at(c64pic.BITMAP, 3840):
+        problems.append("the bitmap")
+    if bytes(c.ram[VIEW + 80:VIEW + 560]) != at(c64pic.SCREEN, 480):
+        problems.append("the cells' screen colours")
+    if bytes(v & 15 for v in c.io[0x800 + 80:0x800 + 560]) != at(c64pic.CELLS, 480):
+        problems.append("the cells' colour-RAM colours")
+    if bars != b"\xff" * 1280 or any(v & 15 for v in bar_ink):
+        problems.append("the black bars")
+    if problems:
+        fail(f"{what}: the view isn't {names[n]}.png as tools/c64pic.py has it: {', '.join(problems)}")
+    else:
+        ok(f"{what}: the view shows {names[n]}.png as tools/c64pic.py converts it, rows 2-13, "
+           f"black bars over and under")
 
 
 def check(c):
@@ -511,18 +585,20 @@ def check(c):
         ok(f"{what}: the graphics, the depot and the cars loaded as files {', '.join(sorted(set(c.loads)))}")
     # The view: the demo's map, 2 x 2 characters a square, 20 x 8 of them.
     themap = bytes(c.ram[syms["platform_map"]:syms["platform_map"] + 160])
+    screen, colours = c.desk_view
     bad = []
     for sq in range(160):
         t = themap[sq]
         for k in range(4):
             row, col = (sq // 20) * 2 + k // 2, (sq % 20) * 2 + k % 2
             want_ch, want_col = tile_table[t * 8 + k], tile_table[t * 8 + 4 + k]
-            if c.ram[VIEW + row * 40 + col] != want_ch or c.io[0x800 + row * 40 + col] & 15 != want_col & 15:
+            if screen[row * 40 + col] != want_ch or colours[row * 40 + col] & 15 != want_col & 15:
                 bad.append((sq, k))
     if bad:
-        fail(f"{what}: the view's tiles differ from the map at {bad[:5]}")
+        fail(f"{what}: at the desk, the view's tiles differ from the map at {bad[:5]}")
     else:
-        ok(f"{what}: the view shows the map, 20 x 8 squares of 2 x 2 characters")
+        ok(f"{what}: at the desk, the view shows the map, 20 x 8 squares of 2 x 2 characters")
+    check_picture(c, what)
     # The frames.
     line = "".join(c.screen(TEXT, r, 1, 25) for r in range(16, 24))
     party = c.screen(TEXT, 16, 9, 26)
@@ -593,6 +669,7 @@ def main(argv):
     syms = labels(argv[2])
     c = C64(image, syms)
     c.choices = [line.rstrip("\n") for line in open(argv[3])]
+    c.pictures = argv[argv.index("--pictures") + 1] if "--pictures" in argv else None
     c.boot()
     try:
         ended = c.run()

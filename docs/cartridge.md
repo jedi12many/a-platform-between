@@ -69,7 +69,7 @@ loads from a disk (`cart/assets.s`).
 | $D000-$D7FF | our font (`tools/c64font.py`), in the RAM under the I/O, which the VIC sees |
 | $D800-$DFFF | (RAM under the colour RAM, which the VIC sees): sprite shapes, 32 of them |
 | $DF00-$DFFF | (I/O) the EasyFlash's RAM: the bank's shadow and the boot's mode switch |
-| $E000-$FF3F | a story picture's bitmap (multicolour), its screen at $C400 |
+| $E000-$F3FF | a story picture's bitmap (multicolour, the view's 16 rows), its screen at $C400 |
 | $FFFA-$FFFF | the 6502's NMI, reset and IRQ vectors, in RAM |
 
 The VIC is in bank 3 ($C000-$FFFF) all the time: the text, the view, the font, the
@@ -86,10 +86,12 @@ The raster interrupt (`cart/split.s`) does it, twice a frame:
 
 | Line | Sets | Then |
 |---|---|---|
-| 250 (under the screen) | the view: `$D018` its screen and characters, `$D016` multicolour (`$D011` bitmap mode for a picture) | the music, the keyboard, the sprites' first eight |
+| 250 (under the screen) | the view: `$D018` its screen and characters, `$D016` multicolour, `$D011` (bitmap mode for a picture), `$D021` (a picture's background) | the music, the keyboard, the sprites' first eight |
+| 176 (the view's row 15) | the frames' background, black: under a picture's lower bar, which the background doesn't touch | |
 | 177 (just before row 16) | the frames: `$D018` = text screen $C000 and font $D000, hires, text mode | |
 
-Only three registers change at the split, and each is written in the same cycles of
+Only three registers change at the split (the background before it, under the view's
+black bar), and each is written in the same cycles of
 the line every frame, so the split doesn't jitter.
 
 ## Assets
@@ -154,7 +156,8 @@ The interrupt (`split.s`) uses no zero page at all.
   `play.s` (the game: the desk, the trip, the desk again), `depot.s` (a Departure's depot
   and cars, loaded and checked), `vm.s` (the story VM), `expand.s` (the story's strings),
   `reward.s` (items, XP, Debt, Echoes, the receipt), `rules.s` (the dice, checks, health,
-  XP), `dice.s` (the dice log), `party.s` (the party frame), and more as they come
+  XP), `dice.s` (the dice log), `party.s` (the party frame), `picture.s` (the story's
+  pictures), and more as they come
   (`sprites.s`, `combat.s`, `music.s`). The registry's names are generated into `build/cart/names.s`
   (`tools/registry/registry_asm.py`), never written by hand.
   Assets are files of their own (`asset0.s`, ...).
@@ -251,6 +254,20 @@ traveler as they are, about the size of a Boarding Pass (four lines). The format
 specified in [boarding.md](boarding.md) beside the pass, with a Python reference, before
 it's written in assembly.
 
+## Pictures
+
+The story's pictures are the C64 version's (`tools/c64pic.py`: 160 x 96, multicolour
+bitmap, each cell the background and three colours of its own), shown on the view's rows
+2-13 by `cart/picture.s`, with a black bar of two rows over and under. The bars' pixels
+are all `%11`, colour RAM black, so they never show the background: the split can change
+the background to the frames' black while the lower bar is drawn (line 176), and the
+cycle-counted writes at line 178 stay as they were. Each picture is an asset after the
+cars (`tools/cart/departure.py`: the bitmap's 12 rows, the cells' screen colours, their
+colour-RAM colours, the background; 4801 bytes); the depot's asset says which asset is
+the first. Showing one blacks the view, puts the bitmap's mode on, and copies the picture
+in: a frame or two of black, never a torn picture. A picture with no asset (no PNG when
+the Departure was built) or the wrong length leaves the view as it was.
+
 ## The story VM
 
 `cart/vm.s` plays a Departure's bytecode as the C engine's `vm/vm.c` does
@@ -269,8 +286,9 @@ engine also walks a whole car once when it loads; the cartridge finds the same f
 it reaches them.) A fault stops the VM with vm.c's words: "The train has derailed: bad
 jump 1:24". A runaway (20000 instructions without a menu) stops it too.
 
-Until the later milestones: a picture, or a tune, is only a record for the tests
-(`[picture pic02]`, `[music concourse]`, as the C64 version's transcripts have them); a
+Until the later milestones: a tune is only a record for the tests (`[music
+concourse]`, as the C64 version's transcripts have them; so is each picture shown,
+`[picture pic02]`); a
 fight stops the VM ("no fights yet", A4); at a trip's end there's "(press a key)" and the
 desk again, for the receipt and the Travel Stamp are A3c's.
 
@@ -291,10 +309,11 @@ the cartridge and the disk. Each route must also tell the story the C64 version 
 engine) tells, word for word and roll for roll (`--c64`): *The Fare* by
 `tests/c64/fare-edge.expected`, and the desk's route by the C64 program playing it there
 and then (`tests/c64/run_c64.py`). It checks the split's timing every frame, the graphics
-against the tools' own files, the view, the frames (the party, the last roll), that every
+against the tools' own files, the view (the map at the desk; at the end, the last picture
+as `tools/c64pic.py` converts it), the frames (the party, the last roll), that every
 paragraph is wrapped at 25 as the rule says, and that nothing scrolled off unread.
 `--shot FILE` saves the screen as the VIC-II would show it. `tests/cart/test_damage.py`
-breaks bytes of the depot and the cars and plays them: the VM must stop cleanly or play
+breaks bytes of the depot, the cars and the pictures and plays them: the VM must stop cleanly or play
 on, and never run anything but its own code.
 
 ## Milestones
@@ -309,7 +328,7 @@ on, and never run anything but its own code.
   assembly, checked against `tools/passport/`; the boarding desk.
 - **A3a, the story VM** (done): Quest Script's bytecode in assembly, chapters as
   assets, the story told as the C64 version tells it.
-- **A3b, pictures**: the story's pictures in the view.
+- **A3b, pictures** (done): the story's pictures in the view.
 - **A3c, the receipt**: the trip's end, the Travel Stamp, a pass's Rewind.
 - **A4, sprites and the fight**: the multiplexer, the battle map, the combat rules
   (checked against `tools/rules/combat.py`).

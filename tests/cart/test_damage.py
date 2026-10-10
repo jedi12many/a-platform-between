@@ -3,11 +3,11 @@ expand.s): never trust the image.
 
     python3 tests/cart/test_damage.py build/apb.crt build/cart/apb.lbl CHOICES [--cases N]
 
-Each case breaks a few bytes of the depot or a car, as the cartridge holds them (asset 1,
-and 2 on: tools/cart/departure.py), or its length, and plays CHOICES on the emulated C64
-(tests/cart/run_cart.py) till they run out. The VM may play on (the damage was in a
-string it never reached) or stop ("The train has derailed", "This Departure can't be
-boarded"); either way the program must only ever run its own code (the resident engine,
+Each case breaks a few bytes of the depot, a car or a picture, as the cartridge holds
+them (assets 1, 2-4 and 5 on: tools/cart/departure.py), or its length, and plays CHOICES
+on the emulated C64 (tests/cart/run_cart.py) till they run out. The VM may play on (the
+damage was in a string it never reached, or it spoiled a picture) or stop ("The train
+has derailed", "This Departure can't be boarded"); either way the program must only ever run its own code (the resident engine,
 once it's started), never read a ROM it shouldn't, and always come back for keys. The
 damage is random but seeded, so a failure can be run again.
 """
@@ -23,7 +23,7 @@ FRAMES = 2500                   # a case that's still running after this has hun
 def damaged(chips, rnd):
     """A copy of the chips with one asset of the Departure damaged; and what was done."""
     chips = dict(chips)
-    asset = rnd.choice([1, 2, 3, 4])
+    asset = rnd.choice([1, 2, 3, 4, 5, 7])
     key = (1 + asset // 2, "LH"[asset % 2])
     data = bytearray(chips[key])
     length = data[0] | data[1] << 8

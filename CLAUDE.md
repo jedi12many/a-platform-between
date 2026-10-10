@@ -106,7 +106,8 @@ against. For `cart/`:
   `tests/c64/fare-edge.expected`, and the desk's route played by `build/the-fare.d64`),
   word for word and roll for roll; every raster split's writes land in the gap between the
   view's last line and row 16's fetch, to the cycle; the graphics are the tools'; the
-  view and the frames are right; paragraphs wrap at 25; nothing scrolls off unread.
+  view (the story's pictures as `tools/c64pic.py` converts them) and the frames are
+  right; paragraphs wrap at 25; nothing scrolls off unread.
   `--shot FILE` draws the screen. `tests/cart/test_damage.py`: damaged Departures stop
   the story VM cleanly, never run wild. And `tests/cart/test_passwords.py`: the
   cartridge's Passports and Boarding Passes must decode, encode and refuse damage as the
