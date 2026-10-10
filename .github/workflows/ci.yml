@@ -67,10 +67,15 @@ jobs:
       - name: The music players (reference, C and 6502 write the same SID registers)
         run: make test-music
 
+      - name: The cartridge and its disk (6502 assembly, on an emulated EasyFlash and KERNAL)
+        run: make test-cart
+
       - uses: actions/upload-artifact@v4
         with:
           name: c64
           path: |
+            build/apb.crt
+            build/apb-disk.d64
             build/demo.prg
             build/the-fare.d64
             build/eighteen-minutes.d64

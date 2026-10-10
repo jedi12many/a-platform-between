@@ -2,6 +2,27 @@
 
 Design docs live in `docs/`; the rules core lives in `core/`.
 
+**The game is being rebuilt in 100% 6502 assembly** (`cart/`, `docs/cartridge.md`): a 1 MB
+EasyFlash cartridge for a Kung Fu Flash, and the same game on a disk for an SD2IEC. The C
+engine (`core/`, `vm/`, `fe/`) stays as the working reference, and the Python references
+(`tools/`) and the Waystation website are the specification the assembly is tested
+against. For `cart/`:
+
+- ca65 only. One job per file; a routine's header says what it takes (registers, zero
+  page), what it gives back, what must be true before, and what it changes (A, X, Y,
+  zero page).
+- The zero page is allocated in `cart/zp.inc` (and the table in `docs/cartridge.md`); a
+  module uses only its own, or scratch between calls. Chips in `cart/hw.inc`, the memory
+  map and the screen's layout in `cart/mem.inc`: no bare addresses in code.
+- A branch whose target may drift out of reach is written as the opposite branch over a
+  `jmp`.
+- Only `cart/assets.s` (and the start-ups) knows the medium: no `$DE00`, `$DE02` or
+  KERNAL call anywhere else. Everything but the resident engine is an 8 KB asset, fetched
+  into the staging RAM at $8000; nothing runs from the cartridge.
+- Saves are passwords (the Passport's alphabet and lines); no disk or flash writes.
+- Timing that matters (the raster split) is counted in the code's comments, and `make
+  test-cart` holds it to the cycle.
+
 ## Commands
 
 - `make test`: native tests (gcc/clang, `-Werror`).
@@ -77,7 +98,13 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   py65), for every tune in `content/` and `tests/music/` under scripts of commands, and for
   damaged files. `tools/music/musicc.py build NAME.music -o FILE` compiles a tune file.
 
-Run all sixteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+- `make test-cart`: the cartridge (`build/apb.crt`) and its disk (`build/apb-disk.d64`)
+  boot on a 6502 emulator that plays an EasyFlash, or the KERNAL's loads
+  (`tests/cart/run_cart.py`): every raster split's writes land in the gap between the
+  view's last line and row 16's fetch, to the cycle; the graphics are the tools'; the
+  view, the frames and the story log are right. `--shot FILE` draws the screen.
+
+Run all seventeen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website

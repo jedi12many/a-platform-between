@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all cart test-cart test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 all: test
 
@@ -164,6 +164,38 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 	@echo "C64 games: build/the-fare.d64, build/eighteen-minutes.d64, build/deep-yards.d64 (program $$(wc -c < build/c64/apb.prg) bytes;" \
 	      "overlays $$(wc -c < build/c64/apb.prg.1), $$(wc -c < build/c64/apb.prg.2)," \
 	      "$$(wc -c < build/c64/apb.prg.3))"
+
+# The cartridge (docs/cartridge.md): 6502 assembly, an EasyFlash image for a Kung Fu
+# Flash, and the same game on a disk for an SD2IEC. Modules common to both, then each one's
+# start-up; tools/crt.py makes the .crt of the linked chips.
+CART_COMMON := main assets copy split text screen view demo asset0 asset1
+CART_INC    := $(wildcard cart/*.inc)
+CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
+               $(CART_INC) cart/cart.cfg cart/disk.cfg build/battle.bgfx build/cart/font tools/crt.py
+
+build/cart/font: tools/c64font.py tools/battlegfx.py fe/modern/font8x8.h
+	@mkdir -p build/cart
+	python3 tools/c64font.py $@
+
+build/apb.crt build/apb-disk.d64: $(CART_DEPS) tools/d64.py
+	@mkdir -p build/cart
+	@for m in $(CART_COMMON) boot start diskstart diskaddr; do \
+	    ca65 -I cart --bin-include-dir build -g -o build/cart/$$m.o cart/$$m.s || exit 1; done
+	ld65 -C cart/cart.cfg -o build/cart/apb -m build/cart/apb.map -Ln build/cart/apb.lbl \
+	    --dbgfile build/cart/apb.dbg $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) boot start))
+	python3 tools/crt.py build/apb.crt "A PLATFORM BETWEEN" build/cart/apb.b00l:0:L \
+	    build/cart/apb.b00h:0:H build/cart/apb.a00:1:L build/cart/apb.a01:1:H
+	ld65 -C cart/disk.cfg -o build/cart/apb-disk -m build/cart/apb-disk.map -Ln build/cart/apb-disk.lbl \
+	    $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) diskstart diskaddr))
+	python3 tools/d64.py write build/apb-disk.d64 "a platform" ab build/cart/apb-disk=apb \
+	    build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01
+
+cart: build/apb.crt
+	@echo "Cartridge: build/apb.crt (Kung Fu Flash, or x64sc -cartcrt build/apb.crt); disk: build/apb-disk.d64"
+
+test-cart: build/apb.crt
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl --shot build/cart-shot.png
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl --shot build/cart-disk-shot.png
 
 clean:
 	rm -rf build
