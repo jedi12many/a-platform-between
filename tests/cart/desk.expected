@@ -18,8 +18,8 @@ time, then a blank line.
 (Or your Passport, to
 travel without one.)
 Line 1:
->
-g000-0000-fg87-r49c-pejz
+> g000-0000-fg87-r49c-pej
+z
 Line 2:
 > 8NG0M020AN8F2THP800F
 Line 3:
@@ -36,11 +36,14 @@ it again:
 > 8NG0M020AN8F2THP800E
 Kestrel, Salvaged Warden,
 level 1. Debt 0.
+
 1. Board
 2. Start over
 > 1
+
 ~ The Static ~
 
+[picture pic00]
 Static.
 
 Not the sound. The
@@ -63,6 +66,8 @@ your teeth. The hand
 doesn't mind; it has done
 this before.
 
+[picture pic01]
+[music arrivals]
 You are sitting on a
 wooden bench, and you are
 breathing, and both of
@@ -76,52 +81,55 @@ glass there is no sky,
 only a slow grey shimmer,
 like rain that has
 forgotten which way is
-down.
+down. A sign hangs from
+the ironwork:
 
-A ledger lies open on the
-bench beside you, and a
-name is written in it
-already, in a careful
-hand: Kestrel
-1. Start again
+ARRIVALS -- ALL LINES
+
+You remember dying. You
+remember it very clearly.
+
+1. Remember it
 > 1
-~ The Static ~
+It comes back in pieces.
+First, the body it
+happened to.
 
-Static.
+Iron joints, old code,
+and a vow you took from a
+book you found in a
+scrapyard. You were a
+knight. You are still
+technically correct about
+that.
 
-Not the sound. The
-feeling: every part of
-you tuned to the wrong
-channel at once.
+Then what you were doing,
+when it happened.
 
-Then a hand. It reaches
-through the end of
-everything, takes hold of
-whatever is left of you,
-and pulls.
-
-1. Let it
-2. Fight it
+1. Remember the rest
 > 1
-You are sitting on a
-wooden bench, and you are
-breathing, and both of
-those things are wrong.
+You were holding a door.
+Behind it, people you had
+promised to protect. In
+front of it, something
+that did not care about
+promises. You held it for
+a long time. Long enough.
 
-The bench stands on a
-railway platform under a
-roof of green iron and
-cracked glass. Beyond the
-glass there is no sky,
-only a slow grey shimmer,
-like rain that has
-forgotten which way is
-down.
+Somewhere in your memory
+banks, a log entry is
+still open: CAUSE OF
+DEATH, followed by
+nothing.
 
-A ledger lies open on the
-bench beside you, and a
-name is written in it
-already, in a careful
-hand: Kestrel
-1. Start again
+That was the end. You are
+sure of it.
+
+The bench creaks.
+Somewhere down the
+platform, a train whistle
+sounds, mournful and far
+away.
+
+1. Stand up
 [end of input]

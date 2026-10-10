@@ -29,6 +29,14 @@ zp_pw_sum       = $35           ; a line's check, as it's added up
 ; number.s
 zp_num          = $36           ; 2: the number being written
 
+; rules.s
+zp_rule         = $38           ; 2: a rule's working number
+
+; vm.s
+zp_ip           = $3A           ; 2: the next byte of the running code (CAR_AT + 9 + pc)
+zp_str          = $3C           ; 2: the string being expanded
+zp_out          = $3E           ; 2: where its text goes
+
 ; scratch: arguments and loop counters
 zp_t0           = $24
 zp_t1           = $25

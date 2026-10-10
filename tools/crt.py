@@ -1,13 +1,17 @@
 """An EasyFlash cartridge image (.crt) from its chips (docs/cartridge.md).
 
-    python3 tools/crt.py OUT.crt NAME FILE:BANK:L|H ...
+    python3 tools/crt.py OUT.crt NAME FILE:BANK:L|H|LH ... [--assets DIR]
 
 Each FILE is an 8 KB chip: L is the bank's ROML ($8000), H its ROMH ($A000; at $E000 when
-the cartridge boots in Ultimax mode). The image is the CRT format's: a 64-byte header
-(hardware type 32, EasyFlash: EXROM 1, GAME 0, so it boots in Ultimax mode), then a CHIP
+the cartridge boots in Ultimax mode); or, with LH, 16 KB, both, ROML first. The image is
+the CRT format's: a 64-byte header (hardware type 32, EasyFlash: EXROM 1, GAME 0, so it boots in Ultimax mode), then a CHIP
 packet for each chip, in bank order. Banks with no chip are left out.
+
+--assets DIR adds every file aNN in DIR (NN in hex: tools/cart/departure.py) as asset NN:
+bank 1 + NN/2, ROML for NN even, ROMH for odd (cart/assets.s).
 """
 
+import os
 import struct
 import sys
 
@@ -55,9 +59,23 @@ def main(argv):
         print(__doc__)
         return 2
     chips = []
-    for spec in argv[3:]:
+    args = argv[3:]
+    if "--assets" in args:
+        i = args.index("--assets")
+        folder = args[i + 1]
+        del args[i:i + 2]
+        for name in sorted(os.listdir(folder)):
+            if len(name) == 3 and name[0] == "a":
+                n = int(name[1:], 16)
+                chips.append((1 + n // 2, "LH"[n % 2], open(os.path.join(folder, name), "rb").read()))
+    for spec in args:
         path, bank, half = spec.rsplit(":", 2)
-        chips.append((int(bank), half, open(path, "rb").read()))
+        data = open(path, "rb").read()
+        if half == "LH":                            # 16 KB: ROML, then ROMH
+            chips.append((int(bank), "L", data[:0x2000]))
+            chips.append((int(bank), "H", data[0x2000:]))
+        else:
+            chips.append((int(bank), half, data))
     with open(argv[1], "wb") as f:
         f.write(build(argv[2], chips))
     print(f"{argv[1]}: {len(chips)} chips")

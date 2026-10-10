@@ -5,7 +5,7 @@
         .include "mem.inc"
         .include "zp.inc"
 
-        .export mem_copy
+        .export mem_copy, ram_copy
 
         .segment "RESIDENT"
 
@@ -46,3 +46,29 @@ mem_copy:
         sta CPU_PORT
         plp
         rts
+
+; ----------------------------------------------------------------------------------------
+; ram_copy: as mem_copy, with interrupts left as they are and $01 untouched: for RAM the
+; game sees with $01 = $35 (not under the I/O).
+;   Takes:   zp_src, zp_dst, zp_len.
+;   Changes: A, X, Y; zp_src, zp_dst (their high bytes move on).
+ram_copy:
+        ldy #0
+        ldx zp_len + 1
+        beq @part
+@page:  lda (zp_src), y
+        sta (zp_dst), y
+        iny
+        bne @page
+        inc zp_src + 1
+        inc zp_dst + 1
+        dex
+        bne @page
+@part:  ldx zp_len
+        beq @done
+@byte:  lda (zp_src), y
+        sta (zp_dst), y
+        iny
+        dex
+        bne @byte
+@done:  rts

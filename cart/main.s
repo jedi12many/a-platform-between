@@ -9,7 +9,7 @@
         .export main
         .import __BSS_RUN__, __BSS_SIZE__
         .import irq_ram, irq_kernal, nmi, asset_media
-        .import screen_install, frames_clear, split_on, demo
+        .import screen_install, frames_clear, split_on, play
 
         .segment "RESIDENT"
 
@@ -68,4 +68,4 @@ main:
         jsr screen_install
         jsr frames_clear
         jsr split_on
-        jmp demo                    ; (it never returns)
+        jmp play                    ; (it never returns)

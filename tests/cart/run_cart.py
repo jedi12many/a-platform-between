@@ -1,6 +1,7 @@
 """Play the cartridge, or its disk, without a C64 (docs/cartridge.md, "Building and testing").
 
-    python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--shot FILE.png] [--update]
+    python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--c64 TRANSCRIPT]
+                                   [--shot FILE.png] [--update]
 
 IMAGE is the EasyFlash cartridge (build/apb.crt) or the disk (build/apb-disk.d64); LABELS
 the linker's label file (ld65 -Ln). The machine code runs on a 6502 emulator (py65), with
@@ -31,13 +32,15 @@ the C64 around it played in Python:
   RETURN; at anything else (a menu) the line's first character.
 
 The transcript is the story log's bottom row, read each time it scrolls (log_newline), and
-each roll's record. It must match EXPECTED (--update writes it: read the diff). The run
-ends when CHOICES does, and checks: every change to the frames' registers lands between
+each record (record_line: a roll, a picture, a tune). It must match EXPECTED (--update
+writes it: read the diff); with --c64, it must also tell the story the C64 version's
+TRANSCRIPT tells (tests/c64/run_c64.py's), from the boarding desk to the trip's end. The
+run ends when CHOICES does, and checks: every change to the frames' registers lands between
 line 178's last character and line 179's fetch of row 16 (cycles 56 of line 178 to 11 of
 line 179), and the view's in the bottom border; the font, the map's characters and tiles
 are where they go (against tools/c64font.py and tools/battlegfx.py's files); the view
-shows the map; the frames have their line, the party, the dice; every paragraph of the
-transcript is word-wrapped at 25 columns as docs/frames.md says (wrapped again here, it
+shows the map; the frames have their line, the party (health full), the last roll in the
+dice log; every paragraph of the transcript (a typed line's echo aside) is word-wrapped at 25 columns as docs/frames.md says (wrapped again here, it
 comes out the same); and no row went off the top of the log unread (never more than 8
 rows printed between keys). --shot saves the screen at the end as the VIC-II would show it
 (tools/vic.py).
@@ -181,7 +184,8 @@ class C64:
         self.held = []                      # matrix positions down now
         self.presses = []                   # [(positions, first frame, last frame)]
         self.lines = []                     # the transcript
-        self.ended_rows = []                # each line: True if the text ended it
+        self.ended_rows = []                # each line: True if the text ended it (None: a
+                                            # record)
         self.choices = []
         self.printed = 0                    # rows into the log since the last key wait
         self.most_printed = 0
@@ -402,6 +406,14 @@ class C64:
             pc = m.pc
             if wait <= pc < wait_end and m.processorCycles >= self.answer_until:
                 self.answer()                               # (key_wait, waiting)
+            elif pc == self.syms["record_line"]:          # a record: A/X
+                at = m.a | m.x << 8
+                text = bytearray()
+                while self.ram[at] and len(text) < 80:
+                    text.append(self.ram[at])
+                    at += 1
+                self.lines.append(text.decode("ascii", "replace"))
+                self.ended_rows.append(None)                # (not a row of the log)
             elif pc == newline:
                 self.lines.append(self.row23())
                 # Did the text end the row (a newline in it), or did it wrap? log_print's
@@ -493,12 +505,12 @@ def check(c):
         fail(f"{what}: the tiles' table isn't tools/battlegfx.py's")
     else:
         ok(f"{what}: the font, the map's characters and its tiles, from asset 0, where they go")
-    if disk and c.loads != ["a00", "a01"]:
-        fail(f"the disk: loaded {c.loads}, not a00 then a01")
+    if disk and (c.loads[:2] != ["a00", "a01"] or any(n[0] != "a" for n in c.loads)):
+        fail(f"{what}: loaded {c.loads}, not a00 (the graphics), a01 (the depot) and the cars")
     elif disk:
-        ok("the disk: assets 0 and 1 loaded as files a00 and a01")
+        ok(f"{what}: the graphics, the depot and the cars loaded as files {', '.join(sorted(set(c.loads)))}")
     # The view: the demo's map, 2 x 2 characters a square, 20 x 8 of them.
-    themap = bytes(c.ram[syms["demo_map"]:syms["demo_map"] + 160])
+    themap = bytes(c.ram[syms["platform_map"]:syms["platform_map"] + 160])
     bad = []
     for sq in range(160):
         t = themap[sq]
@@ -513,25 +525,33 @@ def check(c):
         ok(f"{what}: the view shows the map, 20 x 8 squares of 2 x 2 characters")
     # The frames.
     line = "".join(c.screen(TEXT, r, 1, 25) for r in range(16, 24))
-    party = c.screen(TEXT, 16, 14, 26)
-    dice = (c.screen(TEXT, 22, 14, 26), c.screen(TEXT, 23, 14, 26))
+    party = c.screen(TEXT, 16, 9, 26)
+    bar = bytes(c.ram[TEXT + 16 * 40 + 35:TEXT + 16 * 40 + 40])
+    bar_ink = {c.io[0x800 + 16 * 40 + 35 + i] & 15 for i in range(5)}
+    rolls = [ln[1:-1] for ln in c.lines if ln.startswith("[") and " vs " in ln]
+    dice = (c.screen(TEXT, 22, 14, 26).rstrip(), c.screen(TEXT, 23, 14, 26).rstrip())
+    want_dice = tuple(rolls[-1].split(" vs ")) if rolls else ("", "")
+    want_dice = (want_dice[0], "vs " + want_dice[1]) if rolls else want_dice
     if line != "|" * 8:
         fail(f"{what}: the line between the frames: {line!r}")
-    elif party != ">Kestrel      ":
-        fail(f"{what}: the party frame: {party!r}")
-    elif dice != ("Kestrel 94    ", "vs 60: hit 23 "):
-        fail(f"{what}: the dice log: {dice!r}")
+    elif party != " Kestrel " or bar != bytes([0x63] * 5) or bar_ink != {5}:
+        fail(f"{what}: the party frame: {party!r}, health {bar.hex()} in {bar_ink}")
+    elif dice != want_dice:
+        fail(f"{what}: the dice log: {dice!r}, not the last roll's {want_dice!r}")
     else:
-        ok(f"{what}: the frames: their line, the party ({party.strip()}), the dice ({' / '.join(d.strip() for d in dice)})")
+        ok(f"{what}: the frames: their line, the party ({party.strip()}, health full and green), "
+           f"the dice ({' / '.join(dice) if rolls else 'no rolls'})")
     # The transcript's paragraphs (rows to one the text ended), wrapped again here: the
     # same.
     bad = []
     para = []
     for line, ended in zip(c.lines, c.ended_rows):
+        if ended is None:
+            continue
         para.append(line)
         if not ended:
             continue
-        if wrap(" ".join(para), LOG_COLS) != para:
+        if wrap(" ".join(para), LOG_COLS) != para and not para[0].startswith(">"):
             bad.append(para)
         para = []
     if bad:
@@ -543,6 +563,26 @@ def check(c):
     else:
         ok(f"{what}: nothing scrolled off unread (at most {c.most_printed} rows between keys; "
            f"{c.mores} times -- more --)")
+
+
+def c64_matches(lines, path):
+    """The C64 version (the C engine) tells the same story: its transcript (tests/c64/*.
+    expected, made by tests/c64/run_c64.py) from the boarding desk to the trip's end, but
+    for what the cartridge doesn't have yet: the start menu (the cartridge's saves are
+    passwords: A6) and the receipt (A3c)."""
+    theirs = open(path).read().split("\n")
+    if theirs[:3] == ["1. Board", "2. Pick up a saved trip", "> 1"]:
+        theirs = theirs[3:]
+    for end in ("~ Departure complete ~", "[end of input]"):
+        if end in theirs:
+            theirs = theirs[:theirs.index(end)]
+    ours = lines[:len(theirs)]
+    if ours != theirs:
+        import difflib
+        fail(f"the story differs from the C64's ({path}):\n" + "".join(difflib.unified_diff(
+            [t + "\n" for t in theirs], [t + "\n" for t in ours], "C64", "cartridge", n=1)))
+    else:
+        ok(f"the story is the C64's, word for word, roll for roll ({path}: {len(theirs)} lines)")
 
 
 def main(argv):
@@ -570,6 +610,8 @@ def main(argv):
                                  "expected", "got", n=1)))
     else:
         ok(f"{argv[1]}: the transcript is {argv[4]}'s ({len(c.lines)} lines)")
+    if "--c64" in argv:
+        c64_matches(c.lines, argv[argv.index("--c64") + 1])
     check(c)
     if "--shot" in argv:
         shot(c, argv[argv.index("--shot") + 1])

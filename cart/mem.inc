@@ -8,6 +8,17 @@ STAGING_PAGES   = $20
 MEDIA_CART      = 0             ; what the game came on (assets.s)
 MEDIA_DISK      = 1
 
+; The story (vm.s): the Departure's depot and its car (one chapter), copied from their
+; assets, and a string as it's expanded.
+CAR_AT          = $A000         ; 6 KB and 16 (a car is 6144 at most)
+CAR_MAX         = 6144
+DEPOT_AT        = $B800         ; 2 KB
+DEPOT_MAX       = 2048
+EXPAND_AT       = $0400         ; to $0FFF
+EXPAND_MAX      = $0BFF
+ASSET_DEPOT     = 1             ; the Departure's assets: its depot, then its cars
+ASSET_CAR0      = 2
+
 ; ------------------------------------------------------------------ VIC bank 3
 TEXT_SCREEN     = $C000         ; the frames (and the status row)
 VIEW_SCREEN     = $C400         ; the view: the map's characters, or a picture's colours

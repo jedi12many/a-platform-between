@@ -7,7 +7,7 @@
         .include "zp.inc"
 
         .export key_wait, log_more, menu_ask, line_ask, command_show, rows_shown
-        .import key_get, keys_clear, text_at, log_print, ascii_screen, frames, log_ink
+        .import key_get, keys_clear, text_at, log_print, log_chars, ascii_screen, frames, log_ink
 
 CURSOR_ON = $A0                     ; a reversed space: a block
 
@@ -193,7 +193,8 @@ echo_prefix:
         rts
 
 ; echo_line: the command row cleared, and echo ("> ", what was given, ending in 0) into
-; the story log as a row of its own. Changes A, X, Y; text.s's zero page; zp_t0-zp_t2.
+; the story log as a row of its own, a character at a time (log_chars: a long line goes
+; on to the next row as it was typed). Changes A, X, Y; text.s's zero page; zp_t0-zp_t2.
 echo_line:
         lda #<nothing
         ldx #>nothing
@@ -201,7 +202,7 @@ echo_line:
         jsr command_show
         lda #<echo
         ldx #>echo
-        jsr log_print
+        jsr log_chars
         lda #<newline
         ldx #>newline
         jmp log_print

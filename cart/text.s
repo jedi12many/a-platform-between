@@ -7,7 +7,7 @@
         .include "mem.inc"
         .include "zp.inc"
 
-        .export frames_clear, log_print, log_newline, text_at, ascii_screen
+        .export frames_clear, log_print, log_chars, log_newline, text_at, ascii_screen
         .export row_lo, row_hi, log_ink
         .import log_more
 
@@ -116,6 +116,36 @@ log_print:
         bcc @next
         inc zp_text_ptr + 1
         jmp @next
+
+; ----------------------------------------------------------------------------------------
+; log_chars: ASCII into the story log a character at a time, as it was typed: a row that
+; fills goes on to the next, mid-word if it must (as the C64 version echoes a line); 10
+; ends the row.
+;   Takes:   A/X = the text (low/high), ending in 0.
+;   Before:  $01 = $35.
+;   Changes: A, X, Y; zp_text_ptr, zp_row, zp_row_next; zp_t0-zp_t2.
+log_chars:
+        sta zp_text_ptr
+        stx zp_text_ptr + 1
+@next:  ldy #0
+        lda (zp_text_ptr), y
+        beq @done
+        cmp #$0A
+        beq @row
+        ldx zp_log_col              ; the row full: on to the next
+        cpx #LOG_COLS
+        bcc @put
+        pha
+        jsr log_newline
+        pla
+@put:   jsr log_putc
+        jmp @skip
+@row:   jsr log_newline
+@skip:  inc zp_text_ptr
+        bne @next
+        inc zp_text_ptr + 1
+        bne @next                   ; (always)
+@done:  rts
 
 ; log_putc: A (ASCII) at the log's cursor. Keeps Y; changes A, X.
 log_putc:

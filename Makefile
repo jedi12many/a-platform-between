@@ -168,12 +168,12 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 # The cartridge (docs/cartridge.md): 6502 assembly, an EasyFlash image for a Kung Fu
 # Flash, and the same game on a disk for an SD2IEC. Modules common to both, then each one's
 # start-up; tools/crt.py makes the .crt of the linked chips.
-CART_COMMON := main assets copy split text screen view keys command password passport number desk demo \
-               asset0 asset1
+CART_COMMON := main assets copy split text screen view keys command password passport number desk play \
+               depot vm expand reward rules dice party asset0
 CART_INC    := $(wildcard cart/*.inc)
 CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
                $(CART_INC) cart/cart.cfg cart/disk.cfg build/cart/tiles16 build/cart/font build/cart/names.s \
-               tools/crt.py
+               tools/crt.py tools/cart/departure.py content/s1/00-the-fare/the-fare.qs
 
 build/cart/font: tools/c64font.py tools/battlegfx.py fe/modern/font8x8.h
 	@mkdir -p build/cart
@@ -189,26 +189,40 @@ build/cart/tiles16: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt
 
 build/apb.crt build/apb-disk.d64: $(CART_DEPS) tools/d64.py
 	@mkdir -p build/cart
+	python3 tools/qsc/qsc.py build content/s1/00-the-fare/the-fare.qs -o build/cart/the-fare.apd \
+	    --split build/cart/fare
+	rm -rf build/cart/assets
+	python3 tools/cart/departure.py build/cart/fare build/cart/assets 1
 	@for m in $(CART_COMMON) boot start diskstart diskaddr; do \
 	    ca65 -I cart --bin-include-dir build -g -o build/cart/$$m.o cart/$$m.s || exit 1; done
 	ca65 -I cart -g -o build/cart/names.o build/cart/names.s
 	ld65 -C cart/cart.cfg -o build/cart/apb -m build/cart/apb.map -Ln build/cart/apb.lbl \
 	    --dbgfile build/cart/apb.dbg $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) names boot start))
-	python3 tools/crt.py build/apb.crt "A PLATFORM BETWEEN" build/cart/apb.b00l:0:L \
-	    build/cart/apb.b00h:0:H build/cart/apb.a00:1:L build/cart/apb.a01:1:H
+	python3 tools/crt.py build/apb.crt "A PLATFORM BETWEEN" build/cart/apb.b00:0:LH \
+	    build/cart/apb.a00:1:L --assets build/cart/assets
 	ld65 -C cart/disk.cfg -o build/cart/apb-disk -m build/cart/apb-disk.map -Ln build/cart/apb-disk.lbl \
 	    $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) names diskstart diskaddr))
 	python3 tools/d64.py write build/apb-disk.d64 "a platform" ab build/cart/apb-disk=apb \
-	    build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01
+	    build/cart/apb-disk.a00=a00 \
+	    $$(for f in build/cart/assets/a*.prg; do n=$$(basename $$f .prg); echo $$f=$$n; done)
 
 cart: build/apb.crt
 	@echo "Cartridge: build/apb.crt (Kung Fu Flash, or x64sc -cartcrt build/apb.crt); disk: build/apb-disk.d64"
 
-test-cart: build/apb.crt
-	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/demo.choices \
-	    tests/cart/demo.expected --shot build/cart-shot.png
-	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/demo.choices \
-	    tests/cart/demo.expected --shot build/cart-disk-shot.png
+test-cart: build/apb.crt build/the-fare.d64
+	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
+	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
+	    > build/cart/desk.c64
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/fare-edge.choices \
+	    tests/cart/fare-edge.expected --c64 tests/c64/fare-edge.expected --shot build/cart-shot.png
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/fare-edge.choices \
+	    tests/cart/fare-edge.expected --c64 tests/c64/fare-edge.expected --shot build/cart-disk-shot.png
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/desk.choices \
+	    tests/cart/desk.expected --c64 build/cart/desk.c64
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/desk.choices \
+	    tests/cart/desk.expected --c64 build/cart/desk.c64
+	cd tests/cart && python3 test_damage.py ../../build/apb.crt ../../build/cart/apb.lbl fare-edge.choices \
+	    --cases 8
 	python3 tests/cart/test_passwords.py build/apb.crt build/cart/apb.lbl --cases 100
 
 clean:

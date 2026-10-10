@@ -413,7 +413,7 @@ again_typo:     .byte " has a typo. Type it again:", 10, 0
 comma:          .byte ", ", 0
 level:          .byte ", level ", 0
 debt:           .byte ". Debt ", 0
-full_stop:      .byte ".", 10, 0
+full_stop:      .byte ".", 10, 10, 0
 unknown:        .byte "?", 0
 symbol_wrong:
         .byte "Something there isn't a letter a pass uses. Let's start again.", 10, 0

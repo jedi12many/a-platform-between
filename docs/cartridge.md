@@ -41,7 +41,9 @@ at $E000, so the reset vector is ours. The boot copies a few bytes to the EasyFl
 and runs them there (ROMH moves to $A000 the moment the mode changes): bank 0, 16 KB
 mode, on to `start` (`cart/start.s`) in ROML, which sets the port (its value before its
 direction: the other way round, every ROM, this code with it, goes out for a moment),
-quiets the chips, and copies the resident engine from ROMH to RAM.
+quiets the chips, and copies the resident engine to RAM. Bank 0 is linked as one 16 KB
+piece (`build/cart/apb.b00`): the start-up, then the resident engine, from ROML on into
+ROMH, which 16 KB mode puts end to end, and the boot in ROMH's last page.
 
 **The disk** (`cart/diskstart.s`): `LOAD"APB",8` and `RUN`. The program has the resident
 engine in it, which it copies up to its place, and the KERNAL stays (its timers on, its
@@ -57,10 +59,12 @@ loads from a disk (`cart/assets.s`).
 |---|---|
 | $0000-$00FF | the zero page ([below](#the-zero-page)) |
 | $0100-$01FF | the stack |
-| $0200-$0FFF | buffers (on a disk, the KERNAL's own are at $0200-$03FF) |
+| $0200-$03FF | buffers (on a disk, the KERNAL's own) |
+| $0400-$0FFF | a string of the story as it's expanded (`EXPAND_AT`) |
 | $1000-$7FFF | the resident engine, copied there at the start (`RESIDENT`), and its state (`BSS`) |
 | $8000-$9FFF | the staging RAM: the asset fetched last ([Assets](#assets)) |
-| $A000-$BFFF | RAM: a chapter, the map, a fight's state |
+| $A000-$B7FF | the chapter: the Departure's car being played (`CAR_AT`, 6 KB) |
+| $B800-$BFFF | the Departure's depot (`DEPOT_AT`, 2 KB) |
 | $C000-$CFFF | VIC bank 3: the text screen ($C000), the view's screen ($C400), the view's characters ($C800) |
 | $D000-$D7FF | our font (`tools/c64font.py`), in the RAM under the I/O, which the VIC sees |
 | $D800-$DFFF | (RAM under the colour RAM, which the VIC sees): sprite shapes, 32 of them |
@@ -106,6 +110,11 @@ No other module knows where an asset came from:
   serial routines hold interrupts off at times, so a split may come late for a frame:
   assets are fetched between scenes.
 
+**The story's assets**: asset 0 is the screen's graphics; a Departure's depot is asset
+1, and its car k (a chapter) asset 2 + k (`tools/cart/departure.py`, from `qsc.py build
+--split`): the file's length in 2 bytes, then the file. The VM copies the depot to $B800
+and the car it's in to $A000, so the staging RAM is free again.
+
 `asset_fetch` remembers what's staged and doesn't fetch it again. Assets are linked at
 $8000 (`cart/cart.cfg`, `cart/disk.cfg`), so the same bytes are the cartridge's chip and
 the disk's file (with its load address).
@@ -125,7 +134,9 @@ Each module owns its part; nothing else touches it.
 | $24-$2F | scratch | arguments and counters (`zp_t0`...): any routine, between calls; never kept across a call |
 | $30-$35 | `password.s` | the text being read or written ($30-$31), a field's value ($32-$33), its bits ($34), a line's check ($35) |
 | $36-$37 | `number.s` | the number being written |
-| $38-$8F | free (the VM, the rules, the music will take theirs from here) | |
+| $38-$39 | `rules.s` | a rule's working number |
+| $3A-$3F | `vm.s`, `depot.s`, `expand.s` | the next byte of code ($3A-$3B), the string being expanded ($3C-$3D), where its text goes ($3E-$3F) |
+| $40-$8F | free (the fight, the music will take theirs from here) | |
 | $90-$FF | the KERNAL's, on a disk (while it loads) | |
 
 The interrupt (`split.s`) uses no zero page at all.
@@ -140,8 +151,11 @@ The interrupt (`split.s`) uses no zero page at all.
   (the command row: waiting for keys, "-- more --", menus, typed lines), `password.s`
   (passwords' symbols, lines, bits and CRC), `passport.s` (the Passport's and the
   Boarding Pass's fields), `desk.s` (the boarding desk), `number.s` (numbers as text),
-  `demo.s` (the demonstration), and more as they come (`sprites.s`, `vm.s`, `combat.s`,
-  `music.s`). The registry's names are generated into `build/cart/names.s`
+  `play.s` (the game: the desk, the trip, the desk again), `depot.s` (a Departure's depot
+  and cars, loaded and checked), `vm.s` (the story VM), `expand.s` (the story's strings),
+  `reward.s` (items, XP, Debt, Echoes, the receipt), `rules.s` (the dice, checks, health,
+  XP), `dice.s` (the dice log), `party.s` (the party frame), and more as they come
+  (`sprites.s`, `combat.s`, `music.s`). The registry's names are generated into `build/cart/names.s`
   (`tools/registry/registry_asm.py`), never written by hand.
   Assets are files of their own (`asset0.s`, ...).
 - **No medium in the game's logic**: no `$DE00`, `$DE02` or KERNAL call outside
@@ -237,6 +251,29 @@ traveler as they are, about the size of a Boarding Pass (four lines). The format
 specified in [boarding.md](boarding.md) beside the pass, with a Python reference, before
 it's written in assembly.
 
+## The story VM
+
+`cart/vm.s` plays a Departure's bytecode as the C engine's `vm/vm.c` does
+([vm-spec.md](vm-spec.md)): the same instructions, the same rules (`rules.s`: the dice,
+checks, skills, health, XP), the same text, the same receipt. `play.s` opens the depot,
+seats the traveler at the boarding desk, boards them, and runs the trip; a story's
+paragraph, chapter title, menu or "(press a key)" goes to the story log as the C64
+version prints it (`fe/c64/c64.c`), a check's roll to the dice log, and the traveler,
+their health a bar of five, to the party frame.
+
+Nothing in an image is trusted. `vm_open` checks the depot as `load_depot` does, each car
+is checked as it loads (its header, its sizes), and every operand as it's used: a jump
+inside the code, a string, flag, var, item, Echo or rating that exists, a string that
+ends inside its car, pairs that are in the table and nest no deeper than 16. (The C
+engine also walks a whole car once when it loads; the cartridge finds the same faults when
+it reaches them.) A fault stops the VM with vm.c's words: "The train has derailed: bad
+jump 1:24". A runaway (20000 instructions without a menu) stops it too.
+
+Until the later milestones: a picture, or a tune, is only a record for the tests
+(`[picture pic02]`, `[music concourse]`, as the C64 version's transcripts have them); a
+fight stops the VM ("no fights yet", A4); at a trip's end there's "(press a key)" and the
+desk again, for the receipt and the Travel Stamp are A3c's.
+
 ## Building and testing
 
 `make cart` builds `build/apb.crt` (`cart/cart.cfg`, `tools/crt.py`) and
@@ -247,12 +284,18 @@ on `$DE02` and `$01`, keeps the I/O apart from the RAM under it, stops on any re
 ROM the game must not touch, times every register access to its cycle, and fires the
 raster interrupt at `$D012`'s line; for the disk, it answers the KERNAL's loads from the
 `.d64`. Keys go in through the emulated keyboard matrix, from a choices file
-(`tests/cart/demo.choices`, an answer a line; "-- more --" is answered by itself), and the
-story log, read as it scrolls, must match its reviewed transcript
-(`tests/cart/demo.expected`; `--update` writes it), the same from the cartridge and the
-disk. It checks the split's timing every frame, the graphics against the tools' own files,
-the view, the frames, that every paragraph is wrapped at 25 as the rule says, and that
-nothing scrolled off unread. `--shot FILE` saves the screen as the VIC-II would show it.
+(`tests/cart/*.choices`, an answer a line; "-- more --" is answered by itself), and the
+story log, read as it scrolls, with each record (a roll, a picture, a tune), must match
+its reviewed transcript (`tests/cart/*.expected`; `--update` writes it), the same from
+the cartridge and the disk. Each route must also tell the story the C64 version (the C
+engine) tells, word for word and roll for roll (`--c64`): *The Fare* by
+`tests/c64/fare-edge.expected`, and the desk's route by the C64 program playing it there
+and then (`tests/c64/run_c64.py`). It checks the split's timing every frame, the graphics
+against the tools' own files, the view, the frames (the party, the last roll), that every
+paragraph is wrapped at 25 as the rule says, and that nothing scrolled off unread.
+`--shot FILE` saves the screen as the VIC-II would show it. `tests/cart/test_damage.py`
+breaks bytes of the depot and the cars and plays them: the VM must stop cleanly or play
+on, and never run anything but its own code.
 
 ## Milestones
 
@@ -264,7 +307,10 @@ nothing scrolled off unread. `--shot FILE` saves the screen as the VIC-II would 
   "-- more --", menus, typing a line.
 - **A2, passwords** (done): the Passport and the Boarding Pass decoded and encoded in
   assembly, checked against `tools/passport/`; the boarding desk.
-- **A3, the story VM**: Quest Script's bytecode, chapters in banks, pictures.
+- **A3a, the story VM** (done): Quest Script's bytecode in assembly, chapters as
+  assets, the story told as the C64 version tells it.
+- **A3b, pictures**: the story's pictures in the view.
+- **A3c, the receipt**: the trip's end, the Travel Stamp, a pass's Rewind.
 - **A4, sprites and the fight**: the multiplexer, the battle map, the combat rules
   (checked against `tools/rules/combat.py`).
 - **A5, music**: the player (`fe/c64/music.s`) moved over, tunes in banks.
