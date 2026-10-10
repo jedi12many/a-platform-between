@@ -10,7 +10,15 @@ PORT_KERNAL     = $36           ; the KERNAL and the I/O in, RAM at $8000-$BFFF:
 PORT_ALL_RAM    = $34           ; RAM everywhere: writes to $D000-$DFFF reach the RAM
 
 ; ------------------------------------------------------------------ the VIC-II
+VIC_SPR_X       = $D000         ; sprite n's x (low 8 bits) at + 2n, its y at + 2n + 1
+VIC_SPR_Y       = $D001
+VIC_SPR_X_HIGH  = $D010         ; each sprite's x bit 8
 VIC_SPR_ENA     = $D015
+VIC_SPR_TALL    = $D017         ; each sprite doubled down
+VIC_SPR_BEHIND  = $D01B         ; each sprite behind the characters' foreground
+VIC_SPR_MULTI   = $D01C         ; each sprite multicolour
+VIC_SPR_WIDE    = $D01D         ; each sprite doubled across
+VIC_SPR_COLOUR  = $D027         ; sprite n's colour at + n
 VIC_CTRL1       = $D011         ; text $1B, bitmap $3B (raster bit 8 always 0 here)
 VIC_RASTER      = $D012
 VIC_CTRL2       = $D016         ; hires $08, multicolour $18 (40 columns)

@@ -4,7 +4,8 @@
 ; Every operand is checked as it's used: a bad image stops the VM ("The train has
 ; derailed"), never reads or writes outside its buffers.
 ;
-; Not yet (A4): FIGHT, FIGHT_YARD and PICK stop the VM.
+; A fight (FIGHT) is fight.s's, in the fight's two assets (2 and 3), fetched and run when
+; it comes. Not yet: the Deep Yards' FIGHT_YARD and PICK stop the VM.
 
         .include "hw.inc"
         .include "mem.inc"
@@ -13,6 +14,7 @@
         .include "receipt.inc"
 
         .export vm_board, vm_run, vm_fail, vm_error, vm_health, vars, yard, failed
+        .export cue_scene
         .import scene_enter, kind, dep_id, flag_count, var_count, var_init, start_scene
         .import picture_count, music_count, music_at, car_index, car_title, code_len
         .import code_end, string_count
@@ -22,6 +24,8 @@
         .import traveler, pass, rng_seed, check, skill_rating, health_max, chk_result
         .import dice_roll, record_line, party_show, log_print, menu_ask, key_wait, keys_clear
         .import picture_show, number_text, skill_lo, skill_hi, item_tier, echo_default
+        .import encounter_count, asset_fetch, fight, view_map, platform_map, ram_copy
+        .import __FIGHT_RUN__, __FIGHT_SIZE__
         .importzp ITEM_COUNT, ECHO_COUNT
         .importzp SKILL_COUNT
 
@@ -34,6 +38,11 @@ SKILL_BASE      = 16                ; RATING 16 + n is skill n
 STAT_COUNT      = 6
 STEPS_MAX       = 20000             ; instructions without a menu: a runaway
 ERROR_MAX       = 30                ; vm.c's message length
+SCENE_FIGHT     = 0                 ; cue_scene
+SCENE_WON       = 1
+SCENE_LOST      = 2
+SCENE_BACK      = 3
+SCENE_CUED      = $F0               ; music_cued: SCENE_CUED + a fight's tune
 
 ; The opcodes vm.s looks at (tools/qsc/opcodes.py).
 OP_SWITCH4      = $04
@@ -128,6 +137,7 @@ vm_board:
         sta music_now
         sta music_cued
         sta car_index
+        sta last_picture
         lda start_scene
         ldx start_scene + 1
         jmp scene_enter
@@ -517,6 +527,7 @@ op_picture:
         ldx #>picture_record
         jsr record_line
         pla                         ; and in the view
+        sta last_picture
         jmp picture_show
 
 op_music:
@@ -579,6 +590,26 @@ cue_music:
 @send:  lda #<music_record
         ldx #>music_record
         jmp record_line
+
+; cue_scene: a fight's tune (client/cue.c's apb_cue_scene, apb_cue_back): A = SCENE_FIGHT,
+; SCENE_WON or SCENE_LOST cues "battle", "won" or "lost"; SCENE_BACK the story's tune
+; again. For now, only the record. Changes A, X, Y; zp_t0, zp_t1.
+cue_scene:
+        cmp #SCENE_BACK
+        bcc @fight
+        jmp cue_music
+@fight: tax
+        ora #SCENE_CUED
+        cmp music_cued
+        beq @same
+        sta music_cued
+        lda scene_lo, x
+        pha
+        lda scene_hi, x
+        tax
+        pla
+        jmp record_line
+@same:  rts
 
 op_pause:
         lda #<press
@@ -928,9 +959,71 @@ op_check:
         jmp push
 @out:   rts
 
-op_fight:                           ; FIGHT, FIGHT_YARD, PICK: A4
-        lda #<msg_no_fights
-        ldx #>msg_no_fights
+op_fight:                           ; FIGHT: the encounter, the surprise (0-2)
+        jsr fetch8
+        sta encounter
+        jsr fetch8
+        cmp #3
+        bcs @bad
+        tax
+        lda encounter
+        cmp encounter_count
+        bcc @good
+@bad:   lda #<msg_bad_fight
+        ldx #>msg_bad_fight
+        jmp vm_fail
+@good:  stx surprise
+        lda #ASSET_FIGHT            ; the fight's code: its second part copied to EXPAND_AT
+        jsr asset_fetch             ; (the story's text doesn't need it till the fight's
+        bcs @no_fight               ; over), its first staged, and both run where they are
+        lda #<STAGING
+        sta zp_src
+        lda #>STAGING
+        sta zp_src + 1
+        lda #<__FIGHT_RUN__
+        sta zp_dst
+        lda #>__FIGHT_RUN__
+        sta zp_dst + 1
+        lda #<__FIGHT_SIZE__
+        sta zp_len
+        lda #>__FIGHT_SIZE__
+        sta zp_len + 1
+        jsr ram_copy                ; (plain RAM: the interrupt goes on)
+        lda #ASSET_BATTLE
+        jsr asset_fetch
+        bcc @staged
+@no_fight:
+        lda #<msg_no_fight
+        ldx #>msg_no_fight
+        jmp vm_fail
+@staged:
+        lda encounter
+        ldx surprise
+        ldy health
+        jsr fight
+        bcs @out                    ; (a bad encounter: vm_fail has said so)
+        stx health
+        sec                         ; 0 won, 1 lost, 2 fled
+        sbc #1
+        ldx #0
+        jsr push
+        lda #SCENE_BACK             ; the story's tune again, and its view
+        jsr cue_scene
+        lda last_picture
+        cmp #$FF
+        beq @map
+        jsr picture_show
+        jmp @party
+@map:   lda #<platform_map
+        ldx #>platform_map
+        jsr view_map
+@party: lda health
+        jmp party_show
+@out:   rts
+
+op_yard:                            ; FIGHT_YARD, PICK: the Deep Yards, not yet
+        lda #<msg_no_yards
+        ldx #>msg_no_yards
         jmp vm_fail
 
 op_set: jsr fetch16
@@ -1187,10 +1280,10 @@ op_table:
         .word op_bad - 1, op_bad - 1, op_bad - 1, op_bad - 1
         .word op_compare - 1, op_compare - 1, op_compare - 1, op_compare - 1    ; $30
         .word op_compare - 1, op_compare - 1, op_compare - 1, op_compare - 1
-        .word op_not - 1, op_check - 1, op_fight - 1, op_fight - 1
+        .word op_not - 1, op_check - 1, op_fight - 1, op_yard - 1
         .word op_bad - 1, op_bad - 1, op_bad - 1, op_bad - 1
         .word op_set - 1, op_clr - 1, op_let - 1, op_add - 1                   ; $40
-        .word op_sub - 1, op_fight - 1, op_bad - 1, op_bad - 1
+        .word op_sub - 1, op_yard - 1, op_bad - 1, op_bad - 1
         .word op_give - 1, op_take - 1, op_xp - 1, op_debt - 1
         .word op_echo_set - 1, op_heal - 1
         .assert * - op_table = (OP_LAST + 1) * 2, error, "an opcode without a handler"
@@ -1243,7 +1336,14 @@ msg_bad_debt:       .byte "bad debt", 0
 msg_bad_echo:       .byte "bad echo", 0
 msg_overflow:       .byte "stack overflow", 0
 msg_underflow:      .byte "stack underflow", 0
-msg_no_fights:      .byte "no fights yet", 0
+scene_battle:       .byte "[music battle]", 0
+scene_won:          .byte "[music won]", 0
+scene_lost:         .byte "[music lost]", 0
+scene_lo:           .byte <scene_battle, <scene_won, <scene_lost
+scene_hi:           .byte >scene_battle, >scene_won, >scene_lost
+msg_no_yards:       .byte "no yards yet", 0
+msg_bad_fight:      .byte "bad fight", 0
+msg_no_fight:       .byte "can't load the fight", 0
 
         .segment "BSS"
 vm_error:       .res ERROR_MAX + 14 ; why the VM failed, and where
@@ -1284,3 +1384,6 @@ which_var:      .res 1
 flag_hi:        .res 1
 music_now:      .res 1              ; the tune the story has on ($FF: none)
 music_cued:     .res 1              ; the one cued last
+last_picture:   .res 1              ; the picture in the view, or $FF (a fight puts it back)
+encounter:      .res 1
+surprise:       .res 1

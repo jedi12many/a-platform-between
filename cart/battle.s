@@ -17,6 +17,7 @@
         .export fighters, map_w, map_h, fighter_count, result, round_no, map_tiles, cost_to
         .export ev_kind, ev_actor, ev_target, ev_x, ev_y, ev_value, ev_roll, ev_total
         .export ev_tn, ev_result, act_x, act_y, act_kind, act_target
+        .export can_who, can_target, can_x, can_y
         .import new_fighter, hit_tn, damage, dmg, flee_tn, tile_cost, tile_blocks
         .import d100, check, resolve, chk_roll, chk_total, chk_tn, chk_result
 

@@ -64,6 +64,11 @@ EV_GONE         = 8
 EV_END          = 9
 EV_FREE         = 10
 
+; What fightext.s's fight_text made of an event.
+TEXT_NOTHING    = 0
+TEXT_HEADING    = 1             ; "-- Round 2 --"
+TEXT_SENTENCE   = 2
+
 BATTLE_ON       = 0
 BATTLE_WON      = 1
 BATTLE_LOST     = 2

@@ -1,9 +1,10 @@
 ; The screen set up (docs/cartridge.md, "The screen"): the VIC in bank 3, our font, the
 ; map's tiles and their characters in, from asset 0, and the colours.
 ;
-; Asset 0 (cart/asset0.s): the font (2 KB), the map's characters (2 KB) and the tiles'
-; table (96 bytes: 8 tiles of 4 characters and 4 colours, then each one's 4 characters
-; with the reach dot; tools/battlegfx.py --cart16).
+; Asset 0 (cart/asset0.s): the font (2 KB), the map's characters (2 KB), the tiles'
+; table (128 bytes: 8 tiles of 4 characters and 4 colours, then each one's 4 characters
+; with the reach dot, then with the cursor) and the figures' sprite shapes (2 KB);
+; tools/battlegfx.py --cart16.
 
         .include "hw.inc"
         .include "mem.inc"
@@ -16,6 +17,7 @@ ASSET_SCREEN    = 0
 A0_FONT         = STAGING
 A0_CHARS        = STAGING + $0800
 A0_TILES        = STAGING + $1000
+A0_FIGURES      = A0_TILES + TILES_SIZE
 
         .segment "RESIDENT"
 
@@ -54,6 +56,10 @@ screen_install:
         ldx #>A0_CHARS
         ldy #>VIEW_CHARS
         jsr copy_2k
+        lda #<A0_FIGURES            ; the figures, under the colour RAM
+        ldx #>A0_FIGURES
+        ldy #>SPRITE_SHAPES
+        jsr copy_2k
         ldx #TILES_SIZE - 1         ; the tiles' table
 @tiles: lda A0_TILES, x
         sta tiles, x
@@ -76,4 +82,4 @@ copy_2k:
 
         .segment "BSS"
 tiles:  .res TILES_SIZE             ; 8 tiles: 4 characters, then 4 colours; then the
-                                    ; marked characters, 4 a tile
+                                    ; marked characters, 4 a tile; then the cursor's

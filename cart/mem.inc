@@ -24,9 +24,12 @@ QR_LOG          = EXPAND_AT + $0600     ; 256
 QR_CODEWORDS    = EXPAND_AT + $0700     ; 100
 QR_GENERATOR    = EXPAND_AT + $0780     ; 21
 ASSET_ENDING    = 1             ; code: a trip's end (receipt.s, stamp.s, qr.s), run here
-ASSET_BATTLE    = 2             ; code: a fight (combat.s, battle.s), run here
-ASSET_DEPOT     = 3             ; the Departure's assets: its depot, then its cars (and
-ASSET_CAR0      = 4             ; its pictures: the depot says where)
+ASSET_BATTLE    = 2             ; code: a fight's rules and screen (combat.s, battle.s,
+                                ; tactics.s), run here
+ASSET_FIGHT     = 3             ; code: the fight itself (fight.s, fightext.s), copied to
+                                ; EXPAND_AT and run there, beside asset 2
+ASSET_DEPOT     = 4             ; the Departure's assets: its depot, then its cars (and
+ASSET_CAR0      = 5             ; its pictures: the depot says where)
 
 ; ------------------------------------------------------------------ VIC bank 3
 TEXT_SCREEN     = $C000         ; the frames (and the status row)
@@ -34,6 +37,7 @@ VIEW_SCREEN     = $C400         ; the view: the map's characters, or a picture's
 VIEW_CHARS      = $C800         ; the map's tiles (tools/battlegfx.py)
 FONT            = $D000         ; our font (tools/c64font.py), under the I/O
 SPRITE_SHAPES   = $D800         ; under the colour RAM: 32 shapes
+SPRITE_POINTERS = VIEW_SCREEN + $03F8   ; the view's screen's: the sprites are only there
 PICTURE         = $E000         ; a multicolour bitmap, under the KERNAL
 VIC_BANK3       = %00           ; CIA2_PRA's bits 0-1
 
@@ -55,12 +59,23 @@ SQUARE          = 16
 SQUARES_ACROSS  = 20
 SQUARES_DOWN    = 8
 TILE_RECORD     = 8             ; a tile in the table: 4 characters, then 4 colours
-TILES_SIZE      = 8 * TILE_RECORD + 8 * 4   ; and each tile's 4 with the reach dot
+TILES_SIZE      = 8 * TILE_RECORD + 2 * 8 * 4   ; and each tile's 4 with the reach dot,
+                                            ; then each one's 4 with the cursor
+TILES_MARKED    = 8 * TILE_RECORD       ; (where they start in the table)
+TILES_CURSOR    = TILES_MARKED + 8 * 4
+; The figures (tools/battlegfx.py --cart16): 16 looks, each a body and its fallen body,
+; sprite shapes 2n and 2n + 1 at SPRITE_SHAPES (the VIC's pointer SHAPE_POINTER + 2n).
+LOOKS           = 16
+SHAPE_POINTER   = (SPRITE_SHAPES - $C000) / 64
+STRANGER        = 7                     ; the look of one with no look of its own
+FOE_LOOKS       = 8                     ; foe k's is FOE_LOOKS + k
 ; A figure (24 x 21 sprite) on its square: centred across, its feet near the square's
 ; foot and its head over the square above. Its last line must be over the view's last
 ; three (raster 176 at most: split.s's timing); with these, the bottom row's is 176.
 FIGURE_DX       = -4
 FIGURE_DY       = -7
+SPRITE_LEFT     = 24            ; the screen's left and top in the VIC's sprite places
+SPRITE_TOP      = 50
 LOG_TOP         = 16            ; the story log: rows 16-23, columns 0-24
 LOG_ROWS        = 8
 LOG_LAST        = LOG_TOP + LOG_ROWS - 1
@@ -85,6 +100,10 @@ KEY_UP          = 1             ; the cursor keys
 KEY_DOWN        = 2
 KEY_LEFT        = 3
 KEY_RIGHT       = 4
+KEY_UP_LEFT     = 5             ; the joystick's diagonals (and, in a fight, the digits')
+KEY_UP_RIGHT    = 6
+KEY_DOWN_LEFT   = 7
+KEY_DOWN_RIGHT  = 9
 KEY_DELETE      = 8             ; INST/DEL
 KEY_RETURN      = 13
 KEY_STOP        = 27            ; RUN/STOP
@@ -95,6 +114,7 @@ WHITE           = 1
 RED             = 2
 CYAN            = 3
 GREEN           = 5
+BLUE            = 6
 YELLOW          = 7
 DARK_GREY       = 11
 GREY            = 12

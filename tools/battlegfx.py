@@ -267,6 +267,33 @@ def marked16(art):
     return art
 
 
+def outlined(rows):
+    """A body with its outline drawn in: every see-through dot next to it (four ways) made
+    an a, the sprites' first shared colour, which the cartridge makes black. Its figures
+    are a sprite each, with none to spare for the C version's hires outline."""
+    rows = [r[:12].ljust(12, ".") for r in rows[:21]] + ["." * 12] * (21 - len(rows[:21]))
+    out = [list(r) for r in rows]
+    for y in range(21):
+        for x in range(12):
+            if rows[y][x] != ".":
+                continue
+            if any(0 <= x + dx < 12 and 0 <= y + dy < 21 and rows[y + dy][x + dx] != "."
+                   for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                out[y][x] = "a"
+    return ["".join(r) for r in out]
+
+
+def cursor16(art):
+    """The tile with the cursor on it: a bracket at each corner, in the square's own colour
+    (the cartridge sets the cursor's colour in the colour RAM)."""
+    art = [list(r) for r in art]
+    for y, xs in ((0, (0, 1, 6, 7)), (1, (0, 7)), (2, (0, 7)), (13, (0, 7)), (14, (0, 7)),
+                  (15, (0, 1, 6, 7))):
+        for x in xs:
+            art[y][x] = "o"
+    return art
+
+
 def chars16(art, own):
     """A 16-pixel tile's 4 characters (bytes) and colours, checked against the cell rule."""
     code = {"k": 0, "d": 1, "g": 2, "o": 3}
@@ -287,10 +314,22 @@ def chars16(art, own):
 
 
 def build16():
-    """The cartridge's map graphics: the characters (2 KB: 0 blank, then each tile's four,
-    then each tile's four with the reach dot) and the table (96 bytes: 8 x (4 characters,
-    4 colours), then 8 x the 4 marked characters). Characters left to right, top to
-    bottom."""
+    """The cartridge's graphics for a map (docs/cartridge.md, "The view"):
+
+        0     the characters (2 KB: 0 blank, then each tile's four, each tile's four with
+              the reach dot, each tile's four with the cursor)
+        2048  the table (128 bytes: 8 x (4 characters, 4 colours), then 8 x the 4 marked
+              characters, then 8 x the 4 with the cursor); characters left to right, top
+              to bottom
+        2176  the figures' sprite shapes (2 KB, for $D800): look n's body is shape 2n, and
+              its fallen body 2n + 1; multicolour, the C version's bodies with an outline
+              drawn in (outlined)
+        4224  each look's own colour (16)
+        4240  the foes' names, 8 x 21 bytes: a length, then the bestiary's name (a look is
+              found by its name: foe k's look is 8 + k)
+
+    The looks are the C version's: the races at their ids (0-6), a stranger at 7, the foes
+    at 8-15."""
     charset = [[0] * 8 for _ in range(256)]
     table, marks = bytearray(), bytearray()
     at = 1
@@ -302,13 +341,29 @@ def build16():
         for data in chars:
             charset[at] = data
             at += 1
-    for art, own in TILES16:
-        chars, _ = chars16(marked16(art), own)
-        marks += bytes(range(at, at + 4))
-        for data in chars:
-            charset[at] = data
-            at += 1
-    return bytes(b for ch in charset for b in ch) + bytes(table) + bytes(marks)
+    for change in (marked16, cursor16):
+        for art, own in TILES16:
+            chars, _ = chars16(change(art), own)
+            marks += bytes(range(at, at + 4))
+            for data in chars:
+                charset[at] = data
+                at += 1
+    shapes, colours = bytearray(), bytearray()
+    order = RACES + ["STRANGER"] + FOES
+    for name in order:
+        colour, rows = LOOKS[name]
+        shapes += (bytes(mc_sprite(outlined(rows)) + [0])
+                   + bytes(mc_sprite(outlined(fallen(rows))) + [0]))
+        colours.append(colour)
+    shapes += bytes(2048 - len(shapes))
+    colours += bytes(16 - len(colours))
+    names = bytearray()
+    for n in FOES:
+        shown = REG["foes"][n]["display"].encode("ascii")[:20]
+        names += bytes([len(shown)]) + shown.ljust(20, b"\0")
+    names += bytes(168 - len(names))
+    return (bytes(b for ch in charset for b in ch) + bytes(table) + bytes(marks) + bytes(shapes)
+            + bytes(colours) + bytes(names))
 
 
 # ------------------------------------------------------------------ figures

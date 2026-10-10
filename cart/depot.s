@@ -10,6 +10,7 @@
         .export vm_open, scene_enter
         .export kind, dep_id, level_max, flag_count, var_count, var_init
         .export pair_count, pairs_at, picture_count, pictures_at, music_count, music_at
+        .export encounter_count, encounters_at
         .export car_index, car_title, code_len, code_end, string_count, offsets_at
         .export strings_at, car_end, picture_asset
         .import asset_fetch, ram_copy, vm_fail, failed
@@ -235,7 +236,13 @@ vm_open:
         ; depot. What's in one is checked when a fight uses it.
         jsr at_byte
         cmp #MAX_ENCOUNTERS + 1
-        bcs @bad_encounters
+        bcc @count
+        jmp @bad_encounters
+@count: sta encounter_count
+        ldy zp_t0                   ; (the first one's length)
+        sty encounters_at
+        ldy zp_t1
+        sty encounters_at + 1
         tax
         beq @tunes
 @encounter:
@@ -638,7 +645,8 @@ pairs_at:       .res 2
 forward:        .res 1
 picture_count:  .res 1
 pictures_at:    .res 2
-encounter_count: .res 1
+encounter_count: .res 1            ; the depot's encounters: how many, and where the first
+encounters_at:  .res 2              ; one's length is (each is its length, then it)
 music_count:    .res 1
 music_at:       .res 2
 entry:          .res 2

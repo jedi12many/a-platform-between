@@ -7,3 +7,5 @@
         .word $8000
         .segment "A02ADDR"
         .word $8000
+        .segment "A03ADDR"
+        .word $8000

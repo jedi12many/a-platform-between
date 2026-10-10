@@ -86,7 +86,7 @@ The raster interrupt (`cart/split.s`) does it, twice a frame:
 
 | Line | Sets | Then |
 |---|---|---|
-| 250 (under the screen) | the view: `$D018` its screen and characters, `$D016` multicolour, `$D011` (bitmap mode for a picture), `$D021` (a picture's background) | the music, the keyboard, the sprites' first eight |
+| 250 (under the screen) | the view: `$D018` its screen and characters, `$D016` multicolour, `$D011` (bitmap mode for a picture), `$D021` (a picture's background) | the keyboard and the joystick (the music, with A5) |
 | 176 (the view's row 15) | the frames' background, black: under a picture's lower bar, which the background doesn't touch | |
 | 177 (just before row 16) | the frames: `$D018` = text screen $C000 and font $D000, hires, text mode | |
 
@@ -115,8 +115,11 @@ No other module knows where an asset came from:
 **The assets**: asset 0 is the screen's graphics; asset 1 is code, a trip's end (the
 receipt, the Travel Stamp, its QR code: `receipt.s`, `stamp.s`, `qr.s`, `qrview.s`),
 linked at $8000 and run there once it's staged: nothing else is fetched while it runs;
-asset 2 is code too, a fight (the rules, `combat.s`, and the battle, `battle.s`), staged
-and run the same way. A Departure's depot is asset 3, its car k (a chapter) asset 4 + k, and its pictures the
+assets 2 and 3 are code too, a fight: asset 2 (the rules, `combat.s`; the battle,
+`battle.s`; the battle screen, `tactics.s`) staged and run the same way, and asset 3 (the
+fight itself, `fight.s`, and its words, `fightext.s`) staged first and copied on to
+`EXPAND_AT`, $0400, and run there: the story expands no text while it fights. A
+Departure's depot is asset 4, its car k (a chapter) asset 5 + k, and its pictures the
 assets after the cars (`tools/cart/departure.py`, from `qsc.py build --split`): the
 file's length in 2 bytes, then the file (the depot's with the asset of its first picture
 between). The VM copies the depot to $B800 and the car it's in to $A000, so the staging
@@ -152,7 +155,8 @@ Each module owns its part; nothing else touches it.
 | $38-$39 | `rules.s` | a rule's working number |
 | $3A-$3F | `vm.s`, `depot.s`, `expand.s` | the next byte of code ($3A-$3B), the string being expanded ($3C-$3D), where its text goes ($3E-$3F) |
 | $40-$41 | `qr.s`, `qrview.s` | a module's place in the QR code, or a byte of the view's bitmap |
-| $42-$8F | free (the fight, the music will take theirs from here) | |
+| $42-$45 | `fight.s`, `fightext.s` (in a fight) | the encounter's record, a foe's name |
+| $46-$8F | free (the music will take its from here) | |
 | $90-$FF | the KERNAL's, on a disk (while it loads) | |
 
 The interrupt (`split.s`) uses no zero page at all.
@@ -172,8 +176,9 @@ The interrupt (`split.s`) uses no zero page at all.
   `reward.s` (items, XP, Debt, Echoes, the receipt), `rules.s` (the dice, checks, health,
   XP), `dice.s` (the dice log), `party.s` (the party frame), `picture.s` (the story's
   pictures), `receipt.s` (a trip's end), `stamp.s` (the Travel Stamp), `qr.s` (a QR
-  code), `qrview.s` (a QR code in the view), and more as they come
-  (`sprites.s`, `combat.s`, `music.s`). The registry's names are generated into `build/cart/names.s`
+  code), `qrview.s` (a QR code in the view), `combat.s` (the combat rules), `battle.s`
+  (the battle), `tactics.s` (the battle screen), `fight.s` (a fight, from its encounter),
+  `fightext.s` (a fight in words), and more as they come (`music.s`). The registry's names are generated into `build/cart/names.s`
   (`tools/registry/registry_asm.py`), never written by hand.
   Assets are files of their own (`asset0.s`, ...).
 - **No medium in the game's logic**: no `$DE00`, `$DE02` or KERNAL call outside
@@ -197,14 +202,21 @@ tile of 2 x 2 multicolour characters: 20 squares across and 8 down fill the view
 its row, so every place is worked out with shifts, never a multiplication. The tiles are
 the eight of the rules' terrain (open, wall, pit, rough, cover, hazard, high ground,
 exit), flat, in `tools/battlegfx.py --cart16`: 2 KB of characters (0 blank, each tile's
-four, each tile's four with the reach dot) and a 96-byte table (each tile's 4
-characters and 4 colours, then its 4 marked ones), in asset 0.
+four, each tile's four with the reach dot, each tile's four with the cursor: a bracket at
+each corner) and a 128-byte table (each tile's 4 characters and 4 colours, then its 4
+marked ones, then its 4 with the cursor), in asset 0. The cursor is drawn in the map's
+own characters, its colour the square's colour RAM (yellow to move, red to aim), so it
+needs no sprite.
 
-A figure is the C version's, a sprite of 24 x 21 (A4): centred on its square across
+A figure is the C version's body, a sprite of 24 x 21: centred on its square across
 (`FIGURE_DX`, -4) and standing on it, its feet near the square's foot and its head over
 the square above (`FIGURE_DY`, -7), so figures overlap the scenery behind them. That
-also keeps every figure clear of the view's last two lines, which the split needs
-(`cart/mem.inc`).
+also keeps every figure clear of the split's lines, 176-178 (`cart/mem.inc`; `make
+test-cart` checks it). A fight has eight fighters at most, so fighter n is sprite n and
+nothing is multiplexed. With no second sprite for the C version's hires outline, the
+outline is drawn into the body (`battlegfx.py`'s `outlined`), in the sprites' first
+shared colour, black on the cartridge. The 16 looks' bodies and fallen bodies, 32
+shapes, are in asset 0 and copied to $D800 at the start.
 
 ## Keys
 
@@ -212,8 +224,10 @@ The game reads the keyboard itself (`cart/keys.s`), once a frame from the raster
 interrupt, on either medium: CIA 1's matrix, a row at a time. Each key newly down goes
 into a buffer of 8, as ASCII (capitals with SHIFT), or a code for RETURN, DEL, RUN/STOP
 and the cursor keys (`KEY_` in `cart/mem.inc`); `key_get` takes the next. A joystick in
-port 1 reads like keys (it shares the matrix's columns); the one in port 2 will be read
-apart (A4).
+port 1 reads like keys (it shares the matrix's columns). The one in port 2 is read first,
+on port A with no row selected: its directions as the cursor keys (and `KEY_` codes for
+the diagonals), repeating while held, and its button as RETURN; while it's pushed, the
+matrix isn't read (it pulls port A's lines low, which would read as keys).
 
 The command row (`cart/command.s`), row 24, is where the game waits for keys:
 
@@ -309,9 +323,19 @@ standard's penalty is an encoder's nicety). It's drawn in hires, black modules o
 square with a quiet zone of 4 modules, 4 pixels a module if it fits, else 3. The view
 goes back to the platform's map at the desk.
 
+A fight (`FIGHT`) is played as the C64 version plays it (`client/tactics.c` on
+`core/src/battle.c`): `fight.s` checks the encounter's record as it reads it (as vm.c's
+`encounter_ok` does, but when the fight comes: a bad one stops the VM, "bad encounter")
+and sets up the battle; `battle.s` plays it, the same as `core/src/battle.c`, event for
+event; `tactics.s` shows it and asks for the traveler's turns: the map in the view, the
+reach marks, the cursor, the command bar (Move, Aim, Guard, Wait, Flee, Quick, Done) on
+the command row, keys or the joystick; `fightext.s` tells it in `client/battle_text.c`'s
+words, each roll in the dice log. After it, the story's tune and its picture come back.
+The Deep Yards (`FIGHT_YARD`, `PICK`) stop the VM ("no yards yet").
+
 Until the later milestones: a tune is only a record for the tests (`[music
-concourse]`, as the C64 version's transcripts have them; so is each picture shown,
-`[picture pic02]`); a fight stops the VM ("no fights yet", A4).
+concourse]`, `[music battle]`, as the C64 version's transcripts have them; so is each
+picture shown, `[picture pic02]`; and each prompt in a fight, `[Kestrel: choose.]`).
 
 ## Building and testing
 
@@ -328,11 +352,17 @@ story log, read as it scrolls, with each record (a roll, a picture, a tune), mus
 its reviewed transcript (`tests/cart/*.expected`; `--update` writes it), the same from
 the cartridge and the disk. Each route must also tell the story the C64 version (the C
 engine) tells, word for word and roll for roll (`--c64`): *The Fare* by
-`tests/c64/fare-edge.expected`, and the desk's route by the C64 program playing it there
-and then (`tests/c64/run_c64.py`). It checks the split's timing every frame, the graphics
+`tests/c64/fare-edge.expected`, and the desk's route and the fight's (`fare-fight`, into
+Lost Property: a Move, an Aim, then Quick) by the C64 program playing them there and then
+(`tests/c64/run_c64.py`). A choices line `joy right` or `joy fire` pushes the joystick in
+port 2 instead (the C64's run of the route has the keypad's key for it). It checks the split's timing every frame, the graphics
 against the tools' own files, the view (the map at the desk; at the end, the last picture
 as `tools/c64pic.py` converts it), the frames (the party, the last roll), that every
-paragraph is wrapped at 25 as the rule says, and that nothing scrolled off unread.
+paragraph is wrapped at 25 as the rule says, that nothing scrolled off unread, and that no
+figure's sprite reaches the split's lines. The party's health is checked against the
+rules and the fights' words (what the attacks say they took). `--shot-at RECORD FILE`
+saves the screen when a record is made: `build/cart-fight-shot.png`, the fight as Kestrel
+aims.
 A trip that ends shows its Travel Stamp's QR code: its modules must be the `qrcode`
 library's for the same text, and OpenCV, reading the view as the VIC shows it, must get
 the stamp back (`segno` isn't the reference: it adds a byte the standard doesn't, when the
@@ -341,8 +371,10 @@ data's terminator ends on a byte). Disks with a `PASS` file (`tests/cart/kestrel
 stamp encoder against `tools/passport/stamp.py` on random receipts, and QR codes of every
 version. `--shot FILE` saves the screen as the VIC-II would show it.
 `tests/cart/test_damage.py`
-breaks bytes of the depot, the cars and the pictures and plays them: the VM must stop cleanly or play
-on, and never run anything but its own code.
+breaks bytes of the depot, the cars and the pictures and plays them (and, with `--fights`,
+of the fight's encounter, playing into the fight): the VM must stop cleanly or play on,
+and never run anything but its own code. `tests/cart/test_battle.py` holds the fight's
+rules and battle to the references (below, A4).
 
 ## Milestones
 
@@ -359,7 +391,9 @@ on, and never run anything but its own code.
 - **A3b, pictures** (done): the story's pictures in the view.
 - **A3c, the receipt** (done): the trip's end, the Travel Stamp as lines and as a QR
   code, a disk's `PASS` file; a pass's Rewind (in A3a's VM).
-- **A4, sprites and the fight**: the multiplexer, the battle map, the combat rules
-  (checked against `tools/rules/combat.py`).
+- **A4, the fight** (done): the combat rules (checked against `tools/rules/combat.py`),
+  the battle (against `core/src/battle.c`'s reviewed logs and random battles), the battle
+  screen, the joystick, `FIGHT` in the VM. (No multiplexer: a fight's eight fighters are
+  the VIC's eight sprites. The Deep Yards come later.)
 - **A5, music**: the player (`fe/c64/music.s`) moved over, tunes in banks.
 - **A6, trip passwords**: saving and resuming a trip.

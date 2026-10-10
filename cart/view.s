@@ -7,7 +7,11 @@
         .include "mem.inc"
         .include "zp.inc"
 
-        .export view_tile, view_map
+VIEW_PLAIN      = 0                 ; view_set
+VIEW_MARKED     = 1
+VIEW_CURSOR     = 2
+
+        .export view_tile, view_square, view_map, view_set, view_ink
         .import tiles, row_lo, row_hi, view_mode
 
         .segment "RESIDENT"
@@ -18,10 +22,23 @@
 ;   Before:  $01 = $35; the tiles in (screen.s).
 ;   Changes: A, X, Y; zp_tile_at, zp_tile_col.
 view_tile:
-        asl a                       ; its record: 8 bytes
-        asl a
-        asl a
         pha
+        lda #VIEW_PLAIN
+        sta view_set
+        lda #0
+        sta view_ink
+        pla
+        ; (on into view_square)
+
+; view_square: a tile at a square of the view, as view_set says: plain, with the reach
+; dot, or with the cursor; in its own colours, or with view_ink for all four characters
+; (the cursor's colour, multicolour). Tile $FF: the square blank, black.
+;   Takes:   A = the tile (0-7, or $FF); X = the square's column (0-19); Y = its row (0-7);
+;            view_set, view_ink.
+;   Before:  $01 = $35; the tiles in (screen.s).
+;   Changes: A, X, Y; zp_tile_at, zp_tile_col.
+view_square:
+        sta square_tile
         tya                         ; its top row of characters: 2 x the square's row
         asl a
         tay
@@ -37,20 +54,62 @@ view_tile:
         clc
         adc #>VIEW_TO_COLOUR
         sta zp_tile_col + 1
-        pla
-        tax
-        ldy #0                      ; the top two
+        ldx #0                      ; its four characters and colours
+        lda square_tile
+        cmp #$FF
+        bne @tile
+@blank: lda #0
+        sta cells, x
+        sta inks, x
+        inx
+        cpx #4
+        bne @blank
+        beq @put                    ; (always)
+@tile:  asl a                       ; its record: 8 bytes
+        asl a
+        asl a
+        tay
+@ink:   lda tiles + 4, y            ; the colours
+        sta inks, x
+        lda view_ink
+        beq @own
+        sta inks, x
+@own:   iny
+        inx
+        cpx #4
+        bne @ink
+        lda square_tile             ; the characters: plain, or the 4 marked or cursor ones
+        asl a
+        asl a
+        ldx view_set
+        cpx #VIEW_PLAIN
+        bne @set
+        asl a
+        tay
+        jmp @chars
+@set:   clc
+        adc set_at, x
+        tay
+@chars: ldx #0
+@char:  lda tiles, y
+        sta cells, x
+        iny
+        inx
+        cpx #4
+        bne @char
+@put:   ldy #0                      ; the top two, and the two under them
+        ldx #0
         jsr two
-        ldy #COLS                   ; and the two under them
-two:    lda tiles, x
+        ldy #COLS
+two:    lda cells, x
         sta (zp_tile_at), y
-        lda tiles + 4, x
+        lda inks, x
         sta (zp_tile_col), y
         inx
         iny
-        lda tiles, x
+        lda cells, x
         sta (zp_tile_at), y
-        lda tiles + 4, x
+        lda inks, x
         sta (zp_tile_col), y
         inx
         rts
@@ -93,3 +152,13 @@ view_map:
         cmp #SQUARES_DOWN
         bne @row
         rts
+
+; Where the marked and the cursor's characters start in the tiles' table (view_set 1, 2).
+set_at: .byte 0, TILES_MARKED, TILES_CURSOR
+
+        .segment "BSS"
+view_set:       .res 1              ; view_square: VIEW_PLAIN, _MARKED or _CURSOR
+view_ink:       .res 1              ; and 0, or the colour for all four
+square_tile:    .res 1
+cells:          .res 4
+inks:           .res 4

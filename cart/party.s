@@ -1,15 +1,19 @@
 ; The party frame (docs/frames.md): rows 16-19, columns 26-39. For now one traveler, in
 ; row 16: their name, and their health as a bar of five in halves (as the C64 version's
-; hal_frame_member draws it), red at a third or less.
+; hal_frame_member draws it), red at a third or less. In a fight, `party_state` says
+; whose turn it is ("> " before their name, in yellow) and who's down ("down" for a bar).
 
         .include "hw.inc"
         .include "mem.inc"
         .include "zp.inc"
 
-        .export party_show
+        .export party_show, party_state
         .import text_at, name_text, health_max
 
 BAR_CELLS       = 5
+MEMBER_READY    = 0                 ; party_state
+MEMBER_TURN     = 1
+MEMBER_DOWN     = 2
 
         .segment "RESIDENT"
 
@@ -22,16 +26,36 @@ party_show:
         sta health
         jsr health_max
         sta most
-        lda #SIDE_COL + 1           ; the name, white
+        lda #' '                    ; their turn: ">", and the name yellow
+        ldx #WHITE
+        ldy party_state
+        cpy #MEMBER_TURN
+        bne @mark
+        lda #'>'
+        ldx #YELLOW
+@mark:  sta TEXT_SCREEN + PARTY_TOP * COLS + SIDE_COL
+        stx zp_t1
+        lda #SIDE_COL + 1           ; the name
         sta zp_t0
-        lda #WHITE
-        sta zp_t1
         lda #APB_NAME
         sta zp_t2
         jsr name_text
         ldy #PARTY_TOP
         jsr text_at
-        ; halves = health x 10 / most (1 at least if there's any health left)
+        lda party_state             ; down: "down", for the bar
+        cmp #MEMBER_DOWN
+        bne @bar
+        lda #BLUE
+        sta zp_t1
+        lda #COLS - BAR_CELLS
+        sta zp_t0
+        lda #BAR_CELLS
+        sta zp_t2
+        lda #<down
+        ldx #>down
+        ldy #PARTY_TOP
+        jmp text_at
+@bar:   ; halves = health x 10 / most (1 at least if there's any health left)
         lda health
         sta tenfold
         lda #0
@@ -123,7 +147,10 @@ party_show:
         ldy #PARTY_TOP
         jmp text_at
 
+down:   .byte "down", 0
+
         .segment "BSS"
+party_state:    .res 1              ; MEMBER_*
 health:         .res 1
 most:           .res 1
 tenfold:        .res 2

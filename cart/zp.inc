@@ -40,6 +40,10 @@ zp_out          = $3E           ; 2: where its text goes
 ; qr.s, qrview.s (at a trip's end)
 zp_qr           = $40           ; 2: a module's place in the QR code, or the view's bitmap
 
+; fight.s, fightext.s (in a fight)
+zp_enc          = $42           ; 2: the encounter's record (in the depot)
+zp_name         = $44           ; 2: a foe's name
+
 ; scratch: arguments and loop counters
 zp_t0           = $24
 zp_t1           = $25

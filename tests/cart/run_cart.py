@@ -2,7 +2,8 @@
 
     python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--c64 TRANSCRIPT]
                                    [--c64-story TRANSCRIPT]
-                                   [--pictures DIR] [--shot FILE.png] [--update]
+                                   [--pictures DIR] [--shot FILE.png]
+                                   [--shot-at RECORD FILE.png] [--update]
 
 IMAGE is the EasyFlash cartridge (build/apb.crt) or the disk (build/apb-disk.d64); LABELS
 the linker's label file (ld65 -Ln). The machine code runs on a 6502 emulator (py65), with
@@ -32,7 +33,10 @@ the C64 around it played in Python:
   for two. Keys come from CHOICES, one line an answer, as the C64's tests have them:
   each time the game waits for a key (key_wait), the command row says what for: at
   "-- more --" a space, without using a line; at "> " (a line to type) the whole line and
-  RETURN; at anything else (a menu) the line's first character.
+  RETURN; at anything else (a menu, a fight) the line's first character, or RETURN for
+  an empty line;
+- the joystick in port 2: a line "joy right" (up, down, left, right, the diagonals as
+  "up left", and fire) pushes it for two frames, read on CIA 1's port A.
 
 The transcript is the story log's bottom row, read each time it scrolls (log_newline), and
 each record (record_line: a roll, a picture, a tune). It must match EXPECTED (--update
@@ -42,14 +46,17 @@ run ends when CHOICES does, and checks: every change to the frames' registers la
 line 178's last character and line 179's fetch of row 16 (cycles 56 of line 178 to 11 of
 line 179), and the view's in the bottom border; the font, the map's characters and tiles
 are where they go (against tools/c64font.py and tools/battlegfx.py's files); the view
-shows the map; the frames have their line, the party (health full), the last roll in the
-dice log; every paragraph of the transcript (a typed line's echo aside) is word-wrapped at 25 columns as docs/frames.md says (wrapped again here, it
+shows the map; the figures' sprites never reach the split's lines; the frames have their
+line, the party (its health as the rules and the fights' words leave it), the last roll
+in the dice log; every paragraph of the transcript (a typed line's echo aside) is word-wrapped at 25 columns as docs/frames.md says (wrapped again here, it
 comes out the same); and no row went off the top of the log unread (never more than 8
 rows printed between keys). --shot saves the screen at the end as the VIC-II would show it
-(tools/vic.py).
+(tools/vic.py), sprites and all; --shot-at RECORD FILE, when that record ("[Aim: Ash rat,
+TN 60]") is made.
 """
 
 import os
+import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -89,6 +96,12 @@ MATRIX = [
 SHIFTED = {"!": "1", '"': "2", "#": "3", "$": "4", "%": "5", "&": "6", "'": "7", "(": "8",
            ")": "9", "<": ",", ">": ".", "?": "/", "[": ":", "]": ";"}
 LSHIFT = (1, 7)
+
+
+# A choices line "joy DIRECTION" pushes the joystick in port 2 (its lines on CIA 1's port A
+# pulled low) for two frames.
+STICK = {"up": 1, "down": 2, "left": 4, "right": 8, "fire": 16, "up left": 5, "up right": 9,
+         "down left": 6, "down right": 10}
 
 
 def key_of(ch):
@@ -188,6 +201,7 @@ class C64:
         self.loads = []
         self.held = []                      # matrix positions down now
         self.presses = []                   # [(positions, first frame, last frame)]
+        self.stick = []                     # [(port 2's bits, first frame, last frame)]
         self.lines = []                     # the transcript
         self.ended_rows = []                # each line: True if the text ended it (None: a
                                             # record)
@@ -278,8 +292,13 @@ class C64:
                         if rows >> r & 1:
                             value &= ~(1 << col) & 0xFF
             return value
-        if a == 0xDC00:
-            return 0xFF
+        if a == 0xDC00:                                     # the joystick in port 2
+            frame = self.access() // FRAME
+            value = 0xFF
+            for bits, first, last in self.stick:
+                if first <= frame <= last:
+                    value &= ~bits & 0xFF
+            return value
         return self.io[i]
 
     def write_io(self, a, v):
@@ -412,6 +431,12 @@ class C64:
                 return
             line = self.choices.pop(0)
             keys = list(line) + ["RETURN"] if row.startswith(">") else [line[:1] or "RETURN"]
+            if line.startswith("joy "):                     # the joystick, pushed a moment
+                frame = self.mpu.processorCycles // FRAME + 1
+                self.stick.append((STICK[line[4:]], frame, frame + 1))
+                self.answer_until = (frame + 4) * FRAME
+                self.printed = 0
+                return
         self.printed = 0
         frame = self.mpu.processorCycles // FRAME + 1
         for k in keys:
@@ -420,6 +445,17 @@ class C64:
         self.answer_until = frame * FRAME
 
     answer_until = 0
+    shot_at = None
+    lowest_sprite = 0                   # the lowest line a sprite was shown on (at a key)
+    sprites_shown = 0
+
+    def sprites_seen(self):
+        """The sprites on now: none may reach the split's lines (split.s: a sprite there
+        would take its cycles), 176 at most for its last line."""
+        for n in range(8):
+            if self.io[0x15] >> n & 1:
+                self.sprites_shown += 1
+                self.lowest_sprite = max(self.lowest_sprite, self.io[2 * n + 1] + 21)
 
     def run(self, max_frames=3000):
         m = self.mpu
@@ -428,6 +464,7 @@ class C64:
         while not self.ended:
             pc = m.pc
             if wait <= pc < wait_end and m.processorCycles >= self.answer_until:
+                self.sprites_seen()
                 self.answer()                               # (key_wait, waiting)
             elif pc == self.syms["record_line"]:          # a record: A/X
                 at = m.a | m.x << 8
@@ -437,6 +474,9 @@ class C64:
                     at += 1
                 self.lines.append(text.decode("ascii", "replace"))
                 self.ended_rows.append(None)                # (not a row of the log)
+                if self.shot_at and self.lines[-1] == self.shot_at[0]:
+                    shot(self, self.shot_at[1])
+                    self.shot_at = None
             elif pc == newline:
                 self.lines.append(self.row23())
                 # Did the text end the row (a newline in it), or did it wrap? log_print's
@@ -470,6 +510,12 @@ def shot(c, path):
             scr.put(i % 40, i // 40, c.ram[VIEW + i], io[0x800 + i] & 15)
         else:
             scr.put(i % 40, i // 40, 0, 0)
+    for n in reversed(range(8)):                            # the sprites: 0 on top
+        if io[0x15] >> n & 1:
+            x = io[2 * n] | (io[0x10] >> n & 1) << 8
+            at = 0xC000 + c.ram[VIEW + 0x3F8 + n] * 64
+            scr.sprite(x - 24, io[2 * n + 1] - 50, bytes(c.ram[at:at + 63]), io[0x27 + n] & 15,
+                       io[0x1C] >> n & 1)
     img = scr.image()
     if view_regs(c)[0] == MEM_PICTURE:                     # a bitmap: a picture, a code
         img.paste(view_image(c), (0, 0))
@@ -649,6 +695,11 @@ def check(c):
         cycles = sorted({cyc % LINE for a, v, cyc in frames_regs if a == 0xD018})
         ok(f"{what}: {n} splits, each write between line 178's last character and line 179's "
            f"fetch ($D018 at cycles {cycles[0]}-{cycles[-1]} of line 178)")
+    if c.lowest_sprite > 176:
+        fail(f"{what}: a sprite down to line {c.lowest_sprite}, into the split's lines")
+    elif c.sprites_shown:
+        ok(f"{what}: the figures' sprites clear of the split (down to line {c.lowest_sprite} at "
+           f"most)")
     views = [((cyc // LINE) % LINES) for a, v, cyc in c.writes if a == 0xD018 and v == MEM_VIEW]
     if not views or any(not 250 <= ln <= 260 for ln in views):
         fail(f"{what}: the view's registers outside the bottom border: {sorted(set(views))}")
@@ -662,19 +713,23 @@ def check(c):
     # The graphics, against the tools' own files.
     font = open(os.path.join(ROOT, "build", "cart", "font"), "rb").read()[2:]
     gfx = open(os.path.join(ROOT, "build", "cart", "tiles16"), "rb").read()
-    charset, tile_table = gfx[:2048], gfx[2048:2048 + 96]
+    charset, tile_table = gfx[:2048], gfx[2048:2048 + 128]
+    figures = gfx[2048 + 128:2048 + 128 + 2048]
     if bytes(c.ram[FONT:FONT + 2048]) != font:
         fail(f"{what}: the font under the I/O isn't tools/c64font.py's")
     elif bytes(c.ram[CHARS:CHARS + 2048]) != charset:
         fail(f"{what}: the map's characters aren't tools/battlegfx.py's")
-    elif bytes(c.ram[syms["tiles"]:syms["tiles"] + 96]) != tile_table:
+    elif bytes(c.ram[syms["tiles"]:syms["tiles"] + 128]) != tile_table:
         fail(f"{what}: the tiles' table isn't tools/battlegfx.py's")
+    elif bytes(c.ram[0xD800:0xE000]) != figures:
+        fail(f"{what}: the figures' shapes under the colour RAM aren't tools/battlegfx.py's")
     else:
-        ok(f"{what}: the font, the map's characters and its tiles, from asset 0, where they go")
-    if disk and (c.loads[:2] != ["a00", "a03"] or any(n[0] != "a" for n in c.loads)):
-        fail(f"{what}: loaded {c.loads}, not a00 (the graphics), a03 (the depot) and the rest")
+        ok(f"{what}: the font, the map's characters, its tiles and the figures, from asset 0, "
+           f"where they go")
+    if disk and (c.loads[:2] != ["a00", "a04"] or any(n[0] != "a" for n in c.loads)):
+        fail(f"{what}: loaded {c.loads}, not a00 (the graphics), a04 (the depot) and the rest")
     elif disk:
-        ok(f"{what}: the graphics, the depot, the cars, the pictures and the ending loaded as files {', '.join(sorted(set(c.loads)))}")
+        ok(f"{what}: the graphics, the ending, the fight, the depot, the cars and the pictures loaded as files {', '.join(sorted(set(c.loads)))}")
     # The view: the demo's map, 2 x 2 characters a square, 20 x 8 of them.
     themap = bytes(c.ram[syms["platform_map"]:syms["platform_map"] + 160])
     screen, colours = c.desk_view
@@ -703,14 +758,18 @@ def check(c):
     dice = (c.screen(TEXT, 22, 14, 26).rstrip(), c.screen(TEXT, 23, 14, 26).rstrip())
     want_dice = tuple(rolls[-1].split(" vs ")) if rolls else ("", "")
     want_dice = (want_dice[0], "vs " + want_dice[1]) if rolls else want_dice
+    want_bar, want_ink = health_bar(c.lines)
     if line != "|" * 8:
         fail(f"{what}: the line between the frames: {line!r}")
-    elif party != " Kestrel " or bar != bytes([0x63] * 5) or bar_ink != {5}:
-        fail(f"{what}: the party frame: {party!r}, health {bar.hex()} in {bar_ink}")
+    elif party != " Kestrel " or bar != want_bar or bar_ink != {want_ink}:
+        fail(f"{what}: the party frame: {party!r}, health {bar.hex()} in {bar_ink}, not "
+             f"{want_bar.hex()} in {want_ink}")
     elif dice != want_dice:
         fail(f"{what}: the dice log: {dice!r}, not the last roll's {want_dice!r}")
     else:
-        ok(f"{what}: the frames: their line, the party ({party.strip()}, health full and green), "
+        ok(f"{what}: the frames: their line, the party ({party.strip()}, health "
+           f"{'full' if want_bar == bytes([0x63] * 5) else 'down to ' + want_bar.hex()}, "
+           f"{'green' if want_ink == 5 else 'red'}), "
            f"the dice ({' / '.join(dice) if rolls else 'no rolls'})")
     # The transcript's paragraphs (rows to one the text ended), wrapped again here: the
     # same.
@@ -734,6 +793,36 @@ def check(c):
     else:
         ok(f"{what}: nothing scrolled off unread (at most {c.most_printed} rows between keys; "
            f"{c.mores} times -- more --)")
+
+
+def health_bar(lines):
+    """The party frame's health bar (its cells, their colour) after a transcript: the
+    traveler's most health by the rules (docs/rules-v0.md: 10 + Grit / 4 + 2 a level, from
+    the Passport typed at the desk), less what the fights' sentences say they took."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "passport"))
+    import boarding
+    import passport
+    typed = []
+    for ln in lines:
+        if ln.startswith("> ") and not typed or typed and ln.startswith("> ") and len(ln) > 3:
+            typed.append(ln[2:])
+        elif typed and not ln.startswith(("Line ", "> ")):
+            break
+    text = "".join(typed)
+    try:
+        ch = boarding.decode(text)["character"]
+    except Exception:
+        ch = passport.decode(text)
+    most = 10 + ch["stats"][2] // 4 + 2 * ch["level"]
+    health = most
+    for ln in " ".join(lines).split(". "):
+        m = re.search(r"(?:attacks you: .*?|The ground hurts you): (\d+) damage", ln)
+        if m:
+            health = max(0, health - int(m.group(1)))
+    halves = health * 10 // most or (1 if health else 0)
+    cells = bytes(0x63 if halves >= 2 * k + 2 else 0x62 if halves == 2 * k + 1 else 0x61
+                  for k in range(5))
+    return cells, 2 if health * 3 <= most else 5
 
 
 def c64_story_matches(lines, path):
@@ -777,6 +866,8 @@ def main(argv):
     c = C64(image, syms)
     c.choices = [line.rstrip("\n") for line in open(argv[3])]
     c.pictures = argv[argv.index("--pictures") + 1] if "--pictures" in argv else None
+    if "--shot-at" in argv:
+        c.shot_at = tuple(argv[argv.index("--shot-at") + 1:argv.index("--shot-at") + 3])
     c.boot()
     try:
         ended = c.run()
