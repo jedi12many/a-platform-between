@@ -181,6 +181,7 @@ class C64:
         self.held = []                      # matrix positions down now
         self.presses = []                   # [(positions, first frame, last frame)]
         self.lines = []                     # the transcript
+        self.ended_rows = []                # each line: True if the text ended it
         self.choices = []
         self.printed = 0                    # rows into the log since the last key wait
         self.most_printed = 0
@@ -403,6 +404,10 @@ class C64:
                 self.answer()                               # (key_wait, waiting)
             elif pc == newline:
                 self.lines.append(self.row23())
+                # Did the text end the row (a newline in it), or did it wrap? log_print's
+                # pointer is at the newline then (zp_text_ptr, $10).
+                at = self.ram[0x10] | self.ram[0x11] << 8
+                self.ended_rows.append(self.ram[at] == 10)
                 self.printed += 1
             if m.processorCycles > max_frames * FRAME:
                 self.ended = f"[still running after {max_frames} frames]"
@@ -512,21 +517,21 @@ def check(c):
     dice = (c.screen(TEXT, 22, 14, 26), c.screen(TEXT, 23, 14, 26))
     if line != "|" * 8:
         fail(f"{what}: the line between the frames: {line!r}")
-    elif party != ">Kestrel ####=":
+    elif party != ">Kestrel      ":
         fail(f"{what}: the party frame: {party!r}")
     elif dice != ("Kestrel 94    ", "vs 60: hit 23 "):
         fail(f"{what}: the dice log: {dice!r}")
     else:
         ok(f"{what}: the frames: their line, the party ({party.strip()}), the dice ({' / '.join(d.strip() for d in dice)})")
-    # The transcript's paragraphs, wrapped again here: the same.
+    # The transcript's paragraphs (rows to one the text ended), wrapped again here: the
+    # same.
     bad = []
     para = []
-    for line in c.lines + [""]:
-        menu = line[:1].isdigit() and line[1:2] == "."
-        if line and not line.startswith("[") and not line.startswith(">") and not menu:
-            para.append(line)
+    for line, ended in zip(c.lines, c.ended_rows):
+        para.append(line)
+        if not ended:
             continue
-        if para and wrap(" ".join(para), LOG_COLS) != para:
+        if wrap(" ".join(para), LOG_COLS) != para:
             bad.append(para)
         para = []
     if bad:

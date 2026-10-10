@@ -51,6 +51,7 @@ SIDE_COLS       = 14
 PARTY_TOP       = 16
 DICE_TOP        = 20
 INPUT_ROW       = 24            ; the command row
+APB_NAME        = 8             ; a name in the party frame
 
 ; The frames' own characters in our font, and the ASCII codes that print them.
 GLYPH_LINE      = $60

@@ -105,7 +105,9 @@ against. For `cart/`:
   rewrites it: read the diff); every raster split's writes land in the gap between the
   view's last line and row 16's fetch, to the cycle; the graphics are the tools'; the
   view and the frames are right; paragraphs wrap at 25; nothing scrolls off unread.
-  `--shot FILE` draws the screen.
+  `--shot FILE` draws the screen. And `tests/cart/test_passwords.py`: the cartridge's
+  Passports and Boarding Passes must decode, encode and refuse damage as the Python
+  reference does, on random travelers.
 
 Run all seventeen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.

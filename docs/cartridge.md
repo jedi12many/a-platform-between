@@ -123,7 +123,9 @@ Each module owns its part; nothing else touches it.
 | $1C-$21 | `copy.s`, `assets.s` | a copy's source ($1C-$1D), destination ($1E-$1F) and length ($20-$21) |
 | $22-$23 | `command.s` | the line being typed |
 | $24-$2F | scratch | arguments and counters (`zp_t0`...): any routine, between calls; never kept across a call |
-| $30-$8F | free (the VM, the rules, the music will take theirs from here) | |
+| $30-$35 | `password.s` | the text being read or written ($30-$31), a field's value ($32-$33), its bits ($34), a line's check ($35) |
+| $36-$37 | `number.s` | the number being written |
+| $38-$8F | free (the VM, the rules, the music will take theirs from here) | |
 | $90-$FF | the KERNAL's, on a disk (while it loads) | |
 
 The interrupt (`split.s`) uses no zero page at all.
@@ -135,9 +137,12 @@ The interrupt (`split.s`) uses no zero page at all.
   `assets.s` (fetching assets: the only module that knows the medium), `copy.s` (copying
   RAM), `screen.s` (the VIC and its graphics), `split.s` (the raster interrupt), `text.s`
   (the frames' text), `view.s` (the view's tiles), `keys.s` (the keyboard), `command.s`
-  (the command row: waiting for keys, "-- more --", menus, typed lines), `demo.s` (the
-  demonstration), and more as they come (`sprites.s`, `password.s`, `vm.s`, `combat.s`,
-  `music.s`).
+  (the command row: waiting for keys, "-- more --", menus, typed lines), `password.s`
+  (passwords' symbols, lines, bits and CRC), `passport.s` (the Passport's and the
+  Boarding Pass's fields), `desk.s` (the boarding desk), `number.s` (numbers as text),
+  `demo.s` (the demonstration), and more as they come (`sprites.s`, `vm.s`, `combat.s`,
+  `music.s`). The registry's names are generated into `build/cart/names.s`
+  (`tools/registry/registry_asm.py`), never written by hand.
   Assets are files of their own (`asset0.s`, ...).
 - **No medium in the game's logic**: no `$DE00`, `$DE02` or KERNAL call outside
   `assets.s` (and the start-ups).
@@ -200,6 +205,28 @@ test-cart` holds every frame to that, on the emulator's model of the timing (no 
 may be on lines 176-178, which would steal cycles there). It still wants checking in
 VICE's cycle-exact x64sc, and on a real C64.
 
+## Passports and Boarding Passes
+
+The traveler is kept in RAM as a record (`cart/char.inc`), filled from what the player
+types at the boarding desk (`cart/desk.s`, the C desk's flow and words): a Boarding Pass,
+or a Passport alone, a line at a time, then a blank line. A line the wrong length, or one
+with a typo, is asked for again by its number.
+
+`cart/password.s` reads a password the forgiving way the spec says (small letters,
+spaces, dashes, O for 0, I and L for 1), checks each line's check symbol, and keeps the
+bits; it writes bits back as lines of 19 symbols and their check; and it has the CRC-16.
+`cart/passport.s` reads a Passport's or a pass's fields into the record (and the pass's
+own: Departure, ticket, seed, Rewind), checks the padding and the CRC, and writes a
+Passport from the record, refusing a field too big for its bits. It takes everything the
+reference does, every list full (215 symbols).
+
+`tests/cart/test_passwords.py` holds them to the Python reference
+(`tools/passport/`): random travelers with every field anywhere in its bits, and passes,
+must decode to the reference's fields and encode to its text, symbol for symbol; typed
+the forgiving way they read the same; damaged ones (a symbol changed, one not in the
+alphabet, a line gone, two swapped, the end cut off) are refused as the reference refuses
+them, a typo on the line it says.
+
 ## Saves: passwords
 
 No disk, no flash writes: a trip is saved as a password, in the Passport's alphabet and
@@ -235,8 +262,8 @@ nothing scrolled off unread. `--shot FILE` saves the screen as the VIC-II would 
 - **The 16-pixel grid** (done): the view's squares 2 x 2 characters, 20 x 8 of them.
 - **A1, keys and the command row** (done): the keyboard matrix read in the interrupt,
   "-- more --", menus, typing a line.
-- **A2, passwords**: the Passport and the Boarding Pass decoded and encoded in assembly,
-  checked against `tools/passport/`.
+- **A2, passwords** (done): the Passport and the Boarding Pass decoded and encoded in
+  assembly, checked against `tools/passport/`; the boarding desk.
 - **A3, the story VM**: Quest Script's bytecode, chapters in banks, pictures.
 - **A4, sprites and the fight**: the multiplexer, the battle map, the combat rules
   (checked against `tools/rules/combat.py`).

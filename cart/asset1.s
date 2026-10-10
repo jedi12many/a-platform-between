@@ -2,7 +2,7 @@
 ; (content/s1/00-the-fare). Staged at $8000; ASCII, each ending in 0.
 
         .export story_static, story_choices, story_fought, story_bench, story_name
-        .export story_named, story_again
+        .export story_again
 
         .segment "ASSET01"
 story_static:
@@ -24,9 +24,7 @@ story_bench:
         .byte "cracked glass. Beyond the glass there is no sky, only a slow grey shimmer, "
         .byte "like rain that has forgotten which way is down.", 10, 10, 0
 story_name:
-        .byte "A ledger lies open on the bench beside you, a line left blank. "
-        .byte "What do you write in it?", 10, 0
-story_named:
-        .byte "The ink takes the name:", 0
+        .byte "A ledger lies open on the bench beside you, and a name is written in it "
+        .byte "already, in a careful hand:", 0
 story_again:
         .byte 10, "1. Start again", 10, 0

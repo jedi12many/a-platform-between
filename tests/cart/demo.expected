@@ -1,3 +1,44 @@
+Your Boarding Pass,
+please, one line at a
+time, then a blank line.
+(Or your Passport, to
+travel without one.)
+Line 1:
+> G0000000FG87R49CPEJZ
+Line 2:
+> 8NG0M020AN8F2THP800E
+Line 3:
+>
+A pass or a Passport is
+at least 3 lines. Let's
+start again.
+Your Boarding Pass,
+please, one line at a
+time, then a blank line.
+(Or your Passport, to
+travel without one.)
+Line 1:
+>
+g000-0000-fg87-r49c-pejz
+Line 2:
+> 8NG0M020AN8F2THP800F
+Line 3:
+> 00000016C184M8A0400
+Line 4:
+> G0FZKR7
+Line 5:
+>
+Line 3 should have 20
+letters. Type it again:
+> 00000016C184M8A0400W
+Line 2 has a typo. Type
+it again:
+> 8NG0M020AN8F2THP800E
+Kestrel, Salvaged Warden,
+level 1. Debt 0.
+1. Board
+2. Start over
+> 1
 ~ The Static ~
 
 Static.
@@ -38,12 +79,10 @@ forgotten which way is
 down.
 
 A ledger lies open on the
-bench beside you, a line
-left blank. What do you
-write in it?
-> Kestrel
-The ink takes the name:
-Kestrel
+bench beside you, and a
+name is written in it
+already, in a careful
+hand: Kestrel
 1. Start again
 > 1
 ~ The Static ~
@@ -80,11 +119,9 @@ forgotten which way is
 down.
 
 A ledger lies open on the
-bench beside you, a line
-left blank. What do you
-write in it?
-> Wren
-The ink takes the name:
-Wren
+bench beside you, and a
+name is written in it
+already, in a careful
+hand: Kestrel
 1. Start again
 [end of input]

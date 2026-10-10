@@ -20,6 +20,15 @@ zp_len          = $20           ; 2: ...and its length
 ; command.s
 zp_line         = $22           ; 2: the line being typed
 
+; password.s
+zp_pw_text      = $30           ; 2: the text being read or written
+zp_pw_value     = $32           ; 2: a field's value
+zp_pw_n         = $34           ; a field's bits
+zp_pw_sum       = $35           ; a line's check, as it's added up
+
+; number.s
+zp_num          = $36           ; 2: the number being written
+
 ; scratch: arguments and loop counters
 zp_t0           = $24
 zp_t1           = $25

@@ -1,19 +1,18 @@
-; The demonstration (docs/cartridge.md, "Milestones"): a map in the view, the traveler in
-; the party frame, a roll in the dice log, and the start of The Fare in the story log,
-; fetched as asset 1, with its first menu, "-- more --", and a line to type (A1). It
-; shows the framework working; the story VM (A3) replaces it.
+; The demonstration (docs/cartridge.md, "Milestones"): a map in the view, a roll in the
+; dice log; the boarding desk (A2), and whoever boards in the party frame; then the start
+; of The Fare in the story log, fetched as asset 1, with its first menu and "-- more --"
+; (A1). It shows the framework working; the story VM (A3) replaces it.
 
         .include "hw.inc"
         .include "mem.inc"
         .include "zp.inc"
 
         .export demo, demo_map
-        .import view_map, text_at, log_print, asset_fetch, menu_ask, line_ask
+        .import view_map, text_at, log_print, asset_fetch, menu_ask, desk_run, name_text
         .import story_static, story_choices, story_fought, story_bench, story_name
-        .import story_named, story_again
+        .import story_again
 
 ASSET_STORY = 1
-NAME_MAX    = 16
 
         .segment "RESIDENT"
 
@@ -25,26 +24,6 @@ demo:
         lda #<demo_map
         ldx #>demo_map
         jsr view_map
-        lda #SIDE_COL               ; the party: Kestrel, her turn, health 9 of 10 halves
-        sta zp_t0
-        lda #YELLOW
-        sta zp_t1
-        lda #SIDE_COLS - 5
-        sta zp_t2
-        lda #<traveler
-        ldx #>traveler
-        ldy #PARTY_TOP
-        jsr text_at
-        lda #SIDE_COL + SIDE_COLS - 5
-        sta zp_t0
-        lda #GREEN
-        sta zp_t1
-        lda #5
-        sta zp_t2
-        lda #<bar
-        ldx #>bar
-        ldy #PARTY_TOP
-        jsr text_at
         lda #SIDE_COL               ; the dice log: a roll in two lines
         sta zp_t0
         lda #WHITE
@@ -63,8 +42,27 @@ demo:
         jsr text_at
         lda #ASSET_STORY            ; the story, from asset 1
         jsr asset_fetch
-        bcc @story
+        bcc @board
 @stuck: jmp @stuck                  ; (no story to tell: the border is red)
+@board: lda #0                      ; the desk: The Fare is Departure 0
+        tax
+        jsr desk_run
+        lda #SIDE_COL               ; the party: who boarded, their turn
+        sta zp_t0
+        lda #YELLOW
+        sta zp_t1
+        lda #1
+        sta zp_t2
+        lda #<turn
+        ldx #>turn
+        ldy #PARTY_TOP
+        jsr text_at
+        inc zp_t0
+        lda #APB_NAME
+        sta zp_t2
+        jsr name_text
+        ldy #PARTY_TOP
+        jsr text_at
 @story: lda #<story_static
         ldx #>story_static
         jsr log_print
@@ -83,15 +81,7 @@ demo:
         lda #<story_name
         ldx #>story_name
         jsr log_print
-        lda #<name
-        ldx #>name
-        ldy #NAME_MAX
-        jsr line_ask
-        lda #<story_named
-        ldx #>story_named
-        jsr log_print
-        lda #<name
-        ldx #>name
+        jsr name_text
         jsr log_print
         lda #<story_again
         ldx #>story_again
@@ -112,11 +102,6 @@ demo_map:
         .byte 1, 0, 3, 3, 0, 1, 0, 0, 0, 4, 0, 0, 0, 0, 5, 0, 0, 0, 0, 7
         .byte 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 
-traveler:       .byte ">Kestrel", 0
-bar:            .byte ASCII_BAR_FULL, ASCII_BAR_FULL, ASCII_BAR_FULL, ASCII_BAR_FULL
-                .byte ASCII_BAR_HALF, 0
+turn:           .byte ">", 0
 roll_top:       .byte "Kestrel 94", 0
 roll_bottom:    .byte "vs 60: hit 23", 0
-
-        .segment "BSS"
-name:           .res NAME_MAX + 1
