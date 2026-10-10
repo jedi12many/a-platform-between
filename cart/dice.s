@@ -143,12 +143,12 @@ record_line:
 space:  .byte " ", 0
 vs:     .byte " vs ", 0             ; (the top line's end: its space becomes a 0)
 colon:  .byte ": ", 0
-fail:   .byte "fail", 0
-cost:   .byte "cost", 0
-pass:   .byte "pass", 0
-crit:   .byte "crit", 0
-word_lo:        .byte <fail, <cost, <pass, <crit
-word_hi:        .byte >fail, >cost, >pass, >crit
+said_fail: .byte "fail", 0
+said_cost: .byte "cost", 0
+said_pass: .byte "pass", 0
+said_crit: .byte "crit", 0
+word_lo:        .byte <said_fail, <said_cost, <said_pass, <said_crit
+word_hi:        .byte >said_fail, >said_cost, >said_pass, >said_crit
 
         .segment "BSS"
 bracket:        .res 1              ; "[", then the line (record_text puts it)
