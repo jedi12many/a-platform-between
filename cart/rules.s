@@ -5,7 +5,7 @@
         .include "zp.inc"
         .include "char.inc"
 
-        .export rng_seed, rng_next, d100, check, skill_rating, health_max
+        .export rng_seed, rng_next, d100, check, resolve, skill_rating, health_max
         .export xp_award, gain_xp
         .export rng, chk_roll, chk_total, chk_tn, chk_result
         .import traveler, skill_stat
@@ -96,7 +96,16 @@ check:
         lda #0
         adc #0
         sta chk_total + 1
-        ; The outcome: a 1 fails and 100 crits, whatever the total.
+        ; (on into resolve)
+
+; ----------------------------------------------------------------------------------------
+; resolve: a roll's outcome (apb_resolve): a 1 fails and 100 crits, whatever the total;
+; over the TN, a success (a crit when the roll is a multiple of 11); within 20 of it, a
+; success at a cost; else a fail.
+;   Takes:   chk_roll; chk_total and chk_tn (16 bits each).
+;   After:   A = chk_result.
+;   Changes: A; zp_rule.
+resolve:
         lda chk_roll
         cmp #2
         bcc @fail

@@ -671,8 +671,8 @@ def check(c):
         fail(f"{what}: the tiles' table isn't tools/battlegfx.py's")
     else:
         ok(f"{what}: the font, the map's characters and its tiles, from asset 0, where they go")
-    if disk and (c.loads[:2] != ["a00", "a02"] or any(n[0] != "a" for n in c.loads)):
-        fail(f"{what}: loaded {c.loads}, not a00 (the graphics), a02 (the depot) and the rest")
+    if disk and (c.loads[:2] != ["a00", "a03"] or any(n[0] != "a" for n in c.loads)):
+        fail(f"{what}: loaded {c.loads}, not a00 (the graphics), a03 (the depot) and the rest")
     elif disk:
         ok(f"{what}: the graphics, the depot, the cars, the pictures and the ending loaded as files {', '.join(sorted(set(c.loads)))}")
     # The view: the demo's map, 2 x 2 characters a square, 20 x 8 of them.

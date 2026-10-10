@@ -169,7 +169,7 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 # Flash, and the same game on a disk for an SD2IEC. Modules common to both, then each one's
 # start-up; tools/crt.py makes the .crt of the linked chips.
 CART_COMMON := main assets copy split text screen view keys command password passport number desk play \
-               depot vm expand reward rules dice party picture receipt stamp qr qrview asset0
+               depot vm expand reward rules dice party picture receipt stamp qr qrview combat battle asset0
 CART_INC    := $(wildcard cart/*.inc)
 CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
                $(CART_INC) cart/cart.cfg cart/disk.cfg build/cart/tiles16 build/cart/font build/cart/names.s \
@@ -193,21 +193,21 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 	python3 tools/qsc/qsc.py build content/s1/00-the-fare/the-fare.qs -o build/cart/the-fare.apd \
 	    --split build/cart/fare
 	rm -rf build/cart/assets
-	python3 tools/cart/departure.py build/cart/fare content/s1/00-the-fare/pictures build/cart/assets 2
+	python3 tools/cart/departure.py build/cart/fare content/s1/00-the-fare/pictures build/cart/assets 3
 	@for m in $(CART_COMMON) boot start diskstart diskaddr; do \
 	    ca65 -I cart --bin-include-dir build -g -o build/cart/$$m.o cart/$$m.s || exit 1; done
 	ca65 -I cart -g -o build/cart/names.o build/cart/names.s
 	ld65 -C cart/cart.cfg -o build/cart/apb -m build/cart/apb.map -Ln build/cart/apb.lbl \
 	    --dbgfile build/cart/apb.dbg $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) names boot start))
 	python3 tools/crt.py build/apb.crt "A PLATFORM BETWEEN" build/cart/apb.b00:0:LH \
-	    build/cart/apb.a00:1:L build/cart/apb.a01:1:H --assets build/cart/assets
+	    build/cart/apb.a00:1:L build/cart/apb.a01:1:H build/cart/apb.a02:2:L --assets build/cart/assets
 	ld65 -C cart/disk.cfg -o build/cart/apb-disk -m build/cart/apb-disk.map -Ln build/cart/apb-disk.lbl \
 	    $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) names diskstart diskaddr))
 	python3 tools/d64.py write build/apb-disk.d64 "a platform" ab build/cart/apb-disk=apb \
-	    build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01 \
+	    build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01 build/cart/apb-disk.a02=a02 \
 	    $$(for f in build/cart/assets/a*.prg; do n=$$(basename $$f .prg); echo $$f=$$n; done)
 	for pass in kestrel typo; do python3 tools/d64.py write build/apb-$$pass.d64 "a platform" ab \
-	    build/cart/apb-disk=apb build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01 \
+	    build/cart/apb-disk=apb build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01 build/cart/apb-disk.a02=a02 \
 	    tests/cart/$$pass.pass=pass \
 	    $$(for f in build/cart/assets/a*.prg; do n=$$(basename $$f .prg); echo $$f=$$n; done) \
 	    || exit 1; done
@@ -215,7 +215,7 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 cart: build/apb.crt
 	@echo "Cartridge: build/apb.crt (Kung Fu Flash, or x64sc -cartcrt build/apb.crt); disk: build/apb-disk.d64"
 
-test-cart: build/apb.crt build/the-fare.d64
+test-cart: build/apb.crt build/the-fare.d64 build/battle
 	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
 	    > build/cart/desk.c64
@@ -239,6 +239,7 @@ test-cart: build/apb.crt build/the-fare.d64
 	cd tests/cart && python3 test_damage.py ../../build/apb.crt ../../build/cart/apb.lbl fare-edge.choices \
 	    --cases 8
 	python3 tests/cart/test_passwords.py build/apb.crt build/cart/apb.lbl --cases 100
+	python3 tests/cart/test_battle.py build/apb.crt build/cart/apb.lbl --cases 60
 
 clean:
 	rm -rf build

@@ -24,8 +24,9 @@ QR_LOG          = EXPAND_AT + $0600     ; 256
 QR_CODEWORDS    = EXPAND_AT + $0700     ; 100
 QR_GENERATOR    = EXPAND_AT + $0780     ; 21
 ASSET_ENDING    = 1             ; code: a trip's end (receipt.s, stamp.s, qr.s), run here
-ASSET_DEPOT     = 2             ; the Departure's assets: its depot, then its cars (and
-ASSET_CAR0      = 3             ; its pictures: the depot says where)
+ASSET_BATTLE    = 2             ; code: a fight (combat.s, battle.s), run here
+ASSET_DEPOT     = 3             ; the Departure's assets: its depot, then its cars (and
+ASSET_CAR0      = 4             ; its pictures: the depot says where)
 
 ; ------------------------------------------------------------------ VIC bank 3
 TEXT_SCREEN     = $C000         ; the frames (and the status row)

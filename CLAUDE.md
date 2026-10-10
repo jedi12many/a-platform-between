@@ -115,7 +115,10 @@ against. For `cart/`:
   back through `tools/passport/stamp.py`, and QR codes of every version 1-4 match
   `qrcode` and scan. `tests/cart/test_damage.py`: damaged Departures stop the story VM
   cleanly, never run wild. And `tests/cart/test_passwords.py`: the cartridge's Passports
-  and Boarding Passes must decode, encode and refuse as the Python reference does. The
+  and Boarding Passes must decode, encode and refuse as the Python reference does. And
+  `tests/cart/test_battle.py`: the fight (`cart/combat.s`, `cart/battle.s`, asset 2) must
+  play `tests/battle/*.txt` to their reviewed logs, make fighters and roll as
+  `tools/rules/combat.py` says, and play random battles event for event as `build/battle`. The
   cartridge plays The Fare from `content/` (`tools/cart/departure.py` makes its assets).
   Needs `pip install qrcode opencv-python-headless`.
 

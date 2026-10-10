@@ -4,7 +4,7 @@ expand.s): never trust the image.
     python3 tests/cart/test_damage.py build/apb.crt build/cart/apb.lbl CHOICES [--cases N]
 
 Each case breaks a few bytes of the depot, a car or a picture, as the cartridge holds
-them (assets 2, 3-5 and 6 on: tools/cart/departure.py), or its length, and plays CHOICES
+them (assets 3, 4-6 and 7 on: tools/cart/departure.py), or its length, and plays CHOICES
 on the emulated C64 (tests/cart/run_cart.py) till they run out. The VM may play on (the
 damage was in a string it never reached, or it spoiled a picture) or stop ("The train
 has derailed", "This Departure can't be boarded"); either way the program must only ever
@@ -24,7 +24,7 @@ FRAMES = 2500                   # a case that's still running after this has hun
 def damaged(chips, rnd):
     """A copy of the chips with one asset of the Departure damaged; and what was done."""
     chips = dict(chips)
-    asset = rnd.choice([2, 3, 4, 5, 6, 8])
+    asset = rnd.choice([3, 4, 5, 6, 7, 9])
     key = (1 + asset // 2, "LH"[asset % 2])
     data = bytearray(chips[key])
     length = data[0] | data[1] << 8

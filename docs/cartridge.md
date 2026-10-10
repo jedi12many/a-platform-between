@@ -114,8 +114,9 @@ No other module knows where an asset came from:
 
 **The assets**: asset 0 is the screen's graphics; asset 1 is code, a trip's end (the
 receipt, the Travel Stamp, its QR code: `receipt.s`, `stamp.s`, `qr.s`, `qrview.s`),
-linked at $8000 and run there once it's staged: nothing else is fetched while it runs.
-A Departure's depot is asset 2, its car k (a chapter) asset 3 + k, and its pictures the
+linked at $8000 and run there once it's staged: nothing else is fetched while it runs;
+asset 2 is code too, a fight (the rules, `combat.s`, and the battle, `battle.s`), staged
+and run the same way. A Departure's depot is asset 3, its car k (a chapter) asset 4 + k, and its pictures the
 assets after the cars (`tools/cart/departure.py`, from `qsc.py build --split`): the
 file's length in 2 bytes, then the file (the depot's with the asset of its first picture
 between). The VM copies the depot to $B800 and the car it's in to $A000, so the staging
