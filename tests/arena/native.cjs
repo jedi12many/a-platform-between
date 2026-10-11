@@ -7,6 +7,8 @@
 //   node native.cjs URL fight CODE SEED   the fight on Auto (fast), with those dice, to the end
 //   node native.cjs URL pack CODE N       the pack's item N taken up, then the armor put away
 //   node native.cjs URL dash CODE SEED N  the first turn: a Dash, N squares east of the start
+//   node native.cjs URL power CODE SEED KEY   the first turn: the power on KEY (1-4), on the
+//                                         first target or square the page offers
 //   node native.cjs URL shove CODE SEED KEYS   the first turn: KEYS (arrows: R L U D) to
 //                                         move, then a Shove of the first foe in reach
 //   node native.cjs URL shot CODE PATH    a screenshot of the first turn
@@ -31,7 +33,7 @@ async function main() {
   });
   const until = (m, ms) => page.waitForFunction((m) => window.arena && window.arena.state().mode === m,
                                                 m, { timeout: ms || 20000 });
-  const seeded = ["fight", "dash", "shove"].includes(what);
+  const seeded = ["fight", "dash", "shove", "power"].includes(what);
   const hash = "#scenario=" + code + (seeded ? "&seed=" + arg : "");
   await page.goto(url + hash);
   await until("intro");
@@ -62,6 +64,23 @@ async function main() {
     for (let i = 0; i < Number(process.argv[6]); ++i) await page.keyboard.press("ArrowRight");
     out.planned = await page.evaluate(() => window.arena.state().fight.dash);
     await page.keyboard.press("Enter");
+    await page.waitForFunction(() => ["turn", "end"].includes(window.arena.state().mode), null, { timeout: 30000 });
+    out.after = await state();
+  } else if (what === "power") {
+    for (let i = 0; i < 4; ++i) {           // to the turn of a traveler with powers
+      const has = await page.evaluate(() => {
+        const f = window.arena.state().fight;
+        return f.st.fighters[f.me].powers.length > 0;
+      });
+      if (has) break;
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => window.arena.state().mode === "busy" || window.arena.state().mode === "end", null, { timeout: 5000 }).catch(() => {});
+      await until("turn");
+    }
+    out.who = await page.evaluate(() => window.arena.state().fight.me);
+    await page.keyboard.press(process.argv[6]);
+    out.chose = await page.evaluate(() => window.arena.state().mode);
+    if (["cast", "aim"].includes(out.chose)) await page.keyboard.press("Enter");
     await page.waitForFunction(() => ["turn", "end"].includes(window.arena.state().mode), null, { timeout: 30000 });
     out.after = await state();
   } else if (what === "shove") {

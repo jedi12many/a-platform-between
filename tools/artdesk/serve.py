@@ -47,7 +47,8 @@ ARENA_FILES = {"index.html": (ARENA_PAGE, "text/html"), "arena.js": (ARENA_PAGE,
                "scenarios.json": (ARENA_BUILT, "application/json"),
                "items.json": (ARENA_BUILT, "application/json"),
                "lab.json": (ARENA_BUILT, "application/json"),
-               "conditions.json": (ARENA_BUILT, "application/json")}
+               "conditions.json": (ARENA_BUILT, "application/json"),
+               "powers.json": (ARENA_BUILT, "application/json")}
 
 
 def meta():

@@ -11,10 +11,10 @@ var REPO = "https://github.com/jedi12many/a-platform-between";
 var TYPES = ["kinetic", "energy", "fire", "cold", "mind"];
 var TYPE_COLOUR = { kinetic: 1, energy: 3, fire: 8, cold: 14, mind: 4 };   /* C64 colours */
 var SQ = 32;                                  /* a square, in the art's pixels */
-var ACT = { attack: 0, guard: 1, wait: 2, flee: 3, done: 4, shove: 5, dash: 6 };
+var ACT = { attack: 0, guard: 1, wait: 2, flee: 3, done: 4, shove: 5, dash: 6, power: 7 };
 var RESULTS = ["miss", "glancing", "hit", "critical"];
 
-var ART, SCENARIOS, ITEMS, CONDS, BUILD = "studio";
+var ART, SCENARIOS, ITEMS, CONDS, POWERS, BUILD = "studio";
 var rules = {};                               /* the WebAssembly calls */
 var sprites = {};                             /* drawn art, by name */
 
@@ -124,6 +124,7 @@ var hover = null;        /* the square under the mouse */
 
 function itemOf(id) { return id ? ITEMS[String(id)] : null; }
 function condOf(id) { return CONDS[String(id)] || { tag: "?", display: "?", what: "" }; }
+function powerOf(id) { return POWERS[String(id)] || { display: "?", what: "", target: "foe", shape: "bolt" }; }
 
 /* What a scenario's hazards do, in words. */
 function hazardText(h) {
@@ -152,6 +153,7 @@ function newFight() {
   fight = {
     seed: seed, st: st, round: 0, whose: -1, me: -1, plan: null, reach: null, targets: [],
     shoves: [], aim: 0, aimKind: "attack", dash: null, dashReach: null, log: [], floaters: [], effects: [],
+    puse: 0, ptargets: [], psquares: null, cast: null,
     pack: S.native.pack.slice(),
     shown: st.fighters.map(function (f) {
       return { x: f.x, y: f.y, health: f.health, state: f.state, alpha: 1, flash: 0, lunge: null,
@@ -287,7 +289,19 @@ function card(s, f, i, live) {
   }
   if (live && f.guarding) gear.append(document.createTextNode(" · on guard"));
   c.append(pic, nm, hp, st, gear);
-  if (f.conds && f.conds.length) {
+  if (f.powers && f.powers.length) {
+    var pl = el("div", "gear powers");
+    f.powers.forEach(function (p, k) {
+      var pd = powerOf(p[0]), sp = el("span", "pw" + (p[2] === 0 ? " spent" : ""),
+        (live && f.side === 0 ? (k + 1) + " " : "") + pd.display +
+        (p[2] >= 0 ? " " + p[2] + "/" + (pd.uses || 0) : ""));
+      sp.title = pd.display + " (tier " + p[3] + ", rolls " + p[4] + "): " + pd.what +
+        (p[2] < 0 ? "; at will" : "; " + p[2] + " left this fight");
+      pl.append(sp);
+    });
+    c.append(pl);
+  }
+  if (f.conds && f.conds.length && !(live && f.state !== 0)) {
     var chips = el("div", "chips");
     f.conds.forEach(function (cr) {
       var cd = condOf(cr[0]), chip = el("span", "chip" + (cd.trait ? " trait" : ""),
@@ -384,7 +398,81 @@ function aimFrom() {
 }
 
 /* The list being aimed at: attacks or shoves. */
-function aimList() { return fight.aimKind === "shove" ? fight.shoves : fight.targets; }
+function aimList() {
+  return fight.aimKind === "shove" ? fight.shoves : fight.aimKind === "power" ? fight.ptargets : fight.targets;
+}
+
+/* A power (keys 1-4): straight away if it has one target (or none to choose), else aim
+ * at a fighter, or pick a square (docs/turn.md, Powers in play). */
+function usePower(k) {
+  var p = me().powers && me().powers[k], pd, info;
+  if (!p) return;
+  if (p[2] === 0) { toast("No charges left."); return; }
+  pd = powerOf(p[0]);
+  info = call("ar_power", fight.me, k, fight.plan.x, fight.plan.y);
+  fight.puse = k;
+  if (pd.target === "around") return act(ACT.power, 0, 0, 0, k);
+  if (pd.target === "square") {
+    fight.psquares = info.squares;
+    if (info.squares.join("").indexOf("1") < 0) { toast("Nowhere it can go from here."); return; }
+    fight.cast = firstSquare(info.squares, pd);
+    setMode("cast");
+    return;
+  }
+  fight.ptargets = info.targets;
+  if (!info.targets.length) {
+    toast(pd.target === "foe" ? "No foe it can reach from here." : "Nobody next to you to help.");
+    return;
+  }
+  if (info.targets.length === 1) return act(ACT.power, info.targets[0].who, 0, 0, k);
+  fight.aim = 0;
+  fight.aimKind = "power";
+  setMode("aim");
+}
+
+/* Where a square power's cursor starts: on the nearest foe it can reach, or the nearest
+ * square it can. */
+function firstSquare(squares, pd) {
+  var best = null, bd = 1e9, me0 = fight.plan;
+  fight.st.fighters.forEach(function (f) {
+    if (f.side === 0 || f.state !== 0 || pd.shape === "shift") return;
+    var d = Math.max(Math.abs(f.x - me0.x), Math.abs(f.y - me0.y));
+    if (squares[f.y][f.x] === "1" && d < bd) { bd = d; best = { x: f.x, y: f.y }; }
+  });
+  if (best) return best;
+  for (var y = 0; y < squares.length; ++y) {
+    for (var x = 0; x < squares[y].length; ++x) {
+      var d2 = Math.max(Math.abs(x - me0.x), Math.abs(y - me0.y));
+      if (squares[y][x] === "1" && d2 < bd) { bd = d2; best = { x: x, y: y }; }
+    }
+  }
+  return best;
+}
+
+function canCast(x, y) {
+  return fight.psquares && y >= 0 && y < fight.psquares.length && x >= 0 &&
+    x < fight.psquares[y].length && fight.psquares[y][x] === "1";
+}
+
+/* The squares a square power would touch, from the cursor: a burst's blast, a field's
+ * line, a shift's end. */
+function castPreview() {
+  var p = me().powers[fight.puse], pd = powerOf(p[0]), tier = p[3], c = fight.cast, out = [];
+  if (!c) return out;
+  if (pd.shape === "burst") {
+    var a = tier >= 6 ? 2 : 1;
+    for (var y = c.y - a; y <= c.y + a; ++y) for (var x = c.x - a; x <= c.x + a; ++x) out.push({ x: x, y: y });
+  } else if (pd.shape === "field") {
+    var dx = Math.sign(c.x - fight.plan.x), dy = Math.sign(c.y - fight.plan.y), n = tier + 2;
+    for (var i = 0; i < n; ++i) {
+      var o = i - Math.floor((n - 1) / 2);
+      out.push({ x: c.x - dy * o, y: c.y + dx * o });
+    }
+  } else {
+    out.push(c);
+  }
+  return out;
+}
 
 function canReach(x, y) {
   return fight.reach && y >= 0 && y < fight.reach.length && x >= 0 && x < fight.reach[y].length &&
@@ -404,12 +492,13 @@ function moved() {
   return fight.plan.x !== f.x || fight.plan.y !== f.y;
 }
 
-async function act(kind, target, dx, dy) {
+async function act(kind, target, dx, dy, use) {
   var r = call("ar_act", fight.me, kind, fight.plan.x, fight.plan.y, target === undefined ? 0 : target,
-               dx === undefined ? 0 : dx, dy === undefined ? 0 : dy);
+               dx === undefined ? 0 : dx, dy === undefined ? 0 : dy, use === undefined ? 0 : use);
   if (r.refused) {
     toast(kind === ACT.flee ? "No way out from here: flee from an exit, or next to no one."
-          : kind === ACT.dash ? "Can't dash there from here." : "That can't be done from here.");
+          : kind === ACT.dash ? "Can't dash there from here."
+          : kind === ACT.power ? "That power can't go there from here." : "That can't be done from here.");
     return;
   }
   setMode("busy");
@@ -643,6 +732,45 @@ async function show1(e) {
   case "attack":
     await strike(e);
     break;
+  case "power":
+    log(name(e.actor) + " uses " + powerOf(e.cond).display + " (tier " + e.value + ").", "round");
+    t = { kind: "SPARK", colour: 4, at: { x: e.x, y: e.y }, t0: performance.now(), dur: fast ? 60 : 320 };
+    fight.effects.push(t);
+    await wait(300);
+    fight.effects.splice(fight.effects.indexOf(t), 1);
+    break;
+  case "hit":
+    s = fight.shown[e.target];
+    if (e.value) hurtShown(e.target, e.value, null);
+    else floater(s.x, s.y, e.result ? "hit" : "miss", e.result ? "#e8c547" : "#9a98a6");
+    log([el("span", null, powerOf(e.cond).display + " → " + name(e.target) + ": "), el("span", "roll", rolled(e)),
+         el("span", null, ", " + RESULTS[e.result] + (e.value ? ", " + e.value + " damage." : "."))],
+        e.result ? (fight.st.fighters[e.actor].side === 0 ? "good" : "bad") : null);
+    if (fight.st.fighters[e.actor].side === 0 && fight.st.fighters[e.target].side !== 0) {
+      fight.swings++;
+      if (e.result) fight.hits++;
+      fight.dealt += e.value;
+    }
+    cards();
+    await wait(220);
+    break;
+  case "mend":
+    s = fight.shown[e.target];
+    s.health = Math.min(fight.st.fighters[e.target].health_max, s.health + e.value);
+    floater(s.x, s.y, "+" + e.value, "#7fcf7a");
+    log(name(e.target) + " is healed " + e.value + " (" + powerOf(e.cond).display + ").", "good");
+    await wait(250);
+    break;
+  case "field":
+    t = fight.st.map[e.y];
+    fight.st.map[e.y] = t.slice(0, e.x) + String(e.value) + t.slice(e.x + 1);
+    await wait(60);
+    break;
+  case "shift":
+    s = fight.shown[e.actor];
+    await tween(s, e.x, e.y, 160);
+    log(name(e.actor) + " blinks across.");
+    break;
   case "shove":
     s = fight.shown[e.actor];
     t = fight.shown[e.target];
@@ -857,6 +985,19 @@ function frame(now) {
     pulse = 0.6 + 0.4 * Math.sin(now / 220);
     bracket(fight.plan.x, fight.plan.y, "rgba(232,197,71," + pulse + ")", 2);
   }
+  /* A power on a square: where it can go, and what it would touch from the cursor. */
+  if (mode === "cast") {
+    ctx.fillStyle = "rgba(180,120,255,.14)";
+    for (y = 0; y < map.length; ++y) {
+      for (x = 0; x < map[y].length; ++x) if (canCast(x, y)) ctx.fillRect(x * SQ + 1, y * SQ + 1, SQ - 2, SQ - 2);
+    }
+    ctx.fillStyle = canCast(fight.cast.x, fight.cast.y) ? "rgba(239,107,91,.28)" : "rgba(150,150,150,.2)";
+    castPreview().forEach(function (q) {
+      if (q.y >= 0 && q.y < map.length && q.x >= 0 && q.x < map[0].length) ctx.fillRect(q.x * SQ + 1, q.y * SQ + 1, SQ - 2, SQ - 2);
+    });
+    pulse = 0.6 + 0.4 * Math.sin(now / 220);
+    bracket(fight.cast.x, fight.cast.y, "rgba(200,150,255," + pulse + ")", 2);
+  }
   /* A Dash: where the second move can go, from the square chosen. */
   if (mode === "dash") {
     ctx.fillStyle = "rgba(232,197,71,.16)";
@@ -875,7 +1016,7 @@ function frame(now) {
   order.forEach(function (i) {
     var s = fight.shown[i], f = fight.st.fighters[i], px = s.x, py = s.y, img, l, k, fl;
     if (s.alpha <= 0) return;
-    if (i === fight.me && (mode === "turn" || mode === "aim" || mode === "dash") && s.state === 0) {
+    if (i === fight.me && (mode === "turn" || mode === "aim" || mode === "dash" || mode === "cast") && s.state === 0) {
       ctx.globalAlpha = 0.3;
       ctx.drawImage(figureSprite(S.native.figures[i]), px * SQ + 3, py * SQ + 8);
       ctx.globalAlpha = 1;
@@ -959,8 +1100,8 @@ function frame(now) {
     (mode === "aim" ? aimList() : fight.targets).forEach(function (t, n) {
       var s = fight.shown[t.who], on = mode === "aim" && n === fight.aim;
       bracket(s.x, s.y, on ? "#ef6b5b" : "rgba(239,107,91,.6)", on ? 2.2 : 1.2);
-      tag(s.x, s.y, (mode === "aim" && fight.aimKind === "shove" ? "Shove " : "TN ") + t.tn,
-          on ? "#ffffff" : "#ef9b8f");
+      tag(s.x, s.y, t.tn ? (mode === "aim" && fight.aimKind === "shove" ? "Shove " : "TN ") + t.tn
+          : powerOf(me().powers[fight.puse][0]).display, on ? "#ffffff" : "#ef9b8f");
     });
   }
 
@@ -1011,7 +1152,7 @@ function buttons() {
     return [["Arrows", "Move (or click a lit square)", null, false, "", false, "hint"],
             ["A", t > 1 ? "Attack…" : "Attack", attack, !t, "Nobody in reach from here", true],
             ["S", sh > 1 ? "Shove…" : "Shove", shove, !sh, "Nobody next to you to shove"],
-            ["D", "Dash", dash],
+            ["D", "Dash", dash]].concat(powerButtons()).concat([
             ["G", "Guard", function () { act(ACT.guard, 0); }],
             ["W", "Wait", waitTurn, moved() || me().waited, moved() ? "Only before you move" : "Once a round"],
             ["P", "Pack", openPack],
@@ -1022,12 +1163,20 @@ function buttons() {
             ["gap"],
             ["T", auto ? "Auto: on" : "Auto: off", toggleAuto, false, "", false, "toggle"],
             ["Z", fast ? "Fast: on" : "Fast: off", toggleFast, false, "", false, "toggle"],
-            ["X", "Leave", leave]];
+            ["X", "Leave", leave]]);
   case "aim":
     return [["← →", "Next target", function () { cycle(1); }],
-            ["Enter", fight.aimKind === "shove" ? "Shove" : "Strike", function () {
-              act(fight.aimKind === "shove" ? ACT.shove : ACT.attack, aimList()[fight.aim].who);
+            ["Enter", fight.aimKind === "shove" ? "Shove" : fight.aimKind === "power"
+              ? powerOf(me().powers[fight.puse][0]).display : "Strike", function () {
+              if (fight.aimKind === "power") act(ACT.power, aimList()[fight.aim].who, 0, 0, fight.puse);
+              else act(fight.aimKind === "shove" ? ACT.shove : ACT.attack, aimList()[fight.aim].who);
             }, false, "", true],
+            ["Esc", "Back", function () { setMode("turn"); }]];
+  case "cast":
+    return [["Arrows", "Where (or click a lit square)", null, false, "", false, "hint"],
+            ["Enter", powerOf(me().powers[fight.puse][0]).display + " there", function () {
+              act(ACT.power, 0, fight.cast.x, fight.cast.y, fight.puse);
+            }, !canCast(fight.cast.x, fight.cast.y), "It can't go there", true],
             ["Esc", "Back", function () { setMode("turn"); }]];
   case "dash":
     return [["Arrows", "Where to dash (or click a lit square)", null, false, "", false, "hint"],
@@ -1050,6 +1199,16 @@ function buttons() {
   return [];
 }
 
+/* A button for each of the traveler's powers: 1-4. */
+function powerButtons() {
+  var f = me();
+  return (f.powers || []).map(function (p, k) {
+    var pd = powerOf(p[0]);
+    return [String(k + 1), pd.display + (p[2] >= 0 ? " (" + p[2] + ")" : ""), function () { usePower(k); },
+            p[2] === 0, "No charges left this fight", false, "power"];
+  });
+}
+
 function actions() {
   var bar = $("actions");
   bar.textContent = "";
@@ -1068,6 +1227,7 @@ function actions() {
     btn.disabled = !!b[3];
     if (b[3] && b[4]) btn.title = b[4];
     if (b[6] === "toggle") btn.setAttribute("aria-pressed", String(b[1].indexOf("on") > 0));
+    if (b[6] === "power") btn.classList.add("power");
     btn.onclick = b[2];
     btn.dataset.key = b[0];
     bar.append(btn);
@@ -1119,6 +1279,13 @@ function onKey(e) {
     if (!planTo(f.x + step[0], f.y + step[1])) toast("Can't get there this turn.");
     return;
   }
+  if (mode === "cast" && step) {
+    e.preventDefault();
+    var nx = fight.cast.x + step[0], ny = fight.cast.y + step[1];
+    if (ny >= 0 && ny < fight.st.map.length && nx >= 0 && nx < fight.st.map[0].length) fight.cast = { x: nx, y: ny };
+    actions();
+    return;
+  }
   if (mode === "dash" && step) {
     e.preventDefault();
     if (!dashTo(fight.dash.x + step[0], fight.dash.y + step[1])) toast("Can't dash there.");
@@ -1147,6 +1314,17 @@ function onClick(e) {
   if (!fight) return;
   var sq = squareAt(e.offsetX, e.offsetY), who, t;
   if (!sq) return;
+  if (mode === "cast") {
+    if (canCast(sq.x, sq.y)) act(ACT.power, 0, sq.x, sq.y, fight.puse);
+    else toast("It can't go there.");
+    return;
+  }
+  if (mode === "aim" && fight.aimKind === "power") {
+    who = fighterAt(sq.x, sq.y);
+    t = fight.ptargets.filter(function (x) { return x.who === who; })[0];
+    if (t) act(ACT.power, t.who, 0, 0, fight.puse);
+    return;
+  }
   if (mode === "dash") {
     if (dashTo(sq.x, sq.y)) act(ACT.dash, 0, sq.x, sq.y);
     else toast("Can't dash there.");
@@ -1172,7 +1350,8 @@ function onMove(e) {
   var who = hover ? fighterAt(hover.x, hover.y) : -1;
   var t = fight.targets && fight.targets.some(function (x) { return x.who === who; });
   board.style.cursor = ((mode === "turn" || mode === "aim") && (t || (hover && canReach(hover.x, hover.y))))
-    || (mode === "dash" && hover && canDash(hover.x, hover.y)) ? "pointer" : "default";
+    || (mode === "dash" && hover && canDash(hover.x, hover.y))
+    || (mode === "cast" && hover && canCast(hover.x, hover.y)) ? "pointer" : "default";
   board.title = who >= 0 ? name(who) + (t ? ": click to attack" : "") : "";
 }
 
@@ -1189,7 +1368,8 @@ function published() {
 }
 
 async function boot() {
-  var got = await Promise.all(["art.json", "scenarios.json", "items.json", "lab.json", "conditions.json"].map(function (f) {
+  var got = await Promise.all(["art.json", "scenarios.json", "items.json", "lab.json", "conditions.json",
+                               "powers.json"].map(function (f) {
     return fetch(f).then(function (r) {
       if (!r.ok) throw new Error(f + ": " + r.status);
       return r.json();
@@ -1199,6 +1379,7 @@ async function boot() {
   SCENARIOS = got[3].concat(got[1]);                  /* the rules lab's first: they're new */
   ITEMS = got[2];
   CONDS = got[4];
+  POWERS = got[5];
   fetch("build.json").then(function (r) { return r.json(); }).then(function (b) {
     BUILD = b.commit + " (" + b.built + ")";
     if (b.built !== "studio") published();
@@ -1208,7 +1389,8 @@ async function boot() {
   rules.ar_next = M.cwrap("ar_next", "string", []);
   rules.ar_reach = M.cwrap("ar_reach", "string", ["number"]);
   rules.ar_targets = M.cwrap("ar_targets", "string", ["number", "number", "number"]);
-  rules.ar_act = M.cwrap("ar_act", "string", ["number", "number", "number", "number", "number", "number", "number"]);
+  rules.ar_act = M.cwrap("ar_act", "string", ["number", "number", "number", "number", "number", "number", "number", "number"]);
+  rules.ar_power = M.cwrap("ar_power", "string", ["number", "number", "number", "number"]);
   rules.ar_dash = M.cwrap("ar_dash", "string", ["number", "number", "number"]);
   rules.ar_shoves = M.cwrap("ar_shoves", "string", ["number", "number", "number"]);
   rules.ar_quick = M.cwrap("ar_quick", "string", ["number"]);

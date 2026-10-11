@@ -198,6 +198,85 @@ LAB = [
 ]
 
 
+# The rules lab's scenarios with powers (docs/turn.md, Powers in play). A traveler's
+# powers are [NAME, rank]: a level-1 traveler's start at rank 10. An ally is another
+# traveler, on the map's next @.
+LAB += [
+    {"title": "Fire and ice",
+     "issue": "A new Channeler with her four powers (keys 1-4): Firebolt at will, a Fireball, "
+              "two Ice walls, two Shields; against four ash rats.",
+     "watch": "Whether a Fireball into the pack is worth its one charge, whether an ice wall "
+              "buys time, and whether powers beat just using the wand.",
+     "cls": "CHANNELER", "level": 1, "weapon": "EMBER_WAND", "armor": None,
+     "powers": [["FIREBOLT", 10], ["FIREBALL", 10], ["ICE_WALL", 10], ["SHIELD", 10]],
+     "foes": ["ASH_RAT", "ASH_RAT", "ASH_RAT", "ASH_RAT"],
+     "map": ["############",
+             "#.........a#",
+             "#.........b#",
+             "#@.........#",
+             "#.........c#",
+             "#.........d#",
+             "############"]},
+    {"title": "Patch them up",
+     "issue": "A new Warden and a new Medic together against two rust-guards. The Medic can "
+              "patch up (3 charges), stim the Warden (faster, harder hitting, then exhausted) "
+              "and put a guard to sleep.",
+     "watch": "Whether the Medic's turns spent helping are worth more than her pistol.",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "allies": [{"cls": "MEDIC", "level": 1, "weapon": "SCRAP_PISTOL", "armor": None,
+                 "powers": [["PATCH_UP", 10], ["STIM", 10], ["SEDATE", 10]]}],
+     "foes": ["RUST_GUARD", "RUST_GUARD"],
+     "map": ["############",
+             "#..........#",
+             "#@........a#",
+             "#@........b#",
+             "#..........#",
+             "############"]},
+    {"title": "Hold the line",
+     "issue": "A new Tinker against two scrap gunners and a rust-guard. A barricade (a wall "
+              "for three turns), a shock mine (stuns), a force field (absorbs 10), and an arc "
+              "shot that ignores Soak.",
+     "watch": "Whether a wall in the right place changes the fight, and how strong a stun is.",
+     "cls": "TINKER", "level": 1, "weapon": "ARC_PISTOL", "armor": None,
+     "powers": [["ARC_SHOT", 10], ["BARRICADE", 10], ["SHOCK_MINE", 10], ["FORCE_FIELD", 10]],
+     "foes": ["SCRAP_GUNNER", "SCRAP_GUNNER", "RUST_GUARD"],
+     "map": ["############",
+             "#.......a..#",
+             "#@.........#",
+             "#.......c..#",
+             "#.......b..#",
+             "############"]},
+    {"title": "Blink and snare",
+     "issue": "A new Rogue who can blink (up to 3 squares, no free attacks), snare (slowed, "
+              "hexed, chilled) and play a dirty trick (blinded), against a rust-guard and two "
+              "ash rats.",
+     "watch": "Whether keeping out of reach is fun or tedious, and if the hexes feel strong.",
+     "cls": "ROGUE", "level": 1, "weapon": "SCRAP_PISTOL", "armor": None,
+     "powers": [["BLINK", 10], ["SNARE", 10], ["DIRTY_TRICK", 10]],
+     "foes": ["RUST_GUARD", "ASH_RAT", "ASH_RAT"],
+     "map": ["############",
+             "#.........a#",
+             "#@...#.....#",
+             "#....#....b#",
+             "#.........c#",
+             "############"]},
+    {"title": "Bull rush",
+     "issue": "A new Warden with Bull rush (a foe next to you, pushed 3 squares), Ground slam "
+              "(everyone round you knocked down and pushed), Shield wall and Second wind, "
+              "against three ash rats by a pit.",
+     "watch": "Whether pushing things into the pit is too easy, and when Second wind matters.",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "powers": [["BULL_RUSH", 10], ["GROUND_SLAM", 10], ["SHIELD_WALL", 10], ["SECOND_WIND", 10]],
+     "foes": ["ASH_RAT", "ASH_RAT", "ASH_RAT"],
+     "map": ["############",
+             "#......OOO.#",
+             "#@........a#",
+             "#.........b#",
+             "#......OOOc#",
+             "############"]},
+]
+
+
 def foe_name(f):
     return f.split(":")[0]
 
@@ -289,17 +368,22 @@ def native(s, ch):
     """The fight, for the native arena: the map without its letters, a line for each
     fighter (tools/arena/web/arena.c's spec), and the figure each is drawn with."""
     rows = ring(s)
-    spots = {c: (x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c != "." and
-             (c == "@" or c.islower())}
+    spots = {c: (x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c.islower()}
+    starts = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c == "@"]
     clean = ["".join("." if (c == "@" or c.islower()) else c for c in r) for r in rows]
-    x, y = spots["@"]
     lines = [f"map {len(clean[0])} {len(clean)}"] + clean
     if s.get("hazard"):
         d, t, c = s["hazard"]
         lines.append(f"hazard {d} {t or 'none'} {c or '-'}")
-    lines.append(f"traveler {x} {y} {arena.passport.encode(ch)} {item_id(s['weapon'])}")
-    figures = [s.get("race") or arena.DEFAULT_RACE[s["cls"]]]
-    names = [arena.REG["classes"][s["cls"]]["display"]]
+    team = [s] + s.get("allies", [])
+    figures, names, powers = [], [], []
+    for i, (t, (x, y)) in enumerate(zip(team, starts)):
+        tch = ch if i == 0 else traveler(t)
+        lines.append(f"traveler {x} {y} {arena.passport.encode(tch)} {item_id(t['weapon'])}")
+        figures.append(t.get("race") or arena.DEFAULT_RACE[t["cls"]])
+        names.append(arena.REG["classes"][t["cls"]]["display"])
+        powers += [f"power {i} {name} {rank}" for name, rank in t.get("powers", [])]
+    lines += powers
     plain = [foe_name(f) for f in s["foes"]]
     for i, f in enumerate(s["foes"]):
         fx, fy = spots["abcdefgh"[i]]
@@ -328,16 +412,18 @@ def items():
 
 
 def matchup(s, rules="v0"):
-    """The scenario as an arena matchup, by rules v0 or the rules lab's (next)."""
+    """The scenario as an arena matchup, by rules v0 or the rules lab's (next). (Powers
+    aren't in it: the computer doesn't use them yet.)"""
     m = arena.Matchup()
     m.set_rules(rules)
-    item = arena.REG["items"][s["weapon"]]
-    arch = arena.registry.ARCHETYPES[item["archetype"]]
-    armor = arena.REG["items"][s["armor"]]["tier"] if s["armor"] else 0
-    m.travelers.append(arena.Traveler(([s["race"]] if s.get("race") else [])
-                                      + [s["cls"], str(s["level"]), "weapon", arch,
-                                         str(item["tier"]), arena.registry.DAMAGE[item["damage"]],
-                                         "armor", str(armor)]))
+    for t in [s] + s.get("allies", []):
+        item = arena.REG["items"][t["weapon"]]
+        arch = arena.registry.ARCHETYPES[item["archetype"]]
+        armor = arena.REG["items"][t["armor"]]["tier"] if t["armor"] else 0
+        m.travelers.append(arena.Traveler(([t["race"]] if t.get("race") else [])
+                                          + [t["cls"], str(t["level"]), "weapon", arch,
+                                             str(item["tier"]), arena.registry.DAMAGE[item["damage"]],
+                                             "armor", str(armor)]))
     for f in s["foes"]:
         m.add_foe(foe_name(f) + (f" hit {foe_hit(f)}" if foe_hit(f) else ""))
     if s.get("hazard"):
@@ -345,6 +431,34 @@ def matchup(s, rules="v0"):
         m.set_hazard([str(d), t or "none", c or "-"])
     m.map = ring(s)
     return m
+
+
+def powers():
+    """What the modern arena shows of each power: its name, shape, element, uses, what it
+    targets, and in words what it does (registry/powers.txt, docs/turn.md)."""
+    shapes = arena.registry.SHAPES
+    words = {"bolt": "damage 5 x tier, against Ward", "burst": "everyone in a blast, damage 5 x tier",
+             "hex": "hexed: -10 x tier to its attacks", "ward": "a helping condition",
+             "mend": "heals 5 x tier", "field": "a line of tier + 2 squares for 3 turns",
+             "shift": "moves tier + 2 squares in a line"}
+    riders = {"fire": "burns its square", "cold": "chills", "kinetic": "pushes a square",
+              "energy": "ignores Soak", "mind": "against Resolve"}
+    out = {}
+    for p in arena.POWERS.values():
+        shape = shapes[p["shape"]]
+        el = arena.registry.DAMAGE[p["element"]] if p["element"] is not None else None
+        said = [words[shape]]
+        if shape == "field" and el:
+            said[0] += {"fire": ": fire", "cold": ": ice (rough)", "kinetic": ": a wall",
+                        "mind": ": mist (cover)", "energy": ": lightning"}[el]
+        elif el and shape in ("bolt", "burst", "hex"):
+            said.append(riders[el])
+        if p["cond"]:
+            said.append(arena.CONDS[p["cond"]]["display"].lower())
+        out[p["id"]] = {"name": p["name"], "display": p["display"], "shape": shape, "element": el,
+                        "uses": p["uses"], "target": arena.registry.TARGETS[p["target"]],
+                        "near": p["near"], "what": "; ".join(said)}
+    return out
 
 
 def conditions():
@@ -442,6 +556,8 @@ def main(argv):
         json.dump(items(), f, indent=1)
     with open(os.path.join(out, "conditions.json"), "w") as f:
         json.dump(conditions(), f, indent=1)
+    with open(os.path.join(out, "powers.json"), "w") as f:
+        json.dump(powers(), f, indent=1)
     print(f"arena: {len(data)} scenarios and {len(lab)} of the rules lab's in {out}")
     return 0
 

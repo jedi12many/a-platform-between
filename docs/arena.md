@@ -103,9 +103,11 @@ coats, ids 9-14). Change a scenario there, `make site`, and the page follows.
 
 The same scenarios, played in a modern page instead of on the train: no story, no Boarding
 Pass, no Travel Stamp, no C64 screen, and **by rules v1** ([turn.md](turn.md): the rules
-lab's movement and conditions), where the train still plays v0. Six more scenarios
-(R-01 to R-06) are there only, to try v1: fire to cross, a ledge to shove foes off,
-poisoned bites, chilling shots, flying over pits, and running with Dash. It's a tool in
+lab's movement, conditions and powers), where the train still plays v0. Eleven more
+scenarios (R-01 to R-11) are there only, to try v1: fire to cross, a ledge to shove foes
+off, poisoned bites, chilling shots, flying over pits, running with Dash; and powers: a
+Channeler's fire and ice, a Medic beside a Warden, a Tinker's barricade and shock mine, a
+Rogue's blink and snare, a Warden's bull rush. It's a tool in
 the **studio**, beside the art desk:
 
     make studio            then open http://localhost:8064/arena/
@@ -131,7 +133,13 @@ the **studio**, beside the art desk:
   the skill each rolls with this traveler. Take one up, wear one, or put one away. It's
   free, as the rules say ([items.md](items.md#swapping)): it doesn't use the turn. Each
   scenario's pack has the arena's gear up to its own tier.
-- **Auto** (T) plays your turns as quick does; **Fast** (Z) speeds up what's shown.
+- **Powers** are on the keys **1-4** (and their buttons, with charges left). One with a
+  single target goes off at once; with several, aim as for an attack; one that goes on a
+  square (a burst, a field, a blink) lights where it can go, and shows what it would touch
+  (the blast, the wall's line) under the cursor. Each card lists its fighter's powers
+  (hover for tier, roll and what each does).
+- **Auto** (T) plays your turns as quick does (with weapons: the computer doesn't use
+  powers yet); **Fast** (Z) speeds up what's shown.
 - **The end** shows how it went (rounds, health left, damage each way, how often you hit,
   the swaps) beside what the computer gets. Fight again (R), give feedback (F: the same
   playtest issue form), or back to the scenarios.
@@ -152,7 +160,8 @@ scenario starts with the fighters it says and its buttons in view; fights on Aut
 dice (three for each scenario, the rules lab's too) end as `build/arena-next` (the same
 engine, natively) says, round for round and health for health; the pack's swaps fight by
 the rules and don't use the turn; a Dash goes where it's pointed; a Shove by a pit drops
-the foe in.
+the foe in; a Fireball on key 2 picks its square, blasts, and spends its charge; a Medic's
+Stim lands on the Warden beside her.
 
 The arena runner plays v1 too: `python3 tools/arena/arena.py "Warden 1" vs RUST_GUARD --rules
 next`, and a matchup can say `rules next`, `hazard 5 fire ON_FIRE` and `foe ASH_RAT x4 hit
@@ -215,6 +224,15 @@ shoves or dashes):
 | R-03 Venom (3 rats) | | 82% | |
 | R-05 Wings | | 82% | |
 | R-06 Run and gun | | 100% | a Rad-Dryad Channeler (Rooted: Soak +2) against a brute |
+| R-07 Fire and ice | | 99% | without powers: Rooted's Soak 2 stops a rat's 2 |
+| R-08 Patch them up | | 80% | a Warden and a Medic, without powers |
+| R-09 Hold the line | | 0% | a Tinker alone against two gunners and a guard: only powers can win it |
+| R-10 Blink and snare | | 49% | |
+| R-11 Bull rush | | 100% | |
+
+The R-07 to R-11 figures are the computer's, which doesn't use powers: they're the floor
+the powers should lift. Soak is strong against swarms: a Soak equal to a foe's damage
+makes it harmless but for crits.
 
 Races' traits are worth more than their +10: Plated alone moves the Warden's fights by
 7 to 33 points. Rats that make you bleed (`hit BLEEDING`) take four from 76% back to 39%.

@@ -46,6 +46,7 @@ STAT = {s: i for i, s in enumerate(registry.STATS)}
 ARENA = os.path.join(ROOT, "build", "arena")
 ARENA_NEXT = os.path.join(ROOT, "build", "arena-next")
 CONDS = registry.load_conditions(races=REG["races"])
+POWERS = registry.load_powers(classes=REG["classes"], conditions=CONDS)
 
 # ------------------------------------------------------------------------ the quick builder
 # What each class puts first: its stats (point-buy fills them in order, to 70), the skill

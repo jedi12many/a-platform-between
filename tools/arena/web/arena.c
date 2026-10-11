@@ -20,9 +20,11 @@
  *   ar_reach(who)             the squares `who` can reach this turn
  *   ar_targets(who, x, y)     who `who` can attack from x, y, and the TN for each
  *   ar_dash(who, x, y)        the squares a Dash from x, y could reach
+ *   ar_power(who, use, x, y)  what power `use` could be used on from x, y: fighters (with
+ *                             the TN, 0 if there's no roll) and squares
  *   ar_shoves(who, x, y)      who `who` can shove from x, y, and the TN for each
- *   ar_act(who, kind, x, y, target, dx, dy)   a turn: move to x, y, then APB_ACT_* (a Dash
- *                             on to dx, dy)
+ *   ar_act(who, kind, x, y, target, dx, dy, use)   a turn: move to x, y, then APB_ACT_* (a
+ *                             Dash on to dx, dy; power `use` on target, or the square dx, dy)
  *   ar_quick(who)             the turn the computer would play for `who`
  *   ar_equip(who, slot, item) gear from the pack: slot 0 the hand (0: bare-handed), slot 1
  *                             the body (0: no armor)
@@ -49,6 +51,9 @@ static int events;                       /* events written since the last call *
 static uint8_t reach[APB_MAP_H_MAX][APB_MAP_W_MAX];
 static const char *const types[] = { "kinetic", "energy", "fire", "cold", "mind" };
 static uint8_t cids[APB_COND_SLOTS];
+static uint8_t pids[APB_POWERS_HELD];
+static uint8_t pranks[APB_POWERS_HELD];
+static uint8_t pleft[APB_POWERS_HELD];
 static uint8_t crounds[APB_COND_SLOTS];
 
 static uint8_t cond_named(const char *s)
@@ -85,9 +90,9 @@ static void put(const char *fmt, ...)
 static const char *const event_kinds[] = {
     "turn", "move", "attack", "down", "hazard", "guard", "wait", "flee", "gone", "end", "free",
     "cond_on", "cond_off", "immune", "tick", "heal", "skip", "shake", "stand", "dash", "shove",
-    "push", "slam", "fall", "thorns", "absorb"
+    "push", "slam", "fall", "thorns", "absorb", "power", "hit", "mend", "field", "shift"
 };
-#define EVENT_KINDS 26
+#define EVENT_KINDS 31
 
 static void on_event(const apb_event *e)
 {
@@ -96,7 +101,7 @@ static void on_event(const apb_event *e)
         e->kind < EVENT_KINDS ? event_kinds[e->kind] : "?", e->actor, e->target, e->x, e->y,
         e->value, e->cond);
     if (e->kind == APB_EV_ATTACK || e->kind == APB_EV_FLEE || e->kind == APB_EV_SHAKE
-        || e->kind == APB_EV_SHOVE) {
+        || e->kind == APB_EV_SHOVE || e->kind == APB_EV_HIT) {
         put(",\"roll\":%u,\"total\":%d,\"tn\":%d,\"result\":%u", e->roll.roll, e->roll.total,
             e->roll.tn, e->roll.result);
     }
@@ -144,6 +149,12 @@ static const char *end_reply(uint8_t whose)
             apb_battle_soak(i));
         n = apb_battle_conditions(i, cids, crounds);
         for (k = 0; k < n; ++k) put(k ? ",[%u,%u]" : "[%u,%u]", cids[k], crounds[k]);
+        put("],\"powers\":[");
+        n = apb_battle_powers(i, pids, pranks, pleft);
+        for (k = 0; k < n; ++k) {
+            put(k ? ",[%u,%u,%d,%u,%u]" : "[%u,%u,%d,%u,%u]", pids[k], pranks[k],
+                pleft[k] == 0xFF ? -1 : pleft[k], apb_power_tier(pranks[k]), apb_battle_power_rating(i, k));
+        }
         put("]");
         if (is_traveler[i]) {
             put(",\"item\":%u,\"armor_item\":%u,\"melee_bonus\":%u", weapon_of[i],
@@ -241,6 +252,16 @@ const char *ar_begin(unsigned seed, const char *spec)
             f.y = (uint8_t)v[1];
             if (apb_battle_add(&f) == APB_NOBODY) return refuse("a traveler can't stand there");
             is_traveler[who] = 1;
+        } else if (strcmp(word, "power") == 0) {
+            static char pname[32];
+            uint16_t id;
+            if (sscanf(line, "%*s %d %31s %d", &v[0], pname, &v[1]) != 3) return refuse("bad power");
+            for (id = 1; id <= APB_POWER_MAX; ++id) {
+                if (apb_powers[id].name && strcmp(apb_powers[id].name, pname) == 0) break;
+            }
+            if (id > APB_POWER_MAX || apb_battle_learn((uint8_t)v[0], (uint8_t)id, (uint8_t)v[1]) == APB_NOBODY) {
+                return refuse("bad power");
+            }
         } else if (strcmp(word, "foe") == 0) {
             if (sscanf(line, "%*s %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
                        &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7], &v[8], &v[9],
@@ -339,6 +360,31 @@ const char *ar_dash(unsigned who, unsigned x, unsigned y)
 }
 
 EMSCRIPTEN_KEEPALIVE
+const char *ar_power(unsigned who, unsigned use, unsigned x, unsigned y)
+{
+    static uint8_t tg[APB_FIGHTERS_MAX];
+    static int16_t tn[APB_FIGHTERS_MAX];
+    uint8_t n;
+    uint8_t i;
+    uint8_t sx;
+    uint8_t sy;
+
+    n = apb_battle_power_targets((uint8_t)who, (uint8_t)use, (uint8_t)x, (uint8_t)y, tg, tn);
+    apb_battle_power_squares((uint8_t)who, (uint8_t)use, (uint8_t)x, (uint8_t)y, reach);
+    used = 0;
+    put("{\"targets\":[");
+    for (i = 0; i < n; ++i) put(i ? ",{\"who\":%u,\"tn\":%d}" : "{\"who\":%u,\"tn\":%d}", tg[i], tn[i]);
+    put("],\"squares\":[");
+    for (sy = 0; sy < apb_battle_height(); ++sy) {
+        put(sy ? ",\"" : "\"");
+        for (sx = 0; sx < apb_battle_width(); ++sx) put("%u", reach[sy][sx]);
+        put("\"");
+    }
+    put("]}");
+    return json;
+}
+
+EMSCRIPTEN_KEEPALIVE
 const char *ar_shoves(unsigned who, unsigned x, unsigned y)
 {
     uint8_t i;
@@ -358,7 +404,7 @@ const char *ar_shoves(unsigned who, unsigned x, unsigned y)
 
 EMSCRIPTEN_KEEPALIVE
 const char *ar_act(unsigned who, unsigned kind, unsigned x, unsigned y, unsigned target,
-                   unsigned dx, unsigned dy)
+                   unsigned dx, unsigned dy, unsigned use)
 {
     apb_action a;
 
@@ -368,6 +414,7 @@ const char *ar_act(unsigned who, unsigned kind, unsigned x, unsigned y, unsigned
     a.target = (uint8_t)target;
     a.dash_x = (uint8_t)dx;
     a.dash_y = (uint8_t)dy;
+    a.use = (uint8_t)use;
     begin_reply();
     if (!apb_battle_act((uint8_t)who, &a)) {
         used = 0;

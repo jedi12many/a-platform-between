@@ -531,7 +531,7 @@ build/arena-web/index.html: build/arena-web/rules.js build/arena-play/scenarios.
                             tools/arena/web/art_json.py content/art/*.txt
 	cp tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css build/arena-web/
 	cp build/arena-play/scenarios.json build/arena-play/lab.json build/arena-play/items.json \
-	    build/arena-play/conditions.json build/arena-web/
+	    build/arena-play/conditions.json build/arena-play/powers.json build/arena-web/
 	python3 tools/arena/web/art_json.py build/arena-web/art.json
 
 arena-web: build/arena-web/index.html

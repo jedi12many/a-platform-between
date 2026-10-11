@@ -80,8 +80,9 @@ def check_start(code, s):
         fail(f"{code}: the intro has no Start button")
     st = out["turn"]["st"]
     sides = [f["side"] for f in st["fighters"]]
-    if sides != [0] + [1] * len(s["foes"]):
-        fail(f"{code}: the fight has sides {sides}, not a traveler and {len(s['foes'])} foes")
+    team = 1 + len(s.get("allies", []))
+    if sides != [0] * team + [1] * len(s["foes"]):
+        fail(f"{code}: the fight has sides {sides}, not {team} traveler(s) and {len(s['foes'])} foes")
         return
     trav = st["fighters"][0]
     weapon = arena.REG["items"][s["weapon"]]
@@ -89,7 +90,7 @@ def check_start(code, s):
     if trav["item"] != weapon["id"] or trav["weapon"] != 5 * weapon["tier"] or trav["armor"] != want_armor:
         fail(f"{code}: the traveler holds {trav['item']} ({trav['weapon']} damage, Armor {trav['armor']}), "
              f"not the {s['weapon']} and Armor {want_armor}")
-    for i, name in enumerate(s["foes"], 1):
+    for i, name in enumerate(s["foes"], team):
         f, want = st["fighters"][i], arena.REG["foes"][scenarios.foe_name(name)]
         got = (f["health_max"], f["armor"], f["ward"], f["attack"], f["weapon"])
         need = (want["health"], want["armor"], want["ward"], want["attack"], want["damage"])
@@ -181,6 +182,34 @@ def check_shove():
         ok(f"Shove: next to a pit, the rust-guard goes in ({said[0].split(': ')[1]})")
 
 
+def check_powers():
+    """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
+    Medic stims the Warden (2: one ally next to her)."""
+    out = page("power", "R-07", "12", "2")
+    if out:
+        f = out["after"]["st"]["fighters"][0]
+        fireball = [p for p in f["powers"] if scenarios.arena.POWERS["FIREBALL"]["id"] == p[0]]
+        said = [line for line in out["after"]["log"] if "uses Fireball" in line]
+        hits = [line for line in out["after"]["log"] if line.startswith("Fireball →")]
+        if out["chose"] != "cast" or not said or not hits or not fireball or fireball[0][2] != 0:
+            fail(f"a Fireball from key 2: the page went to {out['chose']}, the log says {said + hits}, "
+                 f"its charges {fireball}")
+        else:
+            ok(f"powers: key 2 picks a square for the Fireball, it blasts ({len(hits)} rolls) and "
+               "its one charge is spent")
+    out = page("power", "R-08", "5", "2")
+    if out:
+        st = out["after"]["st"]
+        medic = st["fighters"][1]
+        warden = st["fighters"][0]
+        stim = scenarios.arena.CONDS["STIMMED"]["id"]
+        if not any(c[0] == stim for c in warden["conds"]):
+            fail(f"the Medic's Stim on the Warden: his conditions are {warden['conds']}")
+        else:
+            ok("powers on an ally: the Medic's Stim (key 2) lands on the Warden next to her")
+    return
+
+
 def main():
     if not os.path.exists(os.path.join(ROOT, "build", "arena-web", "rules.js")):
         print("check_native: run make arena-web first")
@@ -208,6 +237,7 @@ def main():
         check_pack()
         check_dash()
         check_shove()
+        check_powers()
     finally:
         server.terminate()
         server.wait()
