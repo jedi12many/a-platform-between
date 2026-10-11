@@ -86,6 +86,14 @@ From the first runs (1000 fights each); to be weighed, not yet acted on.
 6. **A party of four at level 3 is overwhelming** against two rust-guards and two gunners
    (100%, with only the Warden often going down: it's the one in front).
 
+### After the bestiary's fixes
+
+The fixes in [bestiary.md](bestiary.md#the-bestiary-today-measured) (Ward for every foe,
+the gunner's damage up) moved the Channeler against a rust-guard from 99% to 96%, and the
+gunner from a certain win to 98%. Ward equal to Armor would bring the Channeler to 87%,
+level with the Rogue; a lone gunner stays weak, but two beat a new Warden 73% of the time.
+The details, and what's next, are on that page.
+
 ## Next
 
 - Items and powers ([items.md](items.md)), each tried here as it goes into the engine.

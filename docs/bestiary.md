@@ -50,7 +50,7 @@ The reasoning, so it can be redone when the rules move:
 - **Attack**: hits the band's Warden a little over half the time (attack ≈ their TN − 40).
 - **Damage**: about a fifth of a same-level traveler's health a hit.
 - **Ward**: **never 0**: half its Armor for a thing of flesh or metal, its Armor or more for
-  anything magical. A foe that really has no defense against powers says so with a
+  anything magical. (The arena says half is too little for a brute: see below.) A foe that really has no defense against powers says so with a
   **weakness** instead (printed, and fair).
 - **Speed**: 4, as a traveler's; Grace sets its place in the order and its Dodge (÷ 5).
 
@@ -85,17 +85,42 @@ against the encounter, and the win rate should match what the story wants.
 
 ## The bestiary today, measured
 
-The four foes in the registry, against this page (and the arena's findings):
+The four foes in the registry, against this page and the arena's findings. **Applied**:
 
-| Foe | Role, level | Off the standard | Proposed |
+| Foe | Role, level | Was | Now |
 |---|---|---|---|
 | Rust-guard | brute, 1 | Ward 0 | Ward 10 |
-| Scrap gunner | shooter, 1 | damage 4 (a new traveler beats one 100% of the time), Ward 0 | damage 6, Ward 5 |
+| Scrap gunner | shooter, 1 | damage 4, Ward 0 | damage 6, Ward 5 |
 | Ash rat | swarm, 1 | Ward 0 | Ward 5 |
 | Maintenance drone | guardian, 1 | Ward 0 | Ward 15 |
 
-Not applied yet: each change goes through the arena first, and The Fare's and Eighteen
-Minutes' fights are re-checked with it (their reviewed transcripts would change).
+What the arena says after (a new traveler of each class, 1000 fights):
+
+| | Warden | Rogue | Tinker | Channeler | Medic |
+|---|---|---|---|---|---|
+| Rust-guard, before | 82% | 88% | 79% | 99% | 79% |
+| Rust-guard, after | 82% | 88% | 79% | **96%** | 79% |
+| Scrap gunner, before | 100% | 100% | 100% | 100% | 100% |
+| Scrap gunner, after | 98% | 99% | 98% | 98% | 98% |
+
+The fixes help less than hoped, and the arena says why:
+
+- **Ward at half the Armor is still easier to beat.** Against Ward 10 a power needs 64,
+  a weapon against Armor 20 needs 74. Tried at **Ward 20** (equal to its Armor), the
+  Channeler wins **87%**, level with the Rogue's 88%: for a brute, **Ward should equal
+  Armor**, and "half" is too little. (Not applied: it's the next step, if you agree.)
+- **Distance is half of it.** On an open floor anyone who shoots gets free rounds while a
+  melee foe crosses it. Started next to the rust-guard, the Channeler wins 83%, as a
+  Warden does. That's the battle map doing its job; a Departure's map decides it.
+- **A weakness opens Armor only.** A Rogue shooting energy at the rust-guard (weak to
+  energy) wins 99%. That's what a weakness is for.
+- **A lone shooter is meant to be weak.** Even at the shooter's full numbers (Armor 10,
+  attack 45) a new traveler beats one gunner 97-98% of the time; but **two gunners beat a
+  new Warden 73% of the time**. Shooters come in groups.
+
+The VM's fight tests (`tests/vm/fights.qs`) changed with the gunner's damage (each hit 2
+more); The Fare's and Eighteen Minutes' routes didn't, as their travelers fight with
+weapons, but their images (and The Fare's trip code) did.
 
 ## Still open
 

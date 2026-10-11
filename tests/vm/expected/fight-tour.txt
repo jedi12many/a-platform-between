@@ -55,12 +55,12 @@ Three doors.
 [fight: 9 x 1, 2 fighters, health 25]
   0.......1
 round 0: 1's turn
-  1 attacks 0: 89+40=129 vs 58: success, 11 damage
+  1 attacks 0: 89+40=129 vs 58: success, 13 damage
 round 1: 0's turn
 > 0.0.0.1
   0 attacks 1: 98+20=118 vs 56: success, 26 damage
   1 is down
-[the fight is won; health 14]
+[the fight is won; health 12]
 The gunner falls.
 Three doors.
   1) The rat
