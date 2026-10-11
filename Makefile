@@ -287,6 +287,7 @@ test-python: build/demo build/passport-decode
 	./build/demo > build/demo.native.txt
 	python3 tools/passport/check_against_demo.py build/demo.native.txt
 	python3 tests/passport/check_refusals.py build/passport-decode
+	python3 tests/passport/test_trip.py
 	python3 tools/registry/test_registry.py
 	python3 tools/qsc/test_qsc.py
 	python3 tools/qsc/test_build.py

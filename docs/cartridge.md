@@ -284,11 +284,19 @@ them, a typo on the line it says.
 
 No disk, no flash writes: a trip is saved as a password, in the Passport's alphabet and
 lines ([passport-spec.md](passport-spec.md)). The Passport carries the traveler between
-trips; a **trip password** carries a trip at the start of its current chapter: the
-Departure, the chapter, the ticket and seed, the trip's flags and counters, and the
-traveler as they are, about the size of a Boarding Pass (four lines). The format will be
-specified in [boarding.md](boarding.md) beside the pass, with a Python reference, before
-it's written in assembly.
+trips; a **trip code** ([boarding.md](boarding.md#trip-code-format)) carries a trip from
+one of its menus. It names only what the trip has changed, and goes with the pass that
+boarded it, so it's short: *The Fare* after its fight is three lines.
+
+- **Saving**: `S` at a menu. The code is shown as its lines and as a QR code, as a Travel
+  Stamp is (asset 1: `cart/trip.s`); a key, and the menu comes back.
+- **Picking up**: board with the same pass (or Passport, or `PASS` file); the desk asks
+  *1. Board 2. Pick up a saved trip*; the code is typed a line at a time, each line's
+  check symbol checked as it's typed. The trip goes on at the menu it was saved at, the
+  story's tune with it.
+
+`tools/passport/trip.py` is the reference; `make test-cart` holds the cartridge's codes to
+it, and to the codes the C engine's saves make at the same menus.
 
 ## Pictures
 

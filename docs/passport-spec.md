@@ -87,6 +87,11 @@ way; `make test-python` and `make test-cart` hold them to it.
   entry is whole. After the CRC: a level outside 1-100, XP of 100 or more, a stat, a
   training or a power's rank over 100.
 - A Travel Stamp's lists hold 8 at most, refused as they're read.
+- A trip code ([boarding.md](boarding.md#trip-code-format)) is read against the image it's
+  for: longer than its longest (every list full) is the wrong length; more than 32 rewards
+  paid or 8 in a list, refused as it's read, is a checksum. After the CRC, a code for
+  another image, then for another pass, is said as such; then a scene with no menu or
+  that the image hasn't, a tune or car it hasn't, or dice of 0, is a checksum.
 
 A Boarding Pass is told from a Passport by its first symbol (the top 4 bits of its value:
 8), so a game can take either at one prompt.

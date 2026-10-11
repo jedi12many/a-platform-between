@@ -171,6 +171,55 @@ symbols; the longest possible is 84.
 `apb_stamp_encode` in the rules core (clients only ever write stamps);
 `tools/passport/stamp.py` decodes them for the website and names the line of a typo.
 
+### Trip code format
+
+A trip saved, where there's nowhere to save it: on a cartridge (no disk, no flash writes)
+or at a table. Saving at a menu shows a **trip code**: its lines, and a QR code. To pick
+the trip up again, the player boards with the same Boarding Pass (or Passport) as before,
+picks *Pick up a saved trip*, and gives the code; the trip goes on at that menu, as it
+was. The code only names what the trip has changed: the traveler as they boarded comes
+from the pass, and the code is tied to it.
+
+Version 1. The Passport alphabet, lines and line check, the bits below, zero bits to a
+whole byte, and a CRC-16 over every byte, as a Travel Stamp. *The Fare*, saved after its
+fight, is about 60 symbols, three lines.
+
+| Field | Bits | Notes |
+|---|---|---|
+| kind | 4 | 9: a trip code |
+| boarded with | 16 | the CRC-16 the Boarding Pass ends in (or the Passport, without one): the code goes only with what boarded the trip |
+| image | 16 | the Departure image's hash: a code goes only into the image that made it |
+| seed | 16 | the trip's seed (the pass's, or the one drawn without a pass): the Deep Yards' floors |
+| scene | 12 | the scene whose menu was showing: the trip goes on at its menu block, which builds the menu again from the flags ([vm-spec.md](vm-spec.md)) |
+| flags | one each | the image's flags, flag 0 first (as many as the depot says) |
+| vars | 8 each | the image's vars, var 0 first |
+| dice | 16 | the dice's state, never 0 |
+| tune | 6 | the tune the story has on, from the music list; 63 for none |
+| health | 8 | |
+| gives | 2 | the items a Branch Line has given (0-3) |
+| Debt | 16 | the traveler's Debt now |
+| rewards paid | 6 + 19 each | a count (0-32), then each `GIVE`, `XP` and `DEBT` already reached this trip: its car (6), its offset in the car's code (13) |
+| XP | 16 | the receipt so far |
+| items gained | 4 + 10 each | |
+| items lost | 4 + 10 each | |
+| Echoes | 4 + 14 each | id (10), state (2), state at boarding (2) |
+| padding | to a byte | zero |
+| CRC-16 | 16 | CCITT-FALSE over the bytes so far |
+
+Picking up: board as ever (the pass's traveler, its Rewind, the receipt's Departure and
+ticket); then the code's flags, vars, dice, seed, tune, health, gives, rewards paid and
+receipt so far; the traveler as the trip has made them: their Debt the code's, the
+receipt's items lost taken (from the pack first, then what they have equipped), its items
+gained put in the pack's first empty slots, its XP gained (`apb_gain_xp`), its Echoes set;
+then the scene's car, and its menu block. A save is only made at a menu with nothing on
+the expression stack. Refused, as a password is ([passport-spec.md](passport-spec.md#whats-refused)):
+a symbol the alphabet hasn't, a typo (naming its line), the wrong length or a broken rule
+(a count too big, a scene, tune or car the image hasn't), a checksum; and a code for
+another pass or another image, said as such.
+
+`tools/passport/trip.py` is the reference, written from this page; the cartridge writes
+and reads them (`cart/trip.s`).
+
 ### Landing a stamp
 
 `tools/waystation/station.py` is a prototype of what the website does with one: find its
