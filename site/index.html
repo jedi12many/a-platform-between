@@ -27,26 +27,36 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font: 1rem/1.6 var(--body); }
-.wrap { max-width: 40rem; margin: 0 auto; padding: 2rem 16px 3rem; display: grid; gap: 1.75rem; }
-.board {
-  background: var(--board); color: var(--board-ink); border-radius: 6px; padding: 1.1rem 1.25rem;
-  font-family: var(--mono); display: grid; gap: 0.35rem;
+.wrap { max-width: 58rem; margin: 0 auto; padding: 2rem 16px 4rem; display: grid; gap: 2.5rem; }
+section { display: grid; gap: 1rem; }
+.section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 1rem; }
+h2 { margin: 0; font-size: 1.2rem; text-wrap: balance; }
+h3 { margin: 0; font-size: 1rem; }
+
+/* The departures board, and what to do first */
+.hero { display: grid; gap: 1.25rem; }
+header.board {
+  background: var(--board); color: var(--board-ink); border-radius: 8px; padding: 1.4rem 1.5rem 1.2rem;
+  font-family: var(--mono); display: grid; gap: 0.9rem; box-shadow: 0 1px 0 rgba(0,0,0,.25), inset 0 0 0 1px #2b3036;
 }
-.board h1 { margin: 0; font: 600 1.5rem/1.2 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; text-wrap: balance; }
-.board .row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; font-size: 0.9rem; color: #c9c2ae; }
-.board .row b { color: var(--board-ink); font-weight: 600; letter-spacing: 0.06em; }
-p.lede { margin: 0; color: var(--muted); max-width: 34rem; }
-h2 { margin: 0; font-size: 1.05rem; text-wrap: balance; }
+header.board h1 { margin: 0; font: 600 clamp(1.4rem, 4vw, 2.1rem)/1.15 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; text-wrap: balance; }
+header.board table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+header.board th { text-align: left; font-weight: 400; font-size: 0.72rem; letter-spacing: 0.12em; color: #8f8873; padding: 0 0.75rem 0.35rem 0; border-bottom: 1px solid #3a3f45; }
+header.board td { padding: 0.45rem 0.75rem 0.45rem 0; color: #c9c2ae; border-bottom: 1px solid #2b3036; white-space: nowrap; }
+header.board td.dest { color: var(--board-ink); font-weight: 600; letter-spacing: 0.06em; white-space: normal; }
+header.board td.status, header.board th:last-child { text-align: right; padding-right: 0; }
+header.board td.status b { font-weight: 600; color: #9fd3a8; }
+header.board tr:last-child td { border-bottom: 0; }
+p.lede { margin: 0; color: var(--muted); max-width: 40rem; font-size: 1.05rem; }
+.cta { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
 /* Your travelers */
-.travelers { display: grid; gap: 0.75rem; }
-.travelers header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0.25rem 1rem; }
 .who { margin: 0; font-size: 0.9rem; color: var(--muted); }
 .who b { color: var(--ink); font-weight: 600; }
-ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
-.list li { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 0.75rem 0.9rem; display: grid; gap: 0.4rem; }
+ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); }
+.list li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem 1.1rem; display: grid; gap: 0.6rem; align-content: start; }
 .list .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.75rem; align-items: baseline; }
-.list .name { font-weight: 600; }
+.list .name { font-weight: 600; font-size: 1.1rem; }
 .list .about { color: var(--muted); font-size: 0.9rem; }
 .list .badge { font: 600 0.75rem/1.4 var(--mono); color: var(--board); background: var(--board-ink); border-radius: 3px; padding: 0 0.4em; }
 .list label { display: grid; gap: 0.15rem; font-size: 0.85rem; color: var(--muted); }
@@ -54,32 +64,46 @@ ul.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
 .list pre { margin: 0; font: 0.85rem/1.4 var(--mono); white-space: pre; overflow-x: auto; color: var(--ink); }
 .list .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .list .board { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-.list .board select { font: inherit; font-size: 0.95rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0.35rem 0.5rem; max-width: 100%; }
+.list .board select { flex: 1 1 12rem; font: inherit; font-size: 0.95rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0.4rem 0.5rem; max-width: 100%; }
 .list .board .go { margin-top: 0; }
 .list .last { margin: 0; font-size: 0.9rem; color: var(--ink); }
 .list details summary { cursor: pointer; font-size: 0.85rem; color: var(--muted); }
 .list .problem { margin: 0; font-size: 0.9rem; color: var(--danger); }
-.empty { margin: 0; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 6px; padding: 0.9rem; }
+.empty { margin: 0; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 8px; padding: 1.1rem; }
 button.small { font: inherit; font-size: 0.85rem; background: none; color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 0.2rem 0.6rem; cursor: pointer; }
 button.small.danger { color: var(--danger); }
-button.small:focus-visible, a.go:focus-visible, button.go:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
+button.small:focus-visible, button.go:focus-visible, button.card:focus-visible { outline: 3px solid var(--lamp); outline-offset: 2px; }
 
-/* The steps */
-ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; counter-reset: step; }
-.steps li {
-  counter-increment: step; display: grid; grid-template-columns: 2.25rem minmax(0, 1fr); gap: 0.25rem 0.9rem;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.1rem;
+/* Buttons */
+button.go {
+  display: inline-block; font: inherit; font-weight: 600; border: 1px solid transparent; cursor: pointer;
+  background: var(--iron); color: #f6f1e2; padding: 0.55rem 1.1rem; border-radius: 6px;
 }
-.steps li::before { content: counter(step); grid-row: span 3; font: 600 1.4rem/1 var(--mono); color: var(--lamp); padding-top: 0.15rem; }
-.steps p { margin: 0; color: var(--muted); }
-.steps ul { margin: 0.25rem 0 0; padding-left: 1.1rem; color: var(--muted); }
-a.go, button.go {
-  justify-self: start; margin-top: 0.5rem; display: inline-block; text-decoration: none; font: inherit; border: 0; cursor: pointer;
-  background: var(--iron); color: #f6f1e2; padding: 0.5rem 1rem; border-radius: 4px; font-weight: 600;
+button.go:hover { filter: brightness(1.1); }
+button.go.ghost { background: none; color: var(--ink); border-color: var(--line); }
+button.go.ghost:hover { border-color: var(--muted); filter: none; }
+
+/* How it works */
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); counter-reset: step; }
+ol.steps > li { counter-increment: step; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem 1.1rem; display: grid; gap: 0.4rem; align-content: start; }
+ol.steps > li h3::before { content: counter(step); display: inline-block; min-width: 1.6rem; font: 600 1rem var(--mono); color: var(--lamp); }
+.steps p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+dl.keys { margin: 0.2rem 0 0; display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.6rem; font-size: 0.92rem; color: var(--muted); align-items: baseline; }
+dl.keys dt { white-space: nowrap; }
+dl.keys dd { margin: 0; }
+kbd { font: 0.82em var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 0.35em; color: var(--ink); background: var(--bg); }
+
+/* Help us test */
+.cards { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+button.card {
+  text-align: left; font: inherit; color: var(--ink); cursor: pointer; display: grid; gap: 0.3rem; align-content: start;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem 1.1rem;
 }
-a.go:hover, button.go:hover { filter: brightness(1.1); }
-kbd { font: 0.85em var(--mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 0.3em; color: var(--ink); }
-.notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; font-size: 0.92rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1rem; }
+button.card:hover { border-color: var(--iron); }
+button.card .kind { font: 600 0.72rem var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--iron); }
+button.card span:last-child { color: var(--muted); font-size: 0.92rem; }
+
+.notes { margin: 0; padding: 1rem 0 0; list-style: none; display: grid; gap: 0.4rem 1.5rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); font-size: 0.9rem; color: var(--muted); border-top: 1px solid var(--line); }
 .notes strong { color: var(--ink); font-weight: 600; }
 
 /* The tabs, over everything: the platform (this page), and the places that open under them */
@@ -116,65 +140,86 @@ body.away #place { display: flex; }
 </nav>
 
 <div class="wrap">
-  <header class="board" aria-label="Departures">
-    <h1>A Platform Between</h1>
-    <div class="row"><span>PLATFORM 0</span><b>THE FARE</b><span>BOARDING</span></div>
-    <div class="row"><span>PLATFORM 1</span><b>EIGHTEEN MINUTES</b><span>ON TIME</span></div>
-  </header>
-
-  <p class="lede">You died, and woke at the Waystation, owing a fare. Make a traveler, then
-    take the first train. The game is the same one that runs on a Commodore 64: 40 columns,
-    with the same pictures and the same dice.</p>
+  <div class="hero">
+    <header class="board" aria-label="Departures">
+      <h1>A Platform Between</h1>
+      <table>
+        <thead><tr><th>Platform</th><th>Destination</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td class="dest">The Fare</td><td class="status"><b>Boarding</b></td></tr>
+          <tr><td>1</td><td class="dest">Eighteen Minutes</td><td class="status">On time</td></tr>
+          <tr><td>&darr;</td><td class="dest">The Deep Yards</td><td class="status">Ten floors down</td></tr>
+        </tbody>
+      </table>
+    </header>
+    <p class="lede">You died, and woke at the Waystation, owing a fare. Make a traveler, then
+      take the first train. It's the same game that runs on a Commodore 64: 40 columns, the
+      same pictures, the same dice.</p>
+    <div class="cta">
+      <button class="go" type="button" data-place="waystation">Go to the Waystation</button>
+      <button class="go ghost" type="button" data-place="play">Board a train</button>
+    </div>
+  </div>
 
   <section class="travelers" aria-labelledby="travelers-title">
-    <header>
+    <div class="section-head">
       <h2 id="travelers-title">Your travelers</h2>
       <p class="who" id="who">Looking for your travelers...</p>
-    </header>
+    </div>
     <ul class="list" id="list"></ul>
     <p class="empty" id="empty" hidden>No travelers yet. Make one at the Waystation and press
-      <em>Save to your travelers</em>: their Passport is kept here, with a note.</p>
+      <em>Save to your travelers</em>: their Passport is kept here, with a note, ready to board.</p>
   </section>
 
-  <ol class="steps">
-    <li>
-      <h2>Make a traveler at the Waystation</h2>
-      <p>Name them, then pick a race, a class and a skill, and buy or roll their stats.
-        Press <em>Issue the Passport</em>, then <em>Save to your travelers</em>, with a note.</p>
-      <button class="go" type="button" data-place="waystation">Go to the Waystation</button>
-    </li>
-    <li>
-      <h2>Board the train</h2>
-      <p>Pick a mission on your traveler above and press <em>Board</em>: the Waystation
-        issues their Boarding Pass and the train takes them straight on, with no codes to
-        type. When the trip ends, its Travel Stamp lands on them by itself.</p>
-      <p>Playing with a Boarding Pass or a Passport from elsewhere? Board here and type it in.</p>
-      <button class="go" type="button" data-place="play">Board a train</button>
-    </li>
-    <li>
-      <h2>Play</h2>
-      <ul>
-        <li>Press a number, or click a line, to choose.</li>
-        <li>Press <kbd>S</kbd> at a menu to save. <em>Pick up a saved trip</em> carries on from there.</li>
-        <li>In a fight: the arrow keys or the keypad move, <kbd>Enter</kbd> chooses, and a
-          command's first letter does it (<kbd>M</kbd>ove, <kbd>A</kbd>im, <kbd>Q</kbd>uick...).</li>
-        <li>Press <em>&larr; Platform</em> when the trip is over: your traveler is waiting
-          there with what they earned, ready for the next mission.</li>
-      </ul>
-    </li>
-  </ol>
+  <section aria-labelledby="how-title">
+    <h2 id="how-title">How it works</h2>
+    <ol class="steps">
+      <li>
+        <h3>Make a traveler</h3>
+        <p>At the Waystation, name them, pick a race, a class and a skill, and buy or roll
+          their stats. Press <em>Issue the Passport</em>, then <em>Save to your travelers</em>.</p>
+      </li>
+      <li>
+        <h3>Board the train</h3>
+        <p>Pick a mission on your traveler and press <em>Board</em>: no codes to type. When
+          the trip ends, its Travel Stamp lands on them by itself. Have a Boarding Pass from
+          elsewhere? <em>Board a train</em> and type it in.</p>
+      </li>
+      <li>
+        <h3>Play</h3>
+        <dl class="keys">
+          <dt><kbd>1</kbd>&ndash;<kbd>9</kbd></dt><dd>choose (or click a line)</dd>
+          <dt><kbd>S</kbd></dt><dd>save at a menu; <em>Pick up a saved trip</em> carries on</dd>
+          <dt><kbd>&larr;</kbd><kbd>&rarr;</kbd> <kbd>Enter</kbd></dt><dd>in a fight: move, then choose; a command's first letter does it</dd>
+          <dt><kbd>Platform</kbd></dt><dd>back here when the trip is over, with what they earned</dd>
+        </dl>
+      </li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="test-title">
+    <div class="section-head">
+      <h2 id="test-title">Help us test</h2>
+      <p class="who">The rules are still being made: play, read, draw, and tell us.</p>
+    </div>
+    <div class="cards">
+      <button class="card" type="button" data-place="arena"><span class="kind">Arena</span>
+        <b>Fights to play now</b><span>Each says what to watch for, beside what a thousand
+        fights on the computer say. <em>Give feedback</em> when it's over.</span></button>
+      <button class="card" type="button" data-place="rules"><span class="kind">Rules</span>
+        <b>The rules, in reading order</b><span>How the game plays at the table and on every
+        machine: the turn, combat, conditions, powers.</span></button>
+      <button class="card" type="button" data-place="art"><span class="kind">Art desk</span>
+        <b>The game's figures and tiles</b><span>Draw under the C64's rules, see it as the
+        game shows it, and download it to send in.</span></button>
+    </div>
+  </section>
 
   <ul class="notes">
-    <li><strong>Use a computer with a keyboard.</strong> The game reads keys, so a phone can
-      make a traveler but can't board.</li>
+    <li><strong>Use a computer with a keyboard.</strong> The game reads keys: a phone can make
+      a traveler, but can't board.</li>
     <li><strong>Saved trips stay in this browser.</strong> Your travelers follow your account
       when you're signed in.</li>
-    <li><strong>After The Fare,</strong> <em>Eighteen Minutes</em> is on the same train
-      menu: Departure 01, all five chapters.</li>
-    <li><strong>Testing the rules?</strong> The <em>Arena</em> tab has the fights we need
-      played now, each with what to watch for, beside what a thousand fights say; the
-      <em>Rules</em> tab has the rules themselves, and the <em>Art desk</em> the game's
-      figures and tiles, to draw and send in.</li>
   </ul>
 </div>
 
