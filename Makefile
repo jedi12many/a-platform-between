@@ -495,9 +495,9 @@ build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) way
 # The site (site/, docs/waystation-web.md): the platform page, with the player's travelers,
 # and the Waystation and the train in a frame. Serve build/site/ and open it.
 build/site/index.html: site/index.html site/arena.html build/web/apb.js build/waystation/ws.js \
-                       build/arena-play/scenarios.json
+                       build/arena-play/scenarios.json build/arena-web/index.html
 	rm -rf build/site
-	mkdir -p build/site/play build/site/waystation build/site/arena
+	mkdir -p build/site/play build/site/waystation build/site/arena build/site/studio/arena
 	for page in index arena; do \
 	  ( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
 	    printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
@@ -506,8 +506,10 @@ build/site/index.html: site/index.html site/arena.html build/web/apb.js build/wa
 	cp build/web/* build/site/play/
 	cp build/waystation/* build/site/waystation/
 	cp build/arena-play/scenarios.json build/site/arena/
+	cp build/arena-web/* build/site/studio/arena/
 	printf '{"commit": "%s", "built": "%s"}\n' "$$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
 	    "$$(date -u +%Y-%m-%d)" > build/site/build.json
+	cp build/site/build.json build/site/studio/arena/
 
 # The native arena (docs/arena.md, "The native arena"): the scenarios' fights played by
 # hand in a modern page, on the battle engine as WebAssembly and the game's art. It lives

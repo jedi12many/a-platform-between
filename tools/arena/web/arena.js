@@ -495,7 +495,7 @@ function feedbackUrl() {
   var q = new URLSearchParams({
     template: "playtest.yml",
     title: "[" + S.code + "] " + S.title,
-    scenario: S.code + " " + S.title + " (studio arena)",
+    scenario: S.code + " " + S.title + " (modern arena)",
     build: BUILD,
     played: String(plays(S.code, 0))
   });
@@ -974,6 +974,16 @@ function onMove(e) {
 
 /* ----------------------------------------------------------------- start */
 
+/* On the published site there's no art desk (it saves into the game's files, so it runs
+ * only in the studio, on a machine with the game): the first tab goes back to the
+ * platform's arena page instead. */
+function published() {
+  var a = $("to-art");
+  a.textContent = "The platform";
+  a.href = "../../arena.html";
+  document.querySelector("h1").firstChild.textContent = "Arena ";
+}
+
 async function boot() {
   var got = await Promise.all(["art.json", "scenarios.json", "items.json"].map(function (f) {
     return fetch(f).then(function (r) {
@@ -986,7 +996,8 @@ async function boot() {
   ITEMS = got[2];
   fetch("build.json").then(function (r) { return r.json(); }).then(function (b) {
     BUILD = b.commit + " (" + b.built + ")";
-  }).catch(function () { /* the studio, on this machine */ });
+    if (b.built !== "studio") published();
+  }).catch(published);
   var M = await ArenaRules();
   rules.ar_begin = M.cwrap("ar_begin", "string", ["number", "string"]);
   rules.ar_next = M.cwrap("ar_next", "string", []);
