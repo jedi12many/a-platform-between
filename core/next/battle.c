@@ -522,6 +522,21 @@ uint8_t apb_speed_v1(uint8_t grace, uint8_t armor_tier)
     return s;
 }
 
+uint8_t apb_gear_damage_v1(uint8_t tier)
+{
+    return (uint8_t)(tier ? 2 + 3 * tier : APB_UNARMED_DAMAGE);
+}
+
+uint8_t apb_gear_armor_v1(uint8_t tier)
+{
+    return (uint8_t)(tier ? 5 + 5 * tier : 0);
+}
+
+uint8_t apb_level_bonus_v1(uint8_t level)
+{
+    return (uint8_t)(level > 1 ? 2 * (level > 100 ? 99 : level - 1) : 0);
+}
+
 void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon_item)
 {
     uint8_t arch = APB_ARCH_MELEE;
@@ -535,11 +550,12 @@ void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon
     out->health_max = apb_health_max(ch);
     out->health = out->health_max;
     out->grace = ch->stat[APB_GRACE];
-    out->dodge = apb_dodge(ch);
-    out->armor = apb_armor(ch);
+    out->dodge = (uint8_t)(apb_dodge(ch) + apb_level_bonus_v1(ch->level));
+    out->armor = apb_gear_armor_v1((uint8_t)(apb_armor(ch) / 10));
     out->speed = apb_speed_v1(ch->stat[APB_GRACE], (uint8_t)(apb_armor(ch) / 10));
     out->athletics = apb_skill(ch, APB_SK_ATHLETICS);
-    out->weapon = apb_weapon_damage(weapon_item);
+    out->weapon = apb_gear_damage_v1(weapon_item != 0 && weapon_item < APB_ITEM_COUNT
+                                     ? apb_items[weapon_item].tier : 0);
     out->weak_type = 0xFF;
     out->behavior = APB_AI_CHARGE;
     if (arch == APB_ARCH_RANGED || arch == APB_ARCH_FOCUS) out->behavior = APB_AI_SHOOT;
@@ -558,6 +574,9 @@ void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon
     out->on_hit = 0;
     out->power_stat = ch->cls < APB_CLASS_COUNT ? ch->stat[apb_class_bonus[ch->cls]] : 0;
     out->level = ch->level;
+    /* Twice the level above 1 (docs/turn.md): kept to a byte. */
+    out->attack = (uint8_t)(out->attack + apb_level_bonus_v1(ch->level) > 255
+                            ? 255 : out->attack + apb_level_bonus_v1(ch->level));
 }
 
 /* Who goes first: First (Early) before anyone; then highest Grace; travelers before foes

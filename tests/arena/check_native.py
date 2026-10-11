@@ -28,6 +28,8 @@ ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..")
 sys.path.insert(0, os.path.join(ROOT, "tools", "arena"))
 import arena  # noqa: E402
 import scenarios  # noqa: E402
+sys.path.insert(0, os.path.join(ROOT, "tools", "rules"))
+import turn  # noqa: E402
 
 PORT = 8067
 URL = f"http://127.0.0.1:{PORT}/arena/"
@@ -90,8 +92,9 @@ def check_start(code, s):
         return
     trav = st["fighters"][0]
     weapon = arena.REG["items"][s["weapon"]]
-    want_armor = 10 * arena.REG["items"][s["armor"]]["tier"] if s["armor"] else 0
-    if trav["item"] != weapon["id"] or trav["weapon"] != 5 * weapon["tier"] or trav["armor"] != want_armor:
+    # Rules v1's gear (docs/turn.md, Levels and gear).
+    want_armor = turn.gear_armor(arena.REG["items"][s["armor"]]["tier"]) if s["armor"] else 0
+    if trav["item"] != weapon["id"] or trav["weapon"] != turn.gear_damage(weapon["tier"]) or trav["armor"] != want_armor:
         fail(f"{code}: the traveler holds {trav['item']} ({trav['weapon']} damage, Armor {trav['armor']}), "
              f"not the {s['weapon']} and Armor {want_armor}")
     for i, name in enumerate(s["foes"], team):
@@ -137,8 +140,9 @@ def check_pack():
     ch = scenarios.traveler(s)
     before, taken = out["open"]["st"]["fighters"][0], out["taken"]["st"]["fighters"][0]
     unworn = out["unworn"]["st"]["fighters"][0]
-    want = {"item": take, "weapon": 5 * item["tier"], "ranged": 1, "power": 0,
-            "type": item["damage"], "attack": arena.rating(ch, "RANGED"), "stat_bonus": 0}
+    want = {"item": take, "weapon": turn.gear_damage(item["tier"]), "ranged": 1, "power": 0,
+            "type": item["damage"], "attack": arena.rating(ch, "RANGED") + turn.level_bonus(ch["level"]),
+            "stat_bonus": 0}
     got = {k: taken[k] for k in want}
     if got != want:
         fail(f"the pack: holding the {item['display']}, the traveler is {got}, not {want}")

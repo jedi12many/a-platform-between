@@ -11,6 +11,8 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "registry"))
 import registry  # noqa: E402
+sys.path.insert(0, HERE)
+import combat  # noqa: E402
 
 REG = registry.load()
 CONDS = registry.load_conditions(races=REG["races"])
@@ -175,6 +177,21 @@ def field_length(tier):
 def power_damage(tier):
     """A bolt's or a burst's: 5 x tier, as a weapon's."""
     return 5 * tier
+
+
+def gear_damage(tier):
+    """A weapon of tier T in rules v1: 2 + 3T (5, 8, 11...); bare hands, as v0."""
+    return 2 + 3 * tier if tier else combat.UNARMED
+
+
+def gear_armor(tier):
+    """Armor of tier T in rules v1: 5 + 5T (10, 15, 20...)."""
+    return 5 + 5 * tier if tier else 0
+
+
+def level_bonus(level):
+    """A traveler's attack and Dodge in rules v1: + twice the level above 1."""
+    return 2 * (min(level, 100) - 1) if level > 1 else 0
 
 
 def resist(level):

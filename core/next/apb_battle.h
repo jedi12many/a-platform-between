@@ -229,6 +229,12 @@ uint8_t apb_battle_add(const apb_fighter *f);
 uint8_t apb_battle_count(void);
 void    apb_battle_fighter(uint8_t who, apb_fighter *out);
 void    apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon_item);
+/* Rules v1's gear and levels (docs/turn.md, Levels and gear): a weapon of tier T deals
+ * 2 + 3T (5, 8, 11...), armor of tier T is 5 + 5T (10, 15, 20...); a traveler adds twice
+ * their level above 1 to their attack and their Dodge. */
+uint8_t apb_gear_damage_v1(uint8_t tier);
+uint8_t apb_gear_armor_v1(uint8_t tier);
+uint8_t apb_level_bonus_v1(uint8_t level);
 #ifdef APB_ARENA
 void    apb_battle_rearm(uint8_t who, const apb_fighter *f);
 #endif

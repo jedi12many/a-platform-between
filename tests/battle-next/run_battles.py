@@ -64,11 +64,34 @@ def fighters(path):
             it = combat.ITEMS.get(item)
             arch = it["archetype"] if it and it["tier"] else 0
             melee = arch not in (1, 4)                  # ranged, focus
-            out.append((combat.weapon_damage(item) if it and it["tier"] else combat.UNARMED,
+            # Rules v1's gear (docs/turn.md, Levels and gear): 2 + 3 x the tier.
+            out.append((turn.gear_damage(it["tier"]) if it and it["tier"] else combat.UNARMED,
                         combat.melee_bonus(ch) if melee else 0, it["damage"] if it and it["tier"] else 0))
         elif w[0] == "foe":
             v = [int(x) for x in w[2:18]]
             out.append((v[8], 0, v[11]))
+    return out
+
+
+def attacks(path):
+    """Each traveler's Attack by rules v1, from its Passport: its fighting skill's rating
+    (half the stat + training: melee, ranged or a focus's Channel, by what it holds) and
+    twice its level above 1 (docs/turn.md, Levels and gear). {fighter: attack}."""
+    skills = turn.REG["skills"]
+    out, who = {}, 0
+    for line in open(path):
+        w = line.split()
+        if w and w[0] == "traveler":
+            ch = passport.decode(w[1])
+            it = combat.ITEMS.get(int(w[2]))
+            arch = it["archetype"] if it and it["tier"] else 0
+            s = skills["RANGED" if arch == 1 else "CHANNEL" if arch == 4 else "MELEE"]
+            stat = turn.registry.STATS.index(s["stat"].lower()) if isinstance(s["stat"], str) else s["stat"]
+            out[who] = min(255, ch["stats"][stat] // 2 + ch["training"].get(s["id"], 0)
+                           + turn.level_bonus(ch["level"]))
+            who += 1
+        elif w and w[0] == "foe":
+            who += 1
     return out
 
 
@@ -121,6 +144,10 @@ def recheck(name, path, log):
     who = fighters(path)
     resists_ = resists(path)
     lv = levels(path)
+    for line in log.splitlines():
+        m = re.match(r"(\d+): traveler at \d+,\d+, health \d+, attack (\d+),", line)
+        if m and int(m.group(2)) != attacks(path).get(int(m.group(1))):
+            fail(f"{name}: {line.strip()}: by the rules its attack is {attacks(path).get(int(m.group(1)))}")
     last = None
     rolls = 0
     tiers = {}

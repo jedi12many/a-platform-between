@@ -134,9 +134,14 @@ static int traveler(apb_fighter *f, const char *passport, const char *arch, int 
 {
     if (apb_passport_decode(passport, &ch, 0) != APB_PP_OK) return 0;
     apb_fighter_from(f, &ch, 0);
+#ifdef APB_RULES_NEXT
+    f->weapon = tier ? apb_gear_damage_v1((uint8_t)tier) : f->weapon;   /* docs/turn.md */
+    f->armor = apb_gear_armor_v1((uint8_t)armor);
+#else
     f->weapon = (uint8_t)(tier ? 5 * tier : f->weapon);
-    f->dmg_type = (uint8_t)type;
     f->armor = (uint8_t)(10 * armor);
+#endif
+    f->dmg_type = (uint8_t)type;
 #ifdef APB_RULES_NEXT
     f->speed = apb_speed_v1(f->grace, (uint8_t)armor);
 #endif

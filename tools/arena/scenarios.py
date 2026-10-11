@@ -348,9 +348,41 @@ LAB += [
 ]
 
 
+# Levels and gear (docs/turn.md): a level counts twice (+2 to attack and Dodge), and a
+# gear tier is gentler (+3 damage, +5 Armor). The same fight at level 4, on its first
+# gear, and at level 5, on its next.
+LAB += [
+    {"title": "Level 4, the old gear",
+     "issue": "A level 4 Warden (+6 to attack and Dodge for the levels) with the rusted sabre "
+              "and padded coat, against two rust-guards.",
+     "watch": "Whether level 4 feels stronger than level 1 (A-05 is the same fight at level 1), "
+              "and then play R-17: the next level, with the next gear.",
+     "cls": "WARDEN", "level": 4, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "foes": ["RUST_GUARD", "RUST_GUARD"],
+     "map": ["############",
+             "#..........#",
+             "#@........a#",
+             "#.........b#",
+             "#..........#",
+             "############"]},
+    {"title": "Level 5, the new gear",
+     "issue": "A level 5 Warden (+8 for the levels) with an iron sword (8 damage) and a chain "
+              "coat (Armor 15), against the same two rust-guards.",
+     "watch": "Whether the new gear is a welcome step rather than a cliff after R-16.",
+     "cls": "WARDEN", "level": 5, "weapon": "IRON_SWORD", "armor": "CHAIN_COAT",
+     "foes": ["RUST_GUARD", "RUST_GUARD"],
+     "map": ["############",
+             "#..........#",
+             "#@........a#",
+             "#.........b#",
+             "#..........#",
+             "############"]},
+]
+
+
 # What the arena lists now: only what needs playing this round of tests, a few at a time
 # (the rest stay, by their codes, for links and the tests: #scenario=R-02 still opens).
-PLAYING = ["R-13", "R-14", "R-15", "R-10"]
+PLAYING = ["R-16", "R-17", "R-13", "R-14", "R-15"]
 
 
 def foe_name(f):

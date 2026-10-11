@@ -180,6 +180,29 @@ then takes the **first** of these it can, from where it ends up; if none, it use
 The same in the same place always makes the same choice, so the arena's numbers repeat,
 and a player can read a foe.
 
+## Levels and gear
+
+**Your level counts twice.** A traveler adds **2 × their level above 1** to their attack
+rolls and to their **Dodge** (so to every TN against them), and their **Resist** is 2 ×
+their level (*Conditions in play*). A level 5 traveler: +8 to attack and Dodge, Resist 10.
+A foe's card already has its level's numbers ([bestiary.md](bestiary.md)), so a foe adds
+nothing but its Resist.
+
+**Gear steps more gently.** A weapon of tier T deals **2 + 3T** (5, 8, 11, 14...), and
+armor of tier T is **Armor 5 + 5T** (10, 15, 20...), where rules v0 had 5T and 10T: the
+first tier is the same, and each tier after it adds 3 damage and 5 Armor, not 5 and 10.
+(Powers keep their 5 × tier: a power's rank grows with the level already.)
+
+Why: in v0 a tier of gear was worth about eight levels. A Warden against two rust-guards
+won 12% at level 1, 30% at level 4, then 80% at level 5, where the quick builder's sword
+and coat go up a tier: four levels of nothing, then a cliff. Now: 12%, 52% at level 4
+(R-16), 80% at level 5 with the new gear (R-17), and every level counts on the way.
+
+| A Warden vs two rust-guards | Level 1 | 3 | 4 | 5 | 7 | 9 | 12 |
+|---|---|---|---|---|---|---|---|
+| Rules v0's levels and gear | 12% | 23% | 30% | 80% | 88% | 93% | 100% |
+| Rules v1 (both) | 12% | 33% | 52% | 80% | 93% | 98% | 100% |
+
 ## Races in play
 
 A traveler's race puts on its two traits ([races.md](races.md#traits)): Lucky (+5 to every
@@ -218,6 +241,10 @@ Decided for now, to come back to after more playtests:
   need 62, 68 or 80 to land, but R-15 hardly moves (38%, 38%, 40%): what their hexes cost
   him is their damage and the slow, not how often they land. Stats may add to Ward later,
   if it doesn't make Grace and the like worth more than the rest.
+
+- **The bestiary by level** was worked out for rules v0's levels and gear: its table
+  (Attack about 2 a level, Armor 2½) should be measured again against travelers with
+  their level bonus and v1's gear, foe by foe, as the bestiary's own method says.
 
 ## Still open
 
