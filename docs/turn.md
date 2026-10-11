@@ -143,7 +143,31 @@ element's **rider**: **fire** burns the target's square till the end of your nex
 (5 × tier, a hazard); **cold** chills it; **kinetic** pushes it a square; **energy**
 ignores its Soak; **mind** is against Resolve. **Silenced** stops all of it.
 
-The computer never uses powers yet: a traveler on Quick (or Auto) fights with its weapon.
+A **foe** can hold powers too (a scenario or a Departure gives them): its card has no class
+stat, so a foe's power rolls its **Attack**, and its rank sets only the tier.
+
+### How the computer uses powers
+
+On Quick and Auto, and for foes, the computer moves as it always has ([combat.md](combat.md#foes)),
+then takes the **first** of these it can, from where it ends up; if none, it uses its weapon:
+
+1. **Mend** you, or a friend next to you, at half health or less (the most hurt first).
+2. **Blink** away, if you shoot and two foes or more are next to you: to the square
+   furthest from them.
+3. **Shove with a power** (Bull rush) a foe next to you that it would drop in a pit or
+   onto a hazard.
+4. **Burst** where it catches two foes or more, and none of your side.
+5. **Ward** a friend next to you who hasn't its condition, with a foe within 3 squares of
+   them; yourself only when there's nobody to attack this turn.
+6. **Hex** the foe with the best Attack that isn't hexed (or under the power's condition)
+   yet, has health for three of your weapon's hits, and that you've a 30% chance or more
+   to hit.
+7. **Bolt**, when its expected damage (chance × damage less Soak) beats your weapon's, or
+   your weapon can't reach anyone.
+8. **Field** across the way of a melee foe 3 to 6 squares from you, halfway, if you shoot.
+
+The same in the same place always makes the same choice, so the arena's numbers repeat,
+and a player can read a foe.
 
 ## Races in play
 
@@ -167,7 +191,13 @@ sanitizers.
 - **Phased** (through walls, untouchable), **hidden**, **spreading**, **at random**,
   **must attack**: the medium effects, with the powers that need them (Taunt, Smoke,
   Vanish, Mind spike's confusion: until then Mind spike frightens).
-- Powers for foes, and the computer choosing powers on Quick.
+- **What the arena says about powers** (1000 fights a scenario, the computer playing them
+  as above): a Medic beside a Warden lifts them from 80% to 88%; a Tinker's barricade and
+  shock mine take a fight nobody wins to 12%; but a **hex at tier 1 isn't worth its turn**
+  (a Rogue's Snare: 36% with it, 49% without), and **foes with powers get weaker** for
+  using them (a gunner that snares instead of shooting). A Warden's **Ground slam pushes
+  its targets away** (its kinetic rider), undoing its own knockdown, and **Second wind**
+  heals 5 at tier 1, less than the blow it costs. Hexes and the Warden's powers need more.
 - Whether a fire hit should both burn the square and set the target on fire (Fireball,
   Fire wall do both now): fire is strong.
 - Foes with a shove or a knockback of their own, and **teleporting** (no free attacks).

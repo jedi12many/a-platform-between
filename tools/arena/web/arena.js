@@ -512,7 +512,7 @@ function quick() {
   if (mode !== "turn") return;
   var q = call("ar_quick", fight.me);
   fight.plan = { x: q.x, y: q.y };
-  act(q.kind, q.target, q.x, q.y);
+  act(q.kind, q.target, q.dx, q.dy, q.use);
 }
 
 function attack() {

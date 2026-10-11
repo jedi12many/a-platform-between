@@ -60,7 +60,7 @@ static uint8_t cond_named(const char *s)
 {
     uint16_t i;
 
-    for (i = 1; i <= APB_COND_MAX; ++i) {
+    for (i = 1; i < apb_cond_count; ++i) {
         if (apb_conds[i].name && strcmp(apb_conds[i].name, s) == 0) return (uint8_t)i;
     }
     return 0;
@@ -256,10 +256,10 @@ const char *ar_begin(unsigned seed, const char *spec)
             static char pname[32];
             uint16_t id;
             if (sscanf(line, "%*s %d %31s %d", &v[0], pname, &v[1]) != 3) return refuse("bad power");
-            for (id = 1; id <= APB_POWER_MAX; ++id) {
+            for (id = 1; id < apb_power_count; ++id) {
                 if (apb_powers[id].name && strcmp(apb_powers[id].name, pname) == 0) break;
             }
-            if (id > APB_POWER_MAX || apb_battle_learn((uint8_t)v[0], (uint8_t)id, (uint8_t)v[1]) == APB_NOBODY) {
+            if (id >= apb_power_count || apb_battle_learn((uint8_t)v[0], (uint8_t)id, (uint8_t)v[1]) == APB_NOBODY) {
                 return refuse("bad power");
             }
         } else if (strcmp(word, "foe") == 0) {
@@ -431,7 +431,8 @@ const char *ar_quick(unsigned who)
 
     apb_battle_quick((uint8_t)who, &a);
     used = 0;
-    put("{\"x\":%u,\"y\":%u,\"kind\":%u,\"target\":%u}", a.move_x, a.move_y, a.kind, a.target);
+    put("{\"x\":%u,\"y\":%u,\"kind\":%u,\"target\":%u,\"dx\":%u,\"dy\":%u,\"use\":%u}", a.move_x,
+        a.move_y, a.kind, a.target, a.dash_x, a.dash_y, a.use);
     return json;
 }
 

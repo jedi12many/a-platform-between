@@ -277,12 +277,37 @@ LAB += [
 ]
 
 
+# Foes with powers (docs/turn.md: a foe's power rolls its Attack; the computer uses them).
+LAB += [
+    {"title": "They have powers too",
+     "issue": "A new Warden against a rust-guard that can bull-rush (push you 3 squares) and a "
+              "scrap gunner that can snare (slowed, hexed, chilled), on a floor with a pit.",
+     "watch": "Whether foes' powers feel fair, and whether you can see them coming.",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "foes": [{"foe": "RUST_GUARD", "powers": [["BULL_RUSH", 10]]},
+              {"foe": "SCRAP_GUNNER", "powers": [["SNARE", 10]]}],
+     "map": ["############",
+             "#....OO....#",
+             "#@...OO...a#",
+             "#.........b#",
+             "#..........#",
+             "############"]},
+]
+
+
 def foe_name(f):
-    return f.split(":")[0]
+    """A scenario's foe: NAME, NAME:HIT, or {"foe": NAME, "hit": .., "powers": [[NAME, rank]]}."""
+    return f["foe"] if isinstance(f, dict) else f.split(":")[0]
 
 
 def foe_hit(f):
+    if isinstance(f, dict):
+        return f.get("hit")
     return f.split(":")[1] if ":" in f else None
+
+
+def foe_powers(f):
+    return f.get("powers", []) if isinstance(f, dict) else []
 
 
 def ring(s):
@@ -383,7 +408,6 @@ def native(s, ch):
         figures.append(t.get("race") or arena.DEFAULT_RACE[t["cls"]])
         names.append(arena.REG["classes"][t["cls"]]["display"])
         powers += [f"power {i} {name} {rank}" for name, rank in t.get("powers", [])]
-    lines += powers
     plain = [foe_name(f) for f in s["foes"]]
     for i, f in enumerate(s["foes"]):
         fx, fy = spots["abcdefgh"[i]]
@@ -393,6 +417,8 @@ def native(s, ch):
         same = plain.count(foe_name(f)) > 1
         names.append(arena.REG["foes"][foe_name(f)]["display"]
                      + (f" {plain[:i + 1].count(foe_name(f))}" if same else ""))
+        powers += [f"power {len(team) + i} {name} {rank}" for name, rank in foe_powers(f)]
+    lines += powers
     return {"spec": "\n".join(lines) + "\n", "figures": figures, "names": names,
             "pack": pack(s), "skills": {k: arena.rating(ch, k.upper()) for k in
                                         ("melee", "ranged", "channel", "athletics")}}
@@ -412,8 +438,8 @@ def items():
 
 
 def matchup(s, rules="v0"):
-    """The scenario as an arena matchup, by rules v0 or the rules lab's (next). (Powers
-    aren't in it: the computer doesn't use them yet.)"""
+    """The scenario as an arena matchup, by rules v0 or the rules lab's (next), with its
+    powers (the computer uses them, by rules next)."""
     m = arena.Matchup()
     m.set_rules(rules)
     for t in [s] + s.get("allies", []):
@@ -423,9 +449,12 @@ def matchup(s, rules="v0"):
         m.travelers.append(arena.Traveler(([t["race"]] if t.get("race") else [])
                                           + [t["cls"], str(t["level"]), "weapon", arch,
                                              str(item["tier"]), arena.registry.DAMAGE[item["damage"]],
-                                             "armor", str(armor)]))
+                                             "armor", str(armor)]
+                                          + [w for name, rank in t.get("powers", [])
+                                             for w in ("power", name, str(rank))]))
     for f in s["foes"]:
-        m.add_foe(foe_name(f) + (f" hit {foe_hit(f)}" if foe_hit(f) else ""))
+        m.add_foe(foe_name(f) + (f" hit {foe_hit(f)}" if foe_hit(f) else "")
+                  + "".join(f" power {n} {r}" for n, r in foe_powers(f)))
     if s.get("hazard"):
         d, t, c = s["hazard"]
         m.set_hazard([str(d), t or "none", c or "-"])

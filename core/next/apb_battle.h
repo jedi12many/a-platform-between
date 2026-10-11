@@ -174,7 +174,10 @@ typedef struct {
     const char *name;         /* its registry name                                 */
 } apb_cond_def;
 
-extern const apb_cond_def apb_conds[APB_COND_MAX + 1];
+/* Indexed by id, as long as the registry's highest id + 1 (apb_cond_count): check an id
+ * against it before looking it up. */
+extern const apb_cond_def apb_conds[];
+extern const uint8_t apb_cond_count;
 /* The two traits of a race, or 0. */
 uint8_t apb_race_trait(uint8_t race, uint8_t which);
 
@@ -200,7 +203,8 @@ typedef struct {
     const char *name;
 } apb_power_def;
 
-extern const apb_power_def apb_powers[APB_POWER_MAX + 1];
+extern const apb_power_def apb_powers[];
+extern const uint8_t apb_power_count;
 
 /* A power's tier (1 + rank / 20) and its roll (half its class's stat, plus its rank). */
 uint8_t apb_power_tier(uint8_t rank);

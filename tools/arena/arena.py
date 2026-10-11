@@ -13,7 +13,10 @@ A matchup file is lines (# starts a comment):
     fights 1000                      how many fights (each with its own dice)
     seed 1                           the first fight's seed
     traveler [RACE] CLASS LEVEL [weapon ARCH TIER [TYPE]] [armor TIER] [name NAME]
-    foe NAME [x COUNT] [hit COND]    from registry/foes.txt; its hits put COND on (rules next)
+             [power NAME RANK]...    its powers (rules next: the computer uses them)
+    foe NAME [x COUNT] [hit COND] [power NAME RANK]...
+                                     from registry/foes.txt; its hits put COND on, and it
+                                     holds those powers, rolled with its Attack (rules next)
     rules next                       fight by rules v1, on the rules lab's engine
                                      (build/arena-next, docs/turn.md), not v0
     hazard DAMAGE TYPE COND          what the map's hazards do, by rules v1: TYPE kinetic..
@@ -139,6 +142,7 @@ class Traveler:
         self.type = "kinetic" if self.arch != "focus" else "energy"
         self.armor = None
         self.name = None
+        self.powers = []                            # [NAME, rank]
         while w:
             k = w.pop(0).lower()
             if k == "weapon":
@@ -149,6 +153,11 @@ class Traveler:
                 self.armor = int(w.pop(0))
             elif k == "name":
                 self.name = w.pop(0)
+            elif k == "power":
+                name, rank = w.pop(0).upper(), int(w.pop(0))
+                if name not in POWERS:
+                    raise SystemExit(f"arena: '{name}' isn't in registry/powers.txt")
+                self.powers.append([name, rank])
             else:
                 raise SystemExit(f"arena: '{' '.join(words)}': what's '{k}'?")
 
@@ -213,6 +222,11 @@ class Matchup:
                 raise SystemExit(f"arena: what's '{ln}'?")
 
     def add_foe(self, text):
+        powers = [[n.upper(), int(r)] for n, r in re.findall(r"\bpower\s+(\w+)\s+(\d+)", text)]
+        text = re.sub(r"\s*\bpower\s+\w+\s+\d+", "", text)
+        for n, _ in powers:
+            if n not in POWERS:
+                raise SystemExit(f"arena: '{n}' isn't in registry/powers.txt")
         m = re.fullmatch(r"(\w+)(?:\s*x\s*(\d+))?(?:\s+hit\s+(\w+))?", text.strip())
         if not m or m.group(1).upper() not in REG["foes"]:
             raise SystemExit(f"arena: '{text}': not a foe in registry/foes.txt "
@@ -220,7 +234,7 @@ class Matchup:
         hit = m.group(3).upper() if m.group(3) else None
         if hit and hit not in CONDS:
             raise SystemExit(f"arena: '{text}': {hit} isn't in registry/conditions.txt")
-        self.foes.append([m.group(1).upper(), int(m.group(2) or 1), hit])
+        self.foes.append([m.group(1).upper(), int(m.group(2) or 1), hit, powers])
 
     def set_rules(self, which):
         if which not in ("v0", "next"):
@@ -250,12 +264,14 @@ class Matchup:
             out.append(f"hazard {d} {255 if t is None else registry.DAMAGE.index(t)} "
                        f"{CONDS[c]['id'] if c else 0}")
         starts = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c == "@"]
-        hits = [hit for name, n, hit in self.foes for _ in range(n)]
-        foes = [name for name, n, _ in self.foes for _ in range(n)]
+        hits = [f[2] for f in self.foes for _ in range(f[1])]
+        foe_powers = [f[3] for f in self.foes for _ in range(f[1])]
+        foes = [f[0] for f in self.foes for _ in range(f[1])]
         if len(self.travelers) + len(foes) > 8:
             raise SystemExit("arena: 8 fighters at most (the battle engine's limit)")
         lefts = self.line_up(len(self.travelers), 1, h) if not starts else starts
-        foe_starts = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c.islower()]
+        foe_starts = [(x, y) for c, x, y in sorted((c, x, y) for y, r in enumerate(rows)
+                                                    for x, c in enumerate(r) if c.islower())]
         rights = foe_starts if len(foe_starts) >= len(foes) else self.line_up(len(foes), w - 2, h)
         if len(lefts) < len(self.travelers):
             raise SystemExit("arena: the map hasn't an @ for every traveler")
@@ -263,6 +279,10 @@ class Matchup:
             out.append(t.line(x, y))
         for name, hit, (x, y) in zip(foes, hits, rights):
             out.append(foe_line(name, x, y) + (f" hit {CONDS[hit]['id']}" if hit and self.rules == "next" else ""))
+        if self.rules == "next":
+            holders = [t.powers for t in self.travelers] + foe_powers
+            for who, held in enumerate(holders):
+                out += [f"power {who} {POWERS[n]['id']} {r}" for n, r in held]
         return "\n".join(out) + "\n", foes
 
     @staticmethod
@@ -323,7 +343,7 @@ def summary(m, results, foes):
 
 def report(m, s):
     who = " and ".join(t.label() for t in m.travelers)
-    them = ", ".join(f"{REG['foes'][f]['display']}{' x' + str(c) if c > 1 else ''}" for f, c, _ in m.foes)
+    them = ", ".join(f"{REG['foes'][f[0]]['display']}{' x' + str(f[1]) if f[1] > 1 else ''}" for f in m.foes)
     print(f"{who} against {them}: {m.fights} fights")
     print(f"  the travelers win {s['won']:.0f}%, lose {s['lost']:.0f}%"
           + (f", flee {s['fled']:.0f}%" if s["fled"] else "")

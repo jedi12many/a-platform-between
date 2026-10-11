@@ -648,8 +648,11 @@ build/battle-next.asan: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEX
 
 # The rules lab's tests: reviewed battles, every roll and every number re-worked from the
 # Python reference, random battles under the sanitizers (tests/battle-next/run_battles.py).
+# The lab's engine is near the 6502 test harness's 62 KB with its runner: a 1.5 KB stack
+# (the runner keeps its buffers static) leaves it room. At the freeze it'll be split, as
+# the C64's overlays and the cartridge's assets split v0's.
 build/battle-next.sim: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
-	$(CL65) -t sim6502 -O $(NEXT_INC) -o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
+	$(CL65) -t sim6502 -O -Wl -D,__STACKSIZE__=0x0600 $(NEXT_INC) -o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
 
 build/turn-check: tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC)

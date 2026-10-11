@@ -25,6 +25,8 @@
  *   hazard DAMAGE TYPE COND          what the map's hazards do (TYPE 255: none; COND an
  *                                    id from registry/conditions.txt, or 0)
  *   foe ... hit COND                 a condition the foe's hits put on
+ *   power WHO POWER RANK             a power fighter WHO (in the order of the lines above)
+ *                                    holds (an id from registry/powers.txt)
  *
  * Prints a line per fight:
  *
@@ -50,6 +52,8 @@ static char rows[APB_MAP_H_MAX][APB_MAP_W_MAX + 1];
 static int map_w, map_h;
 #ifdef APB_RULES_NEXT
 static int hazard[3] = { APB_HAZARD_DAMAGE, APB_DMG_KINETIC, 0 };
+static int powers[APB_FIGHTERS_MAX * APB_POWERS_HELD][3];
+static int power_count;
 #endif
 static unsigned dealt[APB_FIGHTERS_MAX];
 static unsigned down_round[APB_FIGHTERS_MAX];
@@ -68,6 +72,11 @@ static void on_event(const apb_event *e)
     case APB_EV_HAZARD:
         if (e->kind == APB_EV_ATTACK && e->actor < APB_FIGHTERS_MAX) dealt[e->actor] += e->value;
         break;
+#ifdef APB_RULES_NEXT
+    case APB_EV_HIT:
+        if (e->actor < APB_FIGHTERS_MAX) dealt[e->actor] += e->value;
+        break;
+#endif
     case APB_EV_DOWN:
         if (e->target < APB_FIGHTERS_MAX) down_round[e->target] = round_now;
         break;
@@ -86,6 +95,19 @@ static void on_event(const apb_event *e)
     case APB_EV_FREE:   printf("    %u gets a free attack on %u\n", e->actor, e->target); break;
     case APB_EV_GONE:   printf("    %u is gone\n", e->actor); break;
     case APB_EV_END:    printf("  the fight is %s\n", endings[e->value & 3]); break;
+#ifdef APB_RULES_NEXT
+    case APB_EV_POWER:  printf("    %u uses %s (tier %u) at %u,%u\n", e->actor, apb_powers[e->cond].name, e->value, e->x, e->y); break;
+    case APB_EV_HIT:
+        printf("    %u's %s on %u: %u+%d=%d vs %d, %u damage\n", e->actor, apb_powers[e->cond].name,
+               e->target, e->roll.roll, e->roll.total - e->roll.roll, e->roll.total, e->roll.tn, e->value);
+        break;
+    case APB_EV_MEND:   printf("    %u heals %u: %u\n", e->actor, e->target, e->value); break;
+    case APB_EV_COND_ON: printf("    %u is %s\n", e->actor, apb_conds[e->cond].name); break;
+    case APB_EV_TICK:   printf("    %u takes %u from %s\n", e->actor, e->value, apb_conds[e->cond].name); break;
+    case APB_EV_SHIFT:  printf("    %u is shifted to %u,%u\n", e->actor, e->x, e->y); break;
+    case APB_EV_PUSH:   printf("    %u is pushed to %u,%u\n", e->actor, e->x, e->y); break;
+    case APB_EV_FALL:   printf("    %u falls into the pit\n", e->actor); break;
+#endif
     }
 }
 
@@ -168,6 +190,14 @@ static int read_file(const char *path, unsigned *fights, unsigned *seed, unsigne
             }
             row = 0;
 #ifdef APB_RULES_NEXT
+        } else if (strcmp(word, "power") == 0) {
+            if (power_count == APB_FIGHTERS_MAX * APB_POWERS_HELD
+                || sscanf(line, "%*s %d %d %d", &powers[power_count][0], &powers[power_count][1],
+                          &powers[power_count][2]) != 3) {
+                fprintf(stderr, "arena: bad power: %s\n", line);
+                return 0;
+            }
+            ++power_count;
         } else if (strcmp(word, "hazard") == 0) {
             if (sscanf(line, "%*s %d %d %d", &hazard[0], &hazard[1], &hazard[2]) != 3) {
                 fprintf(stderr, "arena: bad hazard: %s\n", line);
@@ -260,6 +290,11 @@ int main(int argc, char **argv)
                 return 1;
             }
         }
+#ifdef APB_RULES_NEXT
+        for (i = 0; i < power_count; ++i) {
+            apb_battle_learn((uint8_t)powers[i][0], (uint8_t)powers[i][1], (uint8_t)powers[i][2]);
+        }
+#endif
         if (verbose) printf("fight %u\n", n);
         apb_battle_start(APB_SURPRISE_NONE);
         result = APB_BATTLE_ON;

@@ -51,7 +51,7 @@ static const char *const types[] = { "kinetic", "energy", "fire", "cold", "mind"
 
 static const char *power_name(uint8_t p)
 {
-    if (apb_powers[p].name) return apb_powers[p].name;
+    if (p < apb_power_count && apb_powers[p].name) return apb_powers[p].name;
     return "?";
 }
 
@@ -59,7 +59,7 @@ static uint8_t power_named(const char *s)
 {
     uint16_t i;
 
-    for (i = 1; i <= APB_POWER_MAX; ++i) {
+    for (i = 1; i < apb_power_count; ++i) {
         if (apb_powers[i].name && strcmp(apb_powers[i].name, s) == 0) return (uint8_t)i;
     }
     return 0;
@@ -68,7 +68,7 @@ static uint8_t power_named(const char *s)
 static const char *cond_name(uint8_t c)
 {
     /* Not a ?: : cc65 won't mix a const char * and a string literal there. */
-    if (apb_conds[c].name) return apb_conds[c].name;
+    if (c < apb_cond_count && apb_conds[c].name) return apb_conds[c].name;
     return "?";
 }
 
@@ -76,7 +76,7 @@ static uint8_t cond_named(const char *s)
 {
     uint16_t i;
 
-    for (i = 1; i <= APB_COND_MAX; ++i) {
+    for (i = 1; i < apb_cond_count; ++i) {
         if (apb_conds[i].name && strcmp(apb_conds[i].name, s) == 0) return (uint8_t)i;
     }
     return 0;

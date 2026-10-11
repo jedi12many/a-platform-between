@@ -51,10 +51,10 @@ def main(argv):
     conds = registry.load_conditions(races=reg["races"])
     by_id = {c["id"]: c for c in conds.values()}
     lines = ["/* Generated from registry/conditions.txt by tools/rules/conditions_c.py: don't edit. */",
-             '#include "apb_battle.h"', "", "const apb_cond_def apb_conds[APB_COND_MAX + 1] = {"]
-    for i in range(128):
+             '#include "apb_battle.h"', "", "const apb_cond_def apb_conds[] = {"]
+    for i in range(max(by_id) + 1):
         lines.append(row(by_id[i], conds, reg["races"]) if i in by_id else "    { 0 },")
-    lines.append("};")
+    lines += ["};", f"const uint8_t apb_cond_count = {max(by_id) + 1};"]
     traits = {}
     for c in sorted(conds.values(), key=lambda c: c["id"]):
         if "race" in c["effects"]:
@@ -71,8 +71,8 @@ def main(argv):
               "}", ""]
     powers = registry.load_powers(classes=reg["classes"], conditions=conds)
     by_pid = {p["id"]: p for p in powers.values()}
-    lines += ["", "const apb_power_def apb_powers[APB_POWER_MAX + 1] = {"]
-    for i in range(128):
+    lines += ["", "const apb_power_def apb_powers[] = {"]
+    for i in range(max(by_pid) + 1):
         p = by_pid.get(i)
         if not p:
             lines.append("    { 0 },")
@@ -82,7 +82,7 @@ def main(argv):
             i, p["name"], cls, p["shape"], "APB_NO_TYPE" if p["element"] is None else p["element"],
             p["uses"] or 0, p["target"], int(p["near"]), conds[p["cond"]]["id"] if p["cond"] else 0,
             p["name"]))
-    lines += ["};", ""]
+    lines += ["};", f"const uint8_t apb_power_count = {max(by_pid) + 1};", ""]
     os.makedirs(os.path.dirname(os.path.abspath(argv[1])), exist_ok=True)
     with open(argv[1], "w") as f:
         f.write("\n".join(lines))

@@ -317,7 +317,7 @@ static void put_on_tier(uint8_t who, uint8_t cond, uint8_t tier)
     uint8_t left;
     const apb_cond_def *d;
 
-    if (who >= count || f_state[who] != APB_IN_FIGHT || !cond) return;
+    if (who >= count || f_state[who] != APB_IN_FIGHT || !cond || cond >= apb_cond_count) return;
     d = &apb_conds[cond];
     if (!(d->flags & APB_CF_DEFINED)) return;
     if (immune_to(who, cond)) {
@@ -372,7 +372,7 @@ uint8_t apb_battle_trait(uint8_t who, uint8_t cond)
 {
     uint8_t k;
 
-    if (who >= count || !cond || !(apb_conds[cond].flags & APB_CF_DEFINED)) return 0;
+    if (who >= count || !cond || cond >= apb_cond_count || !(apb_conds[cond].flags & APB_CF_DEFINED)) return 0;
     for (k = 0; k < 2; ++k) {
         if (c_id[who][k] == cond) return 1;
         if (!c_id[who][k]) {
@@ -1064,7 +1064,7 @@ uint8_t apb_battle_learn(uint8_t who, uint8_t power, uint8_t rank)
 {
     uint8_t k;
 
-    if (who >= count || !apb_powers[power].defined) return APB_NOBODY;
+    if (who >= count || power >= apb_power_count || !apb_powers[power].defined) return APB_NOBODY;
     for (k = 0; k < APB_POWERS_HELD; ++k) {
         if (!p_id[who][k]) {
             p_id[who][k] = power;
@@ -1092,6 +1092,8 @@ uint8_t apb_battle_powers(uint8_t who, uint8_t *ids, uint8_t *ranks, uint8_t *le
 uint8_t apb_battle_power_rating(uint8_t who, uint8_t use)
 {
     if (who >= count || use >= APB_POWERS_HELD || !p_id[who][use]) return 0;
+    /* A foe's card has no class stat: its powers roll its Attack (the rank, its tier). */
+    if (f_side[who] == APB_SIDE_FOE) return f_attack[who];
     return floor0((int16_t)(f_power_stat[who] / 2 + p_rank[who][use]));
 }
 
@@ -1467,6 +1469,10 @@ static uint8_t nearest(uint8_t who, uint8_t x, uint8_t y, uint8_t attackable)
 static uint8_t plan_x;
 static uint8_t plan_y;
 static uint8_t plan_target;
+static uint8_t plan_kind;          /* APB_ACT_ATTACK, or APB_ACT_POWER          */
+static uint8_t plan_use;
+static uint8_t plan_sx;
+static uint8_t plan_sy;
 
 /* As v0's plan: but of two squares as good, the one that isn't a hazard. */
 static uint8_t better(uint8_t x, uint8_t y)
@@ -1524,6 +1530,248 @@ static void plan(uint8_t who)
     plan_target = nearest(who, plan_x, plan_y, 1);
 }
 
+/* ------------------------------------------------- the computer's powers */
+
+/* How likely a roll of rating against tn is to land, in percent (glancing hits aside). */
+static int16_t chance(int16_t rating, int16_t tn)
+{
+    int16_t p = (int16_t)(100 + rating - tn);
+
+    return (int16_t)(p < 0 ? 0 : p > 100 ? 100 : p);
+}
+
+static uint8_t foes_within(uint8_t who, uint8_t x, uint8_t y, uint8_t d)
+{
+    uint8_t i;
+    uint8_t n = 0;
+
+    for (i = 0; i < count; ++i) {
+        if (f_state[i] == APB_IN_FIGHT && f_side[i] != f_side[who] && dist(x, y, f_x[i], f_y[i]) <= d) ++n;
+    }
+    return n;
+}
+
+/* A blast on cx, cy (Area a): how many of who's foes it catches, or 0 if it catches any of
+ * who's side (who too, unless `around`). */
+static uint8_t blast_count(uint8_t who, uint8_t cx, uint8_t cy, uint8_t a, uint8_t around)
+{
+    uint8_t i;
+    uint8_t n = 0;
+
+    for (i = 0; i < count; ++i) {
+        if (f_state[i] != APB_IN_FIGHT || (around && i == who)) continue;
+        if (!apb_in_area((int8_t)(f_x[i] - cx), (int8_t)(f_y[i] - cy), a)) continue;
+        if (f_side[i] == f_side[who]) return 0;
+        ++n;
+    }
+    return n;
+}
+
+/* Would a push of n along dx, dy from t's square drop it in a pit (or onto a hazard)? */
+static uint8_t push_lands_badly(uint8_t t, int8_t dx, int8_t dy, uint8_t n)
+{
+    uint8_t x = f_x[t];
+    uint8_t y = f_y[t];
+
+    while (n-- > 0) {
+        x = (uint8_t)(x + dx);
+        y = (uint8_t)(y + dy);
+        if (x >= map_w || y >= map_h || tiles[y][x] == APB_TILE_WALL || who_is_at(x, y) != APB_NOBODY) return 0;
+        if (tiles[y][x] == APB_TILE_PIT) return (uint8_t)!flying(t);
+        if (tiles[y][x] == APB_TILE_HAZARD) return 1;
+    }
+    return 0;
+}
+
+/* The computer's choice of a power (docs/turn.md, "How the computer uses powers"): the
+ * first of these that it can, from where its plan has it standing; or none, and it keeps
+ * to its weapon. Sets plan_kind, plan_use, plan_target, plan_sx, plan_sy. */
+static void plan_power(uint8_t who)
+{
+    static uint8_t tg[APB_FIGHTERS_MAX];
+    static int16_t tn[APB_FIGHTERS_MAX];
+    static uint8_t sq[APB_MAP_H_MAX][APB_MAP_W_MAX];
+    uint8_t k;
+    uint8_t n;
+    uint8_t i;
+    uint8_t x;
+    uint8_t y;
+    uint8_t best;
+    uint8_t bi;
+    uint8_t tier;
+    uint8_t step;
+    int16_t v;
+    int16_t bv;
+    int16_t weapon;
+    const apb_power_def *d;
+
+    plan_kind = APB_ACT_ATTACK;
+    for (step = 1; step <= 8; ++step) {
+        for (k = 0; k < APB_POWERS_HELD; ++k) {
+            if (!usable(who, k)) continue;
+            d = &apb_powers[p_id[who][k]];
+            tier = apb_power_tier(p_rank[who][k]);
+            switch (step) {
+            case 1:
+                /* Mend: you, or a friend next to you, at half health or less (most hurt). */
+                if (d->shape != APB_SH_MEND) break;
+                n = apb_battle_power_targets(who, k, plan_x, plan_y, tg, tn);
+                best = APB_NOBODY;
+                bv = 0;
+                for (i = 0; i < n; ++i) {
+                    v = (int16_t)(f_health_max[tg[i]] - f_health[tg[i]]);
+                    if (2 * f_health[tg[i]] <= f_health_max[tg[i]] && !has_flag(tg[i], APB_CF_NO_HEAL) && v > bv) {
+                        bv = v;
+                        best = tg[i];
+                    }
+                }
+                if (best == APB_NOBODY) break;
+                plan_kind = APB_ACT_POWER;
+                plan_use = k;
+                plan_target = best;
+                return;
+            case 2:
+                /* Blink away: a shooter next to two foes or more goes where it's
+                 * furthest from them. */
+                if (d->shape != APB_SH_SHIFT || d->target != APB_TG_SQUARE || !f_ranged[who]) break;
+                if (foes_within(who, f_x[who], f_y[who], 1) < 2) break;
+                apb_battle_power_squares(who, k, f_x[who], f_y[who], sq);
+                best = 0;
+                for (y = 0; y < map_h; ++y) {
+                    for (x = 0; x < map_w; ++x) {
+                        if (!sq[y][x] || tiles[y][x] == APB_TILE_HAZARD) continue;
+                        v = (int16_t)(foes_within(who, x, y, 1) ? 0 : 2 + (foes_within(who, x, y, 3) ? 0 : 2));
+                        if (v > best) {
+                            best = (uint8_t)v;
+                            plan_sx = x;
+                            plan_sy = y;
+                        }
+                    }
+                }
+                if (!best) break;
+                plan_x = f_x[who];
+                plan_y = f_y[who];
+                plan_kind = APB_ACT_POWER;
+                plan_use = k;
+                return;
+            case 3:
+                /* A shove of a power (Bull rush) that drops a foe in a pit, or onto a hazard. */
+                if (d->shape != APB_SH_SHIFT || d->target != APB_TG_FOE) break;
+                n = apb_battle_power_targets(who, k, plan_x, plan_y, tg, tn);
+                for (i = 0; i < n; ++i) {
+                    if (!push_lands_badly(tg[i], (int8_t)(f_x[tg[i]] > plan_x ? 1 : f_x[tg[i]] < plan_x ? -1 : 0),
+                                          (int8_t)(f_y[tg[i]] > plan_y ? 1 : f_y[tg[i]] < plan_y ? -1 : 0),
+                                          (uint8_t)(tier + 2))) continue;
+                    plan_kind = APB_ACT_POWER;
+                    plan_use = k;
+                    plan_target = tg[i];
+                    return;
+                }
+                break;
+            case 4:
+                /* A blast that catches two foes or more, and none of your side. */
+                if (d->shape != APB_SH_BURST) break;
+                if (d->target == APB_TG_AROUND) {
+                    if (blast_count(who, plan_x, plan_y, burst_area(tier), 1) < 2) break;
+                    plan_kind = APB_ACT_POWER;
+                    plan_use = k;
+                    return;
+                }
+                apb_battle_power_squares(who, k, plan_x, plan_y, sq);
+                best = 1;
+                for (y = 0; y < map_h; ++y) {
+                    for (x = 0; x < map_w; ++x) {
+                        if (!sq[y][x]) continue;
+                        n = blast_count(who, x, y, burst_area(tier), 0);
+                        if (n > best) {
+                            best = n;
+                            plan_sx = x;
+                            plan_sy = y;
+                        }
+                    }
+                }
+                if (best < 2) break;
+                plan_kind = APB_ACT_POWER;
+                plan_use = k;
+                return;
+            case 5:
+                /* A ward on a friend next to you who hasn't it, with a foe near them; on
+                 * yourself only when there's nobody to attack this turn. */
+                if (d->shape != APB_SH_WARD || !d->cond) break;
+                n = apb_battle_power_targets(who, k, plan_x, plan_y, tg, tn);
+                for (i = 0; i < n; ++i) {
+                    if (has(tg[i], d->cond) || !foes_within(tg[i], f_x[tg[i]], f_y[tg[i]], 3)) continue;
+                    if (tg[i] == who && plan_target != APB_NOBODY) continue;
+                    plan_kind = APB_ACT_POWER;
+                    plan_use = k;
+                    plan_target = tg[i];
+                    return;
+                }
+                break;
+            case 6:
+                /* A hex on the foe with the best Attack that hasn't it yet, and has health
+                 * enough to be worth it (three of your weapon's hits or more). */
+                if (d->shape != APB_SH_HEX) break;
+                n = apb_battle_power_targets(who, k, plan_x, plan_y, tg, tn);
+                best = APB_NOBODY;
+                for (i = 0; i < n; ++i) {
+                    if (has(tg[i], 35) || (d->cond && (has(tg[i], d->cond) || immune_to(tg[i], d->cond)))) continue;
+                    if (f_health[tg[i]] < 3 * (f_weapon[who] + (f_ranged[who] ? 0 : f_stat_bonus[who]))) continue;
+                    if (chance((int16_t)apb_battle_power_rating(who, k), tn[i]) < 30) continue;
+                    if (best == APB_NOBODY || f_attack[tg[i]] > f_attack[best]) best = tg[i];
+                }
+                if (best == APB_NOBODY) break;
+                plan_kind = APB_ACT_POWER;
+                plan_use = k;
+                plan_target = best;
+                return;
+            case 7:
+                /* A bolt, when it beats the weapon (or the weapon can't reach anyone). */
+                if (d->shape != APB_SH_BOLT) break;
+                weapon = 0;
+                if (plan_target != APB_NOBODY) {
+                    v = (int16_t)(f_weapon[who] + (f_ranged[who] ? 0 : f_stat_bonus[who]) - apb_battle_soak(plan_target));
+                    weapon = (int16_t)(chance((int16_t)(f_attack[who] + sum(who, 5) + sum(who, 6)),
+                                              apb_battle_tn(who, plan_target)) * (v < 1 ? 1 : v));
+                }
+                n = apb_battle_power_targets(who, k, plan_x, plan_y, tg, tn);
+                bv = weapon;
+                bi = APB_NOBODY;
+                for (i = 0; i < n; ++i) {
+                    v = (int16_t)(5 * tier - (d->element == APB_DMG_ENERGY ? 0 : apb_battle_soak(tg[i])));
+                    v = (int16_t)(chance((int16_t)(apb_battle_power_rating(who, k) + sum(who, 5) + sum(who, 6)), tn[i])
+                                  * (v < 1 ? 1 : v));
+                    if (v > bv) {
+                        bv = v;
+                        bi = tg[i];
+                    }
+                }
+                if (bi == APB_NOBODY) break;
+                plan_kind = APB_ACT_POWER;
+                plan_use = k;
+                plan_target = bi;
+                return;
+            case 8:
+                /* A field across the way of a foe coming at a shooter: halfway to it. */
+                if (d->shape != APB_SH_FIELD || !f_ranged[who] || d->element == APB_NO_TYPE) break;
+                best = nearest(who, plan_x, plan_y, 0);
+                if (best == APB_NOBODY || f_ranged[best]) break;
+                n = dist(plan_x, plan_y, f_x[best], f_y[best]);
+                if (n < 3 || n > 6) break;
+                x = (uint8_t)((plan_x + f_x[best]) / 2);
+                y = (uint8_t)((plan_y + f_y[best]) / 2);
+                apb_battle_power_squares(who, k, plan_x, plan_y, sq);
+                if (!sq[y][x]) break;
+                plan_kind = APB_ACT_POWER;
+                plan_use = k;
+                plan_sx = x;
+                plan_sy = y;
+                return;
+            }
+        }
+    }
+}
+
 static void guard(uint8_t who)
 {
     f_guarding[who] = 1;
@@ -1532,9 +1780,25 @@ static void guard(uint8_t who)
 
 static void foe_turn(uint8_t who)
 {
+    uint8_t px;
+    uint8_t py;
+
     plan(who);
+    plan_power(who);
     move_to(who, plan_x, plan_y);
     if (f_state[who] != APB_IN_FIGHT) return;
+    if (plan_kind == APB_ACT_POWER) {
+        /* As the player's would be: checked again from where it got to. */
+        px = f_x[who];
+        py = f_y[who];
+        if (apb_powers[p_id[who][plan_use]].target == APB_TG_SQUARE
+                ? power_square_ok(who, plan_use, px, py, plan_sx, plan_sy)
+                : apb_powers[p_id[who][plan_use]].target == APB_TG_AROUND
+                  || power_can_target(who, plan_use, plan_target, px, py)) {
+            use_power(who, plan_use, plan_target, plan_sx, plan_sy);
+        }
+        return;
+    }
     if (plan_target != APB_NOBODY && apb_battle_can_attack(who, plan_target, f_x[who], f_y[who])) {
         attack(who, plan_target);
     } else if (f_behavior[who] == APB_AI_GUARD) {
@@ -1547,12 +1811,21 @@ void apb_battle_quick(uint8_t who, apb_action *out)
     memset(out, 0, sizeof(*out));
     if (who >= count) return;
     plan(who);
+    plan_power(who);
     out->move_x = plan_x;
     out->move_y = plan_y;
     out->dash_x = plan_x;
     out->dash_y = plan_y;
     out->kind = APB_ACT_DONE;
-    if (plan_target != APB_NOBODY) {
+    if (plan_kind == APB_ACT_POWER) {
+        out->kind = APB_ACT_POWER;
+        out->use = plan_use;
+        out->target = plan_target == APB_NOBODY ? 0 : plan_target;
+        if (apb_powers[p_id[who][plan_use]].target == APB_TG_SQUARE) {
+            out->dash_x = plan_sx;
+            out->dash_y = plan_sy;
+        }
+    } else if (plan_target != APB_NOBODY) {
         out->kind = APB_ACT_ATTACK;
         out->target = plan_target;
     } else if (f_behavior[who] == APB_AI_GUARD) {

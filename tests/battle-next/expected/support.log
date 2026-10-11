@@ -67,38 +67,39 @@ round 4: 0's turn (speed 5)
   (quick: act 1 2 0 2)
   0 attacks 2: 14+27=41 vs 74: fail, 0 damage [soak 2 HEX]
 round 4: 1's turn (speed 7)
-  (quick: act 1 3 0 3)
-  1 attacks 3: 73+37=110 vs 54: success, 8 damage [soak 2]
+  (quick: act 1 3 7 3)
+  1 uses ARC_SHOT (tier 2) at 2,2
+  1's ARC_SHOT on 3: 73+72=145 vs 64: success, 18 damage [soak 2]
+  3 is down
 round 4: 2's turn (speed 4)
   0's barrier takes 8
   0 is no longer BARRIER
   2 attacks 0: 60+25=85 vs 61: success, 0 damage [soak 0 PRSM CLR]
   2 is no longer HEXED
-round 4: 3's turn (speed 4)
-  3 attacks 0: 89+45=134 vs 61: success, 13 damage [soak 0 PRSM CLR]
 round 5: 0's turn (speed 5)
   (quick: act 1 2 0 2)
-  0 attacks 2: 66+27=93 vs 74: crit, 10 damage [soak 2]
+  0 attacks 2: 89+27=116 vs 74: success, 7 damage [soak 2]
 round 5: 1's turn (speed 7)
-  (quick: act 1 3 0 3)
-  1 attacks 3: 41+37=78 vs 54: success, 5 damage [soak 2]
-  3 is down
+  (quick: act 2 2 7 0)
+  1 steps to 2,2
+  1 uses FORCE_FIELD (tier 2) at 1,2
+  0 is BARRIER
   1 is no longer STIMMED
   1 is EXHAUSTED (3 rounds)
 round 5: 2's turn (speed 4)
-  2 attacks 0: 41+45=86 vs 61: success, 8 damage [soak 0 PRSM CLR]
-  0 is down
-round 6: 1's turn (speed 3)
-  (quick: act 1 3 0 2)
-  1 attacks 2: 2+17=19 vs 54: fail, 0 damage [soak 2]
+  0's barrier takes 20
+  0 is no longer BARRIER
+  2 attacks 0: 66+45=111 vs 61: crit, 2 damage [soak 0 PRSM CLR]
+round 6: 0's turn (speed 5)
+  (quick: act 1 2 7 1)
+  0 uses STIM (tier 2) at 2,2
+  1 is STIMMED (3 rounds)
+round 6: 1's turn (speed 5)
+  (quick: act 2 2 7 2)
+  1 uses ARC_SHOT (tier 2) at 2,1
+  1's ARC_SHOT on 2: 41+62=103 vs 64: success, 13 damage [soak 2]
+  2 is down
   4,2 is itself again
   4,3 is itself again
   4,4 is itself again
-round 6: 2's turn (speed 4)
-  2 steps to 1,2
-  2 attacks 1: 80+45=125 vs 61: success, 12 damage [soak 0 PRSM CLR EXH]
-round 7: 1's turn (speed 3)
-  (quick: act 1 3 0 2)
-  1 attacks 2: 61+17=78 vs 54: success, 5 damage [soak 2]
-  2 is down
 the fight is won
