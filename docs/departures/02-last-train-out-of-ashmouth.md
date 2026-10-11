@@ -28,7 +28,7 @@ passenger the Stationmaster named doesn't want to go.
 
 | Echo | States | Kind | Pays off in |
 |---|---|---|---|
-| `WOLF_PUP` | SAVED / LEFT | Ally | Any later Ashmouth Departure: a grown dire wolf joins a losing fight |
+| `WOLF_PUP` | SAVED / LEFT | Ally | Any later Ashmouth Departure: the grown wolf turns up when you need it most, and opens a way out of a fight you're losing |
 | `JACE_CUTTER` | SPARED / KILLED / RECRUITED | Nemesis / Ally | SPARED: warlord of the wastes, 200 years later, and he remembers you |
 | `OREN_VEY` | BOARDED / STAYED | Key | Oren's radios are how a future season contacts the other stations |
 

@@ -12,7 +12,7 @@ an idea.
 | 3 | [combat.md](combat.md) | Fights: hitting, damage, areas, the battle map, a round, free attacks, fleeing, a worked fight | in the engine |
 | 4 | [items.md](items.md) | Items and powers: slots by body, free swapping, at-will and charged uses, shape and element, fields on the map; gaining, raising and swapping powers; class power lists; Out of Time | draft |
 | 5 | [translation.md](translation.md) | Tech and Magic Levels: gear and bodies changing form, Force It, Dissonance | settled; partly in the engine |
-| 6 | [echoes.md](echoes.md) | Choices that follow you: kinds, their gifts in play (Call, Favour, Standing), writing them, storage, Rewinds | story side in the engine; gifts drafted |
+| 6 | [echoes.md](echoes.md) | Choices that follow you, in the story only: kinds, positive and negative states (negative ones in solo Departures only), party menus, reach, the Legend kept at the Waystation and the pass carrying only what a Departure needs | Passport Echoes in the engine; the rest drafted |
 | 7 | [bestiary.md](bestiary.md) | Making foes: a standard foe by level, roles, how many make a fight, the bestiary measured | draft |
 | 8 | [parties.md](parties.md), [party-play.md](party-play.md) | Solo and party Departures; a party's choices and fights | draft |
 | 9 | [tabletop.md](tabletop.md) | Platform 0: playing at a table, and keeping the rules table-friendly | draft |
@@ -33,8 +33,8 @@ The rules' open questions, in one place. Each page keeps its own too.
 - **A traveler's own Ward**: none today, so foes' powers hit easily ([bestiary.md](bestiary.md#still-open)).
 - **The late game**: past level 40 gear has topped out ([bestiary.md](bestiary.md#still-open)).
 - **Stacking** buffs and debuffs, if playtests show runaway combinations.
-- **Companions**: per Departure only, or carried on the Passport? (An ally Echo's Call is
-  one answer: [echoes.md](echoes.md#in-play).)
+- **Companions**: per Departure only, or carried on the Passport? (Ally Echoes are story
+  only: [echoes.md](echoes.md#story-not-rules).)
 - **Debt**: how fast it goes down, so going home is possible well before level 100.
 - **Attunement** (two legendary items) and **resonance** (effects by Tech and Magic
   Level): later ([items.md](items.md#still-open)).

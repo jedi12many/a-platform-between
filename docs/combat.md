@@ -229,5 +229,7 @@ happened since a player's last turn ([party-play.md](party-play.md)).
   limits on stacking buffs: later, after playtests.
 - Bandaging a traveler who's down, as in *Pool of Radiance*, so a fight with a party
   isn't over for whoever falls first: with party support.
-- Companions and Echo allies fight with the same numbers; how they're recruited is still
-  an open question in [rules-v0.md](rules-v0.md).
+- Companions fight with the same numbers; how they're recruited is still an open
+  question in [rules-v0.md](rules-v0.md). (An Echo never joins a fight by itself: Echoes
+  are story only, [echoes.md](echoes.md#story-not-rules). A story can still bring an
+  ally into a fight it writes.)

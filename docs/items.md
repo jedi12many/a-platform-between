@@ -122,8 +122,10 @@ Powers come from two places:
 - **Your class**, at level-ups. Each class has its own list ([Power lists](#power-lists));
   you pick a new one from it at levels **1, 3, 6, 10, 15, 21, 28 and 36**, a little
   further apart each time. A few powers are open to every class, from a level.
-- **Echoes.** The story can give a power outside any list: the dire wolf you saved
-  answers your call. An Echo's power takes a slot but not a pick.
+- **The story.** A Departure can teach a power outside any list: the ranger whose
+  familiar was the wolf pup you saved shows you a trick of the woods. It takes a slot but
+  not a pick, and once learned it's simply yours: Echoes open the scene, but never act in a
+  fight themselves ([echoes.md](echoes.md#story-not-rules)).
 
 If all 8 slots are full, a new power replaces one you choose, or you turn it down.
 
@@ -134,7 +136,7 @@ late isn't useless.
 
 A power's rank is raised with **skill points**, at the same cost as a skill
 ([rules-v0.md](rules-v0.md#levels)). A power from your class goes up **2 a raise**, as a
-tagged skill does; any other (an Echo's, an open one), 1.
+tagged skill does; any other (one the story taught, an open one), 1.
 
 ### Swapping
 

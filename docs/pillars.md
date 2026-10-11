@@ -31,8 +31,9 @@ See [translation.md](translation.md).
 ## 4. Echoes: your choices follow you
 
 A few key choices in each Departure are recorded. Later Departures, earlier eras and
-other realms remember them. Save the dire wolf puppy, and a grown wolf answers your call
-mid-fight. Let the bandit go, and he's a warlord three Departures later.
+other realms remember them. Save the dire wolf puppy, and years later it's a ranger's
+familiar that knows the way through the woods. Let the bandit go, and he's a warlord three
+Departures later. Echoes change the story, never the rules.
 See [echoes.md](echoes.md).
 
 ## 5. Rules that fit on a Commodore 64
