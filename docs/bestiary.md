@@ -49,8 +49,8 @@ The reasoning, so it can be redone when the rules move:
 - **Health**: three or four of a same-level traveler's hits.
 - **Attack**: hits the band's Warden a little over half the time (attack ≈ their TN − 40).
 - **Damage**: about a fifth of a same-level traveler's health a hit.
-- **Ward**: **never 0**: half its Armor for a thing of flesh or metal, its Armor or more for
-  anything magical. (The arena says half is too little for a brute: see below.) A foe that really has no defense against powers says so with a
+- **Ward**: **never 0**: half its Armor for a thing of flesh or metal, but **equal to its
+  Armor for a brute** (see below); its Armor or more for anything magical. A foe that really has no defense against powers says so with a
   **weakness** instead (printed, and fair).
 - **Speed**: 4, as a traveler's; Grace sets its place in the order and its Dodge (÷ 5).
 
@@ -107,8 +107,10 @@ The fixes help less than hoped, and the arena says why:
 
 - **Ward at half the Armor is still easier to beat.** Against Ward 10 a power needs 64,
   a weapon against Armor 20 needs 74. Tried at **Ward 20** (equal to its Armor), the
-  Channeler wins **87%**, level with the Rogue's 88%: for a brute, **Ward should equal
-  Armor**, and "half" is too little. (Not applied: it's the next step, if you agree.)
+  Channeler wins **87%**, level with the Rogue's 88%. **Decided: a brute's Ward equals its
+  Armor** (the rust-guard's goes to 20). It goes into the registry after the first round
+  of playtesting, so testers' notes on scenarios A-02 and A-03 are about the numbers they
+  played; those two scenarios change with it, under new codes.
 - **Distance is half of it.** On an open floor anyone who shoots gets free rounds while a
   melee foe crosses it. Started next to the rust-guard, the Channeler wins 83%, as a
   Warden does. That's the battle map doing its job; a Departure's map decides it.

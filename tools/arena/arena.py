@@ -6,13 +6,22 @@ rules balance.
     python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD [--fights 1000]
     python3 tools/arena/arena.py "Warden 3" "Channeler 3" vs "ASH_RAT x4" --sweep level 1-10
     python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --show 0     (one fight, blow by blow)
+    python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --rules next  (rules v1: docs/turn.md)
 
 A matchup file is lines (# starts a comment):
 
     fights 1000                      how many fights (each with its own dice)
     seed 1                           the first fight's seed
     traveler [RACE] CLASS LEVEL [weapon ARCH TIER [TYPE]] [armor TIER] [name NAME]
-    foe NAME [x COUNT]               from registry/foes.txt
+             [power NAME RANK]...    its powers (rules next: the computer uses them)
+    foe NAME [x COUNT] [hit COND] [level N] [power NAME RANK]...
+                                     from registry/foes.txt; its hits put COND on, it's of
+                                     level N (1 if not said: its Resist is twice it), and it
+                                     holds those powers, rolled with its Attack (rules next)
+    rules next                       fight by rules v1, on the rules lab's engine
+                                     (build/arena-next, docs/turn.md), not v0
+    hazard DAMAGE TYPE COND          what the map's hazards do, by rules v1: TYPE kinetic..
+                                     or none, COND from registry/conditions.txt or -
     sweep level FIRST-LAST           every traveler's level, one run each
     sweep count FIRST-LAST           the last foe line's count, one run each
     map                              then rows (docs/combat.md), then: end; @ and a-z for
@@ -39,6 +48,9 @@ import passport  # noqa: E402
 REG = registry.load()
 STAT = {s: i for i, s in enumerate(registry.STATS)}
 ARENA = os.path.join(ROOT, "build", "arena")
+ARENA_NEXT = os.path.join(ROOT, "build", "arena-next")
+CONDS = registry.load_conditions(races=REG["races"])
+POWERS = registry.load_powers(classes=REG["classes"], conditions=CONDS)
 
 # ------------------------------------------------------------------------ the quick builder
 # What each class puts first: its stats (point-buy fills them in order, to 70), the skill
@@ -131,6 +143,7 @@ class Traveler:
         self.type = "kinetic" if self.arch != "focus" else "energy"
         self.armor = None
         self.name = None
+        self.powers = []                            # [NAME, rank]
         while w:
             k = w.pop(0).lower()
             if k == "weapon":
@@ -141,6 +154,11 @@ class Traveler:
                 self.armor = int(w.pop(0))
             elif k == "name":
                 self.name = w.pop(0)
+            elif k == "power":
+                name, rank = w.pop(0).upper(), int(w.pop(0))
+                if name not in POWERS:
+                    raise SystemExit(f"arena: '{name}' isn't in registry/powers.txt")
+                self.powers.append([name, rank])
             else:
                 raise SystemExit(f"arena: '{' '.join(words)}': what's '{k}'?")
 
@@ -167,9 +185,11 @@ def foe_line(name, x, y):
 class Matchup:
     def __init__(self):
         self.fights, self.seed, self.rounds = 1000, 1, 50
-        self.travelers, self.foes = [], []          # foes: [name, count]
+        self.travelers, self.foes = [], []          # foes: [name, count, hit or None, powers, level]
         self.sweep = None
         self.map = None
+        self.rules = "v0"
+        self.hazard = None                          # (damage, type or None, condition or None)
 
     def read(self, text):
         lines = iter(text.split("\n"))
@@ -187,6 +207,10 @@ class Matchup:
                 self.travelers.append(Traveler(w[1:]))
             elif k == "foe":
                 self.add_foe(" ".join(w[1:]))
+            elif k == "rules":
+                self.set_rules(w[1])
+            elif k == "hazard":
+                self.set_hazard(w[1:])
             elif k == "sweep":
                 self.set_sweep(w[1], w[2])
             elif k == "map":
@@ -199,11 +223,30 @@ class Matchup:
                 raise SystemExit(f"arena: what's '{ln}'?")
 
     def add_foe(self, text):
-        m = re.fullmatch(r"(\w+)(?:\s*x\s*(\d+))?", text.strip())
+        powers = [[n.upper(), int(r)] for n, r in re.findall(r"\bpower\s+(\w+)\s+(\d+)", text)]
+        text = re.sub(r"\s*\bpower\s+\w+\s+\d+", "", text)
+        for n, _ in powers:
+            if n not in POWERS:
+                raise SystemExit(f"arena: '{n}' isn't in registry/powers.txt")
+        m = re.fullmatch(r"(\w+)(?:\s*x\s*(\d+))?(?:\s+hit\s+(\w+))?(?:\s+level\s+(\d+))?", text.strip())
         if not m or m.group(1).upper() not in REG["foes"]:
             raise SystemExit(f"arena: '{text}': not a foe in registry/foes.txt "
                              f"({', '.join(REG['foes'])})")
-        self.foes.append([m.group(1).upper(), int(m.group(2) or 1)])
+        hit = m.group(3).upper() if m.group(3) else None
+        if hit and hit not in CONDS:
+            raise SystemExit(f"arena: '{text}': {hit} isn't in registry/conditions.txt")
+        self.foes.append([m.group(1).upper(), int(m.group(2) or 1), hit, powers, int(m.group(4) or 1)])
+
+    def set_rules(self, which):
+        if which not in ("v0", "next"):
+            raise SystemExit("arena: rules v0 or rules next")
+        self.rules = which
+
+    def set_hazard(self, w):
+        if len(w) != 3 or not w[0].isdigit() or w[1] not in registry.DAMAGE + ["none"] \
+                or (w[2] != "-" and w[2].upper() not in CONDS):
+            raise SystemExit("arena: hazard DAMAGE TYPE COND (TYPE kinetic.. or none, COND or -)")
+        self.hazard = (int(w[0]), None if w[1] == "none" else w[1], None if w[2] == "-" else w[2].upper())
 
     def set_sweep(self, what, span):
         if what not in ("level", "count"):
@@ -217,19 +260,32 @@ class Matchup:
         h, w = len(rows), max(len(r) for r in rows)
         out = [f"fights {self.fights}", f"seed {self.seed}", f"rounds {self.rounds}", f"map {w} {h}"]
         out += [r.ljust(w, ".") for r in rows]
+        if self.hazard and self.rules == "next":
+            d, t, c = self.hazard
+            out.append(f"hazard {d} {255 if t is None else registry.DAMAGE.index(t)} "
+                       f"{CONDS[c]['id'] if c else 0}")
         starts = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c == "@"]
-        foes = [name for name, n in self.foes for _ in range(n)]
+        hits = [f[2] for f in self.foes for _ in range(f[1])]
+        foe_powers = [f[3] for f in self.foes for _ in range(f[1])]
+        levels = [f[4] for f in self.foes for _ in range(f[1])]
+        foes = [f[0] for f in self.foes for _ in range(f[1])]
         if len(self.travelers) + len(foes) > 8:
             raise SystemExit("arena: 8 fighters at most (the battle engine's limit)")
         lefts = self.line_up(len(self.travelers), 1, h) if not starts else starts
-        foe_starts = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c.islower()]
+        foe_starts = [(x, y) for c, x, y in sorted((c, x, y) for y, r in enumerate(rows)
+                                                    for x, c in enumerate(r) if c.islower())]
         rights = foe_starts if len(foe_starts) >= len(foes) else self.line_up(len(foes), w - 2, h)
         if len(lefts) < len(self.travelers):
             raise SystemExit("arena: the map hasn't an @ for every traveler")
         for t, (x, y) in zip(self.travelers, lefts):
             out.append(t.line(x, y))
-        for name, (x, y) in zip(foes, rights):
-            out.append(foe_line(name, x, y))
+        for name, hit, level, (x, y) in zip(foes, hits, levels, rights):
+            out.append(foe_line(name, x, y) + (f" hit {CONDS[hit]['id']}" if hit and self.rules == "next" else "")
+                       + (f" level {level}" if self.rules == "next" else ""))
+        if self.rules == "next":
+            holders = [t.powers for t in self.travelers] + foe_powers
+            for who, held in enumerate(holders):
+                out += [f"power {who} {POWERS[n]['id']} {r}" for n, r in held]
         return "\n".join(out) + "\n", foes
 
     @staticmethod
@@ -243,6 +299,7 @@ class Matchup:
 # ------------------------------------------------------------------------ fighting
 
 def fight(m, show=None):
+    engine = ARENA_NEXT if m.rules == "next" else ARENA
     text, foes = m.file()
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         f.write(text)
@@ -252,9 +309,9 @@ def fight(m, show=None):
             one = text.replace(f"fights {m.fights}", "fights 1").replace(f"seed {m.seed}", f"seed {m.seed + show}")
             with open(path, "w") as f:
                 f.write(one)
-            p = subprocess.run([ARENA, "-v", path], capture_output=True, text=True)
+            p = subprocess.run([engine, "-v", path], capture_output=True, text=True)
             return p.stdout + p.stderr, foes
-        p = subprocess.run([ARENA, path], capture_output=True, text=True)
+        p = subprocess.run([engine, path], capture_output=True, text=True)
     finally:
         os.unlink(path)
     if p.returncode:
@@ -289,7 +346,7 @@ def summary(m, results, foes):
 
 def report(m, s):
     who = " and ".join(t.label() for t in m.travelers)
-    them = ", ".join(f"{REG['foes'][f]['display']}{' x' + str(c) if c > 1 else ''}" for f, c in m.foes)
+    them = ", ".join(f"{REG['foes'][f[0]]['display']}{' x' + str(f[1]) if f[1] > 1 else ''}" for f in m.foes)
     print(f"{who} against {them}: {m.fights} fights")
     print(f"  the travelers win {s['won']:.0f}%, lose {s['lost']:.0f}%"
           + (f", flee {s['fled']:.0f}%" if s["fled"] else "")
@@ -322,7 +379,7 @@ def main(argv):
         return 2
     args = argv[1:]
     opts = {}
-    for k in ("--fights", "--sweep", "--show", "--seed"):
+    for k in ("--fights", "--sweep", "--show", "--seed", "--rules"):
         if k in args:
             i = args.index(k)
             n = 3 if k == "--sweep" else 2
@@ -346,10 +403,12 @@ def main(argv):
         m.seed = int(opts["--seed"][0])
     if "--sweep" in opts:
         m.set_sweep(*opts["--sweep"])
+    if "--rules" in opts:
+        m.set_rules(opts["--rules"][0])
     if not m.travelers or not m.foes:
         raise SystemExit("arena: a fight needs travelers and foes")
-    if not os.path.exists(ARENA):
-        raise SystemExit("arena: build/arena isn't built: make build/arena")
+    if not os.path.exists(ARENA_NEXT if m.rules == "next" else ARENA):
+        raise SystemExit("arena: the arena isn't built: make build/arena build/arena-next")
     if "--show" in opts:
         log, _ = fight(m, int(opts["--show"][0]))
         print(log, end="")

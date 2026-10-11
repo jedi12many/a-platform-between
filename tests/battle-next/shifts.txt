@@ -1,0 +1,37 @@
+# Shifts (docs/turn.md): a Rogue blinks as her move (no free attacks) and still shoots,
+# snares and tricks; a Warden bull-rushes a foe into a pit, then plays on quick.
+seed 91
+map
+############
+#....O.....#
+#.@a.......#
+#.....b....#
+#@...c..O..#
+############
+end
+traveler 4PB794AR084102VANND8CJT000000000E64M4A3N50202G1FKWP 10
+traveler 4542T0000A0105APR5DFA26000000001H60M8A5V5020180615T 5
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 30 10  2 10  5  0  4 30  4  0  0  0  0 255 0  0
+foe b 30 10  2 10  5  0  4 30  4  0  0  0  0 255 0  0
+foe c 30 10  2 10  5  0  4 30  4  0  0  0  0 255 0  0
+power 0 BLINK 20
+power 0 SNARE 20
+power 0 DIRTY_TRICK 20
+power 1 BULL_RUSH 40
+power 1 GROUND_SLAM 40
+# Blink isn't an action: refused.
+act 2 2 7 0 3 1 0
+# Kestrel (first: Early) blinks from beside a to 3,1, north-east, as her move: no free
+# attack; and shoots b from there.
+act 3 1 0 3 0 0 0 1
+# Bram walks to 4,4 and bull-rushes c east, into the pit at 8,4.
+act 4 4 7 4 0 0 0
+# Kestrel snares a; Bram on quick.
+act 3 1 7 2 0 0 1
+act q
+act 3 1 7 3 0 0 2
+act q
+act q
+act q
+act q

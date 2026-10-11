@@ -1,0 +1,40 @@
+0: traveler at 1,1, health 23, attack 62, speed 6, TN to hit 72 [soak 0 ERLY SML]
+1: foe a at 10,4, health 30, speed 4
+round 1: 0's turn (speed 6)
+  0 steps to 2,1
+  0 steps to 3,1
+  0 takes 2 from the ground
+  0 is ON_FIRE (3 rounds)
+  0 steps to 4,1
+  0 takes 2 from the ground
+  0 steps to 5,1
+  0 takes 2 from the ground
+  0 steps to 6,1
+  0 tries to shake off ON_FIRE: 71+2=73 vs 40: success
+  0 is no longer ON_FIRE
+round 1: 1's turn (speed 4)
+  1 guards
+round 2: 0's turn (speed 6)
+  0 steps to 6,2
+  0 steps to 6,3
+  0 steps to 6,4
+round 2: 1's turn (speed 4)
+  1 guards
+round 3: 0's turn (speed 6)
+  0 steps to 7,4
+  0 dashes
+  0 steps to 8,4
+  0 steps to 9,3
+  1 gets a free attack on 0
+  1 attacks 0: 83+30=113 vs 72: success, 8 damage [soak 0 ERLY SML]
+round 3: 1's turn (speed 4)
+  1 attacks 0: 18+30=48 vs 72: fail, 0 damage [soak 0 ERLY SML]
+round 4: 0's turn (speed 6)
+  (not allowed: act 9 3 6 0 1 1)
+round 4: 1's turn (speed 4)
+  1 attacks 0: 20+30=50 vs 72: fail, 0 damage [soak 0 ERLY SML]
+round 5: 0's turn (speed 6)
+round 5: 1's turn (speed 4)
+  1 attacks 0: 51+30=81 vs 72: success, 4 damage [soak 0 ERLY SML]
+round 6: 0's turn (speed 6)
+out of actions

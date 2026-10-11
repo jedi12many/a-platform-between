@@ -1,0 +1,37 @@
+# Powers (docs/items.md, Powers; docs/turn.md, Powers in play): what a traveler *is*, not
+# what they carry. Append only: an id, once shipped, never changes. Ids are 1..127 (the
+# Passport stores a power's id and its rank).
+#
+# class:    the class whose list it's on, or ANY
+# shape:    bolt burst ward field mend hex shift (docs/items.md, Shapes)
+# element:  kinetic energy fire cold mind (its rider, and a field's kind), or -
+# uses:     - (at will) or the charges it has each fight
+# target:   self, ally (you or a traveler: next to you for a ward or a mend, else in sight),
+#           foe (in sight; next to you if its line says near), square (in sight: a burst's
+#           centre, a field's middle, where a shift takes you), around (a burst on you,
+#           you not in it)
+# cond:     a condition it puts on whoever it hits or helps, or -
+#
+# id  NAME          class      shape  element  uses  target       cond          "Shown as"
+1     SECOND_WIND   WARDEN     mend   -        1     self         REGENERATING  "Second wind"
+2     SHIELD_WALL   WARDEN     ward   -        2     ally         SHIELDED      "Shield wall"
+3     BULL_RUSH     WARDEN     shift  kinetic  2     foe near     -             "Bull rush"
+4     GROUND_SLAM   WARDEN     burst  kinetic  1     around       STUNNED       "Ground slam"
+5     BLINK         ROGUE      shift  -        2     square       -             "Blink"
+6     DIRTY_TRICK   ROGUE      hex    mind     -     foe          BLINDED       "Dirty trick"
+7     SNARE         ROGUE      hex    cold     2     foe          SLOWED        "Snare"
+8     ARC_SHOT      TINKER     bolt   energy   -     foe          -             "Arc shot"
+9     FORCE_FIELD   TINKER     ward   -        2     ally         BARRIER       "Force field"
+10    BARRICADE     TINKER     field  kinetic  1     square       -             "Barricade"
+11    SHOCK_MINE    TINKER     burst  energy   1     square       STUNNED       "Shock mine"
+12    FIREBOLT      CHANNELER  bolt   fire     -     foe          -             "Firebolt"
+13    ICE_WALL      CHANNELER  field  cold     2     square       -             "Ice wall"
+14    FIRE_WALL     CHANNELER  field  fire     1     square       ON_FIRE       "Fire wall"
+15    SHIELD        CHANNELER  ward   -        2     self         WARDED        "Shield"
+16    FIREBALL      CHANNELER  burst  fire     1     square       ON_FIRE       "Fireball"
+17    MIND_SPIKE    CHANNELER  hex    mind     2     foe          FRIGHTENED    "Mind spike"
+18    PATCH_UP      MEDIC      mend   -        3     ally         -             "Patch up"
+19    ADRENALINE    MEDIC      ward   -        2     ally         HASTED        "Adrenaline"
+20    STIM          MEDIC      ward   -        2     ally         STIMMED       "Stim"
+21    SEDATE        MEDIC      hex    mind     2     foe          ASLEEP        "Sedate"
+22    SHOCKWAVE     WARDEN     burst  kinetic  1     around       STAGGERED     "Shockwave"

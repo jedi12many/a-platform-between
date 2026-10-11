@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arena · Studio</title>
+<link rel="stylesheet" href="arena.css">
+</head>
+<body>
+<header class="bar">
+  <h1>Studio <span class="sub">A Platform Between</span></h1>
+  <nav class="studio" aria-label="Studio tools">
+    <a id="to-art" href="../">Art desk</a>
+    <a href="#" aria-current="page">Arena</a>
+  </nav>
+  <div class="where" id="where"></div>
+</header>
+
+<!-- The intro: pick a scenario, see who fights and what to test. -->
+<main id="intro" class="screen">
+  <aside class="scenarios">
+    <h2>Scenarios</h2>
+    <ol id="scenario-list"></ol>
+  </aside>
+  <section class="brief" id="brief" aria-live="polite"></section>
+</main>
+
+<!-- The fight. -->
+<main id="fight" class="screen" hidden>
+  <section class="field">
+    <canvas id="board" aria-label="The battle map"></canvas>
+    <div id="toast" role="status" aria-live="polite"></div>
+  </section>
+  <aside class="side">
+    <div id="cards"></div>
+    <h2>Log</h2>
+    <ol id="log" aria-live="polite"></ol>
+  </aside>
+</main>
+
+<!-- The pack: what's held and worn, and what's carried. -->
+<div id="pack" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="pack-title">
+  <div class="sheet">
+    <h2 id="pack-title">Pack</h2>
+    <p class="note">Swapping is free: it doesn't use your turn.</p>
+    <div class="pack-cols">
+      <div><h3>Holding and wearing</h3><ul id="pack-on"></ul></div>
+      <div><h3>In the pack</h3><ol id="pack-in"></ol></div>
+    </div>
+  </div>
+</div>
+
+<!-- The end of a fight. -->
+<div id="end" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="end-title">
+  <div class="sheet">
+    <h2 id="end-title"></h2>
+    <div id="end-body"></div>
+  </div>
+</div>
+
+<!-- Every button there is, always in view. -->
+<footer id="actions" class="actions" role="toolbar" aria-label="Actions"></footer>
+
+<script src="rules.js"></script>
+<script src="arena.js"></script>
+</body>
+</html>

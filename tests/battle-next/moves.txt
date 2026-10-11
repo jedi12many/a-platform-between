@@ -1,0 +1,29 @@
+# Moving (docs/turn.md): Speed, paths, hazards on every step, Dash. Kestrel is a
+# Chronomite (Early, Small) with Grace 70: Speed 6. The hazards are fire: 2 fire damage
+# and on fire. A guard (a) stands still at the far end.
+seed 11
+map
+############
+#@.^^^.....#
+#..###.....#
+#..~~~.....#
+#.........a#
+############
+end
+hazard 2 fire ON_FIRE
+traveler 4PB794AR084102VANND8CJT000000000E64M4A3N50202G1FKWP 10
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 30 20  4  0  0  0  4 30  4  0  0  0  0 255 2  0
+# To 6,1: along the top row, through all three hazards (around by the rough would cost
+# 9). Each one hits: 2 fire, and on fire (once: the same again only keeps the time).
+act 6 1 4 0
+# On fire: 5 at the start of the turn. Then around the wall's end and down: 7,2 then
+# 6,3 (5 squares of a 6 Speed, and none of them hazards).
+act 6 4 4 0
+# A Dash: to 7,4, then on, another 6, round to 9,3 (next to the guard: it gets a free
+# attack, as in v0).
+act 7 4 6 0 9 3
+# Can't dash beyond a Speed's worth.
+act 9 3 6 0 1 1
+act 9 3 4 0
+act 9 3 4 0

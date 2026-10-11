@@ -570,9 +570,30 @@ function status(text, kind) {
   s.className = kind || "";
 }
 
+// On the published site (docs/art.md) there's no server to save into the game's files: Save
+// downloads each changed file instead, to send in. In the studio (make studio) it saves.
+let PUBLISHED = false;
+
+function download(name) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([serialise(files[name])], { type: "text/plain" }));
+  a.download = `${name}.txt`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
 async function save() {
   const dirty = Object.keys(files).filter((n) => files[n].dirty);
   if (!dirty.length) { status("Nothing to save.", ""); return; }
+  if (PUBLISHED) {
+    dirty.forEach(download);
+    dirty.forEach((n) => { files[n].dirty = false; });
+    status(`Downloaded ${dirty.map((n) => `${n}.txt`).join(", ")}: send it in to put it in the game.`, "good");
+    drawFiles();
+    return;
+  }
   for (const name of dirty) {
     const r = await fetch(`art/${name}.txt`, { method: "PUT", body: serialise(files[name]) });
     const said = await r.text();
@@ -912,7 +933,18 @@ document.getElementById("paste-dialog").addEventListener("close", () => {
 // For the tests (tests/artdesk/): the text a file would be saved as.
 window.artdesk = { serialise: (name) => serialise(files[name]), ready: false };
 
+if (window.top !== window) document.documentElement.classList.add("framed");
+
 (async () => {
+  // build.json comes with the published site (make site); the studio's server has none.
+  try {
+    const b = await fetch("build.json", { cache: "no-store" });
+    PUBLISHED = b.ok && (await b.json()).built !== "studio";
+  } catch (e) { PUBLISHED = false; }
+  if (PUBLISHED) {
+    document.getElementById("save").textContent = "Download";
+    document.getElementById("save").title = "Download the changed files, to send in (Ctrl+S)";
+  }
   META = await (await fetch("meta.json")).json();
   for (const name of Object.keys(FILE_TITLES)) await load(name);
   state.dot = 1;

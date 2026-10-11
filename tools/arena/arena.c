@@ -19,6 +19,16 @@
  *   foe X Y HEALTH GRACE DODGE ARMOR WARD SOAK SPEED ATTACK WEAPON RANGED POWER TYPE AREA
  *       WEAK BEHAVIOR COWARD         a foe's card, as registry/foes.txt has it
  *
+ * Built on the rules lab's engine (build/arena-next: core/next/, docs/turn.md), it also
+ * reads:
+ *
+ *   hazard DAMAGE TYPE COND          what the map's hazards do (TYPE 255: none; COND an
+ *                                    id from registry/conditions.txt, or 0)
+ *   foe ... hit COND                 a condition the foe's hits put on
+ *   foe ... level N                  its level (rules next: its Resist is twice it), 1 if not said
+ *   power WHO POWER RANK             a power fighter WHO (in the order of the lines above)
+ *                                    holds (an id from registry/powers.txt)
+ *
  * Prints a line per fight:
  *
  *   fight I RESULT ROUNDS  then, per fighter: HEALTH DEALT DOWN
@@ -41,6 +51,11 @@ static apb_fighter fighters[APB_FIGHTERS_MAX];
 static uint8_t fighter_count;
 static char rows[APB_MAP_H_MAX][APB_MAP_W_MAX + 1];
 static int map_w, map_h;
+#ifdef APB_RULES_NEXT
+static int hazard[3] = { APB_HAZARD_DAMAGE, APB_DMG_KINETIC, 0 };
+static int powers[APB_FIGHTERS_MAX * APB_POWERS_HELD][3];
+static int power_count;
+#endif
 static unsigned dealt[APB_FIGHTERS_MAX];
 static unsigned down_round[APB_FIGHTERS_MAX];
 static unsigned round_now;
@@ -58,6 +73,11 @@ static void on_event(const apb_event *e)
     case APB_EV_HAZARD:
         if (e->kind == APB_EV_ATTACK && e->actor < APB_FIGHTERS_MAX) dealt[e->actor] += e->value;
         break;
+#ifdef APB_RULES_NEXT
+    case APB_EV_HIT:
+        if (e->actor < APB_FIGHTERS_MAX) dealt[e->actor] += e->value;
+        break;
+#endif
     case APB_EV_DOWN:
         if (e->target < APB_FIGHTERS_MAX) down_round[e->target] = round_now;
         break;
@@ -76,6 +96,19 @@ static void on_event(const apb_event *e)
     case APB_EV_FREE:   printf("    %u gets a free attack on %u\n", e->actor, e->target); break;
     case APB_EV_GONE:   printf("    %u is gone\n", e->actor); break;
     case APB_EV_END:    printf("  the fight is %s\n", endings[e->value & 3]); break;
+#ifdef APB_RULES_NEXT
+    case APB_EV_POWER:  printf("    %u uses %s (tier %u) at %u,%u\n", e->actor, apb_powers[e->cond].name, e->value, e->x, e->y); break;
+    case APB_EV_HIT:
+        printf("    %u's %s on %u: %u+%d=%d vs %d, %u damage\n", e->actor, apb_powers[e->cond].name,
+               e->target, e->roll.roll, e->roll.total - e->roll.roll, e->roll.total, e->roll.tn, e->value);
+        break;
+    case APB_EV_MEND:   printf("    %u heals %u: %u\n", e->actor, e->target, e->value); break;
+    case APB_EV_COND_ON: printf("    %u is %s\n", e->actor, apb_conds[e->cond].name); break;
+    case APB_EV_TICK:   printf("    %u takes %u from %s\n", e->actor, e->value, apb_conds[e->cond].name); break;
+    case APB_EV_SHIFT:  printf("    %u is shifted to %u,%u\n", e->actor, e->x, e->y); break;
+    case APB_EV_PUSH:   printf("    %u is pushed to %u,%u\n", e->actor, e->x, e->y); break;
+    case APB_EV_FALL:   printf("    %u falls into the pit\n", e->actor); break;
+#endif
     }
 }
 
@@ -104,6 +137,9 @@ static int traveler(apb_fighter *f, const char *passport, const char *arch, int 
     f->weapon = (uint8_t)(tier ? 5 * tier : f->weapon);
     f->dmg_type = (uint8_t)type;
     f->armor = (uint8_t)(10 * armor);
+#ifdef APB_RULES_NEXT
+    f->speed = apb_speed_v1(f->grace, (uint8_t)armor);
+#endif
     if (strcmp(arch, "ranged") == 0) {
         f->ranged = 1;
         f->stat_bonus = 0;
@@ -154,6 +190,21 @@ static int read_file(const char *path, unsigned *fights, unsigned *seed, unsigne
                 return 0;
             }
             row = 0;
+#ifdef APB_RULES_NEXT
+        } else if (strcmp(word, "power") == 0) {
+            if (power_count == APB_FIGHTERS_MAX * APB_POWERS_HELD
+                || sscanf(line, "%*s %d %d %d", &powers[power_count][0], &powers[power_count][1],
+                          &powers[power_count][2]) != 3) {
+                fprintf(stderr, "arena: bad power: %s\n", line);
+                return 0;
+            }
+            ++power_count;
+        } else if (strcmp(word, "hazard") == 0) {
+            if (sscanf(line, "%*s %d %d %d", &hazard[0], &hazard[1], &hazard[2]) != 3) {
+                fprintf(stderr, "arena: bad hazard: %s\n", line);
+                return 0;
+            }
+#endif
         } else if (fighter_count == APB_FIGHTERS_MAX) {
             fprintf(stderr, "arena: more than %d fighters\n", APB_FIGHTERS_MAX);
             return 0;
@@ -184,6 +235,15 @@ static int read_file(const char *path, unsigned *fights, unsigned *seed, unsigne
             f->attack = (uint8_t)v[9]; f->weapon = (uint8_t)v[10]; f->ranged = (uint8_t)v[11];
             f->power = (uint8_t)v[12]; f->dmg_type = (uint8_t)v[13]; f->area = (uint8_t)v[14];
             f->weak_type = (uint8_t)v[15]; f->behavior = (uint8_t)v[16]; f->coward = (uint8_t)v[17];
+#ifdef APB_RULES_NEXT
+            f->race = 0xFF;
+            {
+                const char *hit = strstr(line, " hit ");
+                const char *lv = strstr(line, " level ");
+                if (hit) f->on_hit = (uint8_t)atoi(hit + 5);
+                f->level = lv ? (uint8_t)atoi(lv + 7) : 1;
+            }
+#endif
             ++fighter_count;
         }
     }
@@ -215,6 +275,9 @@ int main(int argc, char **argv)
     for (n = 0; n < fights; ++n) {
         apb_rng_seed(&rng, (uint16_t)(seed + n));
         apb_battle_init((uint8_t)map_w, (uint8_t)map_h, &rng, on_event);
+#ifdef APB_RULES_NEXT
+        apb_battle_set_hazard((uint8_t)hazard[0], (uint8_t)hazard[1], (uint8_t)hazard[2]);
+#endif
         for (y = 0; y < map_h; ++y) {
             for (x = 0; x < map_w && rows[y][x]; ++x) {
                 apb_battle_set_tile((uint8_t)x, (uint8_t)y, tile_of(rows[y][x]));
@@ -230,6 +293,11 @@ int main(int argc, char **argv)
                 return 1;
             }
         }
+#ifdef APB_RULES_NEXT
+        for (i = 0; i < power_count; ++i) {
+            apb_battle_learn((uint8_t)powers[i][0], (uint8_t)powers[i][1], (uint8_t)powers[i][2]);
+        }
+#endif
         if (verbose) printf("fight %u\n", n);
         apb_battle_start(APB_SURPRISE_NONE);
         result = APB_BATTLE_ON;
@@ -239,6 +307,9 @@ int main(int argc, char **argv)
             apb_battle_quick(who, &act);
             if (!apb_battle_act(who, &act)) {        /* quick's choice refused: just end */
                 act.kind = APB_ACT_DONE;
+#ifdef APB_RULES_NEXT
+                act.move_use = 0;
+#endif
                 apb_battle_fighter(who, &now);
                 act.move_x = now.x;
                 act.move_y = now.y;

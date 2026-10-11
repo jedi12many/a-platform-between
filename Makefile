@@ -14,10 +14,14 @@ APPLY_SRC := core/src/receipt.c
 # made smaller (docs/engine-plan.md, Risks).
 BATTLE_SRC := core/src/battle.c
 CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
+# The rules lab's (docs/turn.md): rules v1's engine, which only the arena and its tests build.
+NEXT_INC := -Icore/next $(INC)
+NEXT_SRC := core/next/battle.c build/next/conditions.c
+NEXT_HDR := core/next/apb_battle.h $(CORE_HDR)
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all arena cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all arena arena-web studio test-arena-web test-rules-next cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 # The game's art (docs/art.md): figures, effects and tiles, as text, read by tools/art.py.
 ART := $(wildcard content/art/*.txt) tools/art.py
@@ -445,7 +449,8 @@ build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_
 ARENA_N := 01 02 03 04 05 06 07 08 09 10
 ARENA_DEPARTURES := $(foreach n,$(ARENA_N),build/modern/arena-$(n)/DEPOT)
 
-build/arena-play/scenarios.json: tools/arena/scenarios.py tools/arena/arena.py build/arena registry/*.txt
+build/arena-play/scenarios.json: tools/arena/scenarios.py tools/arena/arena.py build/arena build/arena-next \
+                                 registry/*.txt
 	python3 tools/arena/scenarios.py build/arena-play
 	mkdir -p build/arena-play/pictures
 
@@ -492,27 +497,63 @@ build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) way
 	cp waystation/site/* build/waystation/
 	python3 waystation/registry_json.py build/waystation/registry.json
 
-# The site (site/, docs/waystation-web.md): the platform page, with the player's travelers,
-# and the Waystation and the train in a frame. Serve build/site/ and open it.
-build/site/index.html: site/index.html site/arena.html build/web/apb.js build/waystation/ws.js \
-                       build/arena-play/scenarios.json
+# The site (site/, docs/waystation-web.md): tabs for the platform (the player's travelers and
+# the train), the Waystation, the rules (docs/rules.md's pages), the art desk and the arena.
+# Serve build/site/ and open it.
+build/site/index.html: site/index.html build/web/apb.js build/waystation/ws.js \
+                       build/arena-web/index.html tools/artdesk/index.html tools/artdesk/artdesk.js \
+                       tools/artdesk/artdesk.css tools/artdesk/serve.py content/art/*.txt \
+                       tools/rules/rules_site.py docs/*.md
 	rm -rf build/site
-	mkdir -p build/site/play build/site/waystation build/site/arena
-	for page in index arena; do \
-	  ( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
-	    printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
-	    cat site/$$page.html; printf '</body></html>\n' ) > build/site/$$page.html; \
-	done
+	mkdir -p build/site/play build/site/waystation build/site/studio/arena
+	( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
+	  printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
+	  cat site/index.html; printf '</body></html>\n' ) > build/site/index.html
 	cp build/web/* build/site/play/
 	cp build/waystation/* build/site/waystation/
-	cp build/arena-play/scenarios.json build/site/arena/
+	python3 tools/rules/rules_site.py build/site/rules
+	python3 tools/artdesk/serve.py --publish build/site/studio
+	cp build/arena-web/* build/site/studio/arena/
 	printf '{"commit": "%s", "built": "%s"}\n' "$$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
 	    "$$(date -u +%Y-%m-%d)" > build/site/build.json
+	cp build/site/build.json build/site/studio/
+	cp build/site/build.json build/site/studio/arena/
 
-# The art desk (docs/art.md): an editor for the figures, effects and tiles in a browser,
-# saving to content/art/. Open http://localhost:8064/.
+# The native arena (docs/arena.md, "The native arena"): the scenarios' fights played by
+# hand in a modern page, on the battle engine as WebAssembly and the game's art. It lives
+# in the studio, beside the art desk; build/arena-web/ is also a static site on its own.
+ARENA_WEB_FLAGS := -O2 -sALLOW_MEMORY_GROWTH -sMODULARIZE -sEXPORT_NAME=ArenaRules \
+                   -sEXPORTED_RUNTIME_METHODS=cwrap
+
+build/arena-web/rules.js: tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR)
+	@mkdir -p build/arena-web
+	$(EMCC) $(ARENA_WEB_FLAGS) $(NEXT_INC) -DAPB_ARENA -o $@ tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC)
+
+build/arena-web/index.html: build/arena-web/rules.js build/arena-play/scenarios.json \
+                            tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css \
+                            tools/arena/web/art_json.py content/art/*.txt
+	cp tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css build/arena-web/
+	cp build/arena-play/scenarios.json build/arena-play/lab.json build/arena-play/items.json \
+	    build/arena-play/conditions.json build/arena-play/powers.json build/arena-web/
+	python3 tools/arena/web/art_json.py build/arena-web/art.json
+
+arena-web: build/arena-web/index.html
+	@echo "The arena: make studio, and open http://localhost:8064/arena/"
+
+# The studio (docs/art.md, docs/arena.md): the art desk and the arena, side by side, on
+# this machine. Open http://localhost:8064/ (the art desk) or /arena/.
+studio: build/arena-web/index.html
+	python3 tools/artdesk/serve.py
+
+# The art desk alone (the arena's tab works once make arena-web has been run).
 artdesk:
 	python3 tools/artdesk/serve.py
+
+# The native arena in headless Chromium: every scenario starts, the pack swaps gear as the
+# rules say, and fights played on quick end as the battle engine says
+# (tests/arena/check_native.py).
+test-arena-web: build/arena-web/index.html
+	NODE_PATH=$$(npm root -g) python3 tests/arena/check_native.py
 
 # The art desk in headless Chromium, on a copy of the art: files come back untouched, each
 # edit lands as it should, the server writes nothing that breaks a rule
@@ -531,7 +572,6 @@ waystation: build/waystation/ws.js
 # and stats rolled as the rules say (tests/waystation/check_site.py).
 test-waystation: build/waystation/ws.js build/site/index.html build/apb
 	NODE_PATH=$$(npm root -g) python3 tests/waystation/check_site.py
-	NODE_PATH=$$(npm root -g) python3 tests/arena/check_play.py
 
 # The desktop must play the C64's routes as the C64 does (Travel Stamps and all), and the
 # browser as the desktop does; a save survives a restart on both. Needs SDL2, Emscripten,
@@ -588,7 +628,40 @@ arena: build/arena
 build/arena: tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC)
 
+# The same, on the rules lab's engine (docs/turn.md): arena.py --rules next.
+build/arena-next: tools/arena/arena.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tools/arena/arena.c $(NEXT_SRC) $(CORE_SRC)
+
 # Battles: scenarios played natively and on the 6502, with the same log.
+# The rules lab (docs/turn.md): rules v1's battle engine, core/next/, which only the arena
+# and its tests build (with -Icore/next first, so its apb_battle.h is the one they see).
+# Its conditions come from registry/conditions.txt, generated, not kept.
+
+build/next/conditions.c: registry/conditions.txt registry/powers.txt registry/races.txt tools/rules/conditions_c.py \
+                         tools/registry/registry.py
+	python3 tools/rules/conditions_c.py $@
+
+build/battle-next: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
+
+build/battle-next.asan: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(NEXT_INC) \
+		-o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
+
+# The rules lab's tests: reviewed battles, every roll and every number re-worked from the
+# Python reference, random battles under the sanitizers (tests/battle-next/run_battles.py).
+# The lab's engine is near the 6502 test harness's 62 KB with its runner: built for size
+# (-Os) with a 1.25 KB stack (the runner keeps its buffers static), it has room. At the freeze it'll be split, as
+# the C64's overlays and the cartridge's assets split v0's.
+build/battle-next.sim: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CL65) -t sim6502 -Os -Wl -D,__STACKSIZE__=0x0500 $(NEXT_INC) -o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
+
+build/turn-check: tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC)
+
+test-rules-next: build/battle-next build/battle-next.asan build/battle-next.sim build/turn-check
+	python3 tests/battle-next/run_battles.py
+
 build/battle: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)
 

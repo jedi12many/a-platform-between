@@ -1,0 +1,34 @@
+# Races in play (docs/turn.md). Kestrel's Early puts her first though the gunner is
+# quicker; Moth's Winged crosses the pits (and rough ground for 1); Ivy's Rad-fed takes
+# no damage from radiation. And Kestrel, made Weightless, floats over a pit, and when
+# it runs out there she falls.
+seed 51
+map
+############
+#@.OOO~~..a#
+#..OOO.....#
+#@.O.......#
+#^^^.......#
+#@.........#
+############
+end
+hazard 5 energy IRRADIATED
+traveler 4TZ8G0000C4102V0NNDYHJT000000000E64M4A3T50202G1VY14 10
+traveler 4PB794AR084102VANND8CJT000000000E64M4A3N50202G1FKWP 10
+traveler 4KDJ000006C1026PP9QKNAT000000030264MMABH50203006BX6 12
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 60 90 18  0  0  0  4 30  2  1  0  0  0 255 1  0
+put 1 WEIGHTLESS
+# Order: Kestrel (Early), the gunner (Grace 90), Moth, Ivy.
+# Kestrel floats onto the pit at 3,3.
+act 3 3 4 0
+# Moth flies over the pits and the rough to 7,1.
+act 7 1 4 0
+# Ivy walks onto the radiation at 2,4.
+act 2 4 4 0
+act 3 3 4 0
+act 7 1 4 0
+act 2 4 4 0
+act 3 3 4 0
+act 7 1 4 0
+act 2 4 4 0

@@ -124,6 +124,11 @@ void    apb_battle_fighter(uint8_t who, apb_fighter *out);
 /* A traveler's fighter, from their character and the weapon they fight with. */
 void    apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon_item);
 
+#ifdef APB_ARENA
+/* The arena only: a fighter's gear changed mid-fight (its pack). */
+void    apb_battle_rearm(uint8_t who, const apb_fighter *f);
+#endif
+
 /* Work out the order of play and begin. */
 void    apb_battle_start(uint8_t surprise);
 uint8_t apb_battle_round(void);

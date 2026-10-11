@@ -160,6 +160,28 @@ void apb_battle_fighter(uint8_t i, apb_fighter *out)
     for (k = 0; k < FIELDS; ++k) ((uint8_t *)out)[k] = fd[k][i];
 }
 
+#ifdef APB_ARENA
+/* The arena's pack (docs/arena.md, "The native arena"): a fighter's gear changed in the
+ * middle of a fight, swapping being free. Everything its gear decides; not where it
+ * stands, nor how it's doing. Only the arena builds this. */
+void apb_battle_rearm(uint8_t i, const apb_fighter *f)
+{
+    if (i >= count) return;
+    f_dodge[i] = f->dodge;
+    f_armor[i] = f->armor;
+    f_ward[i] = f->ward;
+    f_soak[i] = f->soak;
+    f_attack[i] = f->attack;
+    f_weapon[i] = f->weapon;
+    f_stat_bonus[i] = f->stat_bonus;
+    f_ranged[i] = f->ranged;
+    f_power[i] = f->power;
+    f_dmg_type[i] = f->dmg_type;
+    f_area[i] = f->area;
+    f_behavior[i] = f->behavior;
+}
+#endif
+
 void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon_item)
 {
     uint8_t arch = APB_ARCH_MELEE;

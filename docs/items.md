@@ -90,7 +90,7 @@ bolt and an ice shard feel different without either needing a page of rules:
 | **cold** | the target's Speed −2 on its next turn | **ice**: rough ground (costs 2 to enter) |
 | **kinetic** | the target is pushed 1 square away from you | **stone**: wall (blocks movement and sight) |
 | **energy** | ignores the target's Soak | **lightning**: as fire, energy damage |
-| **mind** | against Resolve instead of Ward | **mist**: cover (+20 to TN against ranged attacks and powers) |
+| **mind** | against Resist (twice the level) instead of Ward | **mist**: cover (+20 to TN against ranged attacks and powers) |
 
 A **field** goes only on open ground or rough ground, never on a combatant, and goes back
 to what it was after 3 rounds (the end of its maker's third turn after making it). Foes
@@ -156,12 +156,13 @@ and an element, at will or with charges; its tier comes from its rank. Many put 
 
 | Class | Power | Effect | Condition |
 |---|---|---|---|
-| **Warden** | Second wind | Mend, yourself only, 1 charge | |
+| **Warden** | Second wind | Mend, yourself only, 1 charge | regenerating |
 | | Shield wall | Ward (Armor) on an ally next to you, 2 charges | shielded |
 | | Shove | Shift + kinetic, a foe next to you, at will | knocked down (a crit) |
 | | Taunt | Hex + mind, 2 charges | taunted |
-| | Ground slam | Burst + kinetic, centred on you (you're not hit), 1 charge | knocked down |
-| **Rogue** | Blink | Shift, yourself, 2 charges | displaced |
+| | Ground slam | Burst + kinetic, centred on you (you're not hit), 1 charge | stunned |
+| | *Shockwave* | *Ground slam's alternative, being tried: the same, but* | *staggered* |
+| **Rogue** | Blink | Shift, yourself, 2 charges: your move, not your action | displaced |
 | | Smoke | Field + mind (mist: cover), 2 charges | fog: hidden |
 | | Dirty trick | Hex + mind, at will | blinded, 1 round |
 | | Snare | Hex + cold, 2 charges | slowed; entangled from tier 3 |

@@ -1,0 +1,32 @@
+# Conditions in play (docs/turn.md): on hits, ticking, counted down, shaken off,
+# opposites, a barrier, weaknesses (Oda soaked: double from b's energy; a brittle: double
+# from Oda's sword), thorns, what one turns into. Oda is a Human (Lucky +5
+# to every roll, Steady +10 to shake off) with an iron sword; b shoots energy, and its
+# shots chill.
+seed 31
+map
+##########
+#........#
+#.@a.....#
+#....b...#
+##########
+end
+traveler 4Y820000000104CS6XDRA3E000000001H60M8A56502028073YF 9
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 90 30  6  0  0  0  4 40  3  0  0  0  0 255 2  0 hit POISONED
+foe b 40 40  8  0  0  0  4 30  1  1  0  1  0 255 1  0 hit CHILLED
+put 1 ELECTRIFIED
+put 0 STIMMED
+put 0 BARRIER
+put 0 SOAKED
+put 1 BRITTLE
+put 1 BLESSED
+put 1 CURSED
+act 2 2 0 1
+act 2 2 0 1
+act 2 2 0 1
+act q
+act q
+act q
+act q
+act q

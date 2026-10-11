@@ -1,0 +1,87 @@
+# Conditions (docs/conditions.md, docs/turn.md): what's true of a fighter for a while, or for
+# good. Append only: an id, once shipped, never changes. Ids are 1..127.
+#
+# rounds:   how many of its bearer's turns it lasts (counted down at the end of each, but
+#           not the turn it was put on), or - (until something ends it)
+# shake:    N, rolled at the end of its bearer's turn: d100 + its Resist (2 x its level)
+#           against N + the Resist of whoever put it on (docs/turn.md); or -: it can't be
+# opposite: the condition it cancels when it's put on (and that cancels it), or -
+# then:     what it becomes when its rounds run out, or -
+# tag:      a short name for the battle screen
+# effects:  any of (N a whole number, TYPE kinetic energy fire cold mind, none if left out)
+#   dot=N[:TYPE]   N damage at the start of each turn (no TYPE: Soak doesn't count)
+#   heal=N         N health back at the start of each turn
+#   speed=N        Speed up or down (only the worst penalty and the best bonus count)
+#   speed0         can't move at all
+#   dodge=N dodge0 armor=N ward=N soak=N   defenses up or down (dodge0: Dodge counts as 0)
+#   rolls=N        every roll; attacks=N every attack roll; melee=N melee attack rolls
+#   next=N         the next attack roll, then it ends
+#   shake=N        rolls to shake off conditions
+#   immune=A,B     those conditions never land; immune_hazard=TYPE: hazards' TYPE damage
+#   lose_turn      no move, no action
+#   down           knocked down: Dodge counts as 0; standing up takes half your Speed
+#   ends_when_hit  ends when damage gets through; ends_on_heal: ends when healed
+#   barrier=N      the next N damage is taken off before health, then it ends
+#   vulnerable=TYPE  double damage of that type
+#   thorns=N[:TYPE]  whoever hits you in melee takes N
+#   no_powers      can't attack with a focus; no_heal: healing does nothing
+#   fly            crosses pits, and rough ground costs 1; falls if it ends over a pit
+#   first          acts first in the order of play
+#   race=RACE      one of that race's two traits: always on
+#   tiered         its numbers are for tier 1: put on by a power or an item of tier N, they're N
+#                  times as much (docs/turn.md, Powers in play)
+#
+# id  NAME            rounds shake         opposite  then       tag   "Shown as"         effects
+1     POISONED        5      50            -         -          PSN   "Poisoned"         dot=3
+2     BLEEDING        3      -             -         -          BLD   "Bleeding"         dot=2 ends_on_heal
+3     ON_FIRE         3      40            SOAKED    -          FIRE  "On fire"          dot=5:fire thorns=2:fire
+4     SOAKED          3      -             ON_FIRE   -          WET   "Soaked"           immune=ON_FIRE vulnerable=energy
+5     CHILLED         2      -             -         -          CHL   "Chilled"          speed=-1
+6     SLOWED          2      -             HASTED    -          SLOW  "Slowed"           speed=-2
+7     HASTED          3      -             SLOWED    -          HST   "Hasted"           speed=2
+8     ENTANGLED       -      50            -         -          TRAP  "Entangled"        speed0
+9     KNOCKED_DOWN    -      -             -         -          DOWN  "Knocked down"     down dodge0
+10    STUNNED         1      -             -         -          STUN  "Stunned"          lose_turn
+11    ASLEEP          -      60            -         -          SLP   "Asleep"           lose_turn dodge0 ends_when_hit
+12    PARALYZED       2      70            -         -          PAR   "Paralyzed"        lose_turn dodge0
+13    FROZEN          1      -             -         SOAKED     ICE   "Frozen"           lose_turn armor=10
+14    BLINDED         2      50            -         -          BLND  "Blinded"          attacks=-30
+15    FRIGHTENED      -      50            -         -          FEAR  "Frightened"       rolls=-10
+16    EXPOSED         1      -             -         -          EXP   "Exposed"          armor=-20
+17    MARKED          3      -             -         -          MRK   "Marked"           dodge=-10 armor=-10
+18    SHIELDED        3      -             -         -          SHLD  "Shielded"         armor=10 tiered
+19    WARDED          3      -             -         -          WRD   "Warded"           ward=10 tiered
+20    BARRIER         -      -             -         -          BAR   "Barrier"          barrier=10 tiered
+21    STONESKIN       3      -             -         -          STN   "Stoneskin"        soak=2
+22    REGENERATING    5      -             -         -          REG   "Regenerating"     heal=3
+23    BLESSED         3      -             CURSED    -          BLS   "Blessed"          rolls=10 shake=10
+24    CURSED          5      -             BLESSED   -          CRS   "Cursed"           rolls=-10 no_heal
+25    INSPIRED        3      -             -         -          INSP  "Inspired"         rolls=10
+26    FOCUSED         -      -             -         -          FOC   "Focused"          next=20
+27    STIMMED         3      -             -         EXHAUSTED  STIM  "Stimmed"          speed=2 attacks=10
+28    EXHAUSTED       3      -             -         -          EXH   "Exhausted"        speed=-2 rolls=-10
+29    ELECTRIFIED     2      -             -         -          ZAP   "Electrified"      thorns=3:energy
+30    CORRODED        5      -             -         -          COR   "Corroded"         armor=-10
+31    BRITTLE         2      -             -         -          BRT   "Brittle"          vulnerable=kinetic
+32    SILENCED        2      -             -         -          SIL   "Silenced"         no_powers
+33    IRRADIATED      3      -             -         -          RAD   "Irradiated"       dot=2:energy
+34    WEIGHTLESS      3      -             -         -          FLT   "Weightless"       fly melee=-10
+35    HEXED           3      -             -         -          HEX   "Hexed"            attacks=-10 tiered
+36    STAGGERED       1      -             -         -          STAG  "Staggered"        next=-20 tiered
+# The races' traits (docs/races.md): always on.
+64    LUCKY           -      -             -         -          LCK   "Lucky"            rolls=5 race=HUMAN
+65    STEADY          -      -             -         -          STDY  "Steady"           shake=10 race=HUMAN
+66    HOLLOW          -      -             -         -          HLW   "Hollow"           immune=POISONED,BLEEDING race=HOLLOWBORN
+67    UNSLEEPING      -      -             -         -          UNSL  "Unsleeping"       immune=ASLEEP,PARALYZED race=HOLLOWBORN
+68    PRISMATIC       -      -             -         -          PRSM  "Prismatic"        ward=10 race=GLASSFOLK
+69    CLEAR           -      -             -         -          CLR   "Clear"            immune=BLINDED race=GLASSFOLK
+70    RAD_FED         -      -             -         -          RADF  "Rad-fed"          immune=IRRADIATED immune_hazard=energy race=RAD_DRYAD
+71    ROOTED          -      -             -         -          ROOT  "Rooted"           soak=2 race=RAD_DRYAD
+72    EARLY           -      -             -         -          ERLY  "Early"            first race=CHRONOMITE
+73    SMALL           -      -             -         -          SML   "Small"            dodge=5 race=CHRONOMITE
+74    PLATED          -      -             -         -          PLT   "Plated"           armor=10 race=SALVAGED
+75    KNIGHTLY        -      -             -         -          KNT   "Knightly"         immune=FRIGHTENED race=SALVAGED
+76    WINGED          -      -             -         -          WING  "Winged"           fly race=MOTH_FOLK
+77    LANTERN_EYED    -      -             -         -          LAMP  "Lantern-eyed"     race=MOTH_FOLK
+# Foes' natures, for their cards.
+96    UNLIVING        -      -             -         -          UNL   "Unliving"         immune=POISONED,BLEEDING,ASLEEP,FRIGHTENED
