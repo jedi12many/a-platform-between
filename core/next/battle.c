@@ -1319,8 +1319,9 @@ static uint8_t power_hits(uint8_t who, uint8_t use, uint8_t t, uint8_t roll, int
     shot.total = (int16_t)(roll + apb_battle_power_rating(who, use) + bonus);
     shot.tn = power_tn(t, d->element);
     shot.result = apb_resolve(roll, shot.total, shot.tn);
-    if (d->shape == APB_SH_BOLT || d->shape == APB_SH_BURST) {
-        dmg = apb_damage(&shot, (uint8_t)(5 * tier), 0,
+    if (d->shape == APB_SH_BOLT || d->shape == APB_SH_BURST || d->shape == APB_SH_HEX) {
+        /* A hex hurts too, half a bolt's (5 x tier, halved, rounded up). */
+        dmg = apb_damage(&shot, (uint8_t)(d->shape == APB_SH_HEX ? (5 * tier + 1) / 2 : 5 * tier), 0,
                          d->element == APB_DMG_ENERGY ? 0 : apb_battle_soak(t));
         dmg = through(t, dmg, d->element);
     }
@@ -1405,6 +1406,7 @@ static void use_power(uint8_t who, uint8_t use, uint8_t t, uint8_t sx, uint8_t s
         f_health[t] = (uint8_t)(f_health[t] + heal);
         emit_c(APB_EV_MEND, who, t, heal, p_id[who][use]);
         if (heal) take_off_flag(t, APB_CF_ENDS_HEAL);
+        if (d->cond) put_on_tier(t, d->cond, tier);
         break;
     case APB_SH_FIELD:
         /* A line of tier + 2 squares, across the line from you to its middle. */
@@ -1635,14 +1637,22 @@ static void plan_power(uint8_t who)
                  * furthest from them. */
                 if (d->shape != APB_SH_SHIFT || d->target != APB_TG_SQUARE || !f_ranged[who]) break;
                 if (foes_within(who, f_x[who], f_y[who], 1) < 2) break;
+                /* Only out of every melee foe's reach (its Speed and a step): blinking
+                 * to where they'll be on you again next turn costs a shot for nothing. */
                 apb_battle_power_squares(who, k, f_x[who], f_y[who], sq);
                 best = 0;
                 for (y = 0; y < map_h; ++y) {
                     for (x = 0; x < map_w; ++x) {
                         if (!sq[y][x] || tiles[y][x] == APB_TILE_HAZARD) continue;
-                        v = (int16_t)(foes_within(who, x, y, 1) ? 0 : 2 + (foes_within(who, x, y, 3) ? 0 : 2));
-                        if (v > best) {
-                            best = (uint8_t)v;
+                        bv = 0x7FFF;
+                        for (i = 0; i < count; ++i) {
+                            if (f_state[i] != APB_IN_FIGHT || f_side[i] == f_side[who]) continue;
+                            v = (int16_t)(dist(x, y, f_x[i], f_y[i]));
+                            if (!f_ranged[i] && v <= apb_battle_speed(i) + 1) bv = 0;
+                            else if (v < bv) bv = v;
+                        }
+                        if (bv > best) {
+                            best = (uint8_t)(bv > 255 ? 255 : bv);
                             plan_sx = x;
                             plan_sy = y;
                         }
@@ -1700,7 +1710,10 @@ static void plan_power(uint8_t who)
                 if (d->shape != APB_SH_WARD || !d->cond) break;
                 n = apb_battle_power_targets(who, k, plan_x, plan_y, tg, tn);
                 for (i = 0; i < n; ++i) {
-                    if (has(tg[i], d->cond) || !foes_within(tg[i], f_x[tg[i]], f_y[tg[i]], 3)) continue;
+                    /* You from where you'll stand; a friend from where they are. */
+                    x = tg[i] == who ? plan_x : f_x[tg[i]];
+                    y = tg[i] == who ? plan_y : f_y[tg[i]];
+                    if (has(tg[i], d->cond) || !foes_within(tg[i], x, y, 3)) continue;
                     if (tg[i] == who && plan_target != APB_NOBODY) continue;
                     plan_kind = APB_ACT_POWER;
                     plan_use = k;

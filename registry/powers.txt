@@ -13,10 +13,10 @@
 # cond:     a condition it puts on whoever it hits or helps, or -
 #
 # id  NAME          class      shape  element  uses  target       cond          "Shown as"
-1     SECOND_WIND   WARDEN     mend   -        1     self         -             "Second wind"
+1     SECOND_WIND   WARDEN     mend   -        1     self         REGENERATING  "Second wind"
 2     SHIELD_WALL   WARDEN     ward   -        2     ally         SHIELDED      "Shield wall"
 3     BULL_RUSH     WARDEN     shift  kinetic  2     foe near     -             "Bull rush"
-4     GROUND_SLAM   WARDEN     burst  kinetic  1     around       KNOCKED_DOWN  "Ground slam"
+4     GROUND_SLAM   WARDEN     burst  kinetic  1     around       STUNNED       "Ground slam"
 5     BLINK         ROGUE      shift  -        2     square       -             "Blink"
 6     DIRTY_TRICK   ROGUE      hex    mind     -     foe          BLINDED       "Dirty trick"
 7     SNARE         ROGUE      hex    cold     2     foe          SLOWED        "Snare"

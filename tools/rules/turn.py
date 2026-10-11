@@ -177,6 +177,11 @@ def power_damage(tier):
     return 5 * tier
 
 
+def hex_damage(tier):
+    """A hex's: half a bolt's, rounded up."""
+    return (5 * tier + 1) // 2
+
+
 def mend(tier):
     return 5 * tier
 

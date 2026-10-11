@@ -247,8 +247,8 @@ LAB += [
              "#.......b..#",
              "############"]},
     {"title": "Blink and snare",
-     "issue": "A new Rogue who can blink (up to 3 squares, no free attacks), snare (slowed, "
-              "hexed, chilled) and play a dirty trick (blinded), against a rust-guard and two "
+     "issue": "A new Rogue who can blink (up to 3 squares, no free attacks), snare (3 cold "
+              "damage; slowed, hexed, chilled) and play a dirty trick (3 damage; blinded), against a rust-guard and two "
               "ash rats.",
      "watch": "Whether keeping out of reach is fun or tedious, and if the hexes feel strong.",
      "cls": "ROGUE", "level": 1, "weapon": "SCRAP_PISTOL", "armor": None,
@@ -262,12 +262,13 @@ LAB += [
              "############"]},
     {"title": "Bull rush",
      "issue": "A new Warden with Bull rush (a foe next to you, pushed 3 squares), Ground slam "
-              "(everyone round you knocked down and pushed), Shield wall and Second wind, "
-              "against three ash rats by a pit.",
-     "watch": "Whether pushing things into the pit is too easy, and when Second wind matters.",
+              "(everyone round you hit and stunned), Shield wall (Armor +10) and Second wind "
+              "(heals 5, then 3 a turn), against two rust-guards and an ash rat by a pit.",
+     "watch": "Whether pushing things into the pit is too easy, whether a stunning slam is too "
+              "strong for one charge, and when Second wind matters.",
      "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
      "powers": [["BULL_RUSH", 10], ["GROUND_SLAM", 10], ["SHIELD_WALL", 10], ["SECOND_WIND", 10]],
-     "foes": ["ASH_RAT", "ASH_RAT", "ASH_RAT"],
+     "foes": ["RUST_GUARD", "RUST_GUARD", "ASH_RAT"],
      "map": ["############",
              "#......OOO.#",
              "#@........a#",

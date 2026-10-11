@@ -104,7 +104,7 @@ coats, ids 9-14). Change a scenario there, `make site`, and the page follows.
 The same scenarios, played in a modern page instead of on the train: no story, no Boarding
 Pass, no Travel Stamp, no C64 screen, and **by rules v1** ([turn.md](turn.md): the rules
 lab's movement, conditions and powers), where the train still plays v0. Eleven more
-scenarios (R-01 to R-11) are there only, to try v1: fire to cross, a ledge to shove foes
+scenarios (R-01 to R-12) are there only, to try v1: fire to cross, a ledge to shove foes
 off, poisoned bites, chilling shots, flying over pits, running with Dash; and powers: a
 Channeler's fire and ice, a Medic beside a Warden, a Tinker's barricade and shock mine, a
 Rogue's blink and snare, a Warden's bull rush. It's a tool in
@@ -224,14 +224,25 @@ shoves or dashes):
 | R-03 Venom (3 rats) | | 82% | |
 | R-05 Wings | | 82% | |
 | R-06 Run and gun | | 100% | a Rad-Dryad Channeler (Rooted: Soak +2) against a brute |
-| R-07 Fire and ice | | 99% | without powers: Rooted's Soak 2 stops a rat's 2 |
-| R-08 Patch them up | | 80% | a Warden and a Medic, without powers |
-| R-09 Hold the line | | 0% | a Tinker alone against two gunners and a guard: only powers can win it |
-| R-10 Blink and snare | | 49% | |
-| R-11 Bull rush | | 100% | |
+| R-07 Fire and ice | | 99% | 99% without powers: Rooted's Soak 2 stops a rat's 2 |
+| R-08 Patch them up | | 91% | 80% without the Medic's powers |
+| R-09 Hold the line | | 9% | 0% without: a Tinker alone against two gunners and a guard |
+| R-10 Blink and snare | | 69% | 49% without; Snare alone 68%, Dirty trick alone 54% |
+| R-11 Bull rush | | 91% | 14% without; Bull rush alone 84% (the pit), Ground slam 66%, Shield wall 26%, Second wind 23% |
+| R-12 They have powers too | | 23% | 29% if the foes have none: the gunner's Snare costs you 6 points |
 
-The R-07 to R-11 figures are the computer's, which doesn't use powers: they're the floor
-the powers should lift. Soak is strong against swarms: a Soak equal to a foe's damage
+From R-07 on, both sides use their powers as [turn.md](turn.md#how-the-computer-uses-powers)
+says. Soak is strong against swarms: a Soak equal to a foe's damage
+makes it harmless but for crits.
+
+**Tuning the powers** (the second pass): a hex now hurts too (half a bolt's damage), which
+took the Rogue's hexes from costing it 13 points to earning it 19; Ground slam stuns
+(it knocked down, which costs a foe already next to you nothing, and pushed them out of
+reach besides); a Mend puts on its condition, so Second wind heals 5 and then 3 a turn; and
+the computer blinks only out of every foe's reach (it blinked into the rats' next move and
+lost a shot each time: Blink alone took the Rogue from 49% to 7%).
+
+Soak is strong against swarms: a Soak equal to a foe's damage
 makes it harmless but for crits.
 
 Races' traits are worth more than their +10: Plated alone moves the Warden's fights by

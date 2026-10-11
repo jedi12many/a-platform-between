@@ -132,9 +132,10 @@ def recheck(name, path, log):
                 fail(f"{name}: {line.strip()}: the rules say {RESULTS[combat.resolve(roll, total, tn)]}")
             p = turn.POWERS[pw]
             want = 0
-            if registry_shape(p) in ("bolt", "burst"):
+            if registry_shape(p) in ("bolt", "burst", "hex"):
                 kind = p["element"]
-                want = combat.damage(roll, total, tn, turn.power_damage(tiers[att]), 0,
+                base = (turn.hex_damage if registry_shape(p) == "hex" else turn.power_damage)(tiers[att])
+                want = combat.damage(roll, total, tn, base, 0,
                                      0 if kind == 1 else soak)
                 if kind is not None and any(VULNERABLE.get(tg) == kind for tg in tags.split()):
                     want *= 2

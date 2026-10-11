@@ -132,9 +132,9 @@ the arena; at each Departure's, in the game). Using one is your turn's action.
 |---|---|---|
 | **Bolt** | a foe in sight | damage 5 × tier, as a weapon's (margin, crits, glancing hits) |
 | **Burst** | a square in sight, not so near that you're in it; or **around** you | everyone in Area 1 (2 from tier 6) round it, friend or foe, one roll; damage 5 × tier |
-| **Hex** | a foe in sight | **hexed**: −10 × tier to its attacks for 3 rounds |
+| **Hex** | a foe in sight | half a bolt's damage (5 × tier ÷ 2, rounded up), and **hexed**: −10 × tier to its attacks for 3 rounds |
 | **Ward** | you, or a traveler next to you | its condition, at its tier (shielded: Armor + 10 × tier) |
-| **Mend** | you, or a traveler next to you | heals 5 × tier |
+| **Mend** | you, or a traveler next to you | heals 5 × tier, and puts on its condition (Second wind: regenerating) |
 | **Field** | a square in sight, on open or rough ground | a line of tier + 2 squares through it, across the line from you, for 3 of your turns: fire or energy (a hazard: 5 × tier, and its condition), cold (rough ground), kinetic (wall), mind (cover). Not on anyone's square |
 | **Shift** | yourself to a square; or a foe next to you | yourself: straight there (8 ways), up to tier + 2 squares, through nothing that blocks sight, and no free attacks for leaving; a foe: rolled against its Ward, pushed tier + 2 squares away (as a Shove's push: pits, walls, hazards) |
 
@@ -152,8 +152,9 @@ On Quick and Auto, and for foes, the computer moves as it always has ([combat.md
 then takes the **first** of these it can, from where it ends up; if none, it uses its weapon:
 
 1. **Mend** you, or a friend next to you, at half health or less (the most hurt first).
-2. **Blink** away, if you shoot and two foes or more are next to you: to the square
-   furthest from them.
+2. **Blink** away, if you shoot and two foes or more are next to you: to a square out of
+   every melee foe's reach (further than its Speed and a step), the furthest from them; if
+   there's none, it stays and shoots.
 3. **Shove with a power** (Bull rush) a foe next to you that it would drop in a pit or
    onto a hazard.
 4. **Burst** where it catches two foes or more, and none of your side.
@@ -191,13 +192,16 @@ sanitizers.
 - **Phased** (through walls, untouchable), **hidden**, **spreading**, **at random**,
   **must attack**: the medium effects, with the powers that need them (Taunt, Smoke,
   Vanish, Mind spike's confusion: until then Mind spike frightens).
-- **What the arena says about powers** (1000 fights a scenario, the computer playing them
-  as above): a Medic beside a Warden lifts them from 80% to 88%; a Tinker's barricade and
-  shock mine take a fight nobody wins to 12%; but a **hex at tier 1 isn't worth its turn**
-  (a Rogue's Snare: 36% with it, 49% without), and **foes with powers get weaker** for
-  using them (a gunner that snares instead of shooting). A Warden's **Ground slam pushes
-  its targets away** (its kinetic rider), undoing its own knockdown, and **Second wind**
-  heals 5 at tier 1, less than the blow it costs. Hexes and the Warden's powers need more.
+- **What the arena says about powers** ([arena.md](arena.md#first-findings), 1000 fights a
+  scenario, the computer playing them as above). After the second pass (hexes hurt,
+  Ground slam stuns, Second wind regenerates, Blink only out of reach): a Medic beside a
+  Warden lifts them from 80% to 91%; a Tinker's powers take a fight nobody wins to 9%; a
+  Rogue's hexes from 49% to 69%; a Warden's four from 14% to 91% against two guards and a
+  rat. **Bull rush by a pit is the strongest thing in the game** (84% alone): a fall is out
+  of the fight, and whether it should be (rather than damage and a turn to climb out) is
+  open, with Shove's. A **stunning Ground slam** (66% alone) may be too much for one
+  charge. Blink, as the computer plays it, is seldom worth a shot: whether shifting yourself
+  should take your move rather than your action is open.
 - Whether a fire hit should both burn the square and set the target on fire (Fireball,
   Fire wall do both now): fire is strong.
 - Foes with a shove or a knockback of their own, and **teleporting** (no free attacks).

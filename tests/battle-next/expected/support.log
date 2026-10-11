@@ -27,7 +27,7 @@ round 1: 3's turn (speed 4)
   3 steps to 5,2
 round 2: 0's turn (speed 5)
   0 uses SEDATE (tier 2) at 5,1
-  0's SEDATE on 2: 39+62=101 vs 64: success, 0 damage [soak 2]
+  0's SEDATE on 2: 39+62=101 vs 64: success, 6 damage [soak 2]
   2 is HEXED (3 rounds)
   2 is ASLEEP
 round 2: 1's turn (speed 5)
@@ -79,27 +79,5 @@ round 4: 2's turn (speed 4)
 round 5: 0's turn (speed 5)
   (quick: act 1 2 0 2)
   0 attacks 2: 89+27=116 vs 74: success, 7 damage [soak 2]
-round 5: 1's turn (speed 7)
-  (quick: act 2 2 7 0)
-  1 steps to 2,2
-  1 uses FORCE_FIELD (tier 2) at 1,2
-  0 is BARRIER
-  1 is no longer STIMMED
-  1 is EXHAUSTED (3 rounds)
-round 5: 2's turn (speed 4)
-  0's barrier takes 20
-  0 is no longer BARRIER
-  2 attacks 0: 66+45=111 vs 61: crit, 2 damage [soak 0 PRSM CLR]
-round 6: 0's turn (speed 5)
-  (quick: act 1 2 7 1)
-  0 uses STIM (tier 2) at 2,2
-  1 is STIMMED (3 rounds)
-round 6: 1's turn (speed 5)
-  (quick: act 2 2 7 2)
-  1 uses ARC_SHOT (tier 2) at 2,1
-  1's ARC_SHOT on 2: 41+62=103 vs 64: success, 13 damage [soak 2]
   2 is down
-  4,2 is itself again
-  4,3 is itself again
-  4,4 is itself again
 the fight is won
