@@ -27,13 +27,11 @@ static uint8_t begun;
 static uint8_t surprise;
 static uint8_t result;
 static apb_rng *dice;
+static uint8_t map_hz[3];          /* the map's hazards: damage, type, condition */
 static void (*report)(const apb_event *ev);
 
-static uint8_t hazard_damage;
-static uint8_t hazard_type;
-static uint8_t hazard_cond;
 
-#define FIELDS 32
+#define FIELDS 33
 static uint8_t fd[FIELDS][APB_FIGHTERS_MAX];
 #ifndef __CC65__
 typedef char apb_fighter_is_bytes[sizeof(apb_fighter) == FIELDS ? 1 : -1];
@@ -65,12 +63,29 @@ typedef char apb_fighter_is_bytes[sizeof(apb_fighter) == FIELDS ? 1 : -1];
 #define f_waited      fd[24]
 #define f_might       fd[25]
 #define f_on_hit      fd[31]
+#define f_power_stat  fd[32]
 
 /* Conditions: slots 0-1 for good, 2-5 the others. */
 static uint8_t c_id[APB_FIGHTERS_MAX][APB_COND_SLOTS];
 static uint8_t c_left[APB_FIGHTERS_MAX][APB_COND_SLOTS];   /* rounds left; 0: no countdown */
 static uint8_t c_fresh[APB_FIGHTERS_MAX][APB_COND_SLOTS];  /* put on this turn            */
+static uint8_t c_tier[APB_FIGHTERS_MAX][APB_COND_SLOTS];   /* a tiered one's tier         */
 static uint8_t c_barrier[APB_FIGHTERS_MAX];                /* a barrier's damage left     */
+
+/* Powers: what each fighter holds in this fight. */
+static uint8_t p_id[APB_FIGHTERS_MAX][APB_POWERS_HELD];
+static uint8_t p_rank[APB_FIGHTERS_MAX][APB_POWERS_HELD];
+static uint8_t p_left[APB_FIGHTERS_MAX][APB_POWERS_HELD];  /* charges; 0xFF: at will      */
+
+/* The ground, square by square: what a hazard does there (the map's, or a field's), and a
+ * field's: whose, its rounds left, and what the square was before it. */
+static uint8_t sq_dmg[APB_MAP_H_MAX][APB_MAP_W_MAX];
+static uint8_t sq_type[APB_MAP_H_MAX][APB_MAP_W_MAX];
+static uint8_t sq_cond[APB_MAP_H_MAX][APB_MAP_W_MAX];
+static uint8_t fl_owner[APB_MAP_H_MAX][APB_MAP_W_MAX];     /* APB_NOBODY: no field       */
+static uint8_t fl_left[APB_MAP_H_MAX][APB_MAP_W_MAX];
+static uint8_t fl_was[APB_MAP_H_MAX][APB_MAP_W_MAX];
+static uint8_t fl_fresh[APB_MAP_H_MAX][APB_MAP_W_MAX];
 static uint8_t move_left[APB_FIGHTERS_MAX];                /* this turn's move            */
 static uint8_t acting = APB_NOBODY;                         /* whose turn is under way     */
 
@@ -158,20 +173,26 @@ static int16_t sum(uint8_t who, uint8_t what)
     int16_t s = 0;
     const apb_cond_def *d;
 
+    int16_t v;
+    int16_t times;
+
     for (k = 0; k < APB_COND_SLOTS; ++k) {
         if (!c_id[who][k]) continue;
         d = &apb_conds[c_id[who][k]];
+        times = (int16_t)((d->flags & APB_CF_TIERED) ? c_tier[who][k] : 1);
         switch (what) {
-        case 1: s = (int16_t)(s + d->dodge); break;
-        case 2: s = (int16_t)(s + d->armor); break;
-        case 3: s = (int16_t)(s + d->ward); break;
-        case 4: s = (int16_t)(s + d->soak); break;
-        case 5: s = (int16_t)(s + d->rolls); break;
-        case 6: s = (int16_t)(s + d->attacks); break;
-        case 7: s = (int16_t)(s + d->melee); break;
-        case 8: s = (int16_t)(s + d->next); break;
-        case 9: s = (int16_t)(s + d->shake); break;
+        case 1: v = d->dodge; break;
+        case 2: v = d->armor; break;
+        case 3: v = d->ward; break;
+        case 4: v = d->soak; break;
+        case 5: v = d->rolls; break;
+        case 6: v = d->attacks; break;
+        case 7: v = d->melee; break;
+        case 8: v = d->next; break;
+        case 9: v = d->shake; break;
+        default: v = 0;
         }
+        s = (int16_t)(s + v * times);
     }
     return s;
 }
@@ -246,6 +267,7 @@ uint8_t apb_battle_conditions(uint8_t who, uint8_t *ids, uint8_t *rounds)
 
 static void fall_if_over_pit(uint8_t who);
 static void put_on(uint8_t who, uint8_t cond);
+static void put_on_tier(uint8_t who, uint8_t cond, uint8_t tier);
 
 static void take_off(uint8_t who, uint8_t k)
 {
@@ -281,6 +303,14 @@ static void take_off_flag(uint8_t who, uint16_t flag)
 
 static void put_on(uint8_t who, uint8_t cond)
 {
+    put_on_tier(who, cond, 1);
+}
+
+/* A condition at a power's or an item's tier (docs/turn.md): a tiered one's numbers are
+ * that many times its tier-1 numbers. The same one again: the longer time, the higher
+ * tier. */
+static void put_on_tier(uint8_t who, uint8_t cond, uint8_t tier)
+{
     uint8_t k;
     uint8_t slot = APB_NOBODY;
     uint8_t least = 0xFF;
@@ -299,7 +329,8 @@ static void put_on(uint8_t who, uint8_t cond)
         if (c_id[who][k] == cond) {
             /* The same one again: the longer time counts. */
             if (c_left[who][k] && d->rounds > c_left[who][k]) c_left[who][k] = d->rounds;
-            if (d->barrier) c_barrier[who] = d->barrier;
+            if (tier > c_tier[who][k]) c_tier[who][k] = tier;
+            if (d->barrier) c_barrier[who] = (uint8_t)(d->barrier * c_tier[who][k]);
             return;
         }
     }
@@ -317,8 +348,9 @@ static void put_on(uint8_t who, uint8_t cond)
     }
     c_id[who][slot] = cond;
     c_left[who][slot] = d->rounds;
+    c_tier[who][slot] = (uint8_t)((d->flags & APB_CF_TIERED) ? tier : 1);
     c_fresh[who][slot] = (uint8_t)(who == acting);     /* not counted the turn it went on */
-    if (d->barrier) c_barrier[who] = d->barrier;
+    if (d->barrier) c_barrier[who] = (uint8_t)(d->barrier * c_tier[who][slot]);
     emit_c(APB_EV_COND_ON, who, APB_NOBODY, d->rounds, cond);
 }
 
@@ -326,6 +358,13 @@ uint8_t apb_battle_put(uint8_t who, uint8_t cond)
 {
     if (who >= count) return 0;
     put_on(who, cond);
+    return has(who, cond);
+}
+
+uint8_t apb_battle_put_tier(uint8_t who, uint8_t cond, uint8_t tier)
+{
+    if (who >= count) return 0;
+    put_on_tier(who, cond, tier);
     return has(who, cond);
 }
 
@@ -339,6 +378,7 @@ uint8_t apb_battle_trait(uint8_t who, uint8_t cond)
         if (!c_id[who][k]) {
             c_id[who][k] = cond;
             c_left[who][k] = 0;
+            c_tier[who][k] = 1;
             return 1;
         }
     }
@@ -354,7 +394,18 @@ void apb_battle_init(uint8_t w, uint8_t h, apb_rng *rng, void (*on_event)(const 
     memset(c_left, 0, sizeof(c_left));
     memset(c_fresh, 0, sizeof(c_fresh));
     memset(c_barrier, 0, sizeof(c_barrier));
+    memset(c_tier, 1, sizeof(c_tier));
     memset(move_left, 0, sizeof(move_left));
+    memset(p_id, 0, sizeof(p_id));
+    map_hz[0] = APB_HAZARD_DAMAGE;
+    map_hz[1] = APB_DMG_KINETIC;
+    map_hz[2] = 0;
+    memset(sq_dmg, APB_HAZARD_DAMAGE, sizeof(sq_dmg));
+    memset(sq_type, APB_DMG_KINETIC, sizeof(sq_type));
+    memset(sq_cond, 0, sizeof(sq_cond));
+    memset(fl_owner, APB_NOBODY, sizeof(fl_owner));
+    memset(fl_left, 0, sizeof(fl_left));
+    memset(fl_fresh, 0, sizeof(fl_fresh));
     map_w = (uint8_t)(w > APB_MAP_W_MAX ? APB_MAP_W_MAX : w);
     map_h = (uint8_t)(h > APB_MAP_H_MAX ? APB_MAP_H_MAX : h);
     count = 0;
@@ -362,9 +413,6 @@ void apb_battle_init(uint8_t w, uint8_t h, apb_rng *rng, void (*on_event)(const 
     result = APB_BATTLE_ON;
     dice = rng;
     report = on_event;
-    hazard_damage = APB_HAZARD_DAMAGE;
-    hazard_type = APB_DMG_KINETIC;
-    hazard_cond = 0;
 }
 
 void apb_battle_set_tile(uint8_t x, uint8_t y, uint8_t tile)
@@ -374,9 +422,12 @@ void apb_battle_set_tile(uint8_t x, uint8_t y, uint8_t tile)
 
 void apb_battle_set_hazard(uint8_t damage, uint8_t type, uint8_t cond)
 {
-    hazard_damage = damage;
-    hazard_type = type;
-    hazard_cond = cond;
+    map_hz[0] = damage;
+    map_hz[1] = type;
+    map_hz[2] = cond;
+    memset(sq_dmg, damage, sizeof(sq_dmg));
+    memset(sq_type, type, sizeof(sq_type));
+    memset(sq_cond, cond, sizeof(sq_cond));
 }
 
 uint8_t apb_battle_tile(uint8_t x, uint8_t y)
@@ -497,6 +548,7 @@ void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon
     out->fate = ch->stat[APB_FATE];
     out->race = ch->race;
     out->on_hit = 0;
+    out->power_stat = ch->cls < APB_CLASS_COUNT ? ch->stat[apb_class_bonus[ch->cls]] : 0;
 }
 
 /* Who goes first: First (Early) before anyone; then highest Grace; travelers before foes
@@ -834,19 +886,21 @@ static void attack(uint8_t who, uint8_t target)
 static void hazard_hits(uint8_t who)
 {
     uint8_t k;
-    uint16_t dmg = hazard_damage;
+    uint8_t x = f_x[who];
+    uint8_t y = f_y[who];
+    uint8_t type = sq_type[y][x];
+    uint16_t dmg = sq_dmg[y][x];
 
-    if (tiles[f_y[who]][f_x[who]] != APB_TILE_HAZARD) return;
+    if (tiles[y][x] != APB_TILE_HAZARD) return;
     for (k = 0; k < APB_COND_SLOTS; ++k) {
-        if (c_id[who][k] && hazard_type != APB_NO_TYPE
-            && apb_conds[c_id[who][k]].immune_hazard == hazard_type) {
+        if (c_id[who][k] && type != APB_NO_TYPE && apb_conds[c_id[who][k]].immune_hazard == type) {
             dmg = 0;
         }
     }
-    dmg = through(who, less_soak(who, dmg, hazard_type), hazard_type);
+    dmg = through(who, less_soak(who, dmg, type), type);
     emit(APB_EV_HAZARD, who, APB_NOBODY, dmg);
     hurt(who, dmg);
-    if (hazard_cond) put_on(who, hazard_cond);
+    if (sq_cond[y][x]) put_on(who, sq_cond[y][x]);
 }
 
 static void fall(uint8_t who)
@@ -996,6 +1050,396 @@ static void flee(uint8_t who)
     if (shot.result != APB_FAIL && f_state[who] == APB_IN_FIGHT) {
         f_state[who] = APB_GONE;
         emit(APB_EV_GONE, who, APB_NOBODY, 0);
+    }
+}
+
+/* ------------------------------------------------------------- powers */
+
+uint8_t apb_power_tier(uint8_t rank)
+{
+    return (uint8_t)(1 + (rank > 100 ? 100 : rank) / 20);
+}
+
+uint8_t apb_battle_learn(uint8_t who, uint8_t power, uint8_t rank)
+{
+    uint8_t k;
+
+    if (who >= count || !apb_powers[power].defined) return APB_NOBODY;
+    for (k = 0; k < APB_POWERS_HELD; ++k) {
+        if (!p_id[who][k]) {
+            p_id[who][k] = power;
+            p_rank[who][k] = (uint8_t)(rank > 100 ? 100 : rank);
+            p_left[who][k] = apb_powers[power].uses ? apb_powers[power].uses : 0xFF;
+            return k;
+        }
+    }
+    return APB_NOBODY;
+}
+
+uint8_t apb_battle_powers(uint8_t who, uint8_t *ids, uint8_t *ranks, uint8_t *left)
+{
+    uint8_t k;
+
+    if (who >= count) return 0;
+    for (k = 0; k < APB_POWERS_HELD && p_id[who][k]; ++k) {
+        ids[k] = p_id[who][k];
+        ranks[k] = p_rank[who][k];
+        left[k] = p_left[who][k];
+    }
+    return k;
+}
+
+uint8_t apb_battle_power_rating(uint8_t who, uint8_t use)
+{
+    if (who >= count || use >= APB_POWERS_HELD || !p_id[who][use]) return 0;
+    return floor0((int16_t)(f_power_stat[who] / 2 + p_rank[who][use]));
+}
+
+/* Can `who` use power `use` now (it has it, charges left, not silenced)? */
+static uint8_t usable(uint8_t who, uint8_t use)
+{
+    return (uint8_t)(who < count && use < APB_POWERS_HELD && p_id[who][use] && p_left[who][use]
+                     && !has_flag(who, APB_CF_NO_POWERS));
+}
+
+/* A power's TN against t: Ward (Resolve for mind: half its Presence) and Dodge, and cover. */
+static int16_t power_tn(uint8_t t, uint8_t element)
+{
+    int16_t defense = element == APB_DMG_MIND ? (int16_t)(fd[28][t] / 2) : apb_battle_ward(t);
+    int16_t bonus = tiles[f_y[t]][f_x[t]] == APB_TILE_COVER ? APB_COVER_BONUS : 0;
+
+    return apb_hit_tn(apb_battle_dodge(t), defense, bonus, 0);
+}
+
+static uint8_t burst_area(uint8_t tier)
+{
+    return (uint8_t)(tier >= 6 ? 2 : 1);
+}
+
+/* Is fighter t one power `use` can be used on, from x, y? */
+static uint8_t power_can_target(uint8_t who, uint8_t use, uint8_t t, uint8_t x, uint8_t y)
+{
+    const apb_power_def *d = &apb_powers[p_id[who][use]];
+    uint8_t d2;
+
+    if (t >= count || f_state[t] != APB_IN_FIGHT) return 0;
+    d2 = dist(x, y, f_x[t], f_y[t]);
+    switch (d->target) {
+    case APB_TG_SELF:
+        return (uint8_t)(t == who);
+    case APB_TG_ALLY:
+        if (f_side[t] != f_side[who]) return 0;
+        if (t == who) return 1;
+        return (uint8_t)(d2 == 1);
+    case APB_TG_FOE:
+        if (f_side[t] == f_side[who]) return 0;
+        if (d->adjacent) return (uint8_t)(d2 == 1);
+        return in_sight(x, y, f_x[t], f_y[t], who);
+    }
+    return 0;
+}
+
+uint8_t apb_battle_power_targets(uint8_t who, uint8_t use, uint8_t x, uint8_t y,
+                                 uint8_t *targets, int16_t *tns)
+{
+    uint8_t i;
+    uint8_t n = 0;
+    uint8_t sh;
+
+    if (!usable(who, use)) return 0;
+    sh = apb_powers[p_id[who][use]].shape;
+    for (i = 0; i < count; ++i) {
+        if (!power_can_target(who, use, i, x, y)) continue;
+        targets[n] = i;
+        tns[n] = (sh == APB_SH_BOLT || sh == APB_SH_HEX || sh == APB_SH_SHIFT)
+                 ? power_tn(i, apb_powers[p_id[who][use]].element) : 0;
+        ++n;
+    }
+    return n;
+}
+
+/* Can power `use` go on the square sx, sy, from x, y (a burst's centre, a field's middle,
+ * a shift's end)? `who` is taken to stand at x, y. */
+static uint8_t power_square_ok(uint8_t who, uint8_t use, uint8_t x, uint8_t y, uint8_t sx, uint8_t sy)
+{
+    const apb_power_def *d = &apb_powers[p_id[who][use]];
+    uint8_t tier = apb_power_tier(p_rank[who][use]);
+    uint8_t at;
+    int8_t dx;
+    int8_t dy;
+    uint8_t n;
+    uint8_t i;
+    uint8_t cx;
+    uint8_t cy;
+
+    if (sx >= map_w || sy >= map_h || (sx == x && sy == y)) return 0;
+    if (d->shape == APB_SH_SHIFT) {
+        /* In a straight line (8 ways), up to tier + 2, through no wall; onto a square it
+         * could stand on, with nobody there. */
+        dx = (int8_t)(sx > x ? 1 : sx < x ? -1 : 0);
+        dy = (int8_t)(sy > y ? 1 : sy < y ? -1 : 0);
+        n = dist(x, y, sx, sy);
+        if (n > tier + 2) return 0;
+        if ((uint8_t)(x + dx * n) != sx || (uint8_t)(y + dy * n) != sy) return 0;
+        for (i = 1; i <= n; ++i) {
+            cx = (uint8_t)(x + dx * i);
+            cy = (uint8_t)(y + dy * i);
+            if (apb_tile_blocks_sight(tiles[cy][cx])) return 0;
+        }
+        at = who_is_at(sx, sy);
+        return (uint8_t)((at == APB_NOBODY || at == who) && cost_of(who, tiles[sy][sx]) != 0);
+    }
+    /* A burst's centre or a field's middle: a square in sight. */
+    if (apb_tile_blocks_sight(tiles[sy][sx]) || !in_sight(x, y, sx, sy, who)) return 0;
+    if (d->shape == APB_SH_BURST) {
+        /* Not where its blast would catch you. */
+        return (uint8_t)(dist(x, y, sx, sy) > burst_area(tier));
+    }
+    if (d->shape == APB_SH_FIELD) {
+        return (uint8_t)(tiles[sy][sx] == APB_TILE_OPEN || tiles[sy][sx] == APB_TILE_ROUGH);
+    }
+    return 0;
+}
+
+void apb_battle_power_squares(uint8_t who, uint8_t use, uint8_t x, uint8_t y,
+                              uint8_t map[APB_MAP_H_MAX][APB_MAP_W_MAX])
+{
+    uint8_t sx;
+    uint8_t sy;
+    uint8_t ox;
+    uint8_t oy;
+
+    memset(map, 0, APB_MAP_H_MAX * APB_MAP_W_MAX);
+    if (!usable(who, use) || apb_powers[p_id[who][use]].target != APB_TG_SQUARE) return;
+    ox = f_x[who];
+    oy = f_y[who];
+    f_x[who] = x;
+    f_y[who] = y;
+    for (sy = 0; sy < map_h; ++sy) {
+        for (sx = 0; sx < map_w; ++sx) map[sy][sx] = power_square_ok(who, use, x, y, sx, sy);
+    }
+    f_x[who] = ox;
+    f_y[who] = oy;
+}
+
+/* A square becomes `tile` for `rounds` of who's turns: a field (docs/items.md), or a
+ * fire rider's burning square. Hazards it makes do dmg of type, and put on cond. */
+static void make_field(uint8_t who, uint8_t x, uint8_t y, uint8_t tile, uint8_t rounds,
+                       uint8_t dmg, uint8_t type, uint8_t cond)
+{
+    if (fl_owner[y][x] == APB_NOBODY) fl_was[y][x] = tiles[y][x];
+    fl_owner[y][x] = who;
+    fl_left[y][x] = rounds;
+    fl_fresh[y][x] = 1;
+    tiles[y][x] = tile;
+    sq_dmg[y][x] = dmg;
+    sq_type[y][x] = type;
+    sq_cond[y][x] = cond;
+    ev.x = x;
+    ev.y = y;
+    ev.kind = APB_EV_FIELD;
+    ev.actor = who;
+    ev.target = APB_NOBODY;
+    ev.value = tile;
+    ev.cond = 0;
+    if (report) report(&ev);
+}
+
+/* The end of who's turn: its fields count down, and those run out go back. */
+static void fields_tick(uint8_t who)
+{
+    uint8_t x;
+    uint8_t y;
+
+    for (y = 0; y < map_h; ++y) {
+        for (x = 0; x < map_w; ++x) {
+            if (fl_owner[y][x] != who) continue;
+            if (fl_fresh[y][x]) {
+                fl_fresh[y][x] = 0;
+                continue;
+            }
+            if (fl_left[y][x] && --fl_left[y][x]) continue;
+            tiles[y][x] = fl_was[y][x];
+            fl_owner[y][x] = APB_NOBODY;
+            sq_dmg[y][x] = map_hz[0];
+            sq_type[y][x] = map_hz[1];
+            sq_cond[y][x] = map_hz[2];
+            ev.x = x;
+            ev.y = y;
+            ev.kind = APB_EV_FIELD;
+            ev.actor = APB_NOBODY;
+            ev.target = APB_NOBODY;
+            ev.value = tiles[y][x];
+            ev.cond = 0;
+            if (report) report(&ev);
+        }
+    }
+}
+
+/* The element's rider, on a power's hit (docs/items.md, Elements). */
+static void rider(uint8_t who, uint8_t t, uint8_t element, uint8_t tier)
+{
+    int8_t dx;
+    int8_t dy;
+    uint8_t x;
+    uint8_t y;
+
+    if (f_state[t] != APB_IN_FIGHT) return;
+    switch (element) {
+    case APB_DMG_FIRE:
+        /* Its square burns till the end of the caster's next turn. */
+        x = f_x[t];
+        y = f_y[t];
+        if (tiles[y][x] == APB_TILE_OPEN || tiles[y][x] == APB_TILE_ROUGH || tiles[y][x] == APB_TILE_HAZARD) {
+            make_field(who, x, y, APB_TILE_HAZARD, 1, (uint8_t)(5 * tier), APB_DMG_FIRE, 0);
+        }
+        break;
+    case APB_DMG_COLD:
+        put_on(t, 5);                                    /* CHILLED */
+        break;
+    case APB_DMG_KINETIC:
+        dx = (int8_t)(f_x[t] > f_x[who] ? 1 : f_x[t] < f_x[who] ? -1 : 0);
+        dy = (int8_t)(f_y[t] > f_y[who] ? 1 : f_y[t] < f_y[who] ? -1 : 0);
+        push(t, dx, dy, 1);
+        break;
+    }
+}
+
+/* One power's roll against t, and what a hit does: Bolt and Burst damage, Hex a hex, and
+ * any: the rider and the power's condition. Returns the result. */
+static uint8_t power_hits(uint8_t who, uint8_t use, uint8_t t, uint8_t roll, int16_t bonus)
+{
+    const apb_power_def *d = &apb_powers[p_id[who][use]];
+    uint8_t tier = apb_power_tier(p_rank[who][use]);
+    uint16_t dmg = 0;
+
+    shot.roll = roll;
+    shot.total = (int16_t)(roll + apb_battle_power_rating(who, use) + bonus);
+    shot.tn = power_tn(t, d->element);
+    shot.result = apb_resolve(roll, shot.total, shot.tn);
+    if (d->shape == APB_SH_BOLT || d->shape == APB_SH_BURST) {
+        dmg = apb_damage(&shot, (uint8_t)(5 * tier), 0,
+                         d->element == APB_DMG_ENERGY ? 0 : apb_battle_soak(t));
+        dmg = through(t, dmg, d->element);
+    }
+    ev.roll = shot;
+    emit_c(APB_EV_HIT, who, t, dmg, p_id[who][use]);
+    hurt(t, dmg);
+    if (shot.result != APB_FAIL && f_state[t] == APB_IN_FIGHT) {
+        if (d->shape == APB_SH_HEX) put_on_tier(t, 35, tier);        /* HEXED */
+        if (d->shape != APB_SH_SHIFT) {
+            if (d->cond) put_on_tier(t, d->cond, tier);
+            rider(who, t, d->element, tier);
+        }
+    }
+    return shot.result;
+}
+
+static void use_power(uint8_t who, uint8_t use, uint8_t t, uint8_t sx, uint8_t sy)
+{
+    const apb_power_def *d = &apb_powers[p_id[who][use]];
+    uint8_t tier = apb_power_tier(p_rank[who][use]);
+    uint8_t roll;
+    uint8_t i;
+    uint8_t n;
+    uint8_t cx;
+    uint8_t cy;
+    uint8_t tile;
+    int8_t dx;
+    int8_t dy;
+    int8_t px;
+    int8_t py;
+    int16_t bonus;
+    uint16_t heal;
+
+    if (p_left[who][use] != 0xFF) --p_left[who][use];
+    if (d->target == APB_TG_SQUARE) {
+        cx = sx;
+        cy = sy;
+    } else if (d->target == APB_TG_AROUND) {
+        cx = f_x[who];
+        cy = f_y[who];
+    } else {
+        cx = f_x[t];
+        cy = f_y[t];
+    }
+    ev.x = cx;
+    ev.y = cy;
+    ev.kind = APB_EV_POWER;
+    ev.actor = who;
+    ev.target = t;
+    ev.value = tier;
+    ev.cond = p_id[who][use];
+    if (report) report(&ev);
+    bonus = (int16_t)(sum(who, 5) + sum(who, 6) + sum(who, 8));
+    if (d->shape == APB_SH_BOLT || d->shape == APB_SH_HEX || d->shape == APB_SH_BURST
+        || (d->shape == APB_SH_SHIFT && d->target == APB_TG_FOE)) {
+        /* An attack roll: Focused and the like are used up by it. */
+        for (i = 0; i < APB_COND_SLOTS; ++i) {
+            if (c_id[who][i] && apb_conds[c_id[who][i]].next) take_off(who, i);
+        }
+    }
+    switch (d->shape) {
+    case APB_SH_BOLT:
+    case APB_SH_HEX:
+        roll = apb_d100(dice);
+        power_hits(who, use, t, roll, bonus);
+        break;
+    case APB_SH_BURST:
+        roll = apb_d100(dice);
+        for (i = 0; i < count; ++i) {
+            if (f_state[i] != APB_IN_FIGHT) continue;
+            if (d->target == APB_TG_AROUND && i == who) continue;
+            if (!apb_in_area((int8_t)(f_x[i] - cx), (int8_t)(f_y[i] - cy), burst_area(tier))) continue;
+            power_hits(who, use, i, roll, bonus);
+        }
+        break;
+    case APB_SH_WARD:
+        if (d->cond) put_on_tier(t, d->cond, tier);
+        break;
+    case APB_SH_MEND:
+        heal = has_flag(t, APB_CF_NO_HEAL) ? 0 : (uint16_t)(5 * tier);
+        if (heal > (uint16_t)(f_health_max[t] - f_health[t])) heal = (uint16_t)(f_health_max[t] - f_health[t]);
+        f_health[t] = (uint8_t)(f_health[t] + heal);
+        emit_c(APB_EV_MEND, who, t, heal, p_id[who][use]);
+        if (heal) take_off_flag(t, APB_CF_ENDS_HEAL);
+        break;
+    case APB_SH_FIELD:
+        /* A line of tier + 2 squares, across the line from you to its middle. */
+        dx = (int8_t)(cx > f_x[who] ? 1 : cx < f_x[who] ? -1 : 0);
+        dy = (int8_t)(cy > f_y[who] ? 1 : cy < f_y[who] ? -1 : 0);
+        px = (int8_t)-dy;
+        py = dx;
+        n = (uint8_t)(tier + 2);
+        tile = d->element == APB_DMG_COLD ? APB_TILE_ROUGH
+             : d->element == APB_DMG_KINETIC ? APB_TILE_WALL
+             : d->element == APB_DMG_MIND ? APB_TILE_COVER : APB_TILE_HAZARD;
+        for (i = 0; i < n; ++i) {
+            sx = (uint8_t)(cx + px * (int8_t)(i - (n - 1) / 2));
+            sy = (uint8_t)(cy + py * (int8_t)(i - (n - 1) / 2));
+            if (sx >= map_w || sy >= map_h || who_is_at(sx, sy) != APB_NOBODY) continue;
+            if (tiles[sy][sx] != APB_TILE_OPEN && tiles[sy][sx] != APB_TILE_ROUGH) continue;
+            make_field(who, sx, sy, tile, 3, (uint8_t)(5 * tier),
+                       d->element == APB_NO_TYPE ? APB_DMG_KINETIC : d->element, d->cond);
+        }
+        break;
+    case APB_SH_SHIFT:
+        if (d->target == APB_TG_SQUARE) {
+            /* Yourself: there in a blink; nobody gets a free attack. */
+            f_x[who] = sx;
+            f_y[who] = sy;
+            emit(APB_EV_SHIFT, who, APB_NOBODY, 0);
+            hazard_hits(who);
+            if (f_state[who] == APB_IN_FIGHT) fall_if_over_pit(who);
+        } else {
+            roll = apb_d100(dice);
+            if (power_hits(who, use, t, roll, bonus) != APB_FAIL && f_state[t] == APB_IN_FIGHT) {
+                dx = (int8_t)(f_x[t] > f_x[who] ? 1 : f_x[t] < f_x[who] ? -1 : 0);
+                dy = (int8_t)(f_y[t] > f_y[who] ? 1 : f_y[t] < f_y[who] ? -1 : 0);
+                push(t, dx, dy, (uint8_t)(tier + 2));
+            }
+        }
+        break;
     }
 }
 
@@ -1217,6 +1661,7 @@ static void end_turn(uint8_t who)
     const apb_cond_def *d;
 
     acting = APB_NOBODY;
+    fields_tick(who);
     if (f_state[who] != APB_IN_FIGHT) return;
     for (k = 0; k < APB_COND_SLOTS; ++k) {
         cond = c_id[who][k];
@@ -1310,6 +1755,27 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
         f_x[who] = ox;
         f_y[who] = oy;
         break;
+    case APB_ACT_POWER:
+        ok = usable(who, a->use);
+        if (!ok) break;
+        if (apb_powers[p_id[who][a->use]].target == APB_TG_SQUARE) {
+            ox = f_x[who];
+            oy = f_y[who];
+            f_x[who] = a->move_x;
+            f_y[who] = a->move_y;
+            ok = power_square_ok(who, a->use, a->move_x, a->move_y, a->dash_x, a->dash_y);
+            f_x[who] = ox;
+            f_y[who] = oy;
+        } else if (apb_powers[p_id[who][a->use]].target != APB_TG_AROUND) {
+            ox = f_x[who];
+            oy = f_y[who];
+            f_x[who] = a->move_x;
+            f_y[who] = a->move_y;
+            ok = power_can_target(who, a->use, t, a->move_x, a->move_y);
+            f_x[who] = ox;
+            f_y[who] = oy;
+        }
+        break;
     case APB_ACT_GUARD:
     case APB_ACT_FLEE:
     case APB_ACT_DONE:
@@ -1334,6 +1800,9 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
         case APB_ACT_GUARD:  guard(who); break;
         case APB_ACT_FLEE:   flee(who); break;
         case APB_ACT_SHOVE:  shove(who, t); break;
+        case APB_ACT_POWER:
+            use_power(who, a->use, t, a->dash_x, a->dash_y);
+            break;
         case APB_ACT_DASH:
             emit(APB_EV_DASH, who, APB_NOBODY, 0);
             move_left[who] = apb_battle_speed(who);

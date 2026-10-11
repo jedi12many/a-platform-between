@@ -635,7 +635,7 @@ build/arena-next: tools/arena/arena.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | buil
 # and its tests build (with -Icore/next first, so its apb_battle.h is the one they see).
 # Its conditions come from registry/conditions.txt, generated, not kept.
 
-build/next/conditions.c: registry/conditions.txt registry/races.txt tools/rules/conditions_c.py \
+build/next/conditions.c: registry/conditions.txt registry/powers.txt registry/races.txt tools/rules/conditions_c.py \
                          tools/registry/registry.py
 	python3 tools/rules/conditions_c.py $@
 

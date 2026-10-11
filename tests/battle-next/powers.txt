@@ -1,0 +1,37 @@
+# Powers (docs/turn.md, Powers in play): Sable, a Moth-folk Channeler (Presence 70: her
+# powers roll 35 + rank). Firebolt (at will: the fire rider burns the target's square),
+# Fireball (one charge: a burst, everyone in it, one roll), Ice wall (a field: rough
+# ground across the line to its middle, for three of her turns), Shield (warded, tiered).
+seed 72
+map
+############
+#..........#
+#@.......a.#
+#........b.#
+#........c.#
+############
+end
+traveler 5624RA000CC1026S69QSNAG000000030264MMABZ5020300JAEC 12
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 30 10  2  0  5  0  4 30  4  0  0  0  0 255 2  0
+foe b 30 10  2  0  5  0  4 30  4  0  0  0  0 255 2  0
+foe c 30 10  2  0 10  0  4 30  4  0  0  0  0 255 0  0
+power 0 FIREBOLT 10
+power 0 FIREBALL 10
+power 0 ICE_WALL 10
+power 0 SHIELD 10
+# Rank 10 (a level-1 power): tier 1, rolls 35 + 10. Fireball at b: a, b and c are all in
+# the blast.
+act 1 2 7 0 9 3 1
+# Firebolt at c, who's coming.
+act 1 2 7 3 0 0 0
+# Ice wall across c's way: its middle at 4,2 (a line north-south of 4 squares).
+act 1 2 7 0 4 2 2
+# Shield on herself; then firebolts.
+act 1 2 7 0 0 0 3
+act 1 2 7 3 0 0 0
+act 1 2 7 3 0 0 0
+act 1 2 7 3 0 0 0
+act 1 2 7 3 0 0 0
+act q
+act q

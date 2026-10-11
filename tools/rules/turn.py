@@ -14,6 +14,8 @@ import registry  # noqa: E402
 
 REG = registry.load()
 CONDS = registry.load_conditions(races=REG["races"])
+POWERS = registry.load_powers(classes=REG["classes"], conditions=CONDS)
+POWER_BY_ID = {p["id"]: p for p in POWERS.values()}
 BY_ID = {c["id"]: c for c in CONDS.values()}
 STATS = registry.STATS
 TRAIT_SLOTS, OTHER_SLOTS = 2, 4
@@ -51,10 +53,12 @@ class Fighter:
     def immune(self, name):
         return any(name in e.get("immune", []) for e in self.effects())
 
-    def put(self, name):
+    def put(self, name, tier=1):
         """docs/turn.md, Getting one: immune, it never lands; its opposite ends; the same
-        again keeps the longer time; a fifth replaces the one with fewest rounds left."""
+        again keeps the longer time (and the higher tier); a fifth replaces the one with
+        fewest rounds left. A tiered one's numbers are its tier times its tier-1 numbers."""
         c = CONDS[name]
+        tier = tier if c["effects"].get("tiered") else 1
         if self.immune(name):
             self.said.append(("immune", name))
             return
@@ -66,15 +70,16 @@ class Fighter:
             if o and o[0] == name:
                 if o[1] is not None and c["rounds"] and c["rounds"] > o[1]:
                     o[1] = c["rounds"]
+                o[2] = max(o[2], tier)
                 if c["effects"].get("barrier"):
-                    self.barrier = c["effects"]["barrier"]
+                    self.barrier = c["effects"]["barrier"] * o[2]
                 return
         if None not in self.slots:
             least = min(range(OTHER_SLOTS), key=lambda i: (self.slots[i][1] or 254, i))
             self.take_off(self.slots[least][0])
-        self.slots[self.slots.index(None)] = [name, c["rounds"]]
+        self.slots[self.slots.index(None)] = [name, c["rounds"], tier]
         if c["effects"].get("barrier"):
-            self.barrier = c["effects"]["barrier"]
+            self.barrier = c["effects"]["barrier"] * tier
         self.said.append(("on", name))
 
     def take_off(self, name):
@@ -85,8 +90,13 @@ class Fighter:
                     self.barrier = 0
                 self.said.append(("off", name))
 
+    def tiers(self):
+        """Each condition's effects and its tier (a trait's: 1)."""
+        return [(CONDS[n]["effects"], 1) for n in self.traits] + \
+            [(CONDS[o[0]]["effects"], o[2]) for o in self.slots if o]
+
     def total(self, key):
-        return sum(e.get(key, 0) for e in self.effects())
+        return sum(e.get(key, 0) * (t if e.get("tiered") else 1) for e, t in self.tiers())
 
     def speed(self):
         """Only the worst penalty and the best bonus count; never below 0; stopped is 0."""
@@ -140,3 +150,36 @@ def stand_up_move(speed):
 
 SLAM = 3                    # pushed into a wall or another fighter (Soak counts)
 HAZARD = 5                  # a hazard's damage, unless the map says otherwise
+
+
+# ---------------------------------------------------------------- powers (docs/turn.md)
+
+def power_tier(rank):
+    """1 + rank / 20: rank 0-19 is tier 1, 100 is tier 6."""
+    return 1 + min(rank, 100) // 20
+
+
+def power_rating(stat, rank):
+    """A power's roll: half its class's stat, plus its rank (as a skill's training)."""
+    return stat // 2 + rank
+
+
+def burst_area(tier):
+    return 2 if tier >= 6 else 1
+
+
+def field_length(tier):
+    return tier + 2
+
+
+def power_damage(tier):
+    """A bolt's or a burst's: 5 x tier, as a weapon's."""
+    return 5 * tier
+
+
+def mend(tier):
+    return 5 * tier
+
+
+def shift_reach(tier):
+    return tier + 2

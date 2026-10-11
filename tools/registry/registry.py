@@ -203,9 +203,9 @@ def load(root=ROOT):
 
 # Conditions (registry/conditions.txt, docs/turn.md): read on their own, as only the
 # rules lab (core/next/) uses them yet.
-MAX_CONDITION_ID = 255
+MAX_CONDITION_ID = 127
 CONDITION_FLAGS = ["speed0", "dodge0", "lose_turn", "down", "ends_when_hit", "ends_on_heal",
-                   "no_powers", "no_heal", "fly", "first"]
+                   "no_powers", "no_heal", "fly", "first", "tiered"]
 CONDITION_NUMBERS = ["speed", "dodge", "armor", "ward", "soak", "rolls", "attacks", "melee",
                      "next", "shake", "heal", "barrier"]
 
@@ -271,6 +271,47 @@ def load_conditions(root=ROOT, races=None):
         for x in names:
             if x not in out:
                 _fail(path, n, f"immune to '{x}', which isn't a condition")
+    return out
+
+
+# Powers (registry/powers.txt, docs/items.md): read on their own, as only the rules lab
+# plays them yet.
+MAX_POWER_ID = 127
+SHAPES = ["bolt", "burst", "ward", "field", "mend", "hex", "shift"]
+TARGETS = ["self", "ally", "foe", "square", "around"]
+
+
+def load_powers(root=ROOT, classes=None, conditions=None):
+    """{NAME: power}: its class (a class's name, or ANY), shape, element (a damage type's
+    index, or None), uses (None: at will), target, near (a foe next to you), condition (a
+    name, or None) and display."""
+    path = os.path.join(root, "powers.txt")
+    if classes is None or conditions is None:
+        reg = load(root)
+        classes = classes or reg["classes"]
+        conditions = conditions or load_conditions(root, reg["races"])
+    out = {}
+    last = 0
+    for n, f in _rows(path):
+        near = "near" in f
+        f = [x for x in f if x != "near"]
+        if len(f) != 9:
+            _fail(path, n, f"expected 9 columns, found {len(f)}")
+        pid = _int(path, n, f[0], 1, MAX_POWER_ID, "id")
+        if pid <= last:
+            _fail(path, n, f"id {pid} must come after {last} (registries are append-only)")
+        last = pid
+        name = _name(path, n, f[1], out)
+        if f[2] != "ANY" and f[2] not in classes:
+            _fail(path, n, f"class '{f[2]}' isn't in classes.txt (or ANY)")
+        if f[7] != "-" and f[7] not in conditions:
+            _fail(path, n, f"condition '{f[7]}' isn't in conditions.txt")
+        out[name] = {"id": pid, "name": name, "line": n, "cls": f[2],
+                     "shape": _one_of(path, n, f[3], SHAPES, "shape"),
+                     "element": None if f[4] == "-" else _one_of(path, n, f[4], DAMAGE, "element"),
+                     "uses": None if f[5] == "-" else _int(path, n, f[5], 1, 9, "uses"),
+                     "target": _one_of(path, n, f[6], TARGETS, "target"), "near": near,
+                     "cond": None if f[7] == "-" else f[7], "display": _display(path, n, f[8])}
     return out
 
 

@@ -1,5 +1,6 @@
-"""registry/conditions.txt as C, for the rules lab's engine (core/next/, docs/turn.md):
-apb_conds[], indexed by id, and the races' traits.
+"""registry/conditions.txt and registry/powers.txt as C, for the rules lab's engine
+(core/next/, docs/turn.md): apb_conds[] and apb_powers[], indexed by id, and the races'
+traits.
 
     python3 tools/rules/conditions_c.py OUT.c
 
@@ -16,7 +17,7 @@ import registry  # noqa: E402
 FLAGS = {"speed0": "APB_CF_SPEED0", "dodge0": "APB_CF_DODGE0", "lose_turn": "APB_CF_LOSE_TURN",
          "down": "APB_CF_DOWN", "ends_when_hit": "APB_CF_ENDS_HIT", "ends_on_heal": "APB_CF_ENDS_HEAL",
          "no_powers": "APB_CF_NO_POWERS", "no_heal": "APB_CF_NO_HEAL", "fly": "APB_CF_FLY",
-         "first": "APB_CF_FIRST"}
+         "first": "APB_CF_FIRST", "tiered": "APB_CF_TIERED"}
 NUMBERS = ["speed", "dodge", "armor", "ward", "soak", "rolls", "attacks", "melee", "next", "shake"]
 
 
@@ -51,7 +52,7 @@ def main(argv):
     by_id = {c["id"]: c for c in conds.values()}
     lines = ["/* Generated from registry/conditions.txt by tools/rules/conditions_c.py: don't edit. */",
              '#include "apb_battle.h"', "", "const apb_cond_def apb_conds[APB_COND_MAX + 1] = {"]
-    for i in range(256):
+    for i in range(128):
         lines.append(row(by_id[i], conds, reg["races"]) if i in by_id else "    { 0 },")
     lines.append("};")
     traits = {}
@@ -68,6 +69,20 @@ def main(argv):
               "{",
               f"    return (uint8_t)(race < {n} && which < 2 ? traits[race][which] : 0);",
               "}", ""]
+    powers = registry.load_powers(classes=reg["classes"], conditions=conds)
+    by_pid = {p["id"]: p for p in powers.values()}
+    lines += ["", "const apb_power_def apb_powers[APB_POWER_MAX + 1] = {"]
+    for i in range(128):
+        p = by_pid.get(i)
+        if not p:
+            lines.append("    { 0 },")
+            continue
+        cls = reg["classes"][p["cls"]]["id"] if p["cls"] != "ANY" else 0xFF
+        lines.append("    /* %3d %-12s */ { 1, %d, %d, %s, %d, %d, %d, %d, \"%s\" }," % (
+            i, p["name"], cls, p["shape"], "APB_NO_TYPE" if p["element"] is None else p["element"],
+            p["uses"] or 0, p["target"], int(p["near"]), conds[p["cond"]]["id"] if p["cond"] else 0,
+            p["name"]))
+    lines += ["};", ""]
     os.makedirs(os.path.dirname(os.path.abspath(argv[1])), exist_ok=True)
     with open(argv[1], "w") as f:
         f.write("\n".join(lines))

@@ -5,7 +5,8 @@
  *
  *   GRACE ARMOR_TIER RACE SPEED DODGE ARMOR WARD SOAK COND COND ...
  *
- * (RACE 255: none; conditions by id, in the order they're put on.) Prints, a line each:
+ * (RACE 255: none; conditions by id, in the order they're put on, each ID or ID:TIER.)
+ * Prints, a line each:
  *
  *   SPEED_V1 SPEED DODGE ARMOR WARD SOAK: ID ID ...    (its conditions, in its slots)
  */
@@ -26,6 +27,7 @@ int main(void)
     int v[8];
     int n;
     int c;
+    int t;
     uint8_t k;
     uint8_t got;
     char *p;
@@ -51,8 +53,10 @@ int main(void)
         apb_battle_add(&f);
         p = line + n;
         while (sscanf(p, "%d%n", &c, &n) == 1) {
-            apb_battle_put(0, (uint8_t)c);
             p += n;
+            t = 1;
+            if (*p == ':' && sscanf(p + 1, "%d%n", &t, &n) == 1) p += n + 1;
+            apb_battle_put_tier(0, (uint8_t)c, (uint8_t)t);
         }
         printf("%u %u %u %u %u %u:", apb_speed_v1((uint8_t)v[0], (uint8_t)v[1]), apb_battle_speed(0),
                apb_battle_dodge(0), apb_battle_armor(0), apb_battle_ward(0), apb_battle_soak(0));

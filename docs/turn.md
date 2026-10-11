@@ -114,6 +114,37 @@ and soaked, hasted and slowed, blessed and cursed; the new one goes on and the o
 **At most 4 at a time**, besides a race's two traits. A fifth replaces the one with the
 fewest rounds left (one with no countdown counts as the most).
 
+## Powers in play
+
+A power (`registry/powers.txt`, the class lists of [items.md](items.md#power-lists)) is a
+**shape** and an **element**, at will or with **charges** (full at each fight's start, in
+the arena; at each Departure's, in the game). Using one is your turn's action.
+
+- **Tier** is 1 + rank ÷ 20 (rank 0-19: tier 1; rank 100: tier 6).
+- **Its roll** is d100 + **half its class's stat** (a Channeler's Presence, a Warden's
+  Might) **+ its rank**, as a skill is half a stat plus its training; plus your roll and
+  attack bonuses. A new power's rank is 2 × your level (at least 10).
+- **Its TN** is 50 + Dodge + **Ward**, + 20 in cover, as any power's is; a **mind** power's
+  is against **Resolve** (half the target's Presence: a foe's, half its Grace) instead of
+  Ward.
+
+| Shape | Target | What it does |
+|---|---|---|
+| **Bolt** | a foe in sight | damage 5 × tier, as a weapon's (margin, crits, glancing hits) |
+| **Burst** | a square in sight, not so near that you're in it; or **around** you | everyone in Area 1 (2 from tier 6) round it, friend or foe, one roll; damage 5 × tier |
+| **Hex** | a foe in sight | **hexed**: −10 × tier to its attacks for 3 rounds |
+| **Ward** | you, or a traveler next to you | its condition, at its tier (shielded: Armor + 10 × tier) |
+| **Mend** | you, or a traveler next to you | heals 5 × tier |
+| **Field** | a square in sight, on open or rough ground | a line of tier + 2 squares through it, across the line from you, for 3 of your turns: fire or energy (a hazard: 5 × tier, and its condition), cold (rough ground), kinetic (wall), mind (cover). Not on anyone's square |
+| **Shift** | yourself to a square; or a foe next to you | yourself: straight there (8 ways), up to tier + 2 squares, through nothing that blocks sight, and no free attacks for leaving; a foe: rolled against its Ward, pushed tier + 2 squares away (as a Shove's push: pits, walls, hazards) |
+
+A hit (Bolt, Burst, Hex) also puts on the power's **condition** at its tier, and its
+element's **rider**: **fire** burns the target's square till the end of your next turn
+(5 × tier, a hazard); **cold** chills it; **kinetic** pushes it a square; **energy**
+ignores its Soak; **mind** is against Resolve. **Silenced** stops all of it.
+
+The computer never uses powers yet: a traveler on Quick (or Auto) fights with its weapon.
+
 ## Races in play
 
 A traveler's race puts on its two traits ([races.md](races.md#traits)): Lucky (+5 to every
@@ -134,7 +165,11 @@ sanitizers.
 ## Still open
 
 - **Phased** (through walls, untouchable), **hidden**, **spreading**, **at random**,
-  **must attack**: the medium effects, with the powers that need them.
+  **must attack**: the medium effects, with the powers that need them (Taunt, Smoke,
+  Vanish, Mind spike's confusion: until then Mind spike frightens).
+- Powers for foes, and the computer choosing powers on Quick.
+- Whether a fire hit should both burn the square and set the target on fire (Fireball,
+  Fire wall do both now): fire is strong.
 - Foes with a shove or a knockback of their own, and **teleporting** (no free attacks).
 - Whether heavy armor should say so in the registry, rather than by its tier.
 - Darkness, for Lantern-eyed and the dark realms.

@@ -56,6 +56,7 @@ typedef struct {
     uint8_t might, grit, wits, presence, fate;   /* for shaking off (a foe: its Grace) */
     uint8_t race;             /* a traveler's (its traits go on), or 0xFF           */
     uint8_t on_hit;           /* a condition its hits put on, or 0                  */
+    uint8_t power_stat;       /* its class's stat: half of it goes into a power's roll */
 } apb_fighter;
 
 /* A turn: move, then one of these. */
@@ -66,14 +67,16 @@ enum {
     APB_ACT_FLEE,
     APB_ACT_DONE,
     APB_ACT_SHOVE,            /* target: a foe next to you                    */
-    APB_ACT_DASH              /* move again, to dash_x, dash_y                */
+    APB_ACT_DASH,             /* move again, to dash_x, dash_y                */
+    APB_ACT_POWER             /* power `use`: on target, or the square dash_x, dash_y */
 };
 
 typedef struct {
     uint8_t move_x, move_y;
     uint8_t kind;
     uint8_t target;
-    uint8_t dash_x, dash_y;
+    uint8_t dash_x, dash_y;   /* a Dash's square, or a power's                 */
+    uint8_t use;              /* which of the fighter's powers                 */
 } apb_action;
 
 enum {
@@ -103,7 +106,13 @@ enum {
     APB_EV_SLAM,              /* actor pushed into something: value damage             */
     APB_EV_FALL,              /* actor fell into a pit                                 */
     APB_EV_THORNS,            /* actor's thorns hurt target: value damage              */
-    APB_EV_ABSORB             /* actor's barrier took value damage                     */
+    APB_EV_ABSORB,            /* actor's barrier took value damage                     */
+    APB_EV_POWER,             /* actor uses power cond (its id) at x, y; value its tier */
+    APB_EV_HIT,               /* actor's power on target: roll, value damage           */
+    APB_EV_MEND,              /* actor's power heals target value                      */
+    APB_EV_FIELD,             /* the square x, y becomes tile value (actor's field), or
+                                 goes back to it (actor APB_NOBODY)                    */
+    APB_EV_SHIFT              /* actor is shifted to x, y                              */
 };
 
 typedef struct {
@@ -128,7 +137,7 @@ enum { APB_SURPRISE_NONE = 0, APB_SURPRISE_FOES, APB_SURPRISE_TRAVELERS };
 /* ---------------------------------------------------------- conditions (v1) */
 
 #define APB_COND_SLOTS   6    /* 2 always on (a race's traits, a foe's nature), 4 others */
-#define APB_COND_MAX     255
+#define APB_COND_MAX     127
 #define APB_NO_TYPE      0xFF
 
 /* Each condition's effects (registry/conditions.txt, generated into conditions.c). */
@@ -143,6 +152,7 @@ enum {
     APB_CF_NO_HEAL      = 0x0080,
     APB_CF_FLY          = 0x0100,
     APB_CF_FIRST        = 0x0200,
+    APB_CF_TIERED       = 0x0400,
     APB_CF_DEFINED      = 0x8000
 };
 
@@ -167,6 +177,33 @@ typedef struct {
 extern const apb_cond_def apb_conds[APB_COND_MAX + 1];
 /* The two traits of a race, or 0. */
 uint8_t apb_race_trait(uint8_t race, uint8_t which);
+
+/* ------------------------------------------------------------- powers (v1) */
+
+#define APB_POWER_MAX    127
+#define APB_POWERS_HELD  4    /* in a fight, a fighter's at most                   */
+
+enum { APB_SH_BOLT = 0, APB_SH_BURST, APB_SH_WARD, APB_SH_FIELD, APB_SH_MEND, APB_SH_HEX,
+       APB_SH_SHIFT };
+enum { APB_TG_SELF = 0, APB_TG_ALLY, APB_TG_FOE, APB_TG_SQUARE, APB_TG_AROUND };
+
+/* Each power (registry/powers.txt, generated into conditions.c with the conditions). */
+typedef struct {
+    uint8_t defined;
+    uint8_t cls;              /* a class, or 0xFF: any                            */
+    uint8_t shape;            /* APB_SH_*                                         */
+    uint8_t element;          /* a damage type, or APB_NO_TYPE                    */
+    uint8_t uses;             /* charges a fight, or 0: at will                   */
+    uint8_t target;           /* APB_TG_*                                         */
+    uint8_t adjacent;         /* a foe next to you (cc65 reserves "near")          */
+    uint8_t cond;             /* what it puts on, or 0                            */
+    const char *name;
+} apb_power_def;
+
+extern const apb_power_def apb_powers[APB_POWER_MAX + 1];
+
+/* A power's tier (1 + rank / 20) and its roll (half its class's stat, plus its rank). */
+uint8_t apb_power_tier(uint8_t rank);
 
 /* Speed (docs/turn.md): 5, +1 at Grace 60, +1 more at 90, -1 in heavy armor. */
 uint8_t apb_speed_v1(uint8_t grace, uint8_t armor_tier);
@@ -195,6 +232,19 @@ void    apb_battle_rearm(uint8_t who, const apb_fighter *f);
  * it on. Returns 1 if it landed. */
 uint8_t apb_battle_trait(uint8_t who, uint8_t cond);
 uint8_t apb_battle_put(uint8_t who, uint8_t cond);
+uint8_t apb_battle_put_tier(uint8_t who, uint8_t cond, uint8_t tier);
+/* A fighter's powers: learn one (rank 0-100) before the fight begins; returns its slot,
+ * or APB_NOBODY. What it holds: ids, ranks and charges left (0xFF: at will). */
+uint8_t apb_battle_learn(uint8_t who, uint8_t power, uint8_t rank);
+uint8_t apb_battle_powers(uint8_t who, uint8_t *ids, uint8_t *ranks, uint8_t *left);
+/* What power `use` could be used on from x, y: fighters (with the TN, or 0 for none),
+ * or the squares (map: 1 yes). */
+uint8_t apb_battle_power_targets(uint8_t who, uint8_t use, uint8_t x, uint8_t y,
+                                 uint8_t *targets, int16_t *tns);
+void    apb_battle_power_squares(uint8_t who, uint8_t use, uint8_t x, uint8_t y,
+                                 uint8_t map[APB_MAP_H_MAX][APB_MAP_W_MAX]);
+uint8_t apb_battle_power_rating(uint8_t who, uint8_t use);
+
 /* A fighter's conditions now: up to APB_COND_SLOTS ids and the rounds each has left (0:
  * no countdown). Returns how many. */
 uint8_t apb_battle_conditions(uint8_t who, uint8_t *ids, uint8_t *rounds);

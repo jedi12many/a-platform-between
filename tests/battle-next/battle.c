@@ -17,8 +17,10 @@
  *       WEAK BEHAVIOR COWARD [hit COND]  stands on the map's letter L
  *   trait WHO COND                       a condition for good (a foe's nature)
  *   put WHO COND                         a condition as the fight begins
- *   act X Y KIND TARGET [DX DY]          a traveler's turn (KIND: APB_ACT_*, 5 Shove,
- *                                        6 Dash to DX, DY)
+ *   power WHO NAME RANK                  a power the fighter holds (registry/powers.txt)
+ *   act X Y KIND TARGET [DX DY [USE]]    a traveler's turn (KIND: APB_ACT_*, 5 Shove,
+ *                                        6 Dash to DX, DY, 7 power USE on TARGET or the
+ *                                        square DX, DY)
  *   act q                                a traveler's turn on quick
  *
  * Every attack's line ends with the target's Soak and its conditions' tags, so
@@ -46,6 +48,22 @@ static uint8_t left[APB_COND_SLOTS];
 static const char *const results[] = { "fail", "cost", "success", "crit" };
 static const char *const endings[] = { "on", "won", "lost", "fled" };
 static const char *const types[] = { "kinetic", "energy", "fire", "cold", "mind" };
+
+static const char *power_name(uint8_t p)
+{
+    if (apb_powers[p].name) return apb_powers[p].name;
+    return "?";
+}
+
+static uint8_t power_named(const char *s)
+{
+    uint16_t i;
+
+    for (i = 1; i <= APB_POWER_MAX; ++i) {
+        if (apb_powers[i].name && strcmp(apb_powers[i].name, s) == 0) return (uint8_t)i;
+    }
+    return 0;
+}
 
 static const char *cond_name(uint8_t c)
 {
@@ -143,6 +161,22 @@ static void on_event(const apb_event *e)
     case APB_EV_FALL:   printf("  %u falls into the pit\n", e->actor); break;
     case APB_EV_THORNS: printf("  %u's %s hurts %u: %u damage\n", e->actor, cond_name(e->cond), e->target, e->value); break;
     case APB_EV_ABSORB: printf("  %u's barrier takes %u\n", e->actor, e->value); break;
+    case APB_EV_POWER:
+        printf("  %u uses %s (tier %u) at %u,%u\n", e->actor, power_name(e->cond), e->value, e->x, e->y);
+        break;
+    case APB_EV_HIT:
+        printf("  %u's %s on %u: %u+%d=%d vs %d: %s, %u damage", e->actor, power_name(e->cond),
+               e->target, e->roll.roll, e->roll.total - e->roll.roll, e->roll.total, e->roll.tn,
+               results[e->roll.result], e->value);
+        tags(e->target);
+        printf("\n");
+        break;
+    case APB_EV_MEND:   printf("  %u's %s heals %u: %u\n", e->actor, power_name(e->cond), e->target, e->value); break;
+    case APB_EV_FIELD:
+        if (e->actor == APB_NOBODY) printf("  %u,%u is itself again\n", e->x, e->y);
+        else printf("  %u,%u becomes %c (%u's field)\n", e->x, e->y, "_#O~+^=>"[e->value & 7], e->actor);
+        break;
+    case APB_EV_SHIFT:  printf("  %u is shifted to %u,%u\n", e->actor, e->x, e->y); break;
     }
 }
 
@@ -277,6 +311,15 @@ int main(int argc, char **argv)
             if (who == APB_NOBODY) printf("couldn't place it\n");
             else printf("%u: foe %c at %u,%u, health %u, speed %u\n", who, letter, f.x, f.y, f.health,
                         apb_battle_speed(who));
+        } else if (strcmp(word, "power") == 0) {
+            if (sscanf(line, "%*s %d %63s %d", &v[0], name, &v[1]) != 3 || !(c = power_named(name))) {
+                printf("bad power: %s\n", line);
+                return 1;
+            }
+            i = apb_battle_learn((uint8_t)v[0], c, (uint8_t)v[1]);
+            if (i == APB_NOBODY) printf("can't learn %s\n", name);
+            else printf("%d has %s at rank %d (tier %u, rolls %u)\n", v[0], name, v[1],
+                        apb_power_tier((uint8_t)v[1]), apb_battle_power_rating((uint8_t)v[0], i));
         } else if (strcmp(word, "trait") == 0 || strcmp(word, "put") == 0) {
             if (sscanf(line, "%*s %d %63s", &v[0], name) != 2 || !(c = cond_named(name))) {
                 printf("bad %s: %s\n", word, line);
@@ -299,14 +342,15 @@ int main(int argc, char **argv)
                 apb_battle_quick(who, &act);
                 printf("  (quick: act %u %u %u %u)\n", act.move_x, act.move_y, act.kind, act.target);
             } else {
-                v[4] = v[5] = 0;
-                sscanf(line, "%*s %d %d %d %d %d %d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5]);
+                v[4] = v[5] = v[6] = 0;
+                sscanf(line, "%*s %d %d %d %d %d %d %d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6]);
                 act.move_x = (uint8_t)v[0];
                 act.move_y = (uint8_t)v[1];
                 act.kind = (uint8_t)v[2];
                 act.target = (uint8_t)v[3];
                 act.dash_x = (uint8_t)v[4];
                 act.dash_y = (uint8_t)v[5];
+                act.use = (uint8_t)v[6];
             }
             if (!apb_battle_act(who, &act)) printf("  (not allowed: %s)\n", line);
         }

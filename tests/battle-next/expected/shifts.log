@@ -1,0 +1,79 @@
+0: traveler at 2,2, health 23, attack 62, speed 6, TN to hit 72 [soak 0 ERLY SML]
+1: traveler at 1,4, health 28, attack 62, speed 5, TN to hit 69 [soak 0 PLT KNT]
+2: foe a at 3,2, health 30, speed 4
+3: foe b at 6,3, health 30, speed 4
+4: foe c at 5,4, health 30, speed 4
+0 has BLINK at rank 20 (tier 2, rolls 62)
+0 has SNARE at rank 20 (tier 2, rolls 62)
+0 has DIRTY_TRICK at rank 20 (tier 2, rolls 62)
+1 has BULL_RUSH at rank 40 (tier 3, rolls 82)
+1 has GROUND_SLAM at rank 40 (tier 3, rolls 82)
+round 1: 0's turn (speed 6)
+  0 uses BLINK (tier 2) at 3,1
+  0 is shifted to 3,1
+round 1: 1's turn (speed 5)
+  1 steps to 2,4
+  1 steps to 3,4
+  1 steps to 4,4
+  1 uses BULL_RUSH (tier 3) at 5,4
+  1's BULL_RUSH on 4: 69+82=151 vs 57: success, 0 damage [soak 0]
+  4 is pushed to 6,4
+  4 is pushed to 7,4
+  4 is pushed to 8,4
+  4 falls into the pit
+  4 is down
+round 1: 2's turn (speed 4)
+  2 attacks 0: 100+30=130 vs 72: crit, 18 damage [soak 0 ERLY SML]
+round 1: 3's turn (speed 4)
+  3 steps to 5,3
+  3 attacks 1: 46+30=76 vs 69: success, 4 damage [soak 0 PLT KNT]
+round 2: 0's turn (speed 6)
+  0 uses SNARE (tier 2) at 3,2
+  0's SNARE on 2: 95+62=157 vs 57: success, 0 damage [soak 0]
+  2 is HEXED (3 rounds)
+  2 is SLOWED (2 rounds)
+  2 is CHILLED (2 rounds)
+round 2: 1's turn (speed 5)
+  (quick: act 4 4 0 3)
+  1 attacks 3: 54+62=116 vs 62: success, 14 damage [soak 0]
+round 2: 2's turn (speed 2)
+  2 attacks 0: 10+10=20 vs 72: fail, 0 damage [soak 0 ERLY SML]
+round 2: 3's turn (speed 4)
+  3 attacks 1: 84+30=114 vs 69: success, 8 damage [soak 0 PLT KNT]
+round 3: 0's turn (speed 6)
+  0 uses DIRTY_TRICK (tier 2) at 5,3
+  0's DIRTY_TRICK on 3: 53+62=115 vs 57: success, 0 damage [soak 0]
+  3 is HEXED (3 rounds)
+  3 is BLINDED (2 rounds)
+round 3: 1's turn (speed 5)
+  (quick: act 4 4 0 3)
+  1 attacks 3: 5+62=67 vs 62: success, 9 damage [soak 0 HEX BLND]
+round 3: 2's turn (speed 2)
+  2 attacks 0: 88+10=98 vs 72: crit, 12 damage [soak 0 ERLY SML]
+  0 is down
+  2 is no longer SLOWED
+  2 is no longer CHILLED
+round 3: 3's turn (speed 4)
+  3 attacks 1: 27+-20=7 vs 69: fail, 0 damage [soak 0 PLT KNT]
+  3 tries to shake off BLINDED: 93+10=103 vs 100: success
+  3 is no longer BLINDED
+round 4: 1's turn (speed 5)
+  (quick: act 4 4 0 3)
+  1 attacks 3: 4+62=66 vs 62: success, 9 damage [soak 0 HEX]
+  3 is down
+round 4: 2's turn (speed 4)
+  2 steps to 3,3
+  2 attacks 1: 62+10=72 vs 69: success, 4 damage [soak 0 PLT KNT]
+  2 is no longer HEXED
+round 5: 1's turn (speed 5)
+  (quick: act 4 4 0 2)
+  1 attacks 2: 51+62=113 vs 62: success, 14 damage [soak 0]
+round 5: 2's turn (speed 4)
+  2 attacks 1: 41+30=71 vs 69: success, 4 damage [soak 0 PLT KNT]
+round 6: 1's turn (speed 5)
+  (quick: act 4 4 0 2)
+  1 attacks 2: 38+62=100 vs 62: success, 12 damage [soak 0]
+round 6: 2's turn (speed 4)
+  2 attacks 1: 24+30=54 vs 69: cost, 2 damage [soak 0 PLT KNT]
+round 7: 1's turn (speed 5)
+out of actions

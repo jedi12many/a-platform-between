@@ -1,5 +1,5 @@
 # Conditions (docs/conditions.md, docs/turn.md): what's true of a fighter for a while, or for
-# good. Append only: an id, once shipped, never changes. Ids are 1..255.
+# good. Append only: an id, once shipped, never changes. Ids are 1..127.
 #
 # rounds:   how many of its bearer's turns it lasts (counted down at the end of each, but
 #           not the turn it was put on), or - (until something ends it)
@@ -27,6 +27,8 @@
 #   fly            crosses pits, and rough ground costs 1; falls if it ends over a pit
 #   first          acts first in the order of play
 #   race=RACE      one of that race's two traits: always on
+#   tiered         its numbers are for tier 1: put on by a power or an item of tier N, they're N
+#                  times as much (docs/turn.md, Powers in play)
 #
 # id  NAME            rounds shake         opposite  then       tag   "Shown as"         effects
 1     POISONED        5      GRIT:100      -         -          PSN   "Poisoned"         dot=3
@@ -46,9 +48,9 @@
 15    FRIGHTENED      -      PRESENCE:100  -         -          FEAR  "Frightened"       rolls=-10
 16    EXPOSED         1      -             -         -          EXP   "Exposed"          armor=-20
 17    MARKED          3      -             -         -          MRK   "Marked"           dodge=-10 armor=-10
-18    SHIELDED        3      -             -         -          SHLD  "Shielded"         armor=10
-19    WARDED          3      -             -         -          WRD   "Warded"           ward=10
-20    BARRIER         -      -             -         -          BAR   "Barrier"          barrier=10
+18    SHIELDED        3      -             -         -          SHLD  "Shielded"         armor=10 tiered
+19    WARDED          3      -             -         -          WRD   "Warded"           ward=10 tiered
+20    BARRIER         -      -             -         -          BAR   "Barrier"          barrier=10 tiered
 21    STONESKIN       3      -             -         -          STN   "Stoneskin"        soak=2
 22    REGENERATING    5      -             -         -          REG   "Regenerating"     heal=3
 23    BLESSED         3      -             CURSED    -          BLS   "Blessed"          rolls=10 shake=10
@@ -63,6 +65,7 @@
 32    SILENCED        2      -             -         -          SIL   "Silenced"         no_powers
 33    IRRADIATED      3      -             -         -          RAD   "Irradiated"       dot=2:energy
 34    WEIGHTLESS      3      -             -         -          FLT   "Weightless"       fly melee=-10
+35    HEXED           3      -             -         -          HEX   "Hexed"            attacks=-10 tiered
 # The races' traits (docs/races.md): always on.
 64    LUCKY           -      -             -         -          LCK   "Lucky"            rolls=5 race=HUMAN
 65    STEADY          -      -             -         -          STDY  "Steady"           shake=10 race=HUMAN

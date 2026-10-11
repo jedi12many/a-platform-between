@@ -95,6 +95,12 @@ def recheck(name, path, log):
     who = fighters(path)
     last = None
     rolls = 0
+    tiers = {}
+    ranks = {}
+    for ln in open(path):
+        w = ln.split()
+        if w and w[0] == "power":
+            ranks[(int(w[1]), w[2])] = int(w[3])
     lines = log.splitlines()
     for i, line in enumerate(lines):
         a = re.match(r"  (\d+) attacks (\d+): (\d+)\+(-?\d+)=(-?\d+) vs (\d+): (\w+), (\d+) damage "
@@ -102,6 +108,40 @@ def recheck(name, path, log):
         r = re.match(r"  (\d+) (?:tries to flee|shoves \d+|tries to shake off (\w+)): "
                      r"(\d+)\+(-?\d+)=(-?\d+) vs (\d+): (\w+)$", line)
         t = re.match(r"  (\d+) takes (\d+) from (\w+) \[soak (\d+)([A-Z ]*)\]$", line)
+        u = re.match(r"  (\d+) uses (\w+) \(tier (\d+)\)", line)
+        h = re.match(r"  (\d+)'s (\w+) on (\d+): (\d+)\+(-?\d+)=(-?\d+) vs (\d+): (\w+), (\d+) damage "
+                     r"\[soak (\d+)([A-Z ]*)\]$", line)
+        if u:
+            tiers[int(u.group(1))] = int(u.group(3))
+            if int(u.group(3)) != turn.power_tier(ranks.get((int(u.group(1)), u.group(2)), 0)):
+                fail(f"{name}: {line.strip()}: the rank says tier "
+                     f"{turn.power_tier(ranks.get((int(u.group(1)), u.group(2)), 0))}")
+            last = None
+            continue
+        if h:
+            att, pw, tgt, roll, _, total, tn, result, dmg, soak, tags = h.groups()
+            att, tgt, roll, total, tn, dmg, soak = map(int, (att, tgt, roll, total, tn, dmg, soak))
+            if (att, roll, total) != last:
+                rolls += 1
+                want = next(dice)
+                if roll != want:
+                    fail(f"{name}: roll {rolls} is {roll}, the dice say {want}")
+                    return rolls
+            last = (att, roll, total)
+            if RESULTS[combat.resolve(roll, total, tn)] != result:
+                fail(f"{name}: {line.strip()}: the rules say {RESULTS[combat.resolve(roll, total, tn)]}")
+            p = turn.POWERS[pw]
+            want = 0
+            if registry_shape(p) in ("bolt", "burst"):
+                kind = p["element"]
+                want = combat.damage(roll, total, tn, turn.power_damage(tiers[att]), 0,
+                                     0 if kind == 1 else soak)
+                if kind is not None and any(VULNERABLE.get(tg) == kind for tg in tags.split()):
+                    want *= 2
+                want -= absorbed(lines, i, tgt)
+            if dmg != want:
+                fail(f"{name}: {line.strip()}: the rules say {want} damage")
+            continue
         if a:
             att, tgt, roll, _, total, tn, result, dmg, soak, tags = a.groups()
             att, tgt, roll, total, tn, dmg, soak = map(int, (att, tgt, roll, total, tn, dmg, soak))
@@ -147,6 +187,10 @@ def recheck(name, path, log):
     return rolls
 
 
+def registry_shape(p):
+    return turn.registry.SHAPES[p["shape"]]
+
+
 def scenarios(update):
     for path in sorted(glob.glob(os.path.join(HERE, "*.txt"))):
         name = os.path.basename(path)[:-4]
@@ -180,12 +224,13 @@ def agree(count):
         race = rng.choice(races + [None])
         base = [rng.randint(0, 8), rng.randint(0, 20), rng.randint(0, 40), rng.randint(0, 40),
                 rng.randint(0, 4)]
-        put = [rng.choice(timed)["name"] for _ in range(rng.randint(0, 7))]
+        put = [(rng.choice(timed)["name"], rng.randint(1, 6)) for _ in range(rng.randint(0, 7))]
         f = turn.Fighter(race, *base)
-        for n in put:
-            f.put(n)
+        for n, t in put:
+            f.put(n, t)
         rid = turn.REG["races"][race]["id"] if race else 255
-        cases.append(" ".join(map(str, [grace, tier, rid] + base + [turn.CONDS[n]["id"] for n in put])))
+        cases.append(" ".join(map(str, [grace, tier, rid] + base))
+                     + "".join(f" {turn.CONDS[n]['id']}:{t}" for n, t in put))
         ids = [turn.CONDS[n]["id"] for n in f.traits] + [turn.CONDS[o[0]]["id"] for o in f.slots if o]
         wants.append(f"{turn.speed_v1(grace, tier)} {f.speed()} {f.dodge()} {f.armor()} {f.ward()} "
                      f"{f.soak()}:" + "".join(f" {i}" for i in ids))
@@ -200,7 +245,7 @@ def agree(count):
              f"says '{w}', the engine '{g}'")
     else:
         print(f"ok  the engine and tools/rules/turn.py agree on {count} random fighters: Speed, "
-              "Dodge, Armor, Ward, Soak, and the conditions they have")
+              "Dodge, Armor, Ward, Soak, and the conditions they have, at random tiers")
 
 
 TILES = "......##O~+^=>"
@@ -237,12 +282,14 @@ def random_battle(rng, path):
         lines.append(f"foe {c} " + " ".join(map(str, v)) + hit)
     for _ in range(rng.randint(0, 6)):
         lines.append(f"{rng.choice(['put', 'put', 'trait'])} {rng.randint(0, 9)} {rng.choice(names)}")
+    for _ in range(rng.randint(0, 6)):
+        lines.append(f"power {rng.randint(0, travelers - 1)} {rng.choice(list(turn.POWERS))} {rng.randint(0, 100)}")
     for _ in range(rng.randint(5, 60)):
         if rng.random() < 0.2:
             lines.append("act q")
         else:
-            lines.append(f"act {rng.randint(0, 17)} {rng.randint(0, 11)} {rng.randint(0, 7)} "
-                         f"{rng.randint(0, 9)} {rng.randint(0, 17)} {rng.randint(0, 11)}")
+            lines.append(f"act {rng.randint(0, 17)} {rng.randint(0, 11)} {rng.randint(0, 8)} "
+                         f"{rng.randint(0, 9)} {rng.randint(0, 17)} {rng.randint(0, 11)} {rng.randint(0, 4)}")
     with open(path, "w") as f:
         f.write("\n".join(lines) + "\n")
     return rows
@@ -264,7 +311,7 @@ def fuzz(count):
         if code or "runtime error" in err or "Sanitizer" in err:
             fail(f"random battle {i}: exit {code}\n{err[-1500:]}")
             continue
-        for x, y in re.findall(r"(?:steps|is pushed) to (\d+),(\d+)", out):
+        for x, y in re.findall(r"(?:steps|is pushed|is shifted) to (\d+),(\d+)", out):
             if rows[int(y)][int(x)] == "#":
                 fail(f"random battle {i}: someone stood in a wall at {x},{y}")
         m = re.search(r"the fight is (\w+)", out)
