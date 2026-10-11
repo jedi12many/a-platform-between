@@ -16,25 +16,17 @@ Passport already stores both lists: [passport-spec.md](passport-spec.md).)
 
 ### Slots
 
-The equipped six are **typed**, by the traveler's **body**, which comes from their race:
-
-| Slot | Holds | Most races | Four-armed races |
-|---|---|---|---|
-| **Hands** | weapons, foci, shields | 2 | 4 |
-| **Body** | armor | 1 | 1 |
-| **Kit** | everything else: tools, charms, grenades, belts | 3 | 1 |
-
-An item takes **1 hand**, or **2** if the registry says so (a staff, a rifle, a
-greatsword, a chainsaw). Two daggers fill two hands; a four-armed traveler can hold four,
-or a rifle and two daggers. The six slots always add up to six, so the Passport doesn't
-change: a body only says how the six are typed.
+Everyone has the same slots, a human's: **8 worn** (hat, armor or robe, gloves, belt,
+boots, two rings, a necklace) and **2 hands** (a weapon, a focus, a shield; a staff, a
+rifle or a greatsword takes both), and a **pack of 6**. Armor has a cut, for a medium body
+or a small one. All of it is in [races.md](races.md#the-body).
 
 ### Swapping
 
-Out of time means out of the usual fuss: **on your turn you can swap any equipped item
-with any item in your pack, as often as you like, and it costs nothing.** Pull a wand from
-the pack and use it this turn; change your armor mid-fight. Your slots must add up when
-your turn ends, and whatever is equipped then is what defends you until your next turn.
+Out of time means out of the usual fuss: **on your turn you can swap anything between your
+pack, your hands and your worn slots, as often as you like, and it costs nothing.** Pull a
+wand or a grenade from the pack and use it this turn; change your armor mid-fight.
+Whatever you hold and wear when your turn ends is what defends you until your next turn.
 
 ## Using an item
 
@@ -59,7 +51,7 @@ scroll, a potion. It leaves your sheet (and goes on the receipt as lost).
 | Staff of winter | 2 | **Bolt** + cold | **Field** + cold, 2 charges |
 | Holy symbol | 1 | none | **Mend**, 3 charges; **Ward**, 2 charges |
 | Riot shield | 1 | +Armor while held | **Ward** on an ally, 1 charge |
-| Frag grenade | kit | none | **Burst** + kinetic, 1 charge, used up |
+| Frag grenade | 1 | none | **Burst** + kinetic, 1 charge, used up |
 | Sawn-off shotgun | 2 | **Bolt** + kinetic, Area 1 | none |
 
 The registry gives each item its uses: [Registry](#registry) below.
@@ -220,7 +212,7 @@ working):
 9     FIRE_WAND      focus     2    fire   2  5  1     bolt           -                   "Fire wand"
 10    WINTER_STAFF   focus     2    cold   2  6  2     bolt           field x2            "Staff of winter"
 11    HOLY_SYMBOL    focus     2    mind   3  4  1     -              mend x3, ward x2    "Holy symbol"
-12    FRAG_GRENADE   tool      3    kinetic 6 0  kit   -              burst x1 used       "Frag grenade"
+12    FRAG_GRENADE   tool      3    kinetic 6 0  1     -              burst x1 used       "Frag grenade"
 13    BOOMSTICK      ranged    3    kinetic 4 0  2     bolt area1     -                   "Boomstick"
 14    CHAINSAW_HAND  melee     3    kinetic 6 0  1     strike         - fused             "Chainsaw hand"
 ```
@@ -231,7 +223,7 @@ body (`hands 2` or `hands 4`).
 ## A worked fight
 
 Sable (Moth-folk Channeler, level 2: Channel 60, Grace 50) holds a **staff of winter**
-(tier 2, both hands) and has a **frag grenade** in her kit. A rust-guard (Speed 4) and two
+(tier 2, both hands) and has a **frag grenade** in her pack. A rust-guard (Speed 4) and two
 ash rats come at her across the scrapyard.
 
 1. **Ice wall.** Sable spends a charge (1 left): a Field of cold, 4 squares long, across
@@ -240,8 +232,9 @@ ash rats come at her across the scrapyard.
 2. **Ice shard.** An ash rat closes. Sable throws an ice shard (at will): d100 + 60
    against the rat's TN against powers, 50 + Dodge 10 + Ward 0 = **60**. She rolls 42:
    102, 42 over, so **10 + 4 = 14** cold damage. The rat had 6. Down.
-3. **Grenade.** The guard and the other rat are next to each other. Sable throws the
-   grenade from her kit: Burst + kinetic, tier 3, Area 1, rolled with Ranged. One roll
+3. **Grenade.** The guard and the other rat are next to each other. Sable swaps the
+   grenade from her pack into a hand for the staff (free) and throws it: Burst + kinetic,
+   tier 3, Area 1, rolled with Ranged. One roll
    against both TNs; each hit takes 15 + margin, and is pushed a square. The grenade is
    used up.
 4. **A swap.** The guard is through the ice and next to her. Sable swaps the staff into

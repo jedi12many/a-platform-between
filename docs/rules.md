@@ -11,6 +11,8 @@ an idea.
 | 2 | [rules-v0.md](rules-v0.md) | The core roll (d100 + rating against a TN), stats, skills, creating a character, levels and XP, health, inventory, defenses | in the engine |
 | 3 | [combat.md](combat.md) | Fights: hitting, damage, areas, the battle map, a round, free attacks, fleeing, a worked fight | in the engine |
 | 4 | [items.md](items.md) | Items and powers: slots by body, free swapping, at-will and charged uses, shape and element, fields on the map; gaining, raising and swapping powers; class power lists; Out of Time | draft |
+| 4b | [races.md](races.md) | Races: the stat bonus, the body (8 worn slots, 2 hands, a pack of 6, Small), two traits each, the lost-and-found | draft |
+| 4c | [conditions.md](conditions.md) | Conditions: poisoned, asleep, on fire, slowed, shielded... from attacks, items, maps, realms and races; one short list of effects; shaking them off | draft |
 | 5 | [translation.md](translation.md) | Tech and Magic Levels: gear and bodies changing form, Force It, Dissonance | settled; partly in the engine |
 | 6 | [echoes.md](echoes.md) | Choices that follow you, in the story only: kinds, positive and negative states (negative ones in solo Departures only), party menus, reach, the Legend kept at the Waystation and the pass carrying only what a Departure needs | Passport Echoes in the engine; the rest drafted |
 | 7 | [bestiary.md](bestiary.md) | Making foes: a standard foe by level, roles, how many make a fight, the bestiary measured | draft |
