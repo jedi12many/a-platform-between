@@ -98,7 +98,8 @@ mutations, whatever the realm calls them (they Translate like gear). Each power 
 effect.
 
 A character holds up to **8 powers**. How powers are gained and raised is not designed
-yet; the Passport already stores them.
+yet; the Passport already stores them. What powers and items *do* (at-will and charged
+uses, shapes and elements, fields on the map) is drafted in [items.md](items.md).
 
 ## Character creation
 
@@ -184,7 +185,9 @@ Implemented: `apb_health_max`.
 
 ## Inventory
 
-- 6 equipped slots + 6 pack slots. Hard limit; forces choices.
+- 6 equipped slots + 6 pack slots. Hard limit; forces choices. The equipped six are
+  typed by your body (hands, body, kit), and swapping with the pack is free on your turn:
+  [items.md](items.md).
 - Up to 2 **attuned** legendary items.
 
 ## Defenses are target numbers
