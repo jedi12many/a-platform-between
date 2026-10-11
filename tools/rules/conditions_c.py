@@ -32,8 +32,7 @@ def row(c, conds, races):
     if len(e.get("immune", [])) > 4:
         raise SystemExit(f"conditions.txt: {c['name']} is immune to more than 4")
     race = races[e["race"]]["id"] if "race" in e else 0xFF
-    shake = c["shake"] or (0xFF, 0)
-    fields = [flags, str(c["rounds"] or 0), str(shake[0]), str(shake[1]),
+    fields = [flags, str(c["rounds"] or 0), str(c["shake"] or 0),
               str(ids(c["opposite"])), str(ids(c["then"]))]
     fields += [str(e.get(k, 0)) for k in NUMBERS]
     fields += [str(e.get("heal", 0)), str(e.get("barrier", 0)), str(dot), typ(dot_type),

@@ -26,7 +26,7 @@ round 2: 0's turn (speed 6)
   0 takes 3 from POISONED [soak 0 LCK STDY STIM CHL WET PSN]
   0 attacks 1: 18+70=88 vs 56: success, 32 damage [soak 0 ZAP BRT CRS]
   1's ELECTRIFIED hurts 0: 6 damage
-  0 tries to shake off POISONED: 57+70=127 vs 100: success
+  0 tries to shake off POISONED: 57+17=74 vs 52: success
   0 is no longer POISONED
 round 2: 2's turn (speed 4)
   2 attacks 0: 4+30=34 vs 60: fail, 0 damage [soak 0 LCK STDY STIM CHL WET]
@@ -43,7 +43,7 @@ round 3: 0's turn (speed 6)
   0 is EXHAUSTED (3 rounds)
   0 is no longer CHILLED
   0 is no longer SOAKED
-  0 tries to shake off POISONED: 16+60=76 vs 100: fail
+  0 tries to shake off POISONED: 16+7=23 vs 52: fail
 round 3: 2's turn (speed 4)
   2 attacks 0: 14+30=44 vs 60: cost, 0 damage [soak 0 LCK STDY EXH PSN]
   0 is CHILLED (2 rounds)

@@ -53,10 +53,10 @@ typedef struct {
     uint8_t guarding;
     uint8_t waited;
     /* v1 */
-    uint8_t might, grit, wits, presence, fate;   /* for shaking off (a foe: its Grace) */
     uint8_t race;             /* a traveler's (its traits go on), or 0xFF           */
     uint8_t on_hit;           /* a condition its hits put on, or 0                  */
     uint8_t power_stat;       /* its class's stat: half of it goes into a power's roll */
+    uint8_t level;            /* 1..100: its Resist is twice it (docs/turn.md)          */
 } apb_fighter;
 
 /* A turn: move, then one of these. */
@@ -161,8 +161,7 @@ enum {
 typedef struct {
     uint16_t flags;
     uint8_t rounds;           /* 0: no countdown                                   */
-    uint8_t shake_stat;       /* APB_MIGHT.., or 0xFF: can't be shaken off         */
-    uint8_t shake_tn;
+    uint8_t shake_tn;         /* + the putter's Resist; 0: can't be shaken off     */
     uint8_t opposite, then;   /* condition ids, or 0                               */
     int8_t speed, dodge, armor, ward, soak, rolls, attacks, melee, next, shake;
     uint8_t heal, barrier;

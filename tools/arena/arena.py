@@ -14,8 +14,9 @@ A matchup file is lines (# starts a comment):
     seed 1                           the first fight's seed
     traveler [RACE] CLASS LEVEL [weapon ARCH TIER [TYPE]] [armor TIER] [name NAME]
              [power NAME RANK]...    its powers (rules next: the computer uses them)
-    foe NAME [x COUNT] [hit COND] [power NAME RANK]...
-                                     from registry/foes.txt; its hits put COND on, and it
+    foe NAME [x COUNT] [hit COND] [level N] [power NAME RANK]...
+                                     from registry/foes.txt; its hits put COND on, it's of
+                                     level N (1 if not said: its Resist is twice it), and it
                                      holds those powers, rolled with its Attack (rules next)
     rules next                       fight by rules v1, on the rules lab's engine
                                      (build/arena-next, docs/turn.md), not v0
@@ -184,7 +185,7 @@ def foe_line(name, x, y):
 class Matchup:
     def __init__(self):
         self.fights, self.seed, self.rounds = 1000, 1, 50
-        self.travelers, self.foes = [], []          # foes: [name, count, hit or None]
+        self.travelers, self.foes = [], []          # foes: [name, count, hit or None, powers, level]
         self.sweep = None
         self.map = None
         self.rules = "v0"
@@ -227,14 +228,14 @@ class Matchup:
         for n, _ in powers:
             if n not in POWERS:
                 raise SystemExit(f"arena: '{n}' isn't in registry/powers.txt")
-        m = re.fullmatch(r"(\w+)(?:\s*x\s*(\d+))?(?:\s+hit\s+(\w+))?", text.strip())
+        m = re.fullmatch(r"(\w+)(?:\s*x\s*(\d+))?(?:\s+hit\s+(\w+))?(?:\s+level\s+(\d+))?", text.strip())
         if not m or m.group(1).upper() not in REG["foes"]:
             raise SystemExit(f"arena: '{text}': not a foe in registry/foes.txt "
                              f"({', '.join(REG['foes'])})")
         hit = m.group(3).upper() if m.group(3) else None
         if hit and hit not in CONDS:
             raise SystemExit(f"arena: '{text}': {hit} isn't in registry/conditions.txt")
-        self.foes.append([m.group(1).upper(), int(m.group(2) or 1), hit, powers])
+        self.foes.append([m.group(1).upper(), int(m.group(2) or 1), hit, powers, int(m.group(4) or 1)])
 
     def set_rules(self, which):
         if which not in ("v0", "next"):
@@ -266,6 +267,7 @@ class Matchup:
         starts = [(x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c == "@"]
         hits = [f[2] for f in self.foes for _ in range(f[1])]
         foe_powers = [f[3] for f in self.foes for _ in range(f[1])]
+        levels = [f[4] for f in self.foes for _ in range(f[1])]
         foes = [f[0] for f in self.foes for _ in range(f[1])]
         if len(self.travelers) + len(foes) > 8:
             raise SystemExit("arena: 8 fighters at most (the battle engine's limit)")
@@ -277,8 +279,9 @@ class Matchup:
             raise SystemExit("arena: the map hasn't an @ for every traveler")
         for t, (x, y) in zip(self.travelers, lefts):
             out.append(t.line(x, y))
-        for name, hit, (x, y) in zip(foes, hits, rights):
-            out.append(foe_line(name, x, y) + (f" hit {CONDS[hit]['id']}" if hit and self.rules == "next" else ""))
+        for name, hit, level, (x, y) in zip(foes, hits, levels, rights):
+            out.append(foe_line(name, x, y) + (f" hit {CONDS[hit]['id']}" if hit and self.rules == "next" else "")
+                       + (f" level {level}" if self.rules == "next" else ""))
         if self.rules == "next":
             holders = [t.powers for t in self.travelers] + foe_powers
             for who, held in enumerate(holders):

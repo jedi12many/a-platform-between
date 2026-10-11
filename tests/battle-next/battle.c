@@ -309,6 +309,8 @@ int main(int argc, char **argv)
             f.weak_type = (uint8_t)v[13]; f.behavior = (uint8_t)v[14]; f.coward = (uint8_t)v[15];
             p = line + n;
             if (sscanf(p, " hit %31s", name) == 1) f.on_hit = cond_named(name);
+            f.level = 1;
+            if ((p = strstr(line, " level ")) != 0) f.level = (uint8_t)atoi(p + 7);
             find(letter, 0, &f.x, &f.y);
             who = apb_battle_add(&f);
             if (who == APB_NOBODY) printf("couldn't place it\n");

@@ -103,8 +103,8 @@ coats, ids 9-14). Change a scenario there, `make site`, and the page follows.
 
 The same scenarios, played in a modern page instead of on the train: no story, no Boarding
 Pass, no Travel Stamp, no C64 screen, and **by rules v1** ([turn.md](turn.md): the rules
-lab's movement, conditions and powers), where the train still plays v0. Eleven more
-scenarios (R-01 to R-12) are there only, to try v1: fire to cross, a ledge to shove foes
+lab's movement, conditions and powers), where the train still plays v0. More scenarios
+(R-01 to R-15) are there only, to try v1: fire to cross, a ledge to shove foes
 off, poisoned bites, chilling shots, flying over pits, running with Dash; and powers: a
 Channeler's fire and ice, a Medic beside a Warden, a Tinker's barricade and shock mine, a
 Rogue's blink and snare, a Warden's bull rush. It's a tool in
@@ -112,7 +112,9 @@ the **studio**, beside the art desk:
 
     make studio            then open http://localhost:8064/arena/
 
-- **The intro** lists the scenarios. The chosen one shows what we want tested and what to
+- **The intro** lists only what needs playing now, a few at a time (`PLAYING` in
+  `tools/arena/scenarios.py`: R-13, R-14, R-15 and R-10 this round); any other opens by
+  its link (`arena/#scenario=R-02`). The chosen one shows what we want tested and what to
   watch for, both sides' cards (worked out by the rules, not typed in), and what a thousand
   fights on the computer say. Enter starts the fight.
 - **The fight** is the battle map at whatever size the window is, drawn from the game's art
@@ -220,7 +222,7 @@ shoves or dashes):
 | A-07 Level 5: new gear | 61% | 80% | |
 | A-08 The swarm (4 rats) | 43% | 76% | Plated: the rats' 2s mostly miss |
 | A-10 Shooters in a pair | 44% | 62% | |
-| R-01 Through the fire | | 73% | three squares of fire cost about 15 health |
+| R-01 Through the fire | | 68% | three squares of fire cost about 15 health |
 | R-02 Over the edge | | 39% | two rust-guards, without shoving them off |
 | R-03 Venom (3 rats) | | 82% | |
 | R-05 Wings | | 82% | |
@@ -228,11 +230,12 @@ shoves or dashes):
 | R-07 Fire and ice | | 99% | 99% without powers: Rooted's Soak 2 stops a rat's 2 |
 | R-08 Patch them up | | 91% | 80% without the Medic's powers |
 | R-09 Hold the line | | 9% | 0% without: a Tinker alone against two gunners and a guard |
-| R-10 Blink and snare | | 69% | 49% without; Snare alone 68%, Dirty trick alone 54% |
+| R-10 Blink and snare | | 74% | 49% without; hexes against Resist (52 at level 1) |
 | R-11 Bull rush | | 91% | 14% without; Bull rush alone 84% (the pit), Ground slam 66%, Shield wall 26%, Second wind 23% |
-| R-12 They have powers too | | 23% | 29% if the foes have none: the gunner's Snare costs you 6 points |
+| R-12 They have powers too | | 20% | 29% if the foes have none: the gunner's Snare costs you 9 points |
 | R-13 Ground slam, no pit | | 39% | 4% without powers; the slam alone 29% |
 | R-14 Shockwave, no pit | | 27% | 4% without powers; Shockwave alone 17% |
+| R-15 Above their level | | 38% | 48% if the foes have no powers: a level 6 Warden (Resist 12) with an iron sword and a chain coat; their hexes need 62, and still cost him 10 points |
 
 From R-07 on, both sides use their powers as [turn.md](turn.md#how-the-computer-uses-powers)
 says. Soak is strong against swarms: a Soak equal to a foe's damage

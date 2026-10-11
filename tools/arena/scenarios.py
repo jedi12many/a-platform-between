@@ -327,6 +327,32 @@ LAB += [
 ]
 
 
+# Resist (docs/turn.md): twice the level. A hex lands against 50 + it, and a condition is
+# shaken off with it, against its number + the Resist of whoever put it on.
+LAB += [
+    {"title": "Above their level",
+     "issue": "A level 6 Warden (Resist 12) against two level 1 scrap gunners who snare and "
+              "throw dirty tricks (they need 62 to land a hex on him, and he shakes them off "
+              "more easily than they put them on) and a rust-guard.",
+     "watch": "Whether a higher level feels like it protects you from tricks, and whether "
+              "the foes' hexes still matter.",
+     "cls": "WARDEN", "level": 6, "weapon": "IRON_SWORD", "armor": "CHAIN_COAT",
+     "foes": [{"foe": "SCRAP_GUNNER", "powers": [["SNARE", 10]]},
+              {"foe": "SCRAP_GUNNER", "powers": [["DIRTY_TRICK", 10]]}, "RUST_GUARD"],
+     "map": ["############",
+             "#...+......#",
+             "#@.......a.#",
+             "#...+....c.#",
+             "#........b.#",
+             "############"]},
+]
+
+
+# What the arena lists now: only what needs playing this round of tests, a few at a time
+# (the rest stay, by their codes, for links and the tests: #scenario=R-02 still opens).
+PLAYING = ["R-13", "R-14", "R-15", "R-10"]
+
+
 def foe_name(f):
     """A scenario's foe: NAME, NAME:HIT, or {"foe": NAME, "hit": .., "powers": [[NAME, rank]]}."""
     return f["foe"] if isinstance(f, dict) else f.split(":")[0]
@@ -336,6 +362,10 @@ def foe_hit(f):
     if isinstance(f, dict):
         return f.get("hit")
     return f.split(":")[1] if ":" in f else None
+
+
+def foe_level(f):
+    return f.get("level", 1) if isinstance(f, dict) else 1
 
 
 def foe_powers(f):
@@ -444,7 +474,8 @@ def native(s, ch):
     for i, f in enumerate(s["foes"]):
         fx, fy = spots["abcdefgh"[i]]
         hit = foe_hit(f)
-        lines.append(arena.foe_line(foe_name(f), fx, fy) + (f" hit {hit}" if hit else ""))
+        lines.append(arena.foe_line(foe_name(f), fx, fy) + (f" hit {hit}" if hit else "")
+                     + f" level {foe_level(f)}")
         figures.append(foe_name(f))
         same = plain.count(foe_name(f)) > 1
         names.append(arena.REG["foes"][foe_name(f)]["display"]
@@ -486,6 +517,7 @@ def matchup(s, rules="v0"):
                                              for w in ("power", name, str(rank))]))
     for f in s["foes"]:
         m.add_foe(foe_name(f) + (f" hit {foe_hit(f)}" if foe_hit(f) else "")
+                  + (f" level {foe_level(f)}" if foe_level(f) != 1 else "")
                   + "".join(f" power {n} {r}" for n, r in foe_powers(f)))
     if s.get("hazard"):
         d, t, c = s["hazard"]
@@ -557,7 +589,7 @@ def conditions():
         if c["rounds"]:
             said.append(f"{c['rounds']} round{'s' * (c['rounds'] > 1)}")
         if c["shake"]:
-            said.append(f"shake off: {arena.registry.STATS[c['shake'][0]].capitalize()}, TN {c['shake'][1]}")
+            said.append(f"shake off: Resist against {c['shake']} + whoever put it on's Resist")
         out[c["id"]] = {"name": c["name"], "tag": c["tag"], "display": c["display"],
                         "what": "; ".join(said), "trait": "race" in e}
     return out
@@ -601,16 +633,18 @@ def main(argv):
     with open(os.path.join(out, "scenarios.json"), "w") as f:
         json.dump(data, f, indent=1)
     lab = []
+    order = {code: k for k, code in enumerate(PLAYING)}
     for n, s in enumerate(LAB, 1):
         ch = traveler(s)
         lab.append({
             "n": n, "code": f"R-{n:02d}", "title": s["title"], "issue": s["issue"],
-            "watch": s["watch"], "lab_only": True,
+            "watch": s["watch"], "lab_only": True, "play": f"R-{n:02d}" in PLAYING,
             "traveler": f"{arena.REG['classes'][s['cls']]['display']}, level {s['level']}",
             "foes": [arena.REG["foes"][foe_name(f)]["display"] for f in s["foes"]],
             "hazard": s.get("hazard"),
             "lab": measured(s, "next"),
             "native": native(s, ch)})
+    lab.sort(key=lambda s: order.get(s["code"], len(order)))   # the ones to play first, in order
     with open(os.path.join(out, "lab.json"), "w") as f:
         json.dump(lab, f, indent=1)
     with open(os.path.join(out, "items.json"), "w") as f:
