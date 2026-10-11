@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all arena arena-web studio test-arena-web cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all arena arena-web studio test-arena-web test-rules-next cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 # The game's art (docs/art.md): figures, effects and tiles, as text, read by tools/art.py.
 ART := $(wildcard content/art/*.txt) tools/art.py
@@ -621,6 +621,35 @@ build/arena: tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC)
 
 # Battles: scenarios played natively and on the 6502, with the same log.
+# The rules lab (docs/turn.md): rules v1's battle engine, core/next/, which only the arena
+# and its tests build (with -Icore/next first, so its apb_battle.h is the one they see).
+# Its conditions come from registry/conditions.txt, generated, not kept.
+NEXT_INC := -Icore/next $(INC)
+NEXT_SRC := core/next/battle.c build/next/conditions.c
+NEXT_HDR := core/next/apb_battle.h $(CORE_HDR)
+
+build/next/conditions.c: registry/conditions.txt registry/races.txt tools/rules/conditions_c.py \
+                         tools/registry/registry.py
+	python3 tools/rules/conditions_c.py $@
+
+build/battle-next: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
+
+build/battle-next.asan: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(NEXT_INC) \
+		-o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
+
+# The rules lab's tests: reviewed battles, every roll and every number re-worked from the
+# Python reference, random battles under the sanitizers (tests/battle-next/run_battles.py).
+build/battle-next.sim: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CL65) -t sim6502 -O $(NEXT_INC) -o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
+
+build/turn-check: tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC)
+
+test-rules-next: build/battle-next build/battle-next.asan build/battle-next.sim build/turn-check
+	python3 tests/battle-next/run_battles.py
+
 build/battle: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)
 

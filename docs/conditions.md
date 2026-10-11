@@ -1,7 +1,8 @@
 # Conditions
 
 *Draft for review. The numbers are starting points, to be tuned in the arena
-([arena.md](arena.md)). Nothing here is in the engine yet.*
+([arena.md](arena.md)). The first build (the core effects and the small ones) is in the
+rules lab: `registry/conditions.txt`, played as [turn.md](turn.md) says.*
 
 A **condition** is something true of a combatant for a while, or for good: poisoned,
 asleep, on fire, slowed, shielded, out of sync with time. Conditions are where the game's

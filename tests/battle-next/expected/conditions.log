@@ -1,0 +1,53 @@
+0: traveler at 2,2, health 25, attack 55, speed 5, TN to hit 60 [soak 0 LCK STDY]
+1: foe a at 3,2, health 90, speed 4
+2: foe b at 5,3, health 40, speed 4
+  1 is ELECTRIFIED (2 rounds)
+  0 is STIMMED (3 rounds)
+  0 is BARRIER
+  0 is SOAKED (3 rounds)
+  1 is BRITTLE (2 rounds)
+  1 is BLESSED (3 rounds)
+  1 is no longer BLESSED
+  1 is CURSED (5 rounds)
+round 1: 0's turn (speed 7)
+  0 attacks 1: 76+70=146 vs 56: success, 44 damage [soak 0 ZAP BRT CRS]
+  0's barrier takes 6
+  1's ELECTRIFIED hurts 0: 0 damage
+round 1: 2's turn (speed 4)
+  2 steps to 4,3
+  0's barrier takes 4
+  0 is no longer BARRIER
+  2 attacks 0: 91+30=121 vs 60: success, 10 damage [soak 0 LCK STDY STIM WET]
+  0 is CHILLED (2 rounds)
+round 1: 1's turn (speed 4)
+  1 attacks 0: 23+30=53 vs 60: cost, 1 damage [soak 0 LCK STDY STIM CHL WET]
+  0 is POISONED (5 rounds)
+round 2: 0's turn (speed 6)
+  0 takes 3 from POISONED [soak 0 LCK STDY STIM CHL WET PSN]
+  0 attacks 1: 18+70=88 vs 56: success, 32 damage [soak 0 ZAP BRT CRS]
+  1's ELECTRIFIED hurts 0: 6 damage
+  0 tries to shake off POISONED: 57+70=127 vs 100: success
+  0 is no longer POISONED
+round 2: 2's turn (speed 4)
+  2 attacks 0: 4+30=34 vs 60: fail, 0 damage [soak 0 LCK STDY STIM CHL WET]
+round 2: 1's turn (speed 4)
+  1 attacks 0: 26+30=56 vs 60: cost, 1 damage [soak 0 LCK STDY STIM CHL WET]
+  0 is POISONED (5 rounds)
+  1 is no longer ELECTRIFIED
+  1 is no longer BRITTLE
+round 3: 0's turn (speed 6)
+  0 takes 3 from POISONED [soak 0 LCK STDY STIM CHL WET PSN]
+  0 attacks 1: 74+70=144 vs 56: success, 21 damage [soak 0 CRS]
+  1 is down
+  0 is no longer STIMMED
+  0 is EXHAUSTED (3 rounds)
+  0 is no longer CHILLED
+  0 is no longer SOAKED
+  0 tries to shake off POISONED: 16+60=76 vs 100: fail
+round 3: 2's turn (speed 4)
+  2 attacks 0: 14+30=44 vs 60: cost, 0 damage [soak 0 LCK STDY EXH PSN]
+  0 is CHILLED (2 rounds)
+round 4: 0's turn (speed 3)
+  0 takes 3 from POISONED [soak 0 LCK STDY EXH CHL PSN]
+  0 is down
+the fight is lost

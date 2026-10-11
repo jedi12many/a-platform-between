@@ -1,0 +1,42 @@
+0: traveler at 1,1, health 23, attack 52, speed 6, TN to hit 63 [soak 0 WING LAMP]
+1: traveler at 1,3, health 23, attack 62, speed 6, TN to hit 72 [soak 0 ERLY SML]
+2: traveler at 1,5, health 24, attack 62, speed 5, TN to hit 59 [soak 2 RADF ROOT]
+3: foe a at 10,1, health 60, speed 4
+  1 is WEIGHTLESS (3 rounds)
+round 1: 1's turn (speed 6)
+  1 steps to 2,3
+  1 steps to 3,3
+round 1: 3's turn (speed 4)
+  3 attacks 1: 84+30=114 vs 72: success, 6 damage [soak 0 ERLY SML FLT]
+round 1: 0's turn (speed 6)
+  0 steps to 2,1
+  0 steps to 3,1
+  0 steps to 4,1
+  0 steps to 5,1
+  0 steps to 6,1
+  0 steps to 7,1
+round 1: 2's turn (speed 5)
+  2 steps to 2,4
+  2 takes 0 from the ground
+  2 is immune to IRRADIATED
+round 2: 1's turn (speed 6)
+round 2: 3's turn (speed 4)
+  3 attacks 0: 94+30=124 vs 63: success, 8 damage [soak 0 WING LAMP]
+round 2: 0's turn (speed 6)
+round 2: 2's turn (speed 5)
+  2 takes 0 from the ground
+  2 is immune to IRRADIATED
+round 3: 1's turn (speed 6)
+  1 is no longer WEIGHTLESS
+  1 falls into the pit
+  1 is down
+round 3: 3's turn (speed 4)
+  3 attacks 0: 11+30=41 vs 63: fail, 0 damage [soak 0 WING LAMP]
+round 3: 0's turn (speed 6)
+round 3: 2's turn (speed 5)
+  2 takes 0 from the ground
+  2 is immune to IRRADIATED
+round 4: 3's turn (speed 4)
+  3 attacks 0: 27+30=57 vs 63: cost, 1 damage [soak 0 WING LAMP]
+round 4: 0's turn (speed 6)
+out of actions

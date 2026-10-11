@@ -1,0 +1,50 @@
+0: traveler at 2,2, health 32, attack 55, speed 5, TN to hit 59 [soak 0 HLW UNSL]
+1: foe a at 3,2, health 60, speed 4
+  0 is STUNNED (1 rounds)
+  1 is ASLEEP
+  1 is STUNNED (1 rounds)
+  1 is KNOCKED_DOWN
+  1 is CHILLED (2 rounds)
+  1 is no longer STUNNED
+  1 is MARKED (3 rounds)
+  1 is no longer CHILLED
+  1 is HASTED (3 rounds)
+  1 is no longer HASTED
+  1 is SLOWED (2 rounds)
+round 1: 0's turn (speed 5)
+  0 loses the turn: STUNNED
+  0 is no longer STUNNED
+round 1: 1's turn (speed 2)
+  1 loses the turn: ASLEEP
+  1 tries to shake off ASLEEP: 92+30=122 vs 110: success
+  1 is no longer ASLEEP
+round 2: 0's turn (speed 5)
+  0 attacks 1: 60+55=115 vs 50: success, 14 damage [soak 0 MRK DOWN SLOW]
+round 2: 1's turn (speed 2)
+  1 is no longer KNOCKED_DOWN
+  1 stands up (1 to move)
+  1 attacks 0: 41+40=81 vs 59: success, 5 damage [soak 0 HLW UNSL]
+  0 is immune to POISONED
+  1 is no longer SLOWED
+round 3: 0's turn (speed 5)
+  0 attacks 1: 6+55=61 vs 50: success, 9 damage [soak 0 MRK]
+round 3: 1's turn (speed 4)
+  1 attacks 0: 76+40=116 vs 59: success, 8 damage [soak 0 HLW UNSL]
+  0 is immune to POISONED
+  1 is no longer MARKED
+round 4: 0's turn (speed 5)
+  0 attacks 1: 51+55=106 vs 56: success, 13 damage [soak 0]
+round 4: 1's turn (speed 4)
+  1 attacks 0: 31+40=71 vs 59: success, 4 damage [soak 0 HLW UNSL]
+  0 is immune to POISONED
+round 5: 0's turn (speed 5)
+  (quick: act 2 2 0 1)
+  0 attacks 1: 94+55=149 vs 56: success, 17 damage [soak 0]
+round 5: 1's turn (speed 4)
+  1 attacks 0: 36+40=76 vs 59: success, 4 damage [soak 0 HLW UNSL]
+  0 is immune to POISONED
+round 6: 0's turn (speed 5)
+  (quick: act 2 2 0 1)
+  0 attacks 1: 69+55=124 vs 56: success, 14 damage [soak 0]
+  1 is down
+the fight is won
