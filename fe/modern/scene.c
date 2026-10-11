@@ -1,8 +1,9 @@
 /*
  * The battle screen with graphics on the desktop and in the browser (client/apb_scene.h):
- * the C64's multicolour character screen and sprites, kept here and drawn by render.c the
- * way the C64's VIC-II draws them (tools/vic.py is the reference), from the battle
- * graphics file BGFX (tools/battlegfx.py) in the Departure's directory.
+ * the C64's multicolour character screen and sprites, in the view at the top of the
+ * framed screen, kept here and drawn by render.c the way the C64's VIC-II draws them
+ * (tools/vic.py is the reference), from the battle graphics file BGFX (tools/battlegfx.py)
+ * in the Departure's directory. The frames under it are fe/modern/screen.c's.
  */
 #include <string.h>
 
@@ -24,7 +25,7 @@ static uint16_t gfx_len;
 
 const uint8_t *hal_scene_open(void)
 {
-    if (!gfx_len && (hal_load("BGFX", gfx, sizeof(gfx), &gfx_len) != HAL_OK || gfx_len < 2560
+    if (!gfx_len && (hal_load("BGFX", gfx, sizeof(gfx), &gfx_len) != HAL_OK || gfx_len < APB_SCENE_TABLES + 2048
                      || gfx[0] != 'B' || gfx[1] != 'G')) {
         gfx_len = 0;
         return 0;
@@ -32,7 +33,7 @@ const uint8_t *hal_scene_open(void)
     modern_end_row();
     scn_charset = gfx + APB_SCENE_TABLES;
     scn_shapes = gfx + APB_SCENE_TABLES + 2048;
-    memset(scn_char, ' ', sizeof(scn_char));
+    memset(scn_char, 0, sizeof(scn_char));
     memset(scn_colour, 1, sizeof(scn_colour));
     memset(scn_sprite, 0, sizeof(scn_sprite));
     scn_active = 1;
@@ -42,6 +43,7 @@ const uint8_t *hal_scene_open(void)
 void hal_scene_close(void)
 {
     scn_active = 0;
+    modern_view_back();
     plat_show();
     apb_cue_back();                 /* the story's tune again */
 }
@@ -59,7 +61,7 @@ void hal_scene_colours(uint8_t border, uint8_t background, uint8_t mc1, uint8_t 
 
 void hal_scene_put(uint8_t col, uint8_t row, uint8_t ch, uint8_t colour)
 {
-    if (col < SCR_COLS && row < SCR_ROWS) {
+    if (col < SCR_COLS && row < APB_SCENE_ROWS) {
         scn_char[row][col] = ch;
         scn_colour[row][col] = colour;
     }

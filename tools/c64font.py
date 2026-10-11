@@ -6,8 +6,10 @@ of the ROM's characters.
 The same letters as the battle screen's (tools/battlegfx.py: font8x8, each stroke a pixel
 wider), laid out the way the C64's upper/lower case set is, by screen code, so
 fe/c64/c64.c writes text as it always has: @ at 0, a-z at 1-26, [ \\ ] ^ _ at 27-31, space
-to ? at 32-63, ` at 64, A-Z at 65-90, { | } ~ at 91-94; and 128-255 the same in reverse,
-for the status bar and "-- more --". Codes 95-127 are blank.
+to ? at 32-63, ` at 64, A-Z at 65-90, { | } ~ at 91-94; the frames' own characters
+(docs/frames.md) at 96-99: the line between the frames, and a health bar's cells, empty,
+half and full (fe/modern/render.c draws the same); and 128-255 the same in reverse, for
+the status bar and "-- more --". The other codes are blank.
 
 OUT is a program file that loads at $E000 (where the picture goes later); the game copies
 it to $D000, under the I/O, where the VIC sees it (fe/c64/split.s, font_install).
@@ -42,8 +44,18 @@ def screen_code_of(ascii_code):
     return None
 
 
+FRAMES = {   # screen code: rows, bit 7 the left
+    0x60: [0x10] * 8,                                           # the line between frames
+    0x61: [0x7E, 0x42, 0x42, 0x42, 0x42, 0x7E, 0x00, 0x00],     # a bar's cell: empty
+    0x62: [0x7E, 0x72, 0x72, 0x72, 0x72, 0x7E, 0x00, 0x00],     # half
+    0x63: [0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x00, 0x00],     # full
+}
+
+
 def build():
     charset = bytearray(2048)
+    for at, rows in FRAMES.items():
+        charset[at * 8:at * 8 + 8] = bytes(rows)
     glyphs = font8x8()                      # ASCII 32-126
     for code in range(0x20, 0x7F):
         at = screen_code_of(code)

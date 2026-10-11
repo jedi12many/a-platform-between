@@ -89,6 +89,13 @@ EM_JS(void, js_audio_start, (int rate), {
     try {
         var Context = window.AudioContext || window.webkitAudioContext;
         var audio = Module.audio = new Context({ sampleRate: rate });
+        var processor = function () {
+            var node = Module.audioNode = audio.createScriptProcessor(2048, 0, 1);
+            node.onaudioprocess = function (e) {
+                e.outputBuffer.getChannelData(0).set(pull(e.outputBuffer.length));
+            };
+            node.connect(audio.destination);
+        };
         var pull = function (n) {
             var at = _web_audio_fill(n) >> 1;
             var out = new Float32Array(n);
@@ -122,13 +129,9 @@ EM_JS(void, js_audio_start, (int rate), {
                         sent += 1024;
                     }
                 }, 25);
-            });
+            }).catch(processor);            /* a page that won't load the worklet */
         } else {
-            var node = Module.audioNode = audio.createScriptProcessor(2048, 0, 1);
-            node.onaudioprocess = function (e) {
-                e.outputBuffer.getChannelData(0).set(pull(e.outputBuffer.length));
-            };
-            node.connect(audio.destination);
+            processor();
         }
         audio.resume();
     } catch (e) { /* no sound here: play on in silence */ }
@@ -147,10 +150,23 @@ void plat_saved(void)
     js_sync_saves();
 }
 
+/* The trip's Travel Stamp, to the page (index.html, Module.onStamp), which hands it to the
+ * platform page around it to land on the traveler who boarded. */
+EM_JS(void, js_trip_over, (const char *stamp), {
+    if (Module.onStamp) Module.onStamp(UTF8ToString(stamp));
+});
+
+void plat_trip_over(const char *stamp)
+{
+    js_trip_over(stamp);
+}
+
 /* Start a trip: called from the page (Module.start), once. `choices` is "" to play by
- * hand, or a file to play from. (Not main(): the page decides when, and Debian's
- * Emscripten drops main() when the page calls it itself.) */
-EMSCRIPTEN_KEEPALIVE void web_start(const char *departure, unsigned seed, const char *choices)
+ * hand, or a file to play from; `pass` is "" to board at the desk, or a Boarding Pass
+ * from the platform page, to board with no codes to type. (Not main(): the page decides
+ * when, and Debian's Emscripten drops main() when the page calls it itself.) */
+EMSCRIPTEN_KEEPALIVE void web_start(const char *departure, unsigned seed, const char *choices,
+                                    const char *pass)
 {
     static char dir[256];
     static char save_dir[256];
@@ -161,6 +177,7 @@ EMSCRIPTEN_KEEPALIVE void web_start(const char *departure, unsigned seed, const 
     mkdir(save_dir, 0777);
     if (choices[0]) choice_file = fopen(choices, "r");
     modern_setup(dir, save_dir, choice_file, choice_file ? stdout : NULL);
+    modern_give_pass(pass);
     modern_play((uint16_t)seed);
     plat_show();
     fflush(stdout);

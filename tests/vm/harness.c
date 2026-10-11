@@ -283,7 +283,9 @@ void apb_vm_trace(uint8_t car_no, uint16_t pc)
 
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static apb_character traveler;
+#ifndef APB_HARNESS_NO_DESK
 static apb_pass pass;
+#endif
 static char stamp[APB_STAMP_BUF];
 
 static void print_receipt(const apb_receipt *r)
@@ -313,6 +315,9 @@ int main(int argc, char **argv)
 {
     uint8_t base[APB_STAT_COUNT];
     uint8_t result;
+#ifndef APB_HARNESS_NO_DESK
+    uint8_t with_pass = 0;
+#endif
 
     if (argc != 4) {
         printf("usage: harness DIR SEED PICKS\n");
@@ -330,19 +335,21 @@ int main(int argc, char **argv)
     if (strchr(argv[2], '+')) traveler.level = (uint8_t)atoi(strchr(argv[2], '+') + 1);
 
 #ifndef APB_HARNESS_NO_DESK
+    /* Typed lines: the desk, which takes a Boarding Pass or a Passport. */
     if (picks[0] == ':') {
-        apb_desk_run(&traveler);
+        if (apb_vm_open() != 0) {
+            printf("[refused: %s]\n", apb_vm_error());
+            return 0;
+        }
+        with_pass = apb_desk_run(apb_vm_departure(), &traveler, &pass);
     }
 #endif
     if (strcmp(argv[2], "resume") == 0) {
         result = apb_vm_resume();
 #ifndef APB_HARNESS_NO_DESK
     } else if (strcmp(argv[2], "-") == 0) {
-        if (apb_vm_open() != 0) {
-            printf("[refused: %s]\n", apb_vm_error());
-            return 0;
-        }
-        if (apb_desk_pass(&traveler, apb_vm_departure(), &pass)) {
+        /* The seed is the pass's; without one, as a client would: 1, or a Siding's yard. */
+        if (with_pass) {
             result = apb_vm_board_pass(&traveler, &pass);
         } else {
             result = apb_vm_board(&traveler, apb_vm_siding() ? apb_desk_yard(1) : 1);

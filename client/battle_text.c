@@ -15,6 +15,12 @@ static char name[APB_VM_FOE_NAME_MAX + 1];
 static uint8_t last_round;
 static uint8_t free_next;    /* the next attack is a free one */
 static uint8_t ev_actor;
+static uint8_t apart;        /* the rolls go to a dice log */
+
+void apb_view_rolls_apart(uint8_t on)
+{
+    apart = on;
+}
 
 const char *apb_view_fighter(uint8_t who)
 {
@@ -85,8 +91,10 @@ uint8_t apb_view_event(const apb_event *e, char *line)
         *p++ = ' ';
         p = apb_view_put(p, e->target ? apb_view_fighter(e->target) : (const char *)"you");
         p = apb_view_put(p, ": ");
-        p = roll_numbers(p, &e->roll);
-        p = apb_view_put(p, ", ");
+        if (!apart) {
+            p = roll_numbers(p, &e->roll);
+            p = apb_view_put(p, ", ");
+        }
         p = apb_view_put(p, hits[e->roll.result & 3]);
         if (e->roll.result != APB_FAIL) {
             p = apb_view_put(p, ": ");
@@ -124,8 +132,10 @@ uint8_t apb_view_event(const apb_event *e, char *line)
             p = subject(p, you, "tr", "ies");
             if (you) *p++ = 'y';
             p = apb_view_put(p, " to get away: ");
-            p = roll_numbers(p, &e->roll);
-            p = apb_view_put(p, ": ");
+            if (!apart) {
+                p = roll_numbers(p, &e->roll);
+                p = apb_view_put(p, ": ");
+            }
             p = apb_view_put(p, flees[e->roll.result & 3]);
             apb_view_put(p, ".");
         } else {
@@ -145,6 +155,26 @@ uint8_t apb_view_event(const apb_event *e, char *line)
         return APB_VIEW_NOTHING;
     }
     return APB_VIEW_SENTENCE;
+}
+
+static const char *const blows[] = { "miss", "graze ", "hit ", "crit " };
+static const char *const getaways[] = { "stay", "out", "out", "out" };
+
+uint8_t apb_view_event_roll(const apb_event *e, char *top, char *bottom, char *record)
+{
+    static char outcome[12];
+    char *p;
+
+    if (e->kind == APB_EV_ATTACK) {
+        p = apb_view_put(outcome, blows[e->roll.result & 3]);
+        if (e->roll.result != APB_FAIL) apb_view_unum(p, e->value);
+    } else if (e->kind == APB_EV_FLEE && e->roll.roll) {
+        apb_view_put(outcome, getaways[e->roll.result & 3]);
+    } else {
+        return 0;
+    }
+    apb_view_roll(top, bottom, record, apb_view_fighter(e->actor), &e->roll, outcome);
+    return 1;
 }
 
 static const char *const endings[] = { "", "You won the fight.", "You lost the fight.",

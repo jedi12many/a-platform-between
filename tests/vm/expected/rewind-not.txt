@@ -1,18 +1,18 @@
-* Your Passport, please: one line at a time, then a blank line.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
-< 436G0000004102V0P9DX
+< G002000005800C86D00R
 * Line 2:
-< A4C000000000E64M4A33
+< 000008205P1CJTM8R006
 * Line 3:
-< 500102C0N0WFFGF
+< 0000000WC988M6A0020S
 * Line 4:
+< 4R1ADM6P
+* Line 5:
 < 
 Ash, Human Rogue, level 1. Debt 0.
   1) Board
   2) Start over
 > 1
-* Your Boarding Pass, please, or a blank line to travel without one:
-< 2002000005F3VW006C
 A grown dire wolf pads out of the ash and sits by your boot.
   1) Pick it up
 > 1

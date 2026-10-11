@@ -33,24 +33,24 @@ fare-hook-lost  content/s1/00-the-fare/the-fare.qs              22    1,1,1,1,4,
 loop            tests/vm/loop.qs                                5     1,1,2
 # Clearing flags in the second byte (a cc65 miscompile, caught by Eighteen Minutes).
 flags           tests/vm/flags.qs                               1     1
-# Boarding Passes (seed '-': the desk asks for one, and it seeds the dice). Passes come
-# from tools/passport/boarding.py; the typo is that tool's pass for Kestrel with one
-# symbol changed (20W5QD0ECKC26800EW -> ...FW).
-pass-board      tests/vm/tiny.qs                                -     @kestrel,@pass:kestrel:901:3141592653:7,1,1
-pass-typo       tests/vm/tiny.qs                                -     @kestrel,:20W5QD0ECKC26800FW,@pass:kestrel:901:3141592653:7,1,1
-pass-other      tests/vm/tiny.qs                                -     @kestrel,@pass:ada:901:42:7,@pass:kestrel:901:3141592653:7,1,1
-pass-elsewhere  tests/vm/tiny.qs                                -     @kestrel,@pass:kestrel:0:42:7,@pass:kestrel:901:3141592653:7,1,1
-pass-none       tests/vm/tiny.qs                                -     @kestrel,:,2,:,1,1,1
+# Boarding Passes (seed '-': the pass seeds the dice). A pass carries the traveler, so it's
+# all the desk needs. Passes come from tools/passport/boarding.py; the typo is that tool's
+# pass for Kestrel with line 2's first symbol changed (8NG0... -> 9NG0...), then retyped.
+# A pass for another Departure is refused, and a Passport alone boards without a ticket.
+pass-board      tests/vm/tiny.qs                                -     @pass:kestrel:901:3141592653:7,1,1,1
+pass-typo       tests/vm/tiny.qs                                -     :G0W5QD0ECK800W9CPEJK,:9NG0M020AN8F2THP800E,:00000016C184M8A0400W,:G0ARW8Y,:,:8NG0M020AN8F2THP800E,1,1,1
+pass-elsewhere  tests/vm/tiny.qs                                -     @pass:kestrel:0:42:7,@pass:kestrel:901:3141592653:7,1,1,1
+pass-none       tests/vm/tiny.qs                                -     @kestrel,1,1
 # The same trip as fare-fern, boarded with a pass whose seed is 1: same story, plus a ticket.
-fare-pass       content/s1/00-the-fare/the-fare.qs              -     @fern,@pass:fern:0:7777:1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+fare-pass       content/s1/00-the-fare/the-fare.qs              -     @pass:fern:0:7777:1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
 # Travel Stamps with something in them: an item, XP and Debt added (loop), an Echo and
 # its state at boarding (everything). Debt paid in stamps is covered by make test-receipts.
-stamp-loop      tests/vm/loop.qs                                -     @kestrel,@pass:kestrel:902:65536:5,1,1,2
-stamp-echo      tests/qsc/ok/everything.qs                      -     @kestrel,@pass:kestrel:7:4294967295:42,1,1
+stamp-loop      tests/vm/loop.qs                                -     @pass:kestrel:902:65536:5,1,1,1,2
+stamp-echo      tests/qsc/ok/everything.qs                      -     @pass:kestrel:7:4294967295:42,1,1,1
 # A Rewind: Ash's pup is SWORN. Played again normally, the grown wolf; as a Rewind (the
 # pass's last bit), the Echoes Departure 2 plants are forgotten and the pup is a pup.
-rewind-not      tests/vm/rewind.qs                              -     @ash,@pass:ash:2:21:3,1
-rewind-yes      tests/vm/rewind.qs                              -     @ash,@pass:ash:2:22:3:rewind,1
+rewind-not      tests/vm/rewind.qs                              -     @pass:ash:2:21:3,1,1
+rewind-yes      tests/vm/rewind.qs                              -     @pass:ash:2:22:3:rewind,1,1
 # Fights. fight.qs (the compiler's fixture): standing guard to the end, and sneaking past.
 fight-yard      tests/qsc/ok/fight.qs                           3     1,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0,1.1.1.0
 fight-sneak     tests/qsc/ok/fight.qs                           4     2,1.1.3.0,1.1.3.0,1.1.3.0

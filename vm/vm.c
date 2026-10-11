@@ -1411,15 +1411,11 @@ uint8_t apb_vm_board_pass(const apb_character *snapshot, const apb_pass *pass)
         fail("pass is for another Departure", 0);
         return APB_VM_ERROR;
     }
-    APB_NEED(APB_OVL_PASS);
-    if (pass->check != apb_passport_check(snapshot)) {
-        fail("pass is for another character", 0);
-        return APB_VM_ERROR;
-    }
     if (apb_vm_board(snapshot, pass->seed) != 0) {
         return APB_VM_ERROR;
     }
     if (pass->rewind) {
+        APB_NEED(APB_OVL_LOAD);             /* the Echoes are there on the C64 */
         apb_rewind_echoes(&ch, dep_id);     /* play it as if for the first time */
     }
     receipt.ticket = pass->ticket;

@@ -410,13 +410,12 @@ int main(int argc, char **argv)
         hal_shutdown();
         return 0;
     }
-    apb_desk_run(&traveler);
     if (apb_vm_open() != 0) {
         printf("This Departure can't be boarded: %s\n", apb_vm_error());
         return 1;
     }
+    with_pass = apb_desk_run(apb_vm_departure(), &traveler, &pass);
     putchar('\n');
-    with_pass = apb_desk_pass(&traveler, apb_vm_departure(), &pass);
     if (!with_pass && apb_vm_siding()) {
         seed = apb_desk_yard((uint16_t)seed);   /* a Siding's seed is its yard */
     }

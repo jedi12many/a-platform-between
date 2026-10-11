@@ -1,4 +1,4 @@
-* Your Passport, please: one line at a time, then a blank line.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
 < 4PB794AR0A0105AM7HDT
 * Line 2:
@@ -10,6 +10,7 @@
 * Line 2 has a typo. Type it again:
 < 8V4000000000K60M2A4A
 Kestrel, Salvaged Warden, level 1. Debt 0.
+* That's a Passport, not a Boarding Pass: nothing you earn on this trip can be stamped.
   1) Board
   2) Start over
 > 1

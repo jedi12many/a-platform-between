@@ -1,4 +1,4 @@
-* Your Passport, please: one line at a time, then a blank line.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
 < 436G0000004102V0P9DX
 * Line 2:
@@ -8,6 +8,7 @@
 * Line 4:
 < 
 Ash, Human Rogue, level 1. Debt 0.
+* That's a Passport, not a Boarding Pass: nothing you earn on this trip can be stamped.
   1) Board
   2) Start over
 > 1

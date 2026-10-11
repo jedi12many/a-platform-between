@@ -40,7 +40,9 @@ import receipt  # noqa: E402
 import stamp  # noqa: E402
 
 SITE = os.path.join(ROOT, "tests", "waystation", "site.cjs")
-FARE_PICKS = ["1", "1", "1", "1", "1", "2", "2", "2", "3", "1", "1", "2", "2"]
+# The Fare's answers, from "Let it" to the end, by a way with no checks on it: a trip from
+# the platform has a seed of its own, and a failed check would take another way.
+FARE_PICKS = ["1", "1", "1", "1", "1", "2", "3", "1", "1", "2", "2"]
 failures = 0
 
 
@@ -77,7 +79,7 @@ def board_the_fare(text):
         typed_pass = boarding.issue(text, 0, 424242, 1985)
         choices = os.path.join(tmp, "choices")
         with open(choices, "w") as f:
-            f.write("\n".join(passport.lines(text) + ["", "1", typed_pass] + FARE_PICKS) + "\n")
+            f.write("\n".join(passport.lines(typed_pass) + ["", "1"] + FARE_PICKS) + "\n")
         out = subprocess.run(["build/apb", "--choices", choices, apd], cwd=ROOT,
                              capture_output=True, text=True, timeout=60).stdout
     m = re.search(r"into your Passport:\n\n((?:  \w+\n)+)", out)
@@ -144,10 +146,10 @@ def main():
         else:
             ok("saved with a note, Wren is chosen to land her stamp, and her new Passport is kept"
                " (the old one too)")
-    got = site("shell", wren)
+    got = site("shell", wren, "\n".join(["1"] + FARE_PICKS) + "\n")
     if got is not None:
         got = json.loads(got)
-        docs = got["docs"]
+        docs = got["before"]
         mine = [k for k in docs if k.startswith("data/users/u_test/")]
         if (len(mine) != 1 or docs[mine[0]]["passport"] != wren
                 or docs[mine[0]]["note"] != "Off to Dock 3" or not got["shown"]
@@ -157,6 +159,22 @@ def main():
         else:
             ok("signed in, Wren is kept on her player's account, shown on the platform, and"
                " boards the train from the list")
+        # Boarded from her card: a pass issued, no codes typed, and the stamp landed on her
+        # as the receipt reference says.
+        after = [v for k, v in got["docs"].items() if k.startswith("data/users/u_test/")]
+        t = after[0] if after else {}
+        stamped = t.get("landed")
+        if not got["issued"] or got["desk"] != "aboard" or not stamped:
+            fail(f"boarding from the platform: issued {got['issued']}, {got['desk']}, "
+                 f"landed {stamped!r}, bar {got['bar']!r}; said: {got.get('told', '')[-1500:]}")
+        else:
+            want = passport.encode(receipt.apply(passport.decode(wren), stamp.decode(stamped))[0])
+            if (t["passport"] != want or t.get("tickets") or t.get("played") != [0]
+                    or t.get("previous", [None])[0] != wren or "STAMPED" not in got["bar"]):
+                fail(f"the stamp landed as {t.get('passport')}, the reference gives {want}: {t}")
+            else:
+                ok("on the platform, The Fare and Board: the pass is issued, the train boards with"
+                   " no codes to type, and the stamp lands on her as the receipt rules say")
     bad = s[:5] + ("0" if s[5] != "0" else "1") + s[6:]
     got = site("stamp", wren, bad)
     if got is None or "line 1" not in json.loads(got).get("error", ""):

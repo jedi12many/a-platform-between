@@ -15,10 +15,13 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from passport import (LINE_DATA, SYMBOLS, PassportError, crc16, line_check,  # noqa: E402
+from passport import (STAMP_LONGEST, LINE_DATA, SYMBOLS, PassportError, crc16, line_check,  # noqa: E402
                       symbols, to_bits)
 
 VERSION = 1
+
+
+RECEIPT_MAX = 8                 # entries a receipt list holds (APB_RECEIPT_MAX)
 
 
 def encode(r):
@@ -48,6 +51,8 @@ def decode(text):
         u = {"O": "0", "I": "1", "L": "1"}.get(c.upper(), c.upper())
         if u not in SYMBOLS:
             raise PassportError(f"'{c}' isn't a Travel Stamp symbol")
+        if len(values) == STAMP_LONGEST:
+            raise PassportError("the stamp is the wrong length")
         values.append(SYMBOLS.index(u))
     data = []
     for n, start in enumerate(range(0, len(values), LINE_DATA + 1), 1):
@@ -73,10 +78,18 @@ def decode(text):
     r = {"departure": get(16), "ticket": get(32), "outcome": get(1), "xp": get(16)}
     added, amount = get(1), get(16)
     r["debt_added"], r["debt_paid"] = (amount, 0) if added else (0, amount)
+    # A receipt's lists hold 8 at most (docs/boarding.md): a longer one is refused as it's
+    # read, as the C engine refuses it.
     for key in ("gained", "lost"):
-        r[key] = [get(10) for _ in range(get(4))]
+        n = get(4)
+        if n > RECEIPT_MAX:
+            raise PassportError("the stamp's checksum doesn't match")
+        r[key] = [get(10) for _ in range(n)]
     r["echoes"] = []
-    for _ in range(get(4)):
+    n = get(4)
+    if n > RECEIPT_MAX:
+        raise PassportError("the stamp's checksum doesn't match")
+    for _ in range(n):
         r["echoes"].append((get(10), get(2), get(2)))
     while pos % 8:
         if get(1):
@@ -84,7 +97,11 @@ def decode(text):
     end = pos
     stored = get(16)
     payload = bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, end, 8))
-    if stored != crc16(payload) or any(bits[pos:]) or len(bits) - pos >= 5:
+    if stored != crc16(payload):
+        raise PassportError("the stamp's checksum doesn't match")
+    if len(bits) - pos >= 5:
+        raise PassportError("the stamp is the wrong length")
+    if any(bits[pos:]):
         raise PassportError("the stamp's checksum doesn't match")
     return r
 

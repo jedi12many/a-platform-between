@@ -1,4 +1,4 @@
-* Your Passport, please: one line at a time, then a blank line.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
 < 514K6T000481026PNPNE
 * Line 2:
@@ -8,6 +8,7 @@
 * Line 4:
 < 
 Prism, Glassfolk Tinker, level 1. Debt 0.
+* That's a Passport, not a Boarding Pass: nothing you earn on this trip can be stamped.
   1) Board
   2) Start over
 > 1

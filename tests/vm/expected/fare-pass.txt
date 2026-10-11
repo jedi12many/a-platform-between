@@ -1,18 +1,18 @@
-* Your Passport, please: one line at a time, then a blank line.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
-< 4CB4W00006C101WPP9QH
+< G0000001WR80048RP9RG
 * Line 2:
-< NB400000003G074MMABZ
+< 0000CR203SDCKFAP8005
 * Line 3:
-< 50000CY1GE
+< 00000700E998MPA00076
 * Line 4:
+< PZ0K
+* Line 5:
 < 
 Fern, Rad-Dryad Channeler, level 1. Debt 0.
   1) Board
   2) Start over
 > 1
-* Your Boarding Pass, please, or a blank line to travel without one:
-< 20000001WREF0R002Y
 === The Static
 [picture 0 static]
 Static.

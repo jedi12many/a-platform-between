@@ -17,7 +17,10 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all arena cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+
+# The game's art (docs/art.md): figures, effects and tiles, as text, read by tools/art.py.
+ART := $(wildcard content/art/*.txt) tools/art.py
 
 all: test
 
@@ -50,7 +53,7 @@ build/demo.prg: demo/demo.c $(CORE_SRC) $(CORE_HDR) | build
 # The game on the Commodore 64 (docs/c64.md): the main program plus three overlays,
 # loaded from disk when the VM asks (LOAD, PASS and BATTLE), on cc65's overlay memory
 # map (fe/c64/apb.cfg). The linker fails the build if anything doesn't fit.
-C64_DEFS   := -DAPB_OVERLAYS -DAPB_FIGHT_BORROWS_CAR -DAPB_PLAY_ONLY -DAPB_VM_DEPOT_MAX=2048 -g
+C64_DEFS   := -DAPB_OVERLAYS -DAPB_FIGHT_BORROWS_CAR -DAPB_PLAY_ONLY -DAPB_FRAMED -DAPB_VM_DEPOT_MAX=2048 -g
 C64_MAIN   := fe/c64/c64.c fe/c64/split.s fe/c64/music.s fe/c64/tune.s client/cue.c vm/vm.c client/view.c \
               core/src/rng.c core/src/names.c \
               core/src/rules.c core/src/registry.c
@@ -92,7 +95,7 @@ build/the-fare.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/00-the-fare
 	python3 tools/c64pic.py disk build/c64/fare/DEPOT content/s1/00-the-fare/pictures build/c64/fare-pics
 	python3 tools/d64.py write $@ "the fare" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/bspr2=bspr2 build/c64/bgfx/font=font \
 	    $$(for f in build/c64/fare/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(python3 tools/music/musicc.py build $$(ls content/s1/00-the-fare/the-fare.music 2>/dev/null || echo tools/music/quiet.music) \
 	       -o build/c64/fare-music --c64 >&2 && echo build/c64/fare-music=music) \
@@ -110,7 +113,7 @@ build/eighteen-minutes.d64: build/c64/apb.prg build/c64/bgfx/btab content/s1/01-
 	python3 tools/c64pic.py disk build/c64/e18/DEPOT content/s1/01-eighteen-minutes/pictures build/c64/e18-pics
 	python3 tools/d64.py write $@ "eighteen minutes" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/bspr2=bspr2 build/c64/bgfx/font=font \
 	    $$(for f in build/c64/e18/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(python3 tools/music/musicc.py build $$(ls content/s1/01-eighteen-minutes/eighteen-minutes.music 2>/dev/null || echo tools/music/quiet.music) \
 	       -o build/c64/e18-music --c64 >&2 && echo build/c64/e18-music=music) \
@@ -128,7 +131,7 @@ build/deep-yards.d64: build/c64/apb.prg build/c64/bgfx/btab content/sidings/deep
 	python3 tools/c64pic.py disk build/c64/yards/DEPOT content/sidings/deep-yards/pictures build/c64/yards-pics
 	python3 tools/d64.py write $@ "the deep yards" s1 build/c64/apb.prg=apb build/c64/apb.prg.1=ovl1 \
 	    build/c64/apb.prg.2=ovl2 build/c64/apb.prg.3=ovl3 build/c64/bgfx/btab=btab \
-	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/font=font \
+	    build/c64/bgfx/bchr=bchr build/c64/bgfx/bspr=bspr build/c64/bgfx/bspr2=bspr2 build/c64/bgfx/font=font \
 	    $$(for f in build/c64/yards/*; do printf '%s=%s,s ' $$f $$(basename $$f); done) \
 	    $$(python3 tools/music/musicc.py build $$(ls content/sidings/deep-yards/deep-yards.music 2>/dev/null || echo tools/music/quiet.music) \
 	       -o build/c64/yards-music --c64 >&2 && echo build/c64/yards-music=music) \
@@ -165,6 +168,119 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 	      "overlays $$(wc -c < build/c64/apb.prg.1), $$(wc -c < build/c64/apb.prg.2)," \
 	      "$$(wc -c < build/c64/apb.prg.3))"
 
+# The cartridge (docs/cartridge.md): 6502 assembly, an EasyFlash image for a Kung Fu
+# Flash, and the same game on a disk for an SD2IEC. Modules common to both, then each one's
+# start-up; tools/crt.py makes the .crt of the linked chips.
+CART_COMMON := main assets copy split text screen view keys command password passport number name desk play \
+               depot vm expand reward rules dice party picture receipt stamp trip qr qrview combat battle fight fightext tactics tune asset0
+CART_INC    := $(wildcard cart/*.inc)
+CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
+               $(CART_INC) cart/cart.cfg cart/disk.cfg build/cart/tiles16 build/cart/font build/cart/names.s \
+               tools/crt.py tools/cart/departure.py tools/c64pic.py content/s1/00-the-fare/the-fare.qs $(FARE_PICS) \
+               fe/c64/music.s tools/music/musicc.py content/s1/00-the-fare/the-fare.music
+
+build/cart/font: tools/c64font.py tools/battlegfx.py $(ART) fe/modern/font8x8.h
+	@mkdir -p build/cart
+	python3 tools/c64font.py $@
+
+build/cart/names.s: tools/registry/registry_asm.py tools/registry/registry.py $(wildcard registry/*.txt)
+	@mkdir -p build/cart
+	python3 tools/registry/registry_asm.py $@
+
+build/cart/tiles16: tools/battlegfx.py $(ART) tools/c64pic.py $(wildcard registry/*.txt)
+	@mkdir -p build/cart
+	python3 tools/battlegfx.py build/cart/battle.bgfx --cart16 $@
+
+build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CART_DEPS) tools/d64.py \
+                                                         tests/cart/kestrel.pass tests/cart/typo.pass
+	@mkdir -p build/cart
+	python3 tools/qsc/qsc.py build content/s1/00-the-fare/the-fare.qs -o build/cart/the-fare.apd \
+	    --split build/cart/fare
+	rm -rf build/cart/assets
+	python3 tools/music/musicc.py build content/s1/00-the-fare/the-fare.music -o build/cart/the-fare.mu
+	python3 tools/cart/departure.py build/cart/fare content/s1/00-the-fare/pictures build/cart/assets 4 \
+	    build/cart/the-fare.mu
+	@for m in $(CART_COMMON) boot start diskstart diskaddr; do \
+	    ca65 -I cart --bin-include-dir build -g -o build/cart/$$m.o cart/$$m.s || exit 1; done
+	ca65 -I cart -g -o build/cart/names.o build/cart/names.s
+	ca65 -I cart -D MUSIC_CART -g -o build/cart/music.o fe/c64/music.s
+	ld65 -C cart/cart.cfg -o build/cart/apb -m build/cart/apb.map -Ln build/cart/apb.lbl \
+	    --dbgfile build/cart/apb.dbg $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) names music boot start))
+	python3 tools/crt.py build/apb.crt "A PLATFORM BETWEEN" build/cart/apb.b00:0:LH \
+	    build/cart/apb.a00:1:L build/cart/apb.a01:1:H build/cart/apb.a02:2:L build/cart/apb.a03:2:H --assets build/cart/assets
+	ld65 -C cart/disk.cfg -o build/cart/apb-disk -m build/cart/apb-disk.map -Ln build/cart/apb-disk.lbl \
+	    $(addprefix build/cart/,$(addsuffix .o,$(CART_COMMON) names music diskstart diskaddr))
+	python3 tools/d64.py write build/apb-disk.d64 "a platform" ab build/cart/apb-disk=apb \
+	    build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01 build/cart/apb-disk.a02=a02 build/cart/apb-disk.a03=a03 \
+	    $$(for f in build/cart/assets/a*.prg; do n=$$(basename $$f .prg); echo $$f=$$n; done)
+	for pass in kestrel typo; do python3 tools/d64.py write build/apb-$$pass.d64 "a platform" ab \
+	    build/cart/apb-disk=apb build/cart/apb-disk.a00=a00 build/cart/apb-disk.a01=a01 build/cart/apb-disk.a02=a02 build/cart/apb-disk.a03=a03 \
+	    tests/cart/$$pass.pass=pass \
+	    $$(for f in build/cart/assets/a*.prg; do n=$$(basename $$f .prg); echo $$f=$$n; done) \
+	    || exit 1; done
+
+cart: build/apb.crt
+	@echo "Cartridge: build/apb.crt (Kung Fu Flash, or x64sc -cartcrt build/apb.crt); disk: build/apb-disk.d64"
+
+test-cart: build/apb.crt build/the-fare.d64 build/battle
+	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
+	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
+	    > build/cart/desk.c64
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/fare-edge.choices \
+	    tests/cart/fare-edge.expected --c64 tests/c64/fare-edge.expected \
+	    --pictures content/s1/00-the-fare/pictures --shot build/cart-shot.png \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/fare-edge.choices \
+	    tests/cart/fare-edge.expected --c64 tests/c64/fare-edge.expected \
+	    --pictures content/s1/00-the-fare/pictures --shot build/cart-disk-shot.png \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/desk.choices \
+	    tests/cart/desk.expected --c64 build/cart/desk.c64 \
+	    --pictures content/s1/00-the-fare/pictures \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/desk.choices \
+	    tests/cart/desk.expected --c64 build/cart/desk.c64 \
+	    --pictures content/s1/00-the-fare/pictures \
+	    --music content/s1/00-the-fare/the-fare.music
+	(echo 1; sed -e 's/^joy fire$$//' -e 's/^joy right$$/6/' tests/cart/fare-fight.choices) \
+	    > build/cart/fight-c64.choices
+	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/fight-c64.choices \
+	    > build/cart/fight.c64
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/fare-fight.choices \
+	    tests/cart/fare-fight.expected --c64 build/cart/fight.c64 \
+	    --shot-at "[Aim: Ash rat, TN 60]" build/cart-fight-shot.png \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/fare-fight.choices \
+	    tests/cart/fare-fight.expected --c64 build/cart/fight.c64 \
+	    --music content/s1/00-the-fare/the-fare.music
+	(echo 1; head -21 tests/cart/fare-fight.choices | sed -e 's/^joy fire$$//' -e 's/^joy right$$/6/'; \
+	    echo s) > build/cart/save-c64.choices
+	printf '2\n3\n3\n1\n1\n3\n' > build/cart/resume-c64.choices    # (fare-save's, after its code)
+	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/save-c64.choices \
+	    --then build/cart/resume-c64.choices --save-to build/cart/fare.c64save > build/cart/save.c64
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/fare-save.choices \
+	    tests/cart/fare-save.expected --c64 build/cart/save.c64 \
+	    --c64-save build/cart/fare.c64save build/cart/fare \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/fare-save.choices \
+	    tests/cart/fare-save.expected --c64 build/cart/save.c64 \
+	    --c64-save build/cart/fare.c64save build/cart/fare \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/test_trips.py build/apb.crt build/cart/apb.lbl build/cart/fare --cases 40
+	python3 tests/cart/run_cart.py build/apb-kestrel.d64 build/cart/apb-disk.lbl \
+	    tests/cart/kestrel-file.choices tests/cart/kestrel-file.expected --c64-story tests/c64/fare-edge.expected \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/run_cart.py build/apb-typo.d64 build/cart/apb-disk.lbl \
+	    tests/cart/fare-edge.choices tests/cart/typo-file.expected --c64-story tests/c64/fare-edge.expected \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/test_ending.py build/apb.crt build/cart/apb.lbl --cases 40
+	cd tests/cart && python3 test_damage.py ../../build/apb.crt ../../build/cart/apb.lbl fare-edge.choices \
+	    --cases 8
+	cd tests/cart && python3 test_damage.py ../../build/apb.crt ../../build/cart/apb.lbl fare-fight.choices \
+	    --cases 6 --fights
+	python3 tests/cart/test_passwords.py build/apb.crt build/cart/apb.lbl --cases 100
+	python3 tests/cart/test_battle.py build/apb.crt build/cart/apb.lbl --cases 60
+
 clean:
 	rm -rf build
 	rm -f core/src/*.o tests/*.o demo/*.o
@@ -181,13 +297,19 @@ crosscheck: build/demo build/demo.sim
 	@echo "crosscheck: native and 6502 output identical"
 
 # The Python Passport reference must read what the C engine writes.
-test-python: build/demo
+test-python: build/demo build/passport-decode
 	./build/demo > build/demo.native.txt
 	python3 tools/passport/check_against_demo.py build/demo.native.txt
+	python3 tests/passport/check_refusals.py build/passport-decode
+	python3 tests/passport/test_trip.py
 	python3 tools/registry/test_registry.py
 	python3 tools/qsc/test_qsc.py
 	python3 tools/qsc/test_build.py
 	python3 tools/test_pictures.py
+
+# The rules core's decoder, a password a line (tests/passport/check_refusals.py).
+build/passport-decode: tests/passport/decode.c $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/passport/decode.c $(CORE_SRC)
 
 # Regenerate the C registry from registry/*.txt after editing them.
 registry:
@@ -285,10 +407,10 @@ build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(MODERN_VIEW_SRC)
 	    $(MODERN_VIEW_SRC) $(VM_SRC) $(CORE_SRC) $$(sdl2-config --libs)
 
 # The battle graphics, for every front end with graphics; the C64 has them as three files.
-build/battle.bgfx: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h | build
+build/battle.bgfx: tools/battlegfx.py $(ART) tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h | build
 	python3 tools/battlegfx.py $@
 
-build/c64/bgfx/btab: tools/battlegfx.py tools/c64font.py tools/c64pic.py $(wildcard registry/*.txt) \
+build/c64/bgfx/btab: tools/battlegfx.py $(ART) tools/c64font.py tools/c64pic.py $(wildcard registry/*.txt) \
                      fe/modern/font8x8.h
 	@mkdir -p build/c64/bgfx
 	python3 tools/battlegfx.py build/c64/battle.bgfx --c64 build/c64/bgfx
@@ -317,8 +439,21 @@ build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_
     $(wildcard content/sidings/deep-yards/deep-yards.music) tools/music/musicc.py
 	$(call modern_departure,content/sidings/deep-yards/deep-yards.qs,content/sidings/deep-yards/pictures,build/modern/deep-yards)
 
+# The playable arena (docs/arena.md, "Playing it"): ten scenarios, each a tiny Siding
+# generated by tools/arena/scenarios.py, with the page's data (who fights, what a thousand
+# fights say).
+ARENA_N := 01 02 03 04 05 06 07 08 09 10
+ARENA_DEPARTURES := $(foreach n,$(ARENA_N),build/modern/arena-$(n)/DEPOT)
+
+build/arena-play/scenarios.json: tools/arena/scenarios.py tools/arena/arena.py build/arena registry/*.txt
+	python3 tools/arena/scenarios.py build/arena-play
+	mkdir -p build/arena-play/pictures
+
+build/modern/arena-%/DEPOT: build/arena-play/scenarios.json tools/apic.py build/battle.bgfx
+	$(call modern_departure,build/arena-play/arena-$*.qs,build/arena-play/pictures,build/modern/arena-$*)
+
 MODERN_DEPARTURES := build/modern/the-fare/DEPOT build/modern/eighteen-minutes/DEPOT \
-                     build/modern/deep-yards/DEPOT
+                     build/modern/deep-yards/DEPOT $(ARENA_DEPARTURES)
 
 # The same game in a browser: WebAssembly with Emscripten (fe/modern/web.c), the page in
 # fe/modern/web/, and both Departures bundled, as apb-data.wasm (some hosts won't serve a
@@ -336,6 +471,7 @@ build/web/apb.js: fe/modern/web.c fe/modern/web/index.html waystation/site/trave
 	    $(CORE_SRC) --preload-file build/modern/the-fare@/departures/the-fare \
 	    --preload-file build/modern/eighteen-minutes@/departures/eighteen-minutes \
 	    --preload-file build/modern/deep-yards@/departures/deep-yards \
+	    $(foreach n,$(ARENA_N),--preload-file build/modern/arena-$(n)@/departures/arena-$(n)) \
 	    --exclude-file '*.apd'
 	mv build/web/apb.data build/web/apb-data.wasm
 	cp fe/modern/web/index.html build/web/index.html
@@ -347,7 +483,7 @@ web: build/web/apb.js
 # The Waystation website (W1, waystation/): static pages and the rules core as
 # WebAssembly. Serve build/waystation/ and open it.
 WS_FLAGS := -O2 -sALLOW_MEMORY_GROWTH -sEXPORTED_RUNTIME_METHODS=ccall \
-            -sEXPORTED_FUNCTIONS=_ws_traveler,_ws_create,_ws_roll,_ws_load,_ws_raise_stat,_ws_raise_skill,_ws_stamp,_ws_rules
+            -sEXPORTED_FUNCTIONS=_ws_traveler,_ws_create,_ws_roll,_ws_load,_ws_raise_stat,_ws_raise_skill,_ws_stamp,_ws_rules,_ws_issue
 
 build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) waystation/site/* \
                         waystation/registry_json.py registry/*.txt
@@ -358,14 +494,31 @@ build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) way
 
 # The site (site/, docs/waystation-web.md): the platform page, with the player's travelers,
 # and the Waystation and the train in a frame. Serve build/site/ and open it.
-build/site/index.html: site/index.html build/web/apb.js build/waystation/ws.js
+build/site/index.html: site/index.html site/arena.html build/web/apb.js build/waystation/ws.js \
+                       build/arena-play/scenarios.json
 	rm -rf build/site
-	mkdir -p build/site/play build/site/waystation
-	( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
-	  printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
-	  cat site/index.html; printf '</body></html>\n' ) > $@
+	mkdir -p build/site/play build/site/waystation build/site/arena
+	for page in index arena; do \
+	  ( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
+	    printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
+	    cat site/$$page.html; printf '</body></html>\n' ) > build/site/$$page.html; \
+	done
 	cp build/web/* build/site/play/
 	cp build/waystation/* build/site/waystation/
+	cp build/arena-play/scenarios.json build/site/arena/
+	printf '{"commit": "%s", "built": "%s"}\n' "$$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
+	    "$$(date -u +%Y-%m-%d)" > build/site/build.json
+
+# The art desk (docs/art.md): an editor for the figures, effects and tiles in a browser,
+# saving to content/art/. Open http://localhost:8064/.
+artdesk:
+	python3 tools/artdesk/serve.py
+
+# The art desk in headless Chromium, on a copy of the art: files come back untouched, each
+# edit lands as it should, the server writes nothing that breaks a rule
+# (tests/artdesk/check_artdesk.py).
+test-art:
+	NODE_PATH=$$(npm root -g) python3 tests/artdesk/check_artdesk.py
 
 site: build/site/index.html
 	@echo "The site: serve build/site/ (python3 -m http.server -d build/site) and open it"
@@ -378,6 +531,7 @@ waystation: build/waystation/ws.js
 # and stats rolled as the rules say (tests/waystation/check_site.py).
 test-waystation: build/waystation/ws.js build/site/index.html build/apb
 	NODE_PATH=$$(npm root -g) python3 tests/waystation/check_site.py
+	NODE_PATH=$$(npm root -g) python3 tests/arena/check_play.py
 
 # The desktop must play the C64's routes as the C64 does (Travel Stamps and all), and the
 # browser as the desktop does; a save survives a restart on both. Needs SDL2, Emscripten,
@@ -391,12 +545,12 @@ modern: build/apb-modern $(MODERN_DEPARTURES)
 # A recorded terminal playthrough must match its reviewed transcript. It boards with a
 # Boarding Pass (seed 1985) from tools/passport/boarding.py issue "<Kestrel's Passport>"
 # 0 1985 1985, typed loosely the way a player might. The skirmish is a recorded fight on
-# the battle screen (seed 3, no pass): the map, the roster, both menus, a "Back", a guard
+# the battle screen (seed 34, no pass): the map, the roster, both menus, a "Back", a guard
 # and its free attack, a wait, and quick.
 test-term: build/apb build/the-fare.apd build/skirmish.apd
 	./build/apb --choices tests/term/fare-edge.choices build/the-fare.apd > build/term-fare-edge.txt
 	diff tests/term/fare-edge.expected build/term-fare-edge.txt
-	./build/apb --seed 3 --choices tests/term/skirmish.choices build/skirmish.apd > build/term-skirmish.txt
+	./build/apb --seed 34 --choices tests/term/skirmish.choices build/skirmish.apd > build/term-skirmish.txt
 	diff tests/term/skirmish.expected build/term-skirmish.txt
 	@awk 'length > 40 { print FILENAME ": line over 40 columns: " $$0; bad = 1 } END { exit bad }' build/term-fare-edge.txt build/term-skirmish.txt
 	@echo "terminal: transcripts match, nothing over 40 columns"
@@ -420,9 +574,19 @@ build/attack: tests/combat/attack.c $(CORE_SRC) $(CORE_HDR) | build
 build/attack.sim: tests/combat/attack.c $(CORE_SRC) $(CORE_HDR) | build
 	$(CL65) -t sim6502 -O $(INC) -o $@ tests/combat/attack.c $(CORE_SRC)
 
-test-combat: build/attack build/attack.sim build/battle build/battle.sim build/battle.asan
+test-combat: build/attack build/attack.sim build/battle build/battle.sim build/battle.asan build/arena
 	python3 tests/combat/check_combat.py
 	python3 tests/battle/run_battles.py
+	python3 tests/arena/check_arena.py
+
+# The arena (docs/arena.md): a matchup fought many times, e.g.
+#   make arena MATCHUP=arena/party-of-four.txt
+arena: build/arena
+	python3 tools/arena/arena.py $(or $(MATCHUP),arena/warden-vs-rust-guard.txt)
+
+# The arena (docs/arena.md): many fights on the battle engine, both sides on quick.
+build/arena: tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC)
 
 # Battles: scenarios played natively and on the 6502, with the same log.
 build/battle: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
@@ -437,7 +601,7 @@ build/battle.asan: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) |
 
 # The music players (E10, docs/music.md): the Python reference, the C player (with the
 # sanitizers) and the C64's 6502 player (on py65) must write the same SID registers.
-test-music: build/music_trace build/c64/apb.prg
+test-music: build/music_trace build/c64/apb.prg build/apb.crt
 	python3 tests/music/check_music.py
 
 build/music_trace: tests/music/trace.c client/music.c client/sfx.c client/apb_music.h $(CORE_HDR) | build

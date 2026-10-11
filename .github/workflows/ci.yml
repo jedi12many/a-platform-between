@@ -1,8 +1,18 @@
 name: CI
 
+# On pull requests and on main only: work on a feature branch is checked locally (all
+# eighteen, as CLAUDE.md says) before it's pushed, and again here when it's proposed for
+# main. Actions -> CI -> Run workflow runs it on any branch by hand.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch or pull request cancels the run it makes obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   rules-core:
@@ -11,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install cc65, py65 (a 6502 emulator in Python), Pillow and numpy (C64 pictures)
-        run: sudo apt-get update && sudo apt-get install -y cc65 && python3 -m pip install --break-system-packages py65 pillow numpy
+        run: sudo apt-get update && sudo apt-get install -y cc65 && python3 -m pip install --break-system-packages py65 pillow numpy qrcode opencv-python-headless
 
       - name: Generated registry matches registry/*.txt
         run: make check-registry
@@ -61,16 +71,24 @@ jobs:
       - name: The Waystation website (made in the browser, boarded in the terminal)
         run: make test-waystation
 
+      - name: The art desk (figures and tiles edited in the browser, saved as the rules say)
+        run: make test-art
+
       - name: The Deep Yards' generator (C against the reference, PC and 6502)
         run: make test-yards
 
       - name: The music players (reference, C and 6502 write the same SID registers)
         run: make test-music
 
+      - name: The cartridge and its disk (6502 assembly, on an emulated EasyFlash and KERNAL)
+        run: make test-cart
+
       - uses: actions/upload-artifact@v4
         with:
           name: c64
           path: |
+            build/apb.crt
+            build/apb-disk.d64
             build/demo.prg
             build/the-fare.d64
             build/eighteen-minutes.d64

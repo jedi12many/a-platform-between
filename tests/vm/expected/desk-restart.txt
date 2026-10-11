@@ -1,10 +1,10 @@
-* Your Passport, please: one line at a time, then a blank line.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
 < HELLO
 * Line 2:
 < 
-* A Passport is at least 3 lines. Let's start again.
-* Your Passport, please: one line at a time, then a blank line.
+* A pass or a Passport is at least 3 lines. Let's start again.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
 < 4PB794AR0A1105AM7HDF
 * Line 2:
@@ -13,8 +13,8 @@
 < 50200810HJB
 * Line 4:
 < 
-* Every line checks out, but the Passport doesn't. Check them all.
-* Your Passport, please: one line at a time, then a blank line.
+* Every line checks out, but the whole doesn't. Check them all.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
 < 4PB794AR0A0105AM7HDT
 * Line 2:
@@ -24,10 +24,11 @@
 * Line 4:
 < 
 Kestrel, Salvaged Warden, level 1. Debt 0.
+* That's a Passport, not a Boarding Pass: nothing you earn on this trip can be stamped.
   1) Board
   2) Start over
 > 2
-* Your Passport, please: one line at a time, then a blank line.
+* Your Boarding Pass, please, one line at a time, then a blank line. (Or your Passport, to travel without one.)
 * Line 1:
 < 4PB794AR0A0105AM7HDT
 * Line 2:
@@ -37,6 +38,7 @@ Kestrel, Salvaged Warden, level 1. Debt 0.
 * Line 4:
 < 
 Kestrel, Salvaged Warden, level 1. Debt 0.
+* That's a Passport, not a Boarding Pass: nothing you earn on this trip can be stamped.
   1) Board
   2) Start over
 > 1

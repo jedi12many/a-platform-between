@@ -1,0 +1,45 @@
+name: Publish playtest
+
+# The site (platform page, Waystation, the train and the arena) to GitHub Pages, from the
+# branch it's run on. Only by hand: Actions -> Publish playtest -> Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cc65, Emscripten, Pillow and numpy
+        run: |
+          sudo apt-get update && sudo apt-get install -y cc65 emscripten
+          python3 -m pip install --break-system-packages pillow numpy
+
+      - name: Build the site (make site)
+        run: make site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

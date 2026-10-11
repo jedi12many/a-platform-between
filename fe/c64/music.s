@@ -15,11 +15,29 @@
 ;   music_ghost     the 25 SID registers, $D400-$D418
 ;
 ; It uses the zero page at $FB-$FE and $22-$23, which its callers save.
+;
+; The cartridge (docs/cartridge.md, "Music") plays the same player, assembled from this
+; file with -D MUSIC_CART: its tunes, note table, effects and state in plain RAM at
+; MUSIC_AT (cart/mem.inc, the same layout as $D800 here), its zero page its own
+; (cart/zp.inc), its code in the resident engine; it runs with $01 = $35, the I/O in.
 
         .setcpu "6502"
 
+.ifdef MUSIC_CART
+        .include "hw.inc"
+        .include "mem.inc"
+        .include "zp.inc"
+DATA     = MUSIC_AT             ; the tune file
+NOTES_LO = MUSIC_AT + $0600     ; the note table and the sound effects (cart/tune.s copies
+NOTES_HI = NOTES_LO + $60       ; them in with the tunes)
+EFFECTS  = NOTES_HI + 96
+STATE    = MUSIC_AT + $06F0
+ptr      = zp_music
+tmp      = zp_music + 2
+tmp2     = zp_music + 3
+ptr2     = zp_music + 4
+.else
 DATA     = $D800                ; the tune file
-MAXLEN   = $0600                ; 1536 bytes
 NOTES_LO = $DE00                ; the note table (fe/c64/split.s copies it in with the tunes)
 NOTES_HI = $DE60
 EFFECTS  = $DE60 + 96           ; client/sfx.c's table, 8 x 6 bytes, copied in likewise
@@ -29,6 +47,8 @@ ptr      = $FB
 tmp      = $FD
 tmp2     = $FE
 ptr2     = $22                  ; BASIC's, which is switched out; saved by the caller too
+.endif
+MAXLEN   = $0600                ; 1536 bytes
 
 FX_NONE  = 255
 STOP     = 254
@@ -123,7 +143,11 @@ mul_hi: .res 1
 mul_2:  .res 1
 mul_2hi: .res 1
 
+.ifdef MUSIC_CART
+        .segment "RESIDENT"
+.else
         .segment "CODE"
+.endif
 
 ; -------------------------------------------------------------------- init
 init:

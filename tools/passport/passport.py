@@ -39,6 +39,12 @@ class PassportError(ValueError):
     pass
 
 
+SKILLS = 12                     # the Passport's lists, at most (docs/passport-spec.md)
+POWER_SLOTS = 8
+ITEM_SLOTS = 6
+ECHO_SLOTS = 8
+
+
 def crc16(data):
     crc = 0xFFFF
     for byte in data:
@@ -65,8 +71,8 @@ def new_character():
     }
 
 
-def _payload(ch):
-    """The Passport's fields as bytes, before the CRC (docs/passport-spec.md)."""
+def field_bits(ch):
+    """The Passport's fields as bits, from its version on (docs/passport-spec.md)."""
     bits = []
 
     def put(value, n):
@@ -108,10 +114,18 @@ def _payload(ch):
     for eid, state in ch["echoes"]:
         put(eid, 10)
         put(state, 2)
+    return bits
 
-    while len(bits) % 8:
-        bits.append(0)
+
+def to_bytes(bits):
+    """Bits, padded with zeros to a whole byte, as bytes."""
+    bits = bits + [0] * (-len(bits) % 8)
     return bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, len(bits), 8))
+
+
+def _payload(ch):
+    """The Passport's fields as bytes, before the CRC."""
+    return to_bytes(field_bits(ch))
 
 
 def check(ch):
@@ -148,7 +162,14 @@ def lines(password):
     return [password[i:i + 20] for i in range(0, len(password), 20)]
 
 
-def decode(text):
+PASSPORT_LONGEST = 149          # the longest Passport any character has (and pass, stamp)
+PASS_LONGEST = 163
+STAMP_LONGEST = 84
+
+
+def read_symbols(text, what="Passport", longest=PASSPORT_LONGEST):
+    """A typed password's data bits, each line's check symbol checked. More symbols than
+    the longest there can be is the wrong length."""
     values = []
     for c in text:
         if c in " -\n\r\t":
@@ -159,7 +180,9 @@ def decode(text):
         elif u in "IL":
             u = "1"
         if u not in SYMBOLS:
-            raise PassportError(f"'{c}' isn't a Passport symbol")
+            raise PassportError(f"'{c}' isn't a {what} symbol")
+        if len(values) == longest:
+            raise PassportError("wrong length")
         values.append(SYMBOLS.index(u))
 
     data = []
@@ -170,9 +193,16 @@ def decode(text):
         if line_check(line[:-1]) != line[-1]:
             raise PassportError(f"line {n} has a typo")
         data.extend(line[:-1])
+    return [(v >> (4 - i)) & 1 for v in data for i in range(5)]
 
-    bits = [(v >> (4 - i)) & 1 for v in data for i in range(5)]
-    pos = 0
+
+def decode(text):
+    return read_character(read_symbols(text), 0)
+
+
+def read_character(bits, pos):
+    """The character from `bits[pos:]` (its version, its fields), then the CRC-16 over
+    every byte of `bits` before it."""
 
     def get(n):
         nonlocal pos
@@ -197,19 +227,40 @@ def decode(text):
     ch["flags"] = get(7)
     tags = get(12)
     ch["tags"] = [s for s in range(12) if tags >> s & 1]
-    for _ in range(get(4)):
+    # The lists hold only what a character can have (docs/passport-spec.md, "What's
+    # refused"): reading stops at the first rule broken, as the C engine's does, and the
+    # Passport is refused; the numbers in range are checked after the checksum.
+    def refuse(broken):
+        if broken:
+            raise PassportError("checksum doesn't match")
+
+    n = get(4)
+    refuse(n > SKILLS)
+    for _ in range(n):
         s = get(4)
+        refuse(s >= SKILLS or s in ch["training"])
         ch["training"][s] = get(7)
-    for _ in range(get(4)):
+        refuse(ch["training"][s] == 0)
+    n = get(4)
+    refuse(n > POWER_SLOTS)
+    for _ in range(n):
         pid = get(8)
         ch["powers"].append((pid, get(7)))
+        refuse(pid == 0)
     for key in ("equipped", "pack"):
-        for _ in range(get(3)):
+        n = get(3)
+        refuse(n > ITEM_SLOTS)
+        for _ in range(n):
             slot = get(3)
+            refuse(slot >= ITEM_SLOTS or slot in ch[key])
             ch[key][slot] = get(10)
-    for _ in range(get(4)):
+            refuse(ch[key][slot] == 0)
+    n = get(4)
+    refuse(n > ECHO_SLOTS)
+    for _ in range(n):
         eid = get(10)
         ch["echoes"].append((eid, get(2)))
+        refuse(eid == 0)
 
     while pos % 8:
         if get(1):
@@ -217,8 +268,15 @@ def decode(text):
     payload_end = pos
     stored = get(16)
     payload = bytes(int("".join(map(str, bits[i:i + 8])), 2) for i in range(0, payload_end, 8))
-    if stored != crc16(payload) or any(bits[pos:]) or len(bits) - pos >= 5:
+    if stored != crc16(payload):
         raise PassportError("checksum doesn't match")
+    if len(bits) - pos >= 5:
+        raise PassportError("wrong length")
+    if any(bits[pos:]):
+        raise PassportError("checksum doesn't match")
+    refuse(not 1 <= ch["level"] <= 100 or ch["xp"] >= 100
+           or any(v > 100 for v in ch["stats"]) or any(v > 100 for v in ch["training"].values())
+           or any(rank > 100 for _, rank in ch["powers"]))
     return ch
 
 

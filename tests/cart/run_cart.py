@@ -1,0 +1,1092 @@
+"""Play the cartridge, or its disk, without a C64 (docs/cartridge.md, "Building and testing").
+
+    python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--c64 TRANSCRIPT]
+                                   [--c64-story TRANSCRIPT] [--c64-save SAVE DEPARTURE]
+                                   [--pictures DIR] [--shot FILE.png]
+                                   [--shot-at RECORD FILE.png] [--music FILE.music]
+                                   [--update]
+
+IMAGE is the EasyFlash cartridge (build/apb.crt) or the disk (build/apb-disk.d64); LABELS
+the linker's label file (ld65 -Ln). The machine code runs on a 6502 emulator (py65), with
+the C64 around it played in Python:
+
+- the memory as the C64's PLA maps it, from the CPU's port ($00/$01) and, with the
+  cartridge, the EasyFlash's mode ($DE02) and bank ($DE00): Ultimax at power-on (bank 0's
+  ROMH at $E000, the reset vector), then 16 KB (ROML at $8000, ROMH at $A000) while
+  LORAM and HIRAM say so; the I/O apart from the RAM under it; the EasyFlash's RAM at
+  $DF00. A read of a ROM the game should never read (the KERNAL, BASIC, the character
+  ROM) stops the run;
+- the raster: 63 cycles a line, 312 lines a frame, PAL. Each register access happens on
+  its instruction's last cycle, as the 6502's absolute loads and stores do; the raster
+  interrupt comes at the start of $D012's line, after the instruction that's running, 7
+  cycles to get in, through the 6502's vector in RAM, or, while the KERNAL is in, through
+  the KERNAL's own handler (A, X and Y pushed, 29 cycles) and $0314. Bad lines and
+  sprites' cycles aren't played: the split's lines (176-178) have neither;
+- the disk: the program APB loaded at its address and started at disk_start (as RUN
+  would), and the KERNAL's SETNAM, SETLFS and LOAD answered from the .d64; and OPEN,
+  CHKIN, CHRIN, READST, CLRCHN and CLOSE for a file read a byte at a time (a missing
+  one gives the drive's error, status $42). A load takes its time all at once, so the
+  frame it ends in isn't held to the split's timing (on a
+  real C64 the KERNAL's serial routines hold interrupts off at times too).
+
+- the keyboard: CIA 1's matrix, as the C64's is wired (port A's bit selects a row, port B
+  reads its columns, SHIFT where it is), each key held down for two frames and let go
+  for two. Keys come from CHOICES, one line an answer, as the C64's tests have them:
+  each time the game waits for a key (key_wait), the command row says what for: at
+  "-- more --" a space, without using a line; at "> " (a line to type) the whole line and
+  RETURN; at anything else (a menu, a fight) the line's first character, or RETURN for
+  an empty line;
+- the joystick in port 2: a line "joy right" (up, down, left, right, the diagonals as
+  "up left", and fire) pushes it for two frames, read on CIA 1's port A;
+- a line "[switch off]" turns the machine off and on again: its RAM and chips cleared,
+  the game started cold (a trip saved as a trip code, picked up again).
+
+The transcript is the story log's bottom row, read each time it scrolls (log_newline), and
+each record (record_line: a roll, a picture, a tune). It must match EXPECTED (--update
+writes it: read the diff); with --c64, it must also tell the story the C64 version's
+TRANSCRIPT tells (tests/c64/run_c64.py's), from the boarding desk to the trip's end (a
+trip saved and picked up, as the C64 saves it: as_the_c64_saves); with --c64-save, the
+trip code it showed must be the one tools/passport/trip.py makes of the C64's SAVE at the
+same menu, for DEPARTURE (its split files). The
+run ends when CHOICES does, and checks: every change to the frames' registers lands between
+line 178's last character and line 179's fetch of row 16 (cycles 56 of line 178 to 11 of
+line 179), and the view's in the bottom border; the font, the map's characters and tiles
+are where they go (against tools/c64font.py and tools/battlegfx.py's files); the view
+shows the map; the figures' sprites never reach the split's lines; the frames have their
+line, the party (its health as the rules and the fights' words leave it), the last roll
+in the dice log; every paragraph of the transcript (a typed line's echo aside) is word-wrapped at 25 columns as docs/frames.md says (wrapped again here, it
+comes out the same); and no row went off the top of the log unread (never more than 8
+rows printed between keys). --shot saves the screen at the end as the VIC-II would show it
+(tools/vic.py), sprites and all; --shot-at RECORD FILE, when that record ("[Aim: Ash rat,
+TN 60]") is made.
+"""
+
+import os
+import re
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, "tools"))
+import crt  # noqa: E402
+import d64  # noqa: E402
+
+from py65.devices.mpu6502 import MPU  # noqa: E402
+from py65.memory import ObservableMemory  # noqa: E402
+
+LINE = 63
+LINES = 312
+FRAME = LINE * LINES
+SPLIT_FIRST = (178, 56)             # the frames' registers change in here...
+SPLIT_LAST = (179, 11)              # ...and no later (line 179's bad line stops the 6502)
+
+TEXT, VIEW, CHARS, FONT, STAGING = 0xC000, 0xC400, 0xC800, 0xD000, 0x8000
+MEM_FRAMES, MEM_VIEW, MEM_PICTURE = 0x04, 0x12, 0x18
+BITMAP, PICTURE_TOP = 0xE000, 2         # a picture: the bitmap, its first row in the view
+QR_MATRIX = 0x0400                      # qr.s's modules (cart/mem.inc)
+LOG_TOP, LOG_ROWS, LOG_COLS = 16, 8, 25
+
+failures = 0
+
+# The C64's keyboard: MATRIX[row][column], row the bit of $DC00 written 0, column the bit of
+# $DC01 read 0 (the C64 Programmer's Reference Guide's table). SHIFT is the left one.
+MATRIX = [
+    ["DEL", "RETURN", "RIGHT", "F7", "F1", "F3", "F5", "DOWN"],
+    ["3", "w", "a", "4", "z", "s", "e", "LSHIFT"],
+    ["5", "r", "d", "6", "c", "f", "t", "x"],
+    ["7", "y", "g", "8", "b", "h", "u", "v"],
+    ["9", "i", "j", "0", "m", "k", "o", "n"],
+    ["+", "p", "l", "-", ".", ":", "@", ","],
+    ["POUND", "*", ";", "HOME", "RSHIFT", "=", "^", "/"],
+    ["1", "LEFTARROW", "CTRL", "2", " ", "C=", "q", "STOP"],
+]
+SHIFTED = {"!": "1", '"': "2", "#": "3", "$": "4", "%": "5", "&": "6", "'": "7", "(": "8",
+           ")": "9", "<": ",", ">": ".", "?": "/", "[": ":", "]": ";"}
+LSHIFT = (1, 7)
+
+
+# A choices line "joy DIRECTION" pushes the joystick in port 2 (its lines on CIA 1's port A
+# pulled low) for two frames.
+STICK = {"up": 1, "down": 2, "left": 4, "right": 8, "fire": 16, "up left": 5, "up right": 9,
+         "down left": 6, "down right": 10}
+
+
+def key_of(ch):
+    """The matrix positions to hold down for an ASCII character (or "RETURN")."""
+    shift = False
+    if ch in SHIFTED:
+        ch, shift = SHIFTED[ch], True
+    elif len(ch) == 1 and ch.isupper():
+        ch, shift = ch.lower(), True
+    for r, row in enumerate(MATRIX):
+        if ch in row:
+            return [(r, row.index(ch))] + ([LSHIFT] if shift else [])
+    raise ValueError(f"no key for {ch!r}")
+
+
+def fail(msg):
+    global failures
+    failures += 1
+    print("FAIL:", msg)
+
+
+def ok(msg):
+    print("ok  ", msg)
+
+
+def labels(path):
+    """The linker's labels, by name. A name two modules both have for different addresses
+    (a local `health` in each) is left out, so a test that reads one fails, rather than
+    reading the wrong one."""
+    out, twice = {}, set()
+    for line in open(path):
+        parts = line.split()
+        if len(parts) == 3 and parts[0] == "al":
+            name, at = parts[2].lstrip("."), int(parts[1], 16)
+            if out.get(name, at) != at:
+                twice.add(name)
+            out[name] = at
+    for name in twice:
+        del out[name]
+    return out
+
+
+def screen_ascii(code):
+    """Our font's screen code (tools/c64font.py), as ASCII; the frames' glyphs as #, -, =."""
+    code &= 0x7F
+    if code == 0:
+        return "@"
+    if 1 <= code <= 26:
+        return chr(code + 0x60)
+    if 27 <= code <= 31:
+        return chr(code + 0x40)
+    if 32 <= code <= 63 or 65 <= code <= 90:
+        return chr(code)
+    if code == 64:
+        return "`"
+    if 91 <= code <= 94:
+        return chr(code + 0x20)
+    return {0x60: "|", 0x61: "-", 0x62: "=", 0x63: "#"}.get(code, "?")
+
+
+def wrap(text, width):
+    """The story log's rows (docs/frames.md): a word that doesn't fit goes to the next row,
+    one longer than a row is cut; a space between words only where it fits; a newline
+    ends the row. The last row is the one the cursor is on."""
+    rows, row = [], ""
+    i = 0
+    while i < len(text):
+        c = text[i]
+        if c == " ":
+            i += 1
+            continue
+        if c == "\n":
+            rows.append(row)
+            row = ""
+            i += 1
+            continue
+        j = i
+        while j < len(text) and text[j] not in " \n" and j - i < width:
+            j += 1
+        word = text[i:j]
+        if row and len(row) + 1 + len(word) <= width:
+            row += " " + word
+        elif row:
+            rows.append(row)
+            row = word
+        else:
+            row = word
+        i = j
+    return rows + [row]
+
+
+OFF = "[switched off and on again]"       # a choices line "[switch off]" does it
+
+
+class C64:
+    def __init__(self, image, syms):
+        self.syms = syms
+        self.mem = ObservableMemory()
+        self.ram = self.mem._subject
+        self.io = bytearray(0x1000)
+        self.mpu = MPU(memory=self.mem)
+        self.chips, self.files = {}, {}
+        self.mode = None                    # the EasyFlash's ($DE02), or None: no cartridge
+        self.bank = 0
+        self.start = self.op = 0            # the instruction running: its first cycle, opcode
+        self.line = 0
+        self.writes = []                    # (register, value, cycle) of the VIC's
+        self.loads = []
+        self.held = []                      # matrix positions down now
+        self.presses = []                   # [(positions, first frame, last frame)]
+        self.stick = []                     # [(port 2's bits, first frame, last frame)]
+        self.music_cmds = []                # [(cycle, command, argument)] to the player
+        self.ghosts = []                    # [(cycle, its 25 registers)], a frame each
+        self.lines = []                     # the transcript
+        self.ended_rows = []                # each line: True if the text ended it (None: a
+                                            # record)
+        self.choices = []
+        self.printed = 0                    # rows into the log since the last key wait
+        self.most_printed = 0
+        self.mores = 0
+        self.ended = None
+        self.desk_view = None               # the view's screen and colours at the first key
+        self.load_spans = []                # (first, last cycle) of each KERNAL load
+        self.switched = []                  # the cycle of each switch-off
+        self.saved_qrs = []                 # (a trip code shown, its QR code's problems)
+        if image[:16] == b"C64 CARTRIDGE   ":
+            self.chips, kind = crt.read_bytes(image)
+            if kind != crt.EASYFLASH:
+                raise RuntimeError(f"cartridge type {kind}, not an EasyFlash")
+            self.mode = 5
+        else:
+            self.files = {n: data for n, (_, data) in d64.read_files(image).items()}
+        self.mem.subscribe_to_read(range(0x8000, 0xC000), self.read_cart)
+        self.mem.subscribe_to_read(range(0xD000, 0xE000), self.read_io)
+        self.mem.subscribe_to_read(range(0xE000, 0x10000), self.read_high)
+        self.mem.subscribe_to_write(range(0xD000, 0xE000), self.write_io)
+
+    # ------------------------------------------------------------- the memory map
+
+    def port(self):
+        ddr, port = self.ram[0], self.ram[1]
+        return ((port & ddr) | (~ddr & 0xFF)) & 7
+
+    def ultimax(self):
+        return self.mode == 5
+
+    def io_in(self):
+        p = self.port()
+        return self.ultimax() or (p & 3 and p & 4)
+
+    def kernal_in(self):
+        return not self.ultimax() and self.port() & 2
+
+    def chip(self, half, offset):
+        data = self.chips.get((self.bank, half))
+        return data[offset] if data else 0xFF
+
+    def read_cart(self, a):
+        p = self.port()
+        if self.mode in (5, 6, 7) and (self.ultimax() or p & 3 == 3) and a < 0xA000:
+            return self.chip("L", a - 0x8000)
+        if a >= 0xA000:
+            if self.mode == 7 and p & 2:
+                return self.chip("H", a - 0xA000)
+            if self.mode in (None, 4, 6) and p & 3 == 3:
+                raise RuntimeError(f"read ${a:04X}: BASIC's ROM")
+        return None
+
+    def read_high(self, a):
+        if self.ultimax():
+            return self.chip("H", a - 0xE000)
+        if self.kernal_in() and not self.kernal_call:
+            raise RuntimeError(f"read ${a:04X}: the KERNAL's ROM (pc ${self.mpu.pc:04X})")
+        return None
+
+    def in_irq(self):
+        """The running instruction is the raster interrupt's (split.s: irq_ram to nmi)."""
+        return self.syms["irq_ram"] <= self.pc0 <= self.syms["nmi"]
+
+    pc0 = 0
+
+    def access(self):
+        """The cycle the running instruction reads or writes on: its last."""
+        return self.start + self.mpu.cycletime[self.op] - 1
+
+    def read_io(self, a):
+        if not self.io_in():
+            if self.port() & 3:
+                raise RuntimeError(f"read ${a:04X}: the character ROM")
+            return None
+        i = a - 0xD000
+        if a == 0xD012:
+            return (self.access() // LINE) % LINES & 0xFF
+        if a == 0xD011:
+            return (self.io[i] & 0x7F) | (((self.access() // LINE) % LINES) >> 8) << 7
+        if a == 0xDC01:                                     # the columns of the rows selected
+            frame = self.access() // FRAME
+            rows = ~self.io[0xC00] & 0xFF
+            value = 0xFF
+            for keys, first, last in self.presses:
+                if first <= frame <= last:
+                    for r, col in keys:
+                        if rows >> r & 1:
+                            value &= ~(1 << col) & 0xFF
+            return value
+        if a == 0xDC00:                                     # the joystick in port 2
+            frame = self.access() // FRAME
+            value = 0xFF
+            for bits, first, last in self.stick:
+                if first <= frame <= last:
+                    value &= ~bits & 0xFF
+            return value
+        return self.io[i]
+
+    def write_io(self, a, v):
+        if not self.io_in():
+            return None                                     # the RAM under it
+        i = a - 0xD000
+        if a == 0xD019:
+            self.io[i] &= ~v & 0xFF
+        elif a == 0xDE00 and self.mode is not None:
+            self.bank = v & 0x3F
+        elif a == 0xDE02 and self.mode is not None:
+            self.mode = v & 7 if v & 4 else 5
+        else:
+            self.io[i] = v
+        if a in (0xD011, 0xD016, 0xD018, 0xD021) and self.in_irq():
+            self.writes.append((a, v, self.access()))
+        return self.ram[a]                                  # the RAM keeps its own
+
+    # ------------------------------------------------------------- the raster
+
+    def raster(self):
+        m = self.mpu
+        line = (m.processorCycles // LINE) % LINES
+        if line != self.line:
+            target = self.io[0x12] | (self.io[0x11] & 0x80) << 1
+            while self.line != line:
+                self.line = (self.line + 1) % LINES
+                if self.line == target:
+                    self.io[0x19] |= 0x81
+        if self.io[0x19] & self.io[0x1A] & 1 and not m.p & m.INTERRUPT:
+            pc = m.pc
+            for b in (pc >> 8, pc & 0xFF, (m.p & ~m.BREAK) | m.UNUSED):
+                self.ram[0x100 + m.sp] = b
+                m.sp = (m.sp - 1) & 0xFF
+            m.p |= m.INTERRUPT
+            m.processorCycles += 7
+            if self.ultimax():
+                m.pc = self.chip("H", 0x1FFE) | self.chip("H", 0x1FFF) << 8
+            elif self.kernal_in():                          # the KERNAL's handler: A, X, Y
+                for b in (m.a, m.x, m.y):
+                    self.ram[0x100 + m.sp] = b
+                    m.sp = (m.sp - 1) & 0xFF
+                m.processorCycles += 29
+                m.pc = self.ram[0x314] | self.ram[0x315] << 8
+            else:
+                m.pc = self.ram[0xFFFE] | self.ram[0xFFFF] << 8
+
+    # ------------------------------------------------------------- the KERNAL (disks)
+
+    kernal_call = False
+
+    def kernal(self, pc):
+        m = self.mpu
+        if pc == 0xFFBA:                                    # SETLFS
+            self.lfs = (m.a, m.x, m.y)
+        elif pc == 0xFFBD:                                  # SETNAM
+            at = m.x | (m.y << 8)
+            self.name = d64.ascii_name(bytes(self.ram[at + i] for i in range(m.a)))
+        elif pc == 0xFFD5:                                  # LOAD, to X/Y with SA 0
+            data = self.files.get(self.name)
+            if data is None or len(data) < 2:
+                m.a = 4
+                m.p |= m.CARRY
+            else:
+                at = data[0] | data[1] << 8 if self.lfs[2] else m.x | (m.y << 8)
+                for i, b in enumerate(data[2:]):
+                    self.ram[at + i] = b
+                self.loads.append(self.name)
+                start = m.processorCycles
+                m.processorCycles += 20 * len(data)         # (it takes its time)
+                self.load_spans.append((start, m.processorCycles))
+                m.p &= ~m.CARRY
+        elif pc == 0xFFC0:                                  # OPEN: a file to read
+            data = self.files.get(self.name.split(",")[0])
+            self.reading = list(data) if data else None     # (its bytes, raw)
+            self.status = 0
+            m.p &= ~m.CARRY
+        elif pc in (0xFFC6, 0xFFCC, 0xFFC3):                # CHKIN, CLRCHN, CLOSE
+            m.p &= ~m.CARRY
+        elif pc == 0xFFCF:                                  # CHRIN
+            if not self.reading:                            # no file: the drive's error
+                m.a, self.status = 0x0D, 0x42
+            else:
+                m.a = self.reading.pop(0)
+                self.status = 0x40 if not self.reading else 0
+        elif pc == 0xFFB7:                                  # READST
+            m.a = self.status
+        else:
+            raise RuntimeError(f"the program called ${pc:04X} in the KERNAL, not emulated")
+        lo = self.ram[0x100 + ((m.sp + 1) & 0xFF)]
+        hi = self.ram[0x100 + ((m.sp + 2) & 0xFF)]
+        m.sp = (m.sp + 2) & 0xFF
+        m.pc = ((hi << 8) | lo) + 1
+
+    # ------------------------------------------------------------- running
+
+    def boot(self):
+        m = self.mpu
+        if self.mode is not None:                           # power-on, Ultimax
+            m.pc = self.chip("H", 0x1FFC) | self.chip("H", 0x1FFD) << 8
+            return
+        prg = self.files["apb"]
+        at = prg[0] | prg[1] << 8
+        for i, b in enumerate(prg[2:]):
+            self.ram[at + i] = b
+        self.ram[0], self.ram[1] = 0x2F, 0x37
+        self.ram[0xBA] = 8
+        m.sp = 0xF6
+        m.pc = self.syms["disk_start"]
+
+    def switch_off(self):
+        """The machine off and on again: its RAM and chips cleared, the cartridge at bank
+        0, Ultimax (or the disk's program loaded again), and the game started from cold."""
+        for i in range(0x10000):
+            self.ram[i] = 0
+        self.io[:] = bytes(len(self.io))
+        if self.mode is not None:
+            self.mode, self.bank = 5, 0
+        m = self.mpu
+        m.a = m.x = m.y = 0
+        m.sp, m.p = 0xFF, m.BREAK | m.UNUSED | m.INTERRUPT
+        self.held, self.presses, self.stick = [], [], []
+        self.lines.append(OFF)
+        self.ended_rows.append(None)
+        self.switched.append(self.mpu.processorCycles)
+        self.printed = 0
+        self.boot()
+
+    def row23(self):
+        return self.screen(TEXT, 23, LOG_COLS).rstrip()
+
+    def command_row(self):
+        return self.screen(TEXT, 24).rstrip()
+
+    def answer(self):
+        """The keys for what the game waits for now (the command row says), pressed from
+        the next frame on: each held two frames, let go two."""
+        row = self.command_row()
+        if self.desk_view is None:                          # the view at the desk: the map
+            self.desk_view = (bytes(self.ram[VIEW:VIEW + 640]), bytes(self.io[0x800:0x800 + 640]))
+        self.most_printed = max(self.most_printed, self.printed)
+        if self.lines and self.lines[-1] == "(press a key)" and saved_code(self.lines[-12:]):
+            code = saved_code(self.lines[-12:])             # a trip saved: its QR code, now
+            if len(code) <= 114 and code not in [k for k, _ in self.saved_qrs]:
+                self.saved_qrs.append((code, qr_problems(self, code)))
+        if row.endswith("-- more --"):
+            keys = [" "]
+            self.mores += 1
+        else:
+            if not self.choices:
+                self.ended = "[end of input]"
+                return
+            line = self.choices.pop(0)
+            if line == "[switch off]":                      # off, and on again: a cold start
+                self.switch_off()
+                return
+            keys = list(line) + ["RETURN"] if row.startswith(">") else [line[:1] or "RETURN"]
+            if line.startswith("joy "):                     # the joystick, pushed a moment
+                frame = self.mpu.processorCycles // FRAME + 1
+                self.stick.append((STICK[line[4:]], frame, frame + 1))
+                self.answer_until = (frame + 4) * FRAME
+                self.printed = 0
+                return
+        self.printed = 0
+        frame = self.mpu.processorCycles // FRAME + 1
+        for k in keys:
+            self.presses.append((key_of(k), frame, frame + 1))
+            frame += 4
+        self.answer_until = frame * FRAME
+
+    answer_until = 0
+    shot_at = None
+    lowest_sprite = 0                   # the lowest line a sprite was shown on (at a key)
+    sprites_shown = 0
+
+    def sprites_seen(self):
+        """The sprites on now: none may reach the split's lines (split.s: a sprite there
+        would take its cycles), 176 at most for its last line."""
+        for n in range(8):
+            if self.io[0x15] >> n & 1:
+                self.sprites_shown += 1
+                self.lowest_sprite = max(self.lowest_sprite, self.io[2 * n + 1] + 21)
+
+    def run(self, max_frames=3000):
+        m = self.mpu
+        wait, wait_end = self.syms["key_wait"], self.syms["log_more"]
+        newline = self.syms["log_newline"]
+        command, ticked = self.syms.get("music_command"), self.syms.get("tune_ticked")
+        while not self.ended:
+            pc = m.pc
+            if pc == command:                               # the music player, told to
+                self.music_cmds.append((m.processorCycles, m.a, m.x))
+            elif pc == ticked:                              # a frame played: its registers
+                g = self.syms["music_ghost"]
+                self.ghosts.append((m.processorCycles, bytes(self.ram[g:g + 25])))
+            if wait <= pc < wait_end and m.processorCycles >= self.answer_until:
+                self.sprites_seen()
+                self.answer()                               # (key_wait, waiting)
+            elif pc == self.syms["record_line"]:          # a record: A/X
+                at = m.a | m.x << 8
+                text = bytearray()
+                while self.ram[at] and len(text) < 80:
+                    text.append(self.ram[at])
+                    at += 1
+                self.lines.append(text.decode("ascii", "replace"))
+                self.ended_rows.append(None)                # (not a row of the log)
+                if self.shot_at and self.lines[-1] == self.shot_at[0]:
+                    shot(self, self.shot_at[1])
+                    self.shot_at = None
+            elif pc == newline:
+                self.lines.append(self.row23())
+                # Did the text end the row (a newline in it), or did it wrap? log_print's
+                # pointer is at the newline then (zp_text_ptr, $10).
+                at = self.ram[0x10] | self.ram[0x11] << 8
+                self.ended_rows.append(self.ram[at] == 10)
+                self.printed += 1
+            if m.processorCycles > max_frames * FRAME:
+                self.ended = f"[still running after {max_frames} frames]"
+            if pc >= 0xE000 and self.kernal_in():
+                self.kernal(pc)
+                continue
+            self.start, self.op, self.pc0 = m.processorCycles, self.mem[pc], pc
+            m.step()
+            self.raster()
+        return self.ended
+
+    def screen(self, base, row, n=40, at=0):
+        return "".join(screen_ascii(self.ram[base + row * 40 + at + i]) for i in range(n))
+
+
+def shot(c, path):
+    import vic
+    from PIL import Image
+    import c64pic
+    io = c.io
+    scr = vic.Screen(bytes(c.ram[CHARS:CHARS + 2048]), io[0x21] & 15, io[0x22] & 15,
+                     io[0x23] & 15, io[0x25] & 15, io[0x26] & 15)
+    for i in range(1000):
+        if i < 640:
+            scr.put(i % 40, i // 40, c.ram[VIEW + i], io[0x800 + i] & 15)
+        else:
+            scr.put(i % 40, i // 40, 0, 0)
+    for n in reversed(range(8)):                            # the sprites: 0 on top
+        if io[0x15] >> n & 1:
+            x = io[2 * n] | (io[0x10] >> n & 1) << 8
+            at = 0xC000 + c.ram[VIEW + 0x3F8 + n] * 64
+            scr.sprite(x - 24, io[2 * n + 1] - 50, bytes(c.ram[at:at + 63]), io[0x27 + n] & 15,
+                       io[0x1C] >> n & 1)
+    img = scr.image()
+    if view_regs(c)[0] == MEM_PICTURE:                     # a bitmap: a picture, a code
+        img.paste(view_image(c), (0, 0))
+    font = bytes(c.ram[FONT:FONT + 2048])
+    for row in range(16, 25):
+        for x in range(40):
+            code = c.ram[TEXT + row * 40 + x]
+            ink = c64pic.PALETTE[io[0x800 + row * 40 + x] & 15]
+            for y in range(8):
+                bits = font[code * 8 + y]
+                for dx in range(8):
+                    img.putpixel((x * 8 + dx, row * 8 + y), ink if bits >> (7 - dx) & 1 else (0, 0, 0))
+    framed = Image.new("RGB", (384, 264), vic.PALETTE[io[0x20] & 15])
+    framed.paste(img, (32, 32))
+    framed.resize((768, 528), Image.NEAREST).save(path)
+
+
+def view_regs(c):
+    """The view's registers as line 250 last set them: $D018, $D011, $D021 (and $D016,
+    for a fourth)."""
+    last = {}
+    for a, v, cyc in c.writes:
+        if 245 <= (cyc // LINE) % LINES <= 260:
+            last[a] = v
+    return last.get(0xD018), last.get(0xD011), last.get(0xD021), last.get(0xD016)
+
+
+def scan(gray):
+    """A QR code's text, read off an image (8-bit grey) by OpenCV: its standard detector,
+    or, if that finds nothing, its second (Aruco), which reads some codes the first
+    misses even drawn by the qrcode library itself."""
+    import cv2
+    big = cv2.resize(gray, None, fx=4, fy=4, interpolation=cv2.INTER_NEAREST)
+    return cv2.QRCodeDetector().detectAndDecode(big)[0] or \
+        cv2.QRCodeDetectorAruco().detectAndDecode(big)[0]
+
+
+def view_image(c):
+    """The view (rows 0-15) as the VIC shows a bitmap there: 320 x 128 RGB, multicolour
+    or hires as $D016 says."""
+    import c64pic
+    from PIL import Image
+    mem, ctrl1, back, ctrl2 = view_regs(c)
+    img = Image.new("RGB", (320, 128))
+    for cell in range(640):
+        cy, cx = divmod(cell, 40)
+        both = c.ram[VIEW + cell]
+        for y in range(8):
+            b = c.ram[BITMAP + cy * 320 + cx * 8 + y]
+            if ctrl2 is not None and not ctrl2 & 0x10:             # hires
+                for x in range(8):
+                    ink = both >> 4 if b >> (7 - x) & 1 else both & 15
+                    img.putpixel((cx * 8 + x, cy * 8 + y), c64pic.PALETTE[ink])
+                continue
+            options = [back & 15, both >> 4, both & 15, c.io[0x800 + cell] & 15]
+            for x in range(4):
+                ink = c64pic.PALETTE[options[(b >> (6 - 2 * x)) & 3]]
+                img.putpixel((cx * 8 + x * 2, cy * 8 + y), ink)
+                img.putpixel((cx * 8 + x * 2 + 1, cy * 8 + y), ink)
+    return img
+
+
+def qr_problems(c, text):
+    """What's wrong with the QR code in the view, for this text: its modules (qr.s's, at
+    QR_MATRIX) must be the qrcode library's for the same text, alphanumeric, level L, mask
+    0, the smallest version; the view hires, the code black on white; and OpenCV, reading
+    the view as the VIC shows it, must get the text back. (Not segno: it puts a zero byte
+    after the data the standard doesn't, when the terminator ends on a byte.) After: the
+    problems, the version, the modules a side; or None if it can't be checked."""
+    try:
+        import qrcode
+        import cv2  # noqa: F401
+        import numpy
+    except ImportError as e:
+        fail(f"the QR code can't be checked without {e.name} (pip install qrcode "
+             f"opencv-python-headless)")
+        return None
+    version = next(v for v, top in ((1, 25), (2, 47), (3, 77), (4, 114)) if len(text) <= top)
+    qr = qrcode.QRCode(version=version, error_correction=qrcode.constants.ERROR_CORRECT_L,
+                       mask_pattern=0, border=0)
+    qr.add_data(qrcode.util.QRData(text, mode=qrcode.util.MODE_ALPHA_NUM))
+    qr.make(fit=False)
+    want = [[1 if v else 0 for v in row] for row in qr.get_matrix()]
+    size = c.ram[c.syms["qr_size"]]
+    got = [[c.ram[QR_MATRIX + y * size + x] & 1 for x in range(size)] for y in range(size)]
+    problems = []
+    if size != len(want) or got != want:
+        diff = sum(a != b for ra, rb in zip(got, want) for a, b in zip(ra, rb))
+        problems.append(f"its modules aren't qrcode's ({size} a side, qrcode's "
+                        f"{len(want)}; {diff} differ)")
+    if view_regs(c) != (MEM_PICTURE, 0x3B, 0, 0x08):
+        problems.append(f"the view's registers {view_regs(c)}, not a hires bitmap")
+    read = scan(numpy.array(view_image(c).convert("L")))
+    if read != text:
+        problems.append(f"scanned, it reads {read!r}")
+    return problems, version, size
+
+
+def check_qr(c, what):
+    """The trip's end: the Travel Stamp the log shows is the QR code in the view
+    (qr_problems)."""
+    text = " ".join(c.lines)
+    after = text[text.index("Your Travel Stamp."):]
+    at = max(i for i, ln in enumerate(c.lines) if ln.endswith("Passport:")) + 2
+    stamp = ""                                              # its lines, after a blank
+    while at < len(c.lines) and c.lines[at].startswith("  "):
+        stamp += c.lines[at].strip()
+        at += 1
+    checked = qr_problems(c, stamp)
+    if checked is None:
+        return
+    problems, version, size = checked
+    if problems or "Waystation" not in after:
+        fail(f"{what}: the QR code of {stamp!r}: {'; '.join(problems)}")
+    else:
+        ok(f"{what}: the Travel Stamp's QR code, version {version}, {size} modules a side: "
+           f"the qrcode library's, module for module; scanned off the screen, it reads {stamp}")
+
+
+def saved_code(lines):
+    """The trip code the log shows last (cart/trip.s): its lines after "...this code:"."""
+    k = max((i for i, ln in enumerate(lines) if ln.endswith("this code:")), default=None)
+    if k is None:
+        return None
+    code = ""
+    for ln in lines[k + 1:]:
+        if ln == "(press a key)":
+            return code
+        code += ln
+    return None
+
+
+def check_saved_qr(c, what):
+    """A trip saved: the code the log shows is the QR code in the view, as the game waited
+    for its key (seen then: answer)."""
+    for code, checked in c.saved_qrs:
+        if checked is None:
+            continue
+        problems, version, size = checked
+        if problems:
+            fail(f"{what}: the trip code's QR code ({code}): {'; '.join(problems)}")
+        else:
+            ok(f"{what}: the trip code's QR code, version {version}, {size} modules a side: "
+               f"the qrcode library's; scanned off the screen, it reads {code}")
+
+
+def check_picture(c, what):
+    """The view at the end shows the last picture the story named, as tools/c64pic.py
+    converts its PNG for the C64 version: the bitmap's 12 rows on the view's rows 2-13,
+    each cell's colours, the background; black bars of colour-RAM pixels over and under.
+    And the split turns the background black only under the lower bar."""
+    import c64pic
+    sys.path.insert(0, os.path.join(ROOT, "tools", "qsc"))
+    import image
+    shown = [ln for ln in c.lines if ln.startswith("[picture pic")]
+    backs = [((cyc // LINE) % LINES, v) for a, v, cyc in c.writes
+             if a == 0xD021 and not 245 <= (cyc // LINE) % LINES <= 260]
+    if any(not 51 + 8 * 14 <= ln <= 178 or v != 0 for ln, v in backs) or not backs:
+        fail(f"{what}: the frames' background set outside the view's lower bar: "
+             f"{sorted(set(backs))[:6]}")
+    else:
+        ok(f"{what}: the frames' background set black under the view's lower bar "
+           f"(lines {min(b[0] for b in backs)}-{max(b[0] for b in backs)})")
+    if not shown or not c.pictures:
+        return
+    n = int(shown[-1][len("[picture pic"):-1])
+    names = image.read_depot(open(os.path.join(ROOT, "build", "cart", "fare", "DEPOT"),
+                                  "rb").read())["pictures"]
+    pic, _ = c64pic.convert(c64pic.load(os.path.join(c.pictures, names[n] + ".png")))
+    data = pic[2:]
+
+    def at(address, size):
+        return data[address - c64pic.LOAD_AT:address - c64pic.LOAD_AT + size]
+
+    top = BITMAP + PICTURE_TOP * 320
+    bars = bytes(c.ram[BITMAP:top]) + bytes(c.ram[top + 3840:BITMAP + 16 * 320])
+    bar_ink = bytes(c.io[0x800:0x800 + 80]) + bytes(c.io[0x800 + 560:0x800 + 640])
+    problems = []
+    if view_regs(c)[:3] != (MEM_PICTURE, 0x3B, at(c64pic.BACK, 1)[0]):
+        problems.append(f"the view's registers {view_regs(c)}")
+    if bytes(c.ram[top:top + 3840]) != at(c64pic.BITMAP, 3840):
+        problems.append("the bitmap")
+    if bytes(c.ram[VIEW + 80:VIEW + 560]) != at(c64pic.SCREEN, 480):
+        problems.append("the cells' screen colours")
+    if bytes(v & 15 for v in c.io[0x800 + 80:0x800 + 560]) != at(c64pic.CELLS, 480):
+        problems.append("the cells' colour-RAM colours")
+    if bars != b"\xff" * 1280 or any(v & 15 for v in bar_ink):
+        problems.append("the black bars")
+    if problems:
+        fail(f"{what}: the view isn't {names[n]}.png as tools/c64pic.py has it: {', '.join(problems)}")
+    else:
+        ok(f"{what}: the view shows {names[n]}.png as tools/c64pic.py converts it, rows 2-13, "
+           f"black bars over and under")
+
+
+def check(c):
+    syms = c.syms
+    disk = c.mode is None
+    what = "the disk" if disk else "the cartridge"
+    # While the KERNAL loads, its serial routines hold interrupts off at times, so the
+    # frame a load ends in may split late: those aren't counted.
+    c.writes = [w for w in c.writes
+                if not any(a <= w[2] <= b + FRAME for a, b in c.load_spans)]
+    # The split, every frame.
+    frames_regs = [w for w in c.writes if (w[0] == 0xD018 and w[1] == MEM_FRAMES)
+                   or (w[0] == 0xD016 and w[1] == 0x08 and 100 < (w[2] // LINE) % LINES < 200)
+                   or (w[0] == 0xD011 and 100 < (w[2] // LINE) % LINES < 200)]
+    late = [(hex(a), (cyc // LINE) % LINES, cyc % LINE) for a, v, cyc in frames_regs
+            if not SPLIT_FIRST <= ((cyc // LINE) % LINES, cyc % LINE) <= SPLIT_LAST]
+    n = sum(1 for a, v, _ in frames_regs if a == 0xD018)
+    if late or n < 20:
+        fail(f"{what}: the split's writes out of the gap: {late[:6]} ({n} splits)")
+    else:
+        cycles = sorted({cyc % LINE for a, v, cyc in frames_regs if a == 0xD018})
+        ok(f"{what}: {n} splits, each write between line 178's last character and line 179's "
+           f"fetch ($D018 at cycles {cycles[0]}-{cycles[-1]} of line 178)")
+    if c.lowest_sprite > 176:
+        fail(f"{what}: a sprite down to line {c.lowest_sprite}, into the split's lines")
+    elif c.sprites_shown:
+        ok(f"{what}: the figures' sprites clear of the split (down to line {c.lowest_sprite} at "
+           f"most)")
+    views = [((cyc // LINE) % LINES) for a, v, cyc in c.writes if a == 0xD018 and v == MEM_VIEW]
+    if not views or any(not 250 <= ln <= 260 for ln in views):
+        fail(f"{what}: the view's registers outside the bottom border: {sorted(set(views))}")
+    else:
+        ok(f"{what}: the view's registers set in the bottom border (lines {min(views)}-{max(views)})")
+    # Where the game left the machine.
+    if c.ram[1] != 0x35 or (not disk and (c.io[0xF00] != 0 or c.bank != 0)):
+        fail(f"{what}: at rest, $01 = ${c.ram[1]:02X}, bank {c.bank}, its shadow {c.io[0xF00]}")
+    else:
+        ok(f"{what}: at rest with $01 = $35" + ("" if disk else ", bank 0 (and its shadow)"))
+    # The graphics, against the tools' own files.
+    font = open(os.path.join(ROOT, "build", "cart", "font"), "rb").read()[2:]
+    gfx = open(os.path.join(ROOT, "build", "cart", "tiles16"), "rb").read()
+    charset, tile_table = gfx[:2048], gfx[2048:2048 + 128]
+    figures = gfx[2048 + 128:2048 + 128 + 2048]
+    if bytes(c.ram[FONT:FONT + 2048]) != font:
+        fail(f"{what}: the font under the I/O isn't tools/c64font.py's")
+    elif bytes(c.ram[CHARS:CHARS + 2048]) != charset:
+        fail(f"{what}: the map's characters aren't tools/battlegfx.py's")
+    elif bytes(c.ram[syms["tiles"]:syms["tiles"] + 128]) != tile_table:
+        fail(f"{what}: the tiles' table isn't tools/battlegfx.py's")
+    elif bytes(c.ram[0xD800:0xE000]) != figures:
+        fail(f"{what}: the figures' shapes under the colour RAM aren't tools/battlegfx.py's")
+    else:
+        ok(f"{what}: the font, the map's characters, its tiles and the figures, from asset 0, "
+           f"where they go")
+    if disk and (c.loads[:2] != ["a00", "a04"] or any(n[0] != "a" for n in c.loads)):
+        fail(f"{what}: loaded {c.loads}, not a00 (the graphics), a04 (the depot) and the rest")
+    elif disk:
+        ok(f"{what}: the graphics, the ending, the fight, the depot, the cars and the pictures loaded as files {', '.join(sorted(set(c.loads)))}")
+    # The view: the demo's map, 2 x 2 characters a square, 20 x 8 of them.
+    themap = bytes(c.ram[syms["platform_map"]:syms["platform_map"] + 160])
+    screen, colours = c.desk_view
+    bad = []
+    for sq in range(160):
+        t = themap[sq]
+        for k in range(4):
+            row, col = (sq // 20) * 2 + k // 2, (sq % 20) * 2 + k % 2
+            want_ch, want_col = tile_table[t * 8 + k], tile_table[t * 8 + 4 + k]
+            if screen[row * 40 + col] != want_ch or colours[row * 40 + col] & 15 != want_col & 15:
+                bad.append((sq, k))
+    if bad:
+        fail(f"{what}: at the desk, the view's tiles differ from the map at {bad[:5]}")
+    else:
+        ok(f"{what}: at the desk, the view shows the map, 20 x 8 squares of 2 x 2 characters")
+    if "Your Travel Stamp. Type" in " ".join(c.lines):
+        check_qr(c, what)
+    else:
+        check_picture(c, what)
+    # The frames.
+    line = "".join(c.screen(TEXT, r, 1, 25) for r in range(16, 24))
+    party = c.screen(TEXT, 16, 9, 26)
+    bar = bytes(c.ram[TEXT + 16 * 40 + 35:TEXT + 16 * 40 + 40])
+    bar_ink = {c.io[0x800 + 16 * 40 + 35 + i] & 15 for i in range(5)}
+    since = c.lines[len(c.lines) - c.lines[::-1].index(OFF):] if OFF in c.lines else c.lines
+    rolls = [ln[1:-1] for ln in since if ln.startswith("[") and " vs " in ln]  # (since on)
+    dice = (c.screen(TEXT, 22, 14, 26).rstrip(), c.screen(TEXT, 23, 14, 26).rstrip())
+    want_dice = tuple(rolls[-1].split(" vs ")) if rolls else ("", "")
+    want_dice = (want_dice[0], "vs " + want_dice[1]) if rolls else want_dice
+    want_bar, want_ink = health_bar(c)
+    if line != "|" * 8:
+        fail(f"{what}: the line between the frames: {line!r}")
+    elif party != " Kestrel " or bar != want_bar or bar_ink != {want_ink}:
+        fail(f"{what}: the party frame: {party!r}, health {bar.hex()} in {bar_ink}, not "
+             f"{want_bar.hex()} in {want_ink}")
+    elif dice != want_dice:
+        fail(f"{what}: the dice log: {dice!r}, not the last roll's {want_dice!r}")
+    else:
+        ok(f"{what}: the frames: their line, the party ({party.strip()}, health "
+           f"{'full' if want_bar == bytes([0x63] * 5) else 'down to ' + want_bar.hex()}, "
+           f"{'green' if want_ink == 5 else 'red'}), "
+           f"the dice ({' / '.join(dice) if rolls else 'no rolls'})")
+    # The transcript's paragraphs (rows to one the text ended), wrapped again here: the
+    # same.
+    bad = []
+    para = []
+    for line, ended in zip(c.lines, c.ended_rows):
+        if ended is None:
+            continue
+        para.append(line)
+        if not ended:
+            continue
+        if wrap(" ".join(para), LOG_COLS) != para and not para[0].startswith((">", "  ")):
+            bad.append(para)
+        para = []
+    if bad:
+        fail(f"{what}: paragraphs not wrapped at 25 as docs/frames.md says: {bad[:2]}")
+    else:
+        ok(f"{what}: every paragraph word-wrapped at 25 columns")
+    if c.most_printed > LOG_ROWS or not c.mores:
+        fail(f"{what}: {c.most_printed} rows printed between keys, {c.mores} -- more --")
+    else:
+        ok(f"{what}: nothing scrolled off unread (at most {c.most_printed} rows between keys; "
+           f"{c.mores} times -- more --)")
+
+
+def health_bar(c):
+    """The party frame's health bar (its cells, their colour) after a trip: the traveler's
+    most health by the rules (docs/rules-v0.md: 10 + Grit / 4 + 2 a level; their Grit and
+    level from the cartridge's record of them, cart/char.inc, which test_passwords.py holds
+    to the reference), less what the fights' sentences say they took."""
+    record = c.ram[c.syms["traveler"]:c.syms["traveler"] + 18]
+    lines = c.lines
+    most = 10 + record[12 + 2] // 4 + 2 * record[10]
+    health = most
+    for ln in " ".join(lines).split(". "):
+        m = re.search(r"(?:attacks you: .*?|The ground hurts you): (\d+) damage", ln)
+        if m:
+            health = max(0, health - int(m.group(1)))
+    health = max(1, health)                 # (a lost fight leaves 1: docs/vm-spec.md)
+    halves = health * 10 // most or (1 if health else 0)
+    cells = bytes(0x63 if halves >= 2 * k + 2 else 0x62 if halves == 2 * k + 1 else 0x61
+                  for k in range(5))
+    return cells, 2 if health * 3 <= most else 5
+
+
+def check_music(c, path, what):
+    """The music (cart/tune.s, fe/c64/music.s): every "[music NAME]" cue in the transcript
+    sends the player that tune (numbered as tools/music/musicc.py numbers the Departure's
+    music file, worked out here), or silence; a frame plays every frame, its registers to
+    the SID; and from the first tune's start, the registers are tools/music/player.py's,
+    frame for frame, till the next command."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "music"))
+    import musicc
+    import player
+    data, names = musicc.build(open(path).read())
+    want, last = [], None
+    for ln in c.lines:
+        if ln == OFF:                                       # switched off: silence
+            last = None
+        m = re.fullmatch(r"\[music (.+)\]", ln)
+        if not m:
+            continue
+        t = 255 if m.group(1) == "off" else names.index(m.group(1)) if m.group(1) in names else None
+        if t is not None and t != last:
+            want.append(t)
+            last = t
+    got = [x for _, a, x in c.music_cmds if a in (1, 2)]
+    effects = [x for _, a, x in c.music_cmds if a == 3]
+    if got != want:
+        fail(f"{what}: the tunes cued were {got}, the transcript's cues say {want}")
+    else:
+        ok(f"{what}: every cue sends its tune ({len(got)}: "
+           f"{', '.join(names[t] if t < len(names) else 'off' for t in got)})"
+           + (f"; {len(effects)} sound effects in the fights" if effects else ""))
+    if any(e >= 8 for e in effects):
+        fail(f"{what}: a sound effect that isn't one: {sorted(set(effects))}")
+    # A frame a frame.
+    # (A frame held back by a copy with interrupts off ends up in the next: count them. A
+    # KERNAL load holds interrupts off at times, so the frames a load is in don't count.)
+    frames = [cyc // FRAME for cyc, _ in c.ghosts]
+    span = frames[-1] - frames[0] + 1 if frames else 0
+    # (Nor do the frames from a switch-off till the music is back: a cold start.)
+    cold = [(a, next((cyc for cyc, _ in c.ghosts if cyc > a), a)) for a in c.switched]
+    loading = {f for a, b in c.load_spans + cold for f in range(a // FRAME, b // FRAME + 2)
+               if frames and frames[0] <= f <= frames[-1]}
+    if not frames or not (span - len(loading)) * 0.98 <= len(frames) <= span:
+        fail(f"{what}: {len(frames)} frames of music in {span} frames ({len(loading)} loading)")
+    elif bytes(c.io[0x400:0x419]) != c.ghosts[-1][1]:
+        fail(f"{what}: the SID doesn't have the player's last frame")
+    else:
+        ok(f"{what}: a frame of music every frame ({len(frames)}), the SID given each")
+    # The first tune, against the reference.
+    starts = [(cyc, x) for cyc, a, x in c.music_cmds if a == 1]
+    if not starts:
+        return
+    at, tune = starts[0]
+    after = [cyc for cyc, _, _ in c.music_cmds if cyc > at]
+    ours = [g for cyc, g in c.ghosts if cyc > at and (not after or cyc < after[0])][:400]
+    ref = [bytes(r) for r in player.trace(data, tune, len(ours), {})]
+    diff = next((i for i, (a, b) in enumerate(zip(ours, ref)) if a != b), None)
+    if diff is not None or not ours:
+        fail(f"{what}: {names[tune]}'s frame {diff} isn't tools/music/player.py's:\n"
+             f"  cartridge {ours[diff].hex(' ') if ours else ''}\n  reference {ref[diff].hex(' ') if ours else ''}")
+    else:
+        ok(f"{what}: {names[tune]}, as tools/music/player.py plays it, register for register "
+           f"({len(ours)} frames)")
+
+
+def c64_story_matches(lines, path):
+    """As c64_matches, from the first chapter's title on (the boarding desk aside: a PASS
+    file boards without typing)."""
+    theirs = open(path).read().split("\n")
+    start = next(i for i, ln in enumerate(theirs) if ln.startswith("~ "))
+    ours = lines[next(i for i, ln in enumerate(lines) if ln.startswith("~ ")):]
+    c64_matches(ours, path, theirs[start:])
+
+
+def as_the_c64_saves(lines):
+    """A trip saved and picked up, as the C64 version's transcript tells it: where the
+    cartridge shows the trip code (its words, its lines, a key), the C64 says "Saved."; and
+    where the cartridge, switched on again, takes the pass and the code, the C64 (its save
+    on the disk) asks only whether to pick the trip up."""
+    lines = list(lines)
+    if OFF not in lines:
+        return lines
+    k = next(i for i, ln in enumerate(lines) if ln.startswith("Saved. To pick"))
+    j = lines.index("(press a key)", k)
+    lines[k:j + 1] = ["Saved."]
+    o = lines.index(OFF)
+    p = next(i for i in range(o, len(lines)) if lines[i].startswith("Picking up where"))
+    p -= lines[p - 1].startswith("[music ")
+    lines[o:p] = ["[end of input]", OFF, "1. Board", "2. Pick up a saved trip", "> 2"]
+    return lines
+
+
+def c64_saved(c, choices, departure):
+    """The trip code the cartridge showed is the one tools/passport/trip.py makes of the
+    C64 version's save at the same menu (tests/c64/run_c64.py --save-to), for the pass the
+    choices board with (their first lines)."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "passport"))
+    import trip
+    shown = saved_code(c.lines)
+    typed = open(choices).read().split("\n\n")[0]
+    d, cars = trip.read_image(departure)
+    want = trip.from_save(open(c.c64_save, "rb").read(), d, trip.image_facts(d, cars),
+                          trip.boarded_crc(typed))
+    if shown != want:
+        fail(f"the trip code shown, {shown}, isn't the one the C64's save makes: {want}")
+    else:
+        ok(f"the trip code shown is the one tools/passport/trip.py makes of the C64's save "
+           f"at the same menu ({shown})")
+
+
+def c64_matches(lines, path, theirs=None):
+    """The C64 version (the C engine) tells the same story: its transcript (tests/c64/*.
+    expected, made by tests/c64/run_c64.py) from the boarding desk to its last "(press a
+    key)", receipt and Travel Stamp and all; but for where a saved trip is picked up: the
+    C64 asks at its start (its save holds the traveler), the cartridge after the pass (a
+    trip code goes with it). The cartridge's own lines after the stamp (its QR code's)
+    come after that."""
+    theirs = theirs or open(path).read().split("\n")
+    if theirs[:3] == ["1. Board", "2. Pick up a saved trip", "> 1"]:
+        theirs = theirs[3:]
+    lines = as_the_c64_saves(lines)
+    for i in range(len(lines) - 1):
+        if lines[i:i + 2] == ["2. Pick up a saved trip", "3. Start over"]:
+            lines[i:i + 2] = ["2. Start over"]
+            break
+    for end in ("(press a key)", "[end of input]"):
+        if end in theirs:
+            theirs = theirs[:len(theirs) - theirs[::-1].index(end) - 1]
+            break
+    ours = [ln for ln in lines if ln != "Or scan the code above."][:len(theirs)]
+    if ours != theirs:
+        import difflib
+        fail(f"the story differs from the C64's ({path}):\n" + "".join(difflib.unified_diff(
+            [t + "\n" for t in theirs], [t + "\n" for t in ours], "C64", "cartridge", n=1)))
+    else:
+        ok(f"the story is the C64's, word for word, roll for roll, stamp and all ({path}: "
+           f"{len(theirs)} lines)")
+
+
+def main(argv):
+    if len(argv) < 5:
+        print(__doc__)
+        return 2
+    image = open(argv[1], "rb").read()
+    syms = labels(argv[2])
+    c = C64(image, syms)
+    c.choices = [line.rstrip("\n") for line in open(argv[3])]
+    c.pictures = argv[argv.index("--pictures") + 1] if "--pictures" in argv else None
+    if "--shot-at" in argv:
+        c.shot_at = tuple(argv[argv.index("--shot-at") + 1:argv.index("--shot-at") + 3])
+    c.boot()
+    try:
+        ended = c.run()
+    except RuntimeError as e:
+        fail(f"{argv[1]}: stopped: {e}")
+        return 1
+    got = "\n".join(c.lines + [ended]) + "\n"
+    if "--update" in argv:
+        with open(argv[4], "w") as f:
+            f.write(got)
+    if got != open(argv[4]).read():
+        import difflib
+        fail(f"{argv[1]}: the transcript differs from {argv[4]}:\n" + "".join(
+            difflib.unified_diff(open(argv[4]).read().splitlines(True), got.splitlines(True),
+                                 "expected", "got", n=1)))
+    else:
+        ok(f"{argv[1]}: the transcript is {argv[4]}'s ({len(c.lines)} lines)")
+    if "--c64" in argv:
+        c64_matches(c.lines, argv[argv.index("--c64") + 1])
+    if "--c64-save" in argv:
+        c.c64_save = argv[argv.index("--c64-save") + 1]
+        c64_saved(c, argv[3], argv[argv.index("--c64-save") + 2])
+    if "--c64-story" in argv:
+        c64_story_matches(c.lines, argv[argv.index("--c64-story") + 1])
+    check(c)
+    check_saved_qr(c, "the cartridge" if c.mode is not None else "the disk")
+    if "--music" in argv:
+        check_music(c, argv[argv.index("--music") + 1], "the cartridge" if c.mode is not None
+                    else "the disk")
+    if "--shot" in argv:
+        shot(c, argv[argv.index("--shot") + 1])
+    print(f"{argv[1]}: {failures} failed")
+    return 1 if failures else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

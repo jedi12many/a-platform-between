@@ -1,13 +1,16 @@
 /*
- * The battle screen with graphics (docs/c64-hardware.md, E9), shared by every front end
- * that has them (client/apb_scene.h): the map in tiles, three characters a square, nine
- * squares by five at a time; every fighter a figure of two sprites, a body and its
- * outline; the roster beside it, what happened under it, and the command bar at the
- * bottom, as in the Gold Box games: Move, Aim, Guard, Wait, Flee, Quick, Done.
+ * The battle screen with graphics (docs/frames.md, E12), shared by every front end that
+ * has them (client/apb_scene.h): the map in the view at the top, in tiles, four
+ * characters a square, ten squares by four at a time; every fighter a figure of two
+ * sprites, a body and its outline. Under it, the story's frames go on: what happens in
+ * the story log, every roll in the dice log, the travelers' health in the party frame
+ * (foes are only on the map), and the command bar on the bottom row, as in the Gold Box
+ * games: Move, Aim, Guard, Wait, Flee, Quick, Done.
  *
  * It implements the HAL's battle calls; the rules are core/src/battle.c's, unchanged, and
- * the sentences client/battle_text.c's, the same as the text screen's. Every sentence and
- * prompt also goes to hal_scene_log, so tests read a fight in words.
+ * the sentences client/battle_text.c's, the same as the text screen's, with the rolls
+ * apart. The story log and the dice log go into the transcript; every prompt goes to
+ * hal_scene_log, so tests read a fight in words.
  */
 #ifdef __CC65__
 #include <ascii_charmap.h>      /* every literal in this file is ASCII */
@@ -21,17 +24,11 @@
 #include "apb_view.h"
 #include "apb_vm.h"
 
-/* The screen. */
-#define VIEW_W     9            /* squares across, and down, at a time */
-#define VIEW_H     5
-#define MAP_X      8            /* the map's top left, in pixels        */
-#define MAP_Y      8
-#define PANEL_COL  30
-#define LOG_ROW    18
-#define LOG_ROWS   4
-#define LOG_WIDTH  38
-#define PROMPT_ROW 22
-#define BAR_ROW    24
+/* The view. */
+#define VIEW_W     10           /* squares across, and down, at a time */
+#define VIEW_H     4
+#define SQUARE     32           /* pixels                               */
+#define CELLS      4            /* characters a square, each way        */
 
 /* Colours (the C64's). */
 #define C_BLACK  0
@@ -52,38 +49,28 @@
 /* The graphics file's tables (tools/battlegfx.py). */
 #define T_SHARED  3
 #define T_TILES   8
-#define T_MARKED  152
-#define T_LOOKS   160
-#define T_EFFECTS 240
-#define T_NAMES   256
+#define T_MARKED  264
+#define T_LOOKS   296
+#define T_EFFECTS 376
+#define T_NAMES   384
 #define STRANGER  7
 
 static const uint8_t *g;
 static apb_fighter bf;
 static char line[APB_VIEW_LINE];
 static char text[41];
+static char top_line[APB_VIEW_ROLL];
+static char bottom_line[APB_VIEW_ROLL];
 static uint8_t ok[APB_MAP_H_MAX][APB_MAP_W_MAX];
 static uint8_t marks;                         /* ok[][] is shown on the map        */
 static uint8_t vx, vy;                        /* the top left square shown         */
 static uint8_t look[APB_FIGHTERS_MAX];
 static uint8_t shown_x[APB_FIGHTERS_MAX];     /* where each figure stands on screen */
 static uint8_t shown_y[APB_FIGHTERS_MAX];
-static uint8_t log_text[LOG_ROWS][LOG_WIDTH + 1];
-static uint8_t log_new;                       /* rows of the newest sentence      */
 static uint8_t on_quick;
 static uint8_t whose;                         /* whose turn it is, for the roster  */
 
 /* --------------------------------------------------------------------- drawing */
-
-/* Text at col, row, padded with spaces to `width`. */
-static void put_text(uint8_t col, uint8_t row, const char *s, uint8_t colour, uint8_t width)
-{
-    uint8_t i;
-
-    for (i = 0; i < width; ++i) {
-        hal_scene_put((uint8_t)(col + i), row, (uint8_t)(*s ? *s++ : ' '), colour);
-    }
-}
 
 static uint8_t visible(uint8_t x, uint8_t y)
 {
@@ -97,17 +84,22 @@ static void draw_square(uint8_t x, uint8_t y)
     uint8_t col;
     uint8_t row;
     uint8_t ch;
+    uint8_t mark;
     const uint8_t *tile;
 
     if (!visible(x, y)) return;
     t = (uint8_t)(apb_battle_tile(x, y) & 7);
-    tile = g + T_TILES + t * 18;
-    col = (uint8_t)(1 + (x - vx) * 3);
-    row = (uint8_t)(1 + (y - vy) * 3);
-    for (k = 0; k < 9; ++k) {
+    tile = g + T_TILES + t * 32;
+    col = (uint8_t)((x - vx) * CELLS);
+    row = (uint8_t)((y - vy) * CELLS);
+    mark = 0;
+    for (k = 0; k < 16; ++k) {
         ch = tile[k];
-        if (k == 4 && marks && ok[y][x]) ch = g[T_MARKED + t];
-        hal_scene_put((uint8_t)(col + k % 3), (uint8_t)(row + k / 3), ch, tile[9 + k]);
+        /* The middle four characters, 5, 6, 9 and 10, with the reach dot. */
+        if (marks && ok[y][x] && (k == 5 || k == 6 || k == 9 || k == 10)) {
+            ch = g[T_MARKED + t * 4 + mark++];
+        }
+        hal_scene_put((uint8_t)(col + (k & 3)), (uint8_t)(row + (k >> 2)), ch, tile[16 + k]);
     }
 }
 
@@ -119,41 +111,22 @@ static void draw_map(void)
     uint8_t row;
 
     /* Squares outside a small map: black. */
-    for (row = 1; row <= VIEW_H * 3; ++row) {
-        for (col = 1; col <= VIEW_W * 3; ++col) hal_scene_put(col, row, ' ', C_BLACK);
+    for (row = 0; row < VIEW_H * CELLS; ++row) {
+        for (col = 0; col < VIEW_W * CELLS; ++col) hal_scene_put(col, row, 0, C_BLACK);
     }
     for (y = vy; y < vy + VIEW_H && y < apb_battle_height(); ++y) {
         for (x = vx; x < vx + VIEW_W && x < apb_battle_width(); ++x) draw_square(x, y);
     }
 }
 
-/* The frame round the map, Gold Box style: characters 1-8 (tools/battlegfx.py). */
-static void draw_frame(void)
-{
-    uint8_t i;
-
-    hal_scene_put(0, 0, 1, C_BLUE);
-    hal_scene_put(28, 0, 3, C_BLUE);
-    hal_scene_put(0, 16, 5, C_BLUE);
-    hal_scene_put(28, 16, 6, C_BLUE);
-    for (i = 1; i < 28; ++i) {
-        hal_scene_put(i, 0, 2, C_BLUE);
-        hal_scene_put(i, 16, 8, C_BLUE);
-    }
-    for (i = 1; i < 16; ++i) {
-        hal_scene_put(0, i, 4, C_BLUE);
-        hal_scene_put(28, i, 7, C_BLUE);
-    }
-}
-
 static int16_t square_px(uint8_t x)
 {
-    return (int16_t)(MAP_X + ((int16_t)x - vx) * 24);
+    return (int16_t)(((int16_t)x - vx) * SQUARE);
 }
 
 static int16_t square_py(uint8_t y)
 {
-    return (int16_t)(MAP_Y + ((int16_t)y - vy) * 24);
+    return (int16_t)(((int16_t)y - vy) * SQUARE);
 }
 
 /* A fighter's figure at pixel x, y (its square's corner), in colour `colour`. */
@@ -169,9 +142,10 @@ static void figure_at(uint8_t i, int16_t x, int16_t y, uint8_t colour)
         return;
     }
     down = (uint8_t)(bf.state == APB_DOWN ? 2 : 0);
-    hal_scene_sprite(SPR_FIGHTER(i), x, (int16_t)(y + 2), l[1 + down], C_BLACK, APB_SPR_HIRES);
-    hal_scene_sprite((uint8_t)(SPR_FIGHTER(i) + 1), x, (int16_t)(y + 2), l[down], colour,
-                     APB_SPR_MULTI);
+    x = (int16_t)(x + 4);                     /* the figure, in the middle of its square */
+    y = (int16_t)(y + 6);
+    hal_scene_sprite(SPR_FIGHTER(i), x, y, l[1 + down], C_BLACK, APB_SPR_HIRES);
+    hal_scene_sprite((uint8_t)(SPR_FIGHTER(i) + 1), x, y, l[down], colour, APB_SPR_MULTI);
 }
 
 static void place(uint8_t i)
@@ -197,7 +171,7 @@ static void cursor(uint8_t x, uint8_t y, uint8_t colour)
         hal_scene_sprite(SPR_CURSOR, 0, 0, 0, 0, APB_SPR_OFF);
         return;
     }
-    hal_scene_sprite(SPR_CURSOR, (int16_t)(square_px(x) + 2), (int16_t)(square_py(y) + 1),
+    hal_scene_sprite(SPR_CURSOR, (int16_t)(square_px(x) + 6), (int16_t)(square_py(y) + 6),
                      g[T_EFFECTS], colour, APB_SPR_HIRES);
 }
 
@@ -232,101 +206,26 @@ static void show_square(uint8_t x, uint8_t y)
     }
 }
 
-/* --------------------------------------------------------------------- the panel */
+/* --------------------------------------------------------------------- the frames */
 
-static char *bar_into(char *p, uint8_t health, uint8_t max)
+/* The travelers in the party frame (foes are only on the map). */
+static void draw_party(void)
 {
-    uint8_t k;
-    uint8_t halves = (uint8_t)(max ? (uint16_t)health * 10 / max : 0);
-
-    if (health && !halves) halves = 1;
-    for (k = 0; k < 5; ++k) {
-        *p++ = (char)(halves >= 2 ? 10 : halves == 1 ? 11 : 9);
-        halves = (uint8_t)(halves >= 2 ? halves - 2 : 0);
-    }
-    return p;
+    apb_battle_fighter(0, &bf);
+    hal_frame_member(0, apb_view_fighter(0), bf.health, bf.health_max,
+                     bf.state != APB_IN_FIGHT ? APB_MEMBER_DOWN
+                     : whose == 0 ? APB_MEMBER_TURN : APB_MEMBER_READY);
 }
 
-static void draw_panel(void)
-{
-    uint8_t i;
-    uint8_t row = 2;
-    uint8_t colour;
-    char *p;
-
-    p = apb_view_put(text, "Round ");
-    apb_view_unum(p, apb_battle_round());
-    put_text(PANEL_COL, 0, text, C_CYAN, 10);
-    for (i = 0; i < apb_battle_count() && row < 17; ++i) {
-        apb_battle_fighter(i, &bf);
-        if (bf.state == APB_GONE) continue;
-        colour = (uint8_t)(i == whose ? C_YELLOW : bf.state == APB_DOWN ? C_BLUE : C_WHITE);
-        put_text(PANEL_COL, row, apb_view_fighter(i), colour, 10);
-        if (bf.state == APB_DOWN) {
-            put_text(PANEL_COL, (uint8_t)(row + 1), "down", C_BLUE, 10);
-        } else {
-            p = bar_into(text, bf.health, bf.health_max);
-            *p++ = ' ';
-            p = apb_view_unum(p, bf.health);
-            *p = '\0';
-            put_text(PANEL_COL, (uint8_t)(row + 1), text, i ? C_RED : C_GREEN, 10);
-        }
-        row = (uint8_t)(row + 2);
-    }
-    while (row < 17) {
-        put_text(PANEL_COL, row, "", C_WHITE, 10);
-        ++row;
-    }
-}
-
-/* --------------------------------------------------------------------- the log */
-
-static void draw_log(void)
-{
-    uint8_t r;
-
-    for (r = 0; r < LOG_ROWS; ++r) {
-        put_text(1, (uint8_t)(LOG_ROW + r), (const char *)log_text[r],
-                 r + log_new >= LOG_ROWS ? C_WHITE : C_CYAN, LOG_WIDTH);
-    }
-}
-
-static void log_row(const char *s, uint8_t n)
-{
-    uint8_t r;
-
-    for (r = 0; r + 1 < LOG_ROWS; ++r) memcpy(log_text[r], log_text[r + 1], LOG_WIDTH + 1);
-    memcpy(log_text[LOG_ROWS - 1], s, n);
-    log_text[LOG_ROWS - 1][n] = '\0';
-    hal_scene_log((const char *)log_text[LOG_ROWS - 1]);
-    if (log_new < LOG_ROWS) ++log_new;
-}
-
-/* A sentence into the log, broken between words to fit; the record has its rows. */
+/* A sentence into the story log, and the record. */
 static void say(const char *s)
 {
-    uint8_t n;
-    uint8_t cut;
-
-    log_new = 0;
-    while (*s) {
-        n = (uint8_t)strlen(s);
-        if (n <= LOG_WIDTH) {
-            log_row(s, n);
-            break;
-        }
-        for (cut = LOG_WIDTH; cut && s[cut] != ' '; --cut) {}
-        if (!cut) cut = LOG_WIDTH;
-        log_row(s, cut);
-        s += cut;
-        while (*s == ' ') ++s;
-    }
-    draw_log();
+    hal_frame_say(s);
 }
 
 static void prompt(const char *s, uint8_t colour)
 {
-    put_text(1, PROMPT_ROW, s, colour, LOG_WIDTH);
+    hal_frame_command(s, colour, 0, 0);
 }
 
 /* --------------------------------------------------------------------- the bar */
@@ -338,20 +237,23 @@ static const char command_keys[] = "MAGWFQD";
 static void draw_bar(uint8_t chosen)
 {
     uint8_t i;
-    uint8_t col = 1;
-    const char *s;
+    uint8_t from = 0;
+    uint8_t to = 0;
+    char *p = text;
 
     for (i = 0; i < COMMANDS; ++i) {
-        s = commands[i];
-        while (*s) hal_scene_put(col++, BAR_ROW, (uint8_t)*s++, i == chosen ? C_WHITE : C_CYAN);
-        hal_scene_put(col++, BAR_ROW, ' ', C_CYAN);
+        if (i == chosen) from = (uint8_t)(p - text);
+        p = apb_view_put(p, commands[i]);
+        if (i == chosen) to = (uint8_t)(p - text);
+        *p++ = ' ';
     }
-    while (col < 40) hal_scene_put(col++, BAR_ROW, ' ', C_CYAN);
+    *p = '\0';
+    hal_frame_command(text, C_CYAN, from, to);
 }
 
 static void clear_bar(void)
 {
-    put_text(0, BAR_ROW, "", C_CYAN, 40);
+    hal_frame_command("", C_CYAN, 0, 0);
 }
 
 /* --------------------------------------------------------------------- keys */
@@ -472,8 +374,8 @@ static void flash(uint8_t i, uint8_t colour)
 static void spark(uint8_t i)
 {
     if (!visible(shown_x[i], shown_y[i])) return;
-    hal_scene_sprite(SPR_SPARK, (int16_t)(square_px(shown_x[i]) + 6),
-                     (int16_t)(square_py(shown_y[i]) + 4), g[T_EFFECTS + 2], C_YELLOW,
+    hal_scene_sprite(SPR_SPARK, (int16_t)(square_px(shown_x[i]) + 10),
+                     (int16_t)(square_py(shown_y[i]) + 8), g[T_EFFECTS + 2], C_YELLOW,
                      APB_SPR_HIRES);
 }
 
@@ -497,8 +399,8 @@ static void blow(const apb_event *e)
         /* A bolt flies from one to the other. */
         hal_scene_sound(APB_SFX_SHOT);
         for (f = 0; f <= 8; ++f) {
-            hal_scene_sprite(SPR_EFFECT, (int16_t)(x0 + (x1 - x0) * f / 8),
-                             (int16_t)(y0 + 2 + (y1 - y0) * f / 8), g[T_EFFECTS + 1], C_CYAN,
+            hal_scene_sprite(SPR_EFFECT, (int16_t)(x0 + 4 + (x1 - x0) * f / 8),
+                             (int16_t)(y0 + 6 + (y1 - y0) * f / 8), g[T_EFFECTS + 1], C_CYAN,
                              APB_SPR_MULTI);
             hal_scene_show(1);
         }
@@ -508,7 +410,7 @@ static void blow(const apb_event *e)
         hal_scene_sound(APB_SFX_SWING);
         figure_at(a, (int16_t)(x0 + (x1 - x0) / 4), (int16_t)(y0 + (y1 - y0) / 4),
                   g[T_LOOKS + look[a] * 5 + 4]);
-        hal_scene_sprite(SPR_EFFECT, (int16_t)(x1 + 6), (int16_t)(y1 + 2), g[T_EFFECTS + 3],
+        hal_scene_sprite(SPR_EFFECT, (int16_t)(x1 + 10), (int16_t)(y1 + 6), g[T_EFFECTS + 3],
                          C_WHITE, APB_SPR_HIRES);
         hal_scene_show(4);
         hal_scene_sprite(SPR_EFFECT, 0, 0, 0, 0, APB_SPR_OFF);
@@ -551,19 +453,17 @@ static uint8_t look_of(uint8_t i)
 void hal_battle_begin(void)
 {
     uint8_t i;
-    uint8_t r;
 
     g = hal_scene_open();
     hal_scene_music(APB_SCENE_FIGHT);
-    hal_scene_colours(C_BLUE, g[T_SHARED + 2], g[T_SHARED + 3], g[T_SHARED + 4],
+    hal_scene_colours(C_BLACK, g[T_SHARED + 2], g[T_SHARED + 3], g[T_SHARED + 4],
                       g[T_SHARED], g[T_SHARED + 1]);
     apb_view_battle_reset();
+    apb_view_rolls_apart(1);
     on_quick = 0;
     marks = 0;
     whose = 0xFF;
     vx = vy = 0;
-    for (r = 0; r < 25; ++r) put_text(0, r, "", C_WHITE, 40);
-    for (r = 0; r < LOG_ROWS; ++r) log_text[r][0] = '\0';
     for (i = 0; i < APB_SCENE_SPRITES; ++i) hal_scene_sprite(i, 0, 0, 0, 0, APB_SPR_OFF);
     for (i = 0; i < apb_battle_count(); ++i) {
         apb_battle_fighter(i, &bf);
@@ -572,10 +472,9 @@ void hal_battle_begin(void)
         shown_y[i] = bf.y;
     }
     show_square(shown_x[0], shown_y[0]);
-    draw_frame();
     draw_map();
     place_all();
-    draw_panel();
+    draw_party();
     say("-- A fight! --");
 }
 
@@ -586,7 +485,6 @@ void hal_battle_event(const apb_event *e)
     switch (e->kind) {
     case APB_EV_TURN:
         whose = e->actor;
-        draw_panel();
         break;
     case APB_EV_MOVE:
         say(line);
@@ -608,7 +506,10 @@ void hal_battle_event(const apb_event *e)
         break;
     }
     if (said != APB_VIEW_NOTHING) say(line);
-    draw_panel();
+    if (apb_view_event_roll(e, top_line, bottom_line, line)) {
+        hal_frame_roll(top_line, bottom_line, line);
+    }
+    draw_party();
 }
 
 /* --------------------------------------------------------------------- your turn */
@@ -743,7 +644,7 @@ void hal_battle_turn(uint8_t who, apb_action *out)
     shown_x[who] = bf.x;
     shown_y[who] = bf.y;
     whose = who;
-    draw_panel();
+    draw_party();
     show_square(here_x, here_y);
     if (on_quick) {
         prompt("On quick: T takes over.", C_YELLOW);
@@ -824,8 +725,6 @@ void hal_battle_turn(uint8_t who, apb_action *out)
 
 void hal_battle_end(uint8_t result)
 {
-    uint8_t r;
-
     cursor_off();
     clear_bar();
     hal_scene_music(result == APB_BATTLE_WON ? APB_SCENE_WON
@@ -834,6 +733,7 @@ void hal_battle_end(uint8_t result)
     prompt("Press a key.", C_YELLOW);
     hal_scene_log("[Press a key.]");
     key();
-    for (r = 0; r < 25; ++r) put_text(0, r, "", C_WHITE, 40);
+    clear_bar();
+    apb_view_rolls_apart(0);
     hal_scene_close();
 }

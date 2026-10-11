@@ -30,20 +30,24 @@ files. In a browser it stays in that browser (IndexedDB), and survives a reload.
 It's the C64's screen (`docs/c64.md`), drawn sharper. That's on purpose: a writer who
 sees a scene in one sees the same scene in all of them.
 
+It's framed ([frames.md](frames.md)):
+
 | Rows | What |
 |---|---|
 | 0 | the status bar |
-| 1–12 | the picture, once the story has shown one |
-| 13–24 | the text window, word-wrapped at 40 columns, with "-- more --" before anything scrolls off unread |
+| 1–15 | the view: the picture (rows 1–12), once the story has shown one; in a fight, the battle map (rows 0–15) |
+| 16–23 | the story log (columns 0–24), word-wrapped, with "-- more --" before anything scrolls off unread; beside it the party (rows 16–19) and the dice log (rows 20–23) |
+| 24 | the command row: typing, "-- more --", a fight's commands |
 
 The screen is 640 x 400 pixels: 40 x 25 characters of 16 x 16, from an 8 x 8 font
 (`fe/modern/font8x8.h`, the public-domain font8x8) made bold as the C64's is (each stroke
 a pixel wider, unless that closes a gap: `tools/c64font.py`), doubled. The window scales it to
 fit.
 
-**A fight** has the whole screen: the battle screen with graphics (`client/tactics.c`,
+**A fight** is in the view: the battle screen with graphics (`client/tactics.c`,
 [c64.md](c64.md#the-battle-screen)), drawn exactly as the C64's VIC-II draws it, from the
-same graphics file (`BGFX`, `tools/battlegfx.py`), each C64 pixel two by two. The arrow
+same graphics file (`BGFX`, `tools/battlegfx.py`), each C64 pixel two by two; the frames
+under it go on. The arrow
 keys or the keypad's digits move, Return chooses, Escape or Backspace goes back, and a
 command's first letter does it at once.
 

@@ -1,5 +1,7 @@
 # Rules v0
 
+*Part of the rules: see [rules.md](rules.md) for every page, in reading order.*
+
 A first proposal, open for change. What's marked as implemented lives in `core/` and is
 tested on both PC and 6502. The numbers are first guesses; playtests will tune them.
 
@@ -98,7 +100,8 @@ mutations, whatever the realm calls them (they Translate like gear). Each power 
 effect.
 
 A character holds up to **8 powers**. How powers are gained and raised is not designed
-yet; the Passport already stores them.
+yet; the Passport already stores them. What powers and items *do* (at-will and charged
+uses, shapes and elements, fields on the map) is drafted in [items.md](items.md).
 
 ## Character creation
 
@@ -184,7 +187,9 @@ Implemented: `apb_health_max`.
 
 ## Inventory
 
-- 6 equipped slots + 6 pack slots. Hard limit; forces choices.
+- 6 equipped slots + 6 pack slots. Hard limit; forces choices. The equipped six are
+  typed by your body (hands, body, kit), and swapping with the pack is free on your turn:
+  [items.md](items.md).
 - Up to 2 **attuned** legendary items.
 
 ## Defenses are target numbers
@@ -326,8 +331,11 @@ the other road open.
 
 ## Open questions
 
-- How powers are gained and raised.
-- Weapon damage: proposed in [combat.md](combat.md) (by tier, margin and Might), awaiting playtests.
+All the rules' open questions are gathered in [rules.md](rules.md#open-questions). This
+page's own:
+
+- Weapon damage: proposed in [combat.md](combat.md) (by tier, margin and Might); the arena
+  ([arena.md](arena.md)) finds gear outweighs levels.
 - Limits on stacking buffs and debuffs, if playtests show runaway combinations.
 - Companions: recruitable per Departure only, or carried on the Passport?
 - How fast Debt goes down. Going home should be possible well before level 100, so

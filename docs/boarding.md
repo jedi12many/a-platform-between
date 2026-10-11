@@ -70,37 +70,50 @@ that true live on the server, never in a client: anyone can read a C64 disk, and
 player holds is a key a player can share.
 
 1. **Board at the Waystation website.** Pick the character and the Departure; the server
-   issues a **Boarding Pass**: one line of 18 symbols holding the Departure, a one-time
-   ticket number, a check of the character as boarded, and the dice seed for the trip.
-2. **Give the client your Passport and the Boarding Pass.** On a C64 you type both (from
-   your phone screen); a modern client fetches them when you sign in. The client checks
-   the pass is for this Departure and this character as they are now; a pass from before
-   their last trip is refused, and the website issues a new one.
+   issues a **Boarding Pass**: the trip (the Departure, a one-time ticket number, the dice
+   seed for the trip) and the character as they are now, in one password.
+2. **Give the client the Boarding Pass.** It's the only code a player needs to board: on
+   a C64 from an SD2IEC, the file `PASS` beside the game, or typed line by line like a
+   Passport; at the table, scanned from its QR code; a modern client fetches it when you
+   sign in ([passport-spec.md](passport-spec.md#carriers)). The client checks the pass
+   is for this Departure, and boards the character it carries.
 3. **The receipt carries the ticket number.** The server accepts it only for the character
    the ticket was issued to, only once, and only within that Departure's possible rewards.
 
 The server's secret is the ticket itself: a random 32-bit number it draws and remembers,
 with the character and Departure it was issued for. A forged or borrowed receipt would
 have to guess a live ticket issued to that very character. That protects receipts the way
-a signature would, with nothing secret in the client and a pass short enough to type.
+a signature would, with nothing secret in the client.
+
+A pass carries the character as they were when it was issued, and a receipt is a list of
+changes, not a snapshot. So a pass kept back and played after another trip has landed is
+no different from two trips taken at once: both receipts land, each on the character as
+it is by then.
+
+A player can still board with just their Passport, at the same prompt: the desk says so,
+and that nothing earned on the trip can be stamped. (Tests do that, and so does the
+browser until the website issues passes, W2.)
 
 ### Boarding Pass format
 
-Version 1. The Passport alphabet and line check ([passport-spec.md](passport-spec.md)),
-one line: 17 data symbols and a check symbol.
+Format 2 (format 1, a short pass typed beside the Passport, is retired). The Passport
+alphabet, lines and line check ([passport-spec.md](passport-spec.md)): the bits below,
+zero bits to a whole byte, a CRC-16 over every byte (as the Passport's), and zero bits to
+a whole symbol. Kestrel's pass for *The Fare* is 67 symbols, in four lines.
 
 | Field | Bits | Notes |
 |---|---|---|
-| version | 4 | 1 |
+| kind | 4 | 8: a Boarding Pass. A Passport's first four bits are its version (2), so a client can tell which it was given from the first symbol, and take either at one prompt |
 | Departure | 16 | the image's id |
 | ticket | 32 | random, drawn by the server |
-| character check | 16 | the Passport's own CRC-16 (`apb_passport_check`): any change to the character changes it |
 | seed | 16 | the dice for this trip, so the server can replay an online trip and a player can't re-roll by boarding again |
 | Rewind | 1 | 1: a replay of a Departure the character has played ([seasons.md](seasons.md)); the train forgets that Departure's Echoes before play |
+| character | | the Passport's fields, exactly as in a Passport, from its version on |
 
-`apb_pass_encode` / `apb_pass_decode` in the rules core; `tools/passport/boarding.py` is
-the reference and issues passes for testing until the website exists. A player can travel
-without a pass (the desk warns that nothing earned can be stamped); tests use that too.
+`apb_pass_encode` / `apb_pass_decode` and `apb_password_kind` in the rules core;
+`tools/passport/boarding.py` is the reference, written from this page, and issues passes
+for testing until the website does. The server keeps each ticket's character as boarded
+(`apb_passport_check` names that version of them).
 
 ### Reward manifests
 
@@ -132,8 +145,8 @@ receipts.
 | Where | How the receipt travels |
 |---|---|
 | Modern client | Sent to the Waystation as soon as the Departure ends, with the choices and seed that produced it, so the server can replay and verify it. |
-| Retro | A **Travel Stamp**: a short password holding the ticket number and the receipt (about 25-35 characters for a typical Departure), with a check code against typos. Enter it at the Waystation website. |
-| Tabletop | The Conductor's receipt, entered at the Waystation; Boarding Passes are issued for tabletop sessions too. |
+| Retro | A **Travel Stamp**: a short password holding the ticket number and the receipt (about 25-35 characters for a typical Departure), with a check code against typos. Shown at the trip's end as a QR code and as its lines: scan it at the Waystation website, or type it. |
+| Tabletop | The Conductor's receipt, entered at the Waystation; Boarding Passes are issued for tabletop sessions too, with QR codes on them. |
 
 ### Travel Stamp format
 
@@ -158,6 +171,57 @@ symbols; the longest possible is 84.
 `apb_stamp_encode` in the rules core (clients only ever write stamps);
 `tools/passport/stamp.py` decodes them for the website and names the line of a typo.
 
+### Trip code format
+
+A trip saved, where there's nowhere to save it: on a cartridge (no disk, no flash writes)
+or at a table. Saving at a menu shows a **trip code**: its lines, and a QR code. To pick
+the trip up again, the player boards with the same Boarding Pass (or Passport) as before,
+picks *Pick up a saved trip*, and gives the code; the trip goes on at that menu, as it
+was. The code only names what the trip has changed: the traveler as they boarded comes
+from the pass, and the code is tied to it.
+
+Version 1. The Passport alphabet, lines and line check, the bits below, zero bits to a
+whole byte, and a CRC-16 over every byte, as a Travel Stamp. *The Fare*, saved after its
+fight, is about 60 symbols, three lines.
+
+| Field | Bits | Notes |
+|---|---|---|
+| kind | 4 | 9: a trip code |
+| boarded with | 16 | the CRC-16 the Boarding Pass ends in (or the Passport, without one): the code goes only with what boarded the trip |
+| image | 16 | the Departure image's hash: a code goes only into the image that made it |
+| seed | 16 | the trip's seed (the pass's, or the one drawn without a pass): the Deep Yards' floors |
+| scene | 12 | the scene whose menu was showing: the trip goes on at its menu block, which builds the menu again from the flags ([vm-spec.md](vm-spec.md)) |
+| flags | one each | the image's flags, flag 0 first (as many as the depot says) |
+| vars | 8 each | the image's vars, var 0 first |
+| dice | 16 | the dice's state, never 0 |
+| tune | 6 | the tune the story has on, from the music list; 63 for none |
+| health | 8 | |
+| gives | 2 | the items a Branch Line has given (0-3) |
+| Debt | 16 | the traveler's Debt now |
+| rewards paid | 6 + 19 each | a count (0-32), then each `GIVE`, `XP` and `DEBT` already reached this trip: its car (6), its offset in the car's code (13) (one the image hasn't is never reached) |
+| XP | 16 | the receipt so far |
+| items gained | 4 + 10 each | |
+| items lost | 4 + 10 each | |
+| Echoes | 4 + 14 each | id (10), state (2), state at boarding (2) |
+| padding | to a byte | zero |
+| CRC-16 | 16 | CCITT-FALSE over the bytes so far |
+
+Picking up: board as ever (the pass's traveler, its Rewind, the receipt's Departure and
+ticket); then the code's flags, vars, dice, seed, tune, health, gives, rewards paid and
+receipt so far; the traveler as the trip has made them: their Debt the code's, the
+receipt's items lost taken (from the pack first, then what they have equipped), its items
+gained put in the pack's first empty slots, its XP gained (`apb_gain_xp`), its Echoes set;
+then the scene's car, and its menu block (a scene with no menu: the train derails, as on
+a damaged save). A save is only made at a menu with nothing on the expression stack, and
+a code is 255 symbols at most: a trip that would need more can't be saved. Refused, as a password is ([passport-spec.md](passport-spec.md#whats-refused)):
+a symbol the alphabet hasn't, a typo (naming its line), the wrong length (over 255
+symbols, or not the fields' length), a checksum (a count too big, as it's read); then,
+after the CRC, a code for another image, then for another pass, said as such; then a
+broken rule (a scene or tune the image hasn't, dice of 0) as a checksum.
+
+`tools/passport/trip.py` is the reference, written from this page; the cartridge writes
+and reads them (`cart/trip.s`).
+
 ### Landing a stamp
 
 `tools/waystation/station.py` is a prototype of what the website does with one: find its
@@ -175,5 +239,5 @@ through the terminal.
   Passport Office merge the same way.
 - The VM takes the Boarding Pass alongside the Passport and copies its ticket number into
   the receipt.
-- The Travel Stamp and Boarding Pass formats are specified with milestone E2, alongside
-  the Passport; the reward manifest with the compiler.
+- The Travel Stamp and Boarding Pass formats are above, the reward manifest with the
+  compiler; what every decoder refuses is in [passport-spec.md](passport-spec.md#whats-refused).

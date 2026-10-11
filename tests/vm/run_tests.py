@@ -4,9 +4,10 @@
    picks and a fixed seed, and the transcript must match tests/vm/expected/NAME.txt
    (reviewed by hand against the script; dice checked against an independent
    xorshift16). The sim65 (6502) build must produce the same transcript. A pick of
-   '@name' boards a traveler from tests/vm/travelers.txt at the boarding desk;
-   '@pass:NAME:DEPARTURE:TICKET:SEED[:rewind]' types a Boarding Pass issued to that
-   traveler by tools/passport/boarding.py. A seed of '-' asks for a pass at the desk.
+   '@name' boards a traveler from tests/vm/travelers.txt at the boarding desk with their
+   Passport; '@pass:NAME:DEPARTURE:TICKET:SEED[:rewind]' types a Boarding Pass carrying
+   that traveler, from tools/passport/boarding.py, and a blank line (then the case says
+   "1" to board). A seed of '-' boards with the pass's seed, or 1 without one.
 2. Coverage: together, the playthroughs of each Departure in COVERED must run every
    instruction in it, so every route, check outcome and race or class passage has been
    played and reviewed. The only code exempt is the chapter-title preamble of a scene
@@ -108,9 +109,10 @@ def cases(with_traveler=False):
         for t in picks.split(","):
             if t.startswith("@pass:"):
                 _, who_for, dep, ticket, pass_seed, *rewind = t.split(":")
-                tokens.append(":" + boarding.issue("".join(known[who_for]), int(dep),
-                                                   int(ticket), int(pass_seed),
-                                                   rewind == ["rewind"]))
+                issued = boarding.issue("".join(known[who_for]), int(dep), int(ticket),
+                                        int(pass_seed), rewind == ["rewind"])
+                tokens += [":" + line for line in passport.lines(issued)] + [":"]
+                who = who_for
             elif t.startswith("@"):
                 if t[1:] not in known:
                     fail(f"{name}: no traveler {t[1:]} in tests/vm/travelers.txt")
@@ -167,9 +169,23 @@ def pass_seed(picks, transcript):
     m = re.search(r", ticket (\d+),", transcript)
     if not m:
         return 1
-    for tok in reversed(picks.split(",")):
+    typed, group = [], []
+    for tok in picks.split(",") + [""]:
+        if tok.startswith(":") and tok != ":":
+            group.append(tok[1:])
+        elif group:
+            typed.append("".join(group))
+            group = []
+    # Each pass as typed, and as it is after a line is typed again (a typo put right).
+    tries = []
+    for g in typed:
+        lines = passport.lines(g)
+        tries.append(g)
+        for fix in (t for t in typed if len(t) == 20):
+            tries += ["".join(lines[:i] + [fix] + lines[i + 1:]) for i in range(len(lines))]
+    for text in reversed(tries):
         try:
-            p = boarding.decode(tok[1:])
+            p = boarding.decode(text)
         except passport.PassportError:
             continue
         if p["ticket"] == int(m.group(1)):

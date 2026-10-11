@@ -13,7 +13,7 @@
  */
 
 #define LINE_DATA   (APB_PASSWORD_LINE - 1)
-#define BUF_BYTES   90      /* 705 bits at most, see the spec */
+#define BUF_BYTES   112     /* a Boarding Pass: 69 bits of trip and the longest Passport */
 
 /* Crockford-style base 32: no I, L, O or U, so they can't be misread. */
 static const char sym_upper[] = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
@@ -23,12 +23,17 @@ typedef struct {
     uint8_t *buf;
     uint16_t pos;
     uint16_t limit;   /* bits available */
-    uint8_t  bad;     /* set when reading or writing past the limit */
+    uint8_t  bad;     /* RAN_OUT when reading or writing past the limit; or 1, a rule
+                       * broken (unpack): reading stops either way */
 } bitio;
+
+/* A password that runs out of bits is the wrong length; one that breaks a rule fails its
+ * checksum (docs/passport-spec.md, "What's refused"). */
+#define RAN_OUT 2
 
 /* Static: the 6502 gives a function at most 256 bytes of locals. */
 static uint8_t buf[BUF_BYTES];
-static uint8_t symbols[APB_PASSWORD_MAX];
+static uint8_t symbols[APB_PASS_MAX];
 static apb_character work;
 
 static void put_bits(bitio *b, uint16_t value, uint8_t n)
@@ -50,7 +55,7 @@ static uint16_t get_bits(bitio *b, uint8_t n)
     uint16_t value = 0;
 
     if (b->pos + n > b->limit) {
-        b->bad = 1;
+        b->bad |= RAN_OUT;
         return 0;
     }
     while (n--) {
@@ -165,18 +170,18 @@ static void get_items(bitio *b, uint16_t *slots, uint8_t count)
     uint8_t slot;
 
     if (n > count) {
-        b->bad = 1;
+        b->bad |= 1;
         return;
     }
     while (n--) {
         slot = (uint8_t)get_bits(b, 3);
         if (slot >= count || slots[slot] != 0) {
-            b->bad = 1;
+            b->bad |= 1;
             return;
         }
         slots[slot] = get_bits(b, 10);
         if (slots[slot] == 0) {
-            b->bad = 1;
+            b->bad |= 1;
             return;
         }
     }
@@ -217,7 +222,7 @@ static void start_bits(bitio *b)
  * packed_crc). */
 static uint16_t packed_crc;
 
-static uint8_t pack(const apb_character *ch, bitio *b)
+static uint8_t pack(const apb_character *ch, const apb_pass *pass, bitio *b)
 {
     uint8_t i;
     uint8_t n;
@@ -228,6 +233,15 @@ static uint8_t pack(const apb_character *ch, bitio *b)
     }
     start_bits(b);
 
+    if (pass) {
+        /* A Boarding Pass: the trip, then the character as a Passport has it. */
+        put_bits(b, APB_PASS_KIND, 4);
+        put_bits(b, pass->departure, 16);
+        put_bits(b, (uint16_t)(pass->ticket >> 16), 16);
+        put_bits(b, (uint16_t)(pass->ticket & 0xFFFFu), 16);
+        put_bits(b, pass->seed, 16);
+        put_bits(b, pass->rewind ? 1 : 0, 1);
+    }
     put_bits(b, APB_PASSPORT_VERSION, 4);
     for (i = 0; i < APB_NAME_LEN; ++i) {
         if (ch->name[i] == '\0') {
@@ -298,7 +312,7 @@ uint8_t apb_passport_encode(const apb_character *ch, char *out)
     bitio b;
 
     out[0] = '\0';
-    if (pack(ch, &b) != APB_PP_OK) {
+    if (pack(ch, 0, &b) != APB_PP_OK) {
         return APB_PP_RANGE;
     }
     write_symbols(&b, out);
@@ -309,36 +323,29 @@ uint16_t apb_passport_check(const apb_character *ch)
 {
     bitio b;
 
-    return pack(ch, &b) == APB_PP_OK ? packed_crc : 0;
+    return pack(ch, 0, &b) == APB_PP_OK ? packed_crc : 0;
 }
 
 /* ------------------------------------------------------- Boarding Pass */
 
-/* Version 4, Departure 16, ticket 32, character check 16, seed 16, Rewind 1: 85 bits,
- * 17 symbols and a check symbol. See docs/boarding.md. */
-#define PASS_SYMBOLS 17
-
-uint8_t apb_pass_encode(const apb_pass *pass, char *out)
+/* Kind 4 (APB_PASS_KIND), Departure 16, ticket 32, seed 16, Rewind 1, then the
+ * character exactly as in a Passport, from its version on, and one CRC-16 over it all.
+ * See docs/boarding.md. */
+uint8_t apb_pass_encode(const apb_pass *pass, const apb_character *ch, char *out)
 {
     bitio b;
 
-    start_bits(&b);
-    put_bits(&b, APB_PASS_VERSION, 4);
-    put_bits(&b, pass->departure, 16);
-    put_bits(&b, (uint16_t)(pass->ticket >> 16), 16);
-    put_bits(&b, (uint16_t)(pass->ticket & 0xFFFFu), 16);
-    put_bits(&b, pass->check, 16);
-    put_bits(&b, pass->seed, 16);
-    put_bits(&b, pass->rewind ? 1 : 0, 1);
+    out[0] = '\0';
+    if (pack(ch, pass, &b) != APB_PP_OK) {
+        return APB_PP_RANGE;
+    }
     write_symbols(&b, out);
     return APB_PP_OK;
 }
 
-uint8_t apb_pass_decode(const char *in, apb_pass *pass)
+uint8_t apb_password_kind(const char *in)
 {
-    uint8_t count = 0;
     int8_t v;
-    bitio b;
 
     for (; *in != '\0'; ++in) {
         if (is_separator(*in)) {
@@ -346,39 +353,17 @@ uint8_t apb_pass_decode(const char *in, apb_pass *pass)
         }
         v = symbol_value(*in);
         if (v < 0) {
-            return APB_PP_SYMBOL;
+            return APB_KIND_NONE;
         }
-        if (count > PASS_SYMBOLS) {
-            return APB_PP_LENGTH;
-        }
-        symbols[count++] = (uint8_t)v;
+        /* The first symbol's top four bits: a pass's kind, or a Passport's version. */
+        return (uint8_t)((v >> 1) == APB_PASS_KIND ? APB_KIND_PASS : APB_KIND_PASSPORT);
     }
-    if (count != PASS_SYMBOLS + 1) {
-        return APB_PP_LENGTH;
-    }
-    if (line_check(symbols, PASS_SYMBOLS) != symbols[PASS_SYMBOLS]) {
-        return APB_PP_LINE_CHECK;
-    }
-    start_bits(&b);
-    for (v = 0; v < PASS_SYMBOLS; ++v) {
-        put_bits(&b, symbols[(uint8_t)v], 5);
-    }
-    b.pos = 0;
-    if (get_bits(&b, 4) != APB_PASS_VERSION) {
-        return APB_PP_VERSION;
-    }
-    pass->departure = get_bits(&b, 16);
-    pass->ticket = (uint32_t)get_bits(&b, 16) << 16;
-    pass->ticket |= get_bits(&b, 16);
-    pass->check = get_bits(&b, 16);
-    pass->seed = get_bits(&b, 16);
-    pass->rewind = (uint8_t)get_bits(&b, 1);
-    return APB_PP_OK;
+    return APB_KIND_NONE;
 }
 
 /* Read a password of lines (a Passport, a Travel Stamp): check each line's check symbol
  * and pack the data symbols into `b`, ready to read from the start. */
-static uint8_t read_lines(const char *in, bitio *b, uint8_t *bad_line)
+static uint8_t read_lines(const char *in, bitio *b, uint8_t *bad_line, uint8_t max)
 {
     uint8_t count = 0;
     uint8_t lines;
@@ -397,7 +382,7 @@ static uint8_t read_lines(const char *in, bitio *b, uint8_t *bad_line)
         if (v < 0) {
             return APB_PP_SYMBOL;
         }
-        if (count == APB_PASSWORD_MAX) {
+        if (count == max) {
             return APB_PP_LENGTH;
         }
         symbols[count++] = (uint8_t)v;
@@ -445,11 +430,15 @@ static uint8_t read_crc(bitio *b)
     uint16_t stored_crc;
 
     while (b->pos & 7u) {
-        if (get_bits(b, 1) != 0 || b->bad) return APB_PP_CHECKSUM;
+        if (get_bits(b, 1) != 0) return APB_PP_CHECKSUM;
+        if (b->bad) return APB_PP_LENGTH;
     }
     n = (uint8_t)(b->pos >> 3);
     stored_crc = get_bits(b, 16);
-    if (b->bad || stored_crc != crc16(buf, n)) {
+    if (b->bad) {
+        return APB_PP_LENGTH;
+    }
+    if (stored_crc != crc16(buf, n)) {
         return APB_PP_CHECKSUM;
     }
     if (b->limit - b->pos >= 5) {
@@ -461,19 +450,15 @@ static uint8_t read_crc(bitio *b)
     return APB_PP_OK;
 }
 
-uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line)
+/* The character's fields, from the Passport version on, then the CRC: into `ch`. */
+static uint8_t unpack(bitio *bp, apb_character *ch)
 {
     uint8_t i;
     uint8_t n;
-    uint8_t version;
     bitio b;
 
-    n = read_lines(in, &b, bad_line);
-    if (n != APB_PP_OK) {
-        return n;
-    }
-    version = (uint8_t)get_bits(&b, 4);
-    if (version != APB_PASSPORT_VERSION) {
+    b = *bp;
+    if (get_bits(&b, 4) != APB_PASSPORT_VERSION) {
         return APB_PP_VERSION;
     }
 
@@ -496,37 +481,38 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
     work.tags = get_bits(&b, APB_SKILL_COUNT);
 
     n = (uint8_t)get_bits(&b, 4);
-    if (n > APB_SKILL_COUNT) b.bad = 1;
+    if (n > APB_SKILL_COUNT) b.bad |= 1;
     while (n-- && !b.bad) {
         i = (uint8_t)get_bits(&b, 4);
         if (i >= APB_SKILL_COUNT || work.training[i] != 0) {
-            b.bad = 1;
+            b.bad |= 1;
             break;
         }
         work.training[i] = (uint8_t)get_bits(&b, 7);
-        if (work.training[i] == 0) b.bad = 1;
+        if (work.training[i] == 0) b.bad |= 1;
     }
 
-    n = (uint8_t)get_bits(&b, 4);
-    if (n > APB_POWER_SLOTS) b.bad = 1;
+    /* Reading stops at the first rule broken (or the bits running out). */
+    n = b.bad ? 0 : (uint8_t)get_bits(&b, 4);
+    if (n > APB_POWER_SLOTS) b.bad |= 1;
     for (i = 0; i < n && !b.bad; ++i) {
         work.power[i].id = (uint8_t)get_bits(&b, 8);
         work.power[i].rank = (uint8_t)get_bits(&b, 7);
-        if (work.power[i].id == 0) b.bad = 1;
+        if (work.power[i].id == 0) b.bad |= 1;
     }
 
     if (!b.bad) get_items(&b, work.equipped, APB_EQUIP_SLOTS);
     if (!b.bad) get_items(&b, work.pack, APB_PACK_SLOTS);
 
-    n = (uint8_t)get_bits(&b, 4);
-    if (n > APB_ECHO_SLOTS) b.bad = 1;
+    n = b.bad ? 0 : (uint8_t)get_bits(&b, 4);
+    if (n > APB_ECHO_SLOTS) b.bad |= 1;
     for (i = 0; i < n && !b.bad; ++i) {
         work.echo[i].id = get_bits(&b, 10);
         work.echo[i].state = (uint8_t)get_bits(&b, 2);
-        if (work.echo[i].id == 0) b.bad = 1;
+        if (work.echo[i].id == 0) b.bad |= 1;
     }
     if (b.bad) {
-        return APB_PP_CHECKSUM;
+        return (b.bad & RAN_OUT) ? APB_PP_LENGTH : APB_PP_CHECKSUM;
     }
 
     n = read_crc(&b);
@@ -539,6 +525,46 @@ uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line
     }
     memcpy(ch, &work, sizeof(work));
     return APB_PP_OK;
+}
+
+uint8_t apb_passport_decode(const char *in, apb_character *ch, uint8_t *bad_line)
+{
+    uint8_t n;
+    bitio b;
+
+    n = read_lines(in, &b, bad_line, APB_PASSPORT_LONGEST);
+    if (n != APB_PP_OK) {
+        return n;
+    }
+    return unpack(&b, ch);
+}
+
+uint8_t apb_pass_decode(const char *in, apb_pass *pass, apb_character *ch, uint8_t *bad_line)
+{
+    uint8_t n;
+    bitio b;
+    apb_pass p;
+
+    n = read_lines(in, &b, bad_line, APB_PASS_LONGEST);
+    if (n != APB_PP_OK) {
+        return n;
+    }
+    if (get_bits(&b, 4) != APB_PASS_KIND) {
+        return APB_PP_VERSION;
+    }
+    p.departure = get_bits(&b, 16);
+    p.ticket = (uint32_t)get_bits(&b, 16) << 16;
+    p.ticket |= get_bits(&b, 16);
+    p.seed = get_bits(&b, 16);
+    p.rewind = (uint8_t)get_bits(&b, 1);
+    if (b.bad) {
+        return APB_PP_LENGTH;
+    }
+    n = unpack(&b, ch);
+    if (n == APB_PP_OK) {
+        memcpy(pass, &p, sizeof(p));
+    }
+    return n;
 }
 
 /* ------------------------------------------------------- Travel Stamp */
@@ -605,7 +631,7 @@ static uint8_t get_list(bitio *b, uint16_t *items)
     uint8_t i;
 
     if (n > APB_RECEIPT_MAX) {
-        b->bad = 1;
+        b->bad |= 1;
         return 0;
     }
     for (i = 0; i < n; ++i) {
@@ -622,7 +648,7 @@ uint8_t apb_stamp_decode(const char *in, apb_receipt *r, uint8_t *bad_line)
     uint8_t i;
     uint16_t amount;
 
-    i = read_lines(in, &b, bad_line);
+    i = read_lines(in, &b, bad_line, APB_STAMP_MAX);
     if (i != APB_PP_OK) {
         return i;
     }
@@ -643,7 +669,7 @@ uint8_t apb_stamp_decode(const char *in, apb_receipt *r, uint8_t *bad_line)
     if (!b.bad) stamped.lost_count = get_list(&b, stamped.lost);
     if (!b.bad) {
         stamped.echo_count = (uint8_t)get_bits(&b, 4);
-        if (stamped.echo_count > APB_RECEIPT_MAX) b.bad = 1;
+        if (stamped.echo_count > APB_RECEIPT_MAX) b.bad |= 1;
     }
     for (i = 0; i < stamped.echo_count && !b.bad; ++i) {
         stamped.echoes[i].id = get_bits(&b, 10);
@@ -651,7 +677,7 @@ uint8_t apb_stamp_decode(const char *in, apb_receipt *r, uint8_t *bad_line)
         stamped.echoes[i].was = (uint8_t)get_bits(&b, 2);
     }
     if (b.bad) {
-        return APB_PP_CHECKSUM;
+        return (b.bad & RAN_OUT) ? APB_PP_LENGTH : APB_PP_CHECKSUM;
     }
     i = read_crc(&b);
     if (i != APB_PP_OK) {

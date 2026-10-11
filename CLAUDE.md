@@ -2,6 +2,27 @@
 
 Design docs live in `docs/`; the rules core lives in `core/`.
 
+**The game is being rebuilt in 100% 6502 assembly** (`cart/`, `docs/cartridge.md`): a 1 MB
+EasyFlash cartridge for a Kung Fu Flash, and the same game on a disk for an SD2IEC. The C
+engine (`core/`, `vm/`, `fe/`) stays as the working reference, and the Python references
+(`tools/`) and the Waystation website are the specification the assembly is tested
+against. For `cart/`:
+
+- ca65 only. One job per file; a routine's header says what it takes (registers, zero
+  page), what it gives back, what must be true before, and what it changes (A, X, Y,
+  zero page).
+- The zero page is allocated in `cart/zp.inc` (and the table in `docs/cartridge.md`); a
+  module uses only its own, or scratch between calls. Chips in `cart/hw.inc`, the memory
+  map and the screen's layout in `cart/mem.inc`: no bare addresses in code.
+- A branch whose target may drift out of reach is written as the opposite branch over a
+  `jmp`.
+- Only `cart/assets.s` (and the start-ups) knows the medium: no `$DE00`, `$DE02` or
+  KERNAL call anywhere else. Everything but the resident engine is an 8 KB asset, fetched
+  into the staging RAM at $8000; nothing runs from the cartridge.
+- Saves are passwords (the Passport's alphabet and lines); no disk or flash writes.
+- Timing that matters (the raster split) is counted in the code's comments, and `make
+  test-cart` holds it to the cycle.
+
 ## Commands
 
 - `make test`: native tests (gcc/clang, `-Werror`).
@@ -12,7 +33,8 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   `build/eighteen-minutes.d64` and `build/deep-yards.d64` (`LOAD"APB",8` in VICE; see
   `docs/c64.md`).
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
-  C engine's password; the registry and Quest Script parser tests must pass; and every
+  C engine's password; trip codes (`tools/passport/trip.py`) must round-trip and refuse
+  damage (`tests/passport/test_trip.py`); the registry and Quest Script parser tests must pass; and every
   picture in `content/` must come through the C64's rules unchanged
   (`tools/test_pictures.py`; needs Pillow and numpy).
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
@@ -40,12 +62,15 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   sheets, natively and on sim65; and the battle scenarios (`tests/battle/*.txt`, the engine
   in `core/src/battle.c`) must match their reviewed logs on both, with every roll
   re-checked, and random battles must never crash under the sanitizers.
-  `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff.
+  `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff. And the
+  arena's fights (`tools/arena/`) must be the battle runner's, blow for blow, and its quick
+  builder's characters must keep the rules (`tests/arena/check_arena.py`).
 - `make test-c64`: the C64 program from the `.d64` must play The Fare, Eighteen Minutes
   and the Deep Yards on a 6502 emulator
   (py65: `pip install py65`; the disk's pictures need Pillow) with the KERNAL answered
-  in Python (`tests/c64/run_c64.py`; fights on the battle screen are read from
-  `hal_scene_log`, a key a line): transcripts match `tests/c64/*.expected`, the
+  in Python (`tests/c64/run_c64.py`; the story log is read row by row, and rolls and a
+  fight's prompts from `hal_scene_log`; in a fight, a key a line): transcripts match
+  `tests/c64/*.expected`, the
   Travel Stamp is the terminal's, a save survives switching off, the C stack stays
   under 384 bytes; the music plays (the harness keeps the I/O apart from the RAM under it,
   and fires the raster interrupt), its cues in the transcripts as `[music NAME]`; and no
@@ -70,14 +95,68 @@ Design docs live in `docs/`; the rules core lives in `core/`.
   are spent and stats rolled as the references say (`tests/waystation/check_site.py`);
   travelers are kept with notes, chosen to land a stamp, and, on the site signed in (a
   stand-in for claude.ai's store), kept on the player's account and boarded from the list.
+  And the arena page (`site/arena.html`, `tools/arena/scenarios.py`): its ten scenarios'
+  travelers are what it says, their numbers the arena's, every Play starts its fight, and
+  every Give feedback opens the playtest issue form with its scenario code and build
+  (`tests/arena/check_play.py`). Playtesters' feedback arrives as issues labelled
+  `playtest`, the scenario's code (`A-02`) in the title; the site is published to GitHub
+  Pages by hand (Actions → Publish playtest).
 - `make test-music`: the music players (`docs/music.md`) must write the same SID registers
   frame by frame: the Python reference (`tools/music/player.py`), the C player
   (`client/music.c`, under the sanitizers) and the C64's 6502 player (`fe/c64/music.s`, on
   py65), for every tune in `content/` and `tests/music/` under scripts of commands, and for
-  damaged files. `tools/music/musicc.py build NAME.music -o FILE` compiles a tune file.
+  damaged files; and the same 6502 player as the cartridge has it (`-D MUSIC_CART`, from
+  `build/apb.crt`), for every tune and script. `tools/music/musicc.py build NAME.music -o FILE` compiles a tune file.
 
-Run all sixteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+- `make test-cart`: the cartridge (`build/apb.crt`) and its disk (`build/apb-disk.d64`)
+  boot on a 6502 emulator that plays an EasyFlash, or the KERNAL's loads and file reads
+  (`tests/cart/run_cart.py`): keys typed on the emulated keyboard from
+  `tests/cart/*.choices` must give `tests/cart/*.expected` on both (`--update` rewrites
+  it: read the diff), and the story the C64 version tells (`--c64`: The Fare's
+  `tests/c64/fare-edge.expected`, and the desk's route and the fight's played by
+  `build/the-fare.d64`), word for word and roll for roll, receipt and Travel Stamp and
+  all (the fight's battle screen on keys and the joystick, its prompts as records); a
+  disk with a `PASS` file boards without typing, and one with a typo in it says so and asks;
+  a trip saved at a menu (`S`) shows a trip code, `tools/passport/trip.py`'s of the C64's
+  own save there, its QR code scanned back, and switched off (`[switch off]` in the
+  choices) and boarded again with that code goes on as the C64's does; every raster
+  split's writes land in the gap between the view's last line and row 16's fetch, to the
+  cycle; the graphics are the tools'; the view (the story's pictures as
+  `tools/c64pic.py` converts them; at a trip's end the Travel Stamp's QR code, the
+  `qrcode` library's module for module, and scanned back off the screen by OpenCV) and
+  the frames are right; no figure's sprite reaches the split; the music plays (each cue
+  sends its tune, a frame every frame, the first tune `tools/music/player.py`'s register
+  for register, the fights' sound effects); paragraphs wrap at 25;
+  nothing scrolls off unread. `--shot FILE` draws the screen (`--shot-at RECORD FILE`
+  when that record comes: `build/cart-fight-shot.png`). `tests/cart/test_ending.py`: Travel Stamps of random receipts read
+  back through `tools/passport/stamp.py`, and QR codes of every version 1-4 match
+  `qrcode` and scan. `tests/cart/test_damage.py`: damaged Departures (and fights' encounters)
+  stop the story VM cleanly, never run wild. And `tests/cart/test_passwords.py`: the cartridge's Passports
+  and Boarding Passes must decode, encode and refuse as the Python reference does, and
+  `tests/cart/test_trips.py` its trip codes as `tools/passport/trip.py` does. And
+  `tests/cart/test_battle.py`: the fight's rules (`cart/combat.s`, `cart/battle.s`) must
+  play `tests/battle/*.txt` to their reviewed logs, make fighters and roll as
+  `tools/rules/combat.py` says, and play random battles event for event as `build/battle`. The
+  cartridge plays The Fare from `content/` (`tools/cart/departure.py` makes its assets).
+  Needs `pip install qrcode opencv-python-headless`.
+
+- `make test-art`: the art desk (`tools/artdesk/`, `docs/art.md`) in headless Chromium, on
+  a copy of `content/art/`: the art keeps its rules (`tools/art.py`) and the battle
+  graphics build from it; every file opened and saved untouched comes back byte for byte;
+  each edit (a dot, an undo, a colour, a new scenery tile, a box, a fill, flips, art pasted
+  as text, trimmed or squeezed) lands exactly as worked out from the file's text; the
+  server writes nothing that breaks a rule, and nothing but the art files
+  (`tests/artdesk/check_artdesk.py`).
+
+Run all eighteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
+`make arena MATCHUP=arena/FILE.txt` fights a matchup a thousand times on the battle engine,
+both sides on quick, and reports win rates, rounds and health; the site's `arena.html`
+has ten scenarios to play by hand (`docs/arena.md`;
+`python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --sweep level 1-10`): use it to
+balance the rules.
+`make artdesk` serves the art desk (http://localhost:8064/): figures, effects and tiles,
+drawn under the C64's rules and saved to `content/art/` (`docs/art.md`).
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website
 (serve `build/waystation/`); `make site` builds the whole site, the platform page with
@@ -109,6 +188,12 @@ The core must build with cc65 for the 6502 and give identical results everywhere
 - Golden values in tests (dice, passwords) must be derived independently, not copied from
   the code's own output. Use `tools/passport/passport.py` for passwords.
 - Rules must stay playable at a table by hand (see `docs/tabletop.md`).
+
+## Art
+
+The battle screen's figures, effects and map tiles are text grids in `content/art/`
+(`docs/art.md`), read through `tools/art.py`, built by `tools/battlegfx.py`; edit them with
+the art desk or by hand, never in `battlegfx.py`. A new race or foe needs a figure there.
 
 ## Registries
 
@@ -153,5 +238,5 @@ Characters are never made in a client; they're made at the Waystation website
 `python3 tools/passport/passport.py new NAME RACE CLASS M,G,G,W,P,F TAG [ITEM] [ECHO=STATE...]`
 makes one,
 and `python3 tools/passport/boarding.py issue "PASSPORT" DEPARTURE TICKET SEED` issues it a
-Boarding Pass. `tools/waystation/station.py` is a prototype of the website's side: it issues
+Boarding Pass, which carries the Passport: the one code a player types to board. `tools/waystation/station.py` is a prototype of the website's side: it issues
 passes into a ticket ledger and lands Travel Stamps against it and the reward manifest.

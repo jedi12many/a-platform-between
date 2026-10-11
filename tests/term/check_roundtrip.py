@@ -5,10 +5,11 @@
    her Travel Stamp lands on her Passport.
 2. Her new Passport is issued a pass for a test Departure (tests/vm/loop.qs), which she
    plays and stamps too. Her Passport ends up with both trips on it.
-3. A stamp can't land twice; a pass from before her last trip is refused at the desk.
-   Playing the second Departure again is a Rewind: half the XP, and the fee.
+3. A stamp can't land twice. Playing the second Departure again is a Rewind: half the
+   XP, and the fee.
 4. Two overlapping trips: two passes issued before either stamp comes home both land, in
-   either order.
+   either order. (A pass carries the character as they were when it was issued, so one
+   kept back and played after another trip is just such an overlap.)
 
     python3 tests/term/check_roundtrip.py
 """
@@ -51,9 +52,9 @@ def build(src, name):
         return apd, json.load(f)
 
 
-def play(apd, passport_text, typed_pass, picks):
-    """Board in the terminal with this Passport and pass; returns (transcript, stamp)."""
-    lines = passport.lines(passport_text) + ["", "1", typed_pass] + picks
+def play(apd, typed_pass, picks):
+    """Board in the terminal with this Boarding Pass; returns (transcript, stamp)."""
+    lines = passport.lines(typed_pass) + ["", "1"] + picks
     path = os.path.join(TMP, "choices")
     with open(path, "w") as f:
         f.write("\n".join(lines) + "\n")
@@ -70,7 +71,7 @@ def main():
 
     # 1. The Fare, from a fresh character.
     p1 = station.issue(ledger, "kestrel", KESTREL, 0, ticket=1985, seed=1985)
-    out, s1 = play(fare, KESTREL, p1, FARE_PICKS)
+    out, s1 = play(fare, p1, FARE_PICKS)
     if not s1:
         fail(f"The Fare printed no Travel Stamp:\n{out[-800:]}")
         return
@@ -87,13 +88,11 @@ def main():
         if "already been stamped" not in str(e):
             fail(f"wrong reason for a second landing: {e}")
 
-    # 2. Carried into the next Departure. A pass issued before The Fare is refused at the
-    #    desk (she has changed since), so she gets a new one.
-    stale = station.issue(ledger, "kestrel", KESTREL, 902, ticket=111, seed=5)
+    # 2. Carried into the next Departure, on a pass carrying her as she is now.
     fresh = station.issue(ledger, "kestrel", after_fare, 902, ticket=222, seed=5)
-    out, s2 = play(loop, after_fare, stale, [fresh] + LOOP_PICKS)
-    if "before their last trip" not in out:
-        fail("a pass from before her last trip wasn't refused at the desk")
+    if passport.encode(station.boarding.decode(fresh)["character"]) != after_fare:
+        fail("the pass doesn't carry her Passport as it is now")
+    out, s2 = play(loop, fresh, LOOP_PICKS)
     if not s2:
         fail(f"the loop printed no Travel Stamp:\n{out[-800:]}")
         return
@@ -108,7 +107,7 @@ def main():
     again = station.issue(ledger, "kestrel", after_loop, 902, ticket=555, seed=5)
     if not station.boarding.decode(again)["rewind"]:
         fail("a pass for a Departure she has played wasn't marked as a Rewind")
-    out, s3 = play(loop, after_loop, again, LOOP_PICKS)
+    out, s3 = play(loop, again, LOOP_PICKS)
     after_rewind, report = station.land(ledger, "kestrel", after_loop, s3, loop_m)
     k = passport.decode(after_rewind)
     if (k["xp"], k["debt"], report["rewind"]) != (20, 50700, True):
@@ -132,8 +131,8 @@ def main():
         ledger = {"tickets": {}}
         pa = station.issue(ledger, "kestrel", KESTREL, 0, ticket=10, seed=1985)
         pb = station.issue(ledger, "kestrel", KESTREL, 902, ticket=20, seed=5)
-        _, sa = play(fare, KESTREL, pa, FARE_PICKS)
-        _, sb = play(loop, KESTREL, pb, LOOP_PICKS)
+        _, sa = play(fare, pa, FARE_PICKS)
+        _, sb = play(loop, pb, LOOP_PICKS)
         first, second = ((sa, fare_m), (sb, loop_m)) if order == "fare first" else ((sb, loop_m), (sa, fare_m))
         now, _ = station.land(ledger, "kestrel", KESTREL, first[0], first[1])
         now, _ = station.land(ledger, "kestrel", now, second[0], second[1])
