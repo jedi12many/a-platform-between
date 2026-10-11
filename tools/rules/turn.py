@@ -177,6 +177,17 @@ def power_damage(tier):
     return 5 * tier
 
 
+def resist(level):
+    """Resist: twice the level (docs/turn.md). A hex, or a mind power, rolls against 50 +
+    it; a condition is shaken off with it, against the condition's number + the Resist of
+    whoever put it on."""
+    return 2 * min(level, 100)
+
+
+def resist_tn(level, cover=False):
+    return 50 + resist(level) + (20 if cover else 0)
+
+
 def hex_damage(tier):
     """A hex's: half a bolt's, rounded up."""
     return (5 * tier + 1) // 2

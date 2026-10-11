@@ -186,10 +186,10 @@ function intro() {
   $("where").textContent = "";
   var list = $("scenario-list");
   list.textContent = "";
-  SCENARIOS.forEach(function (s, i) {
-    var li = el("li"), b = el("button");
-    if (i === 0 || SCENARIOS[i - 1].lab_only !== s.lab_only) {
-      list.append(el("li", "group", s.lab_only ? "Rules v1: movement and conditions" : "The first ten"));
+  shown().forEach(function (i, k, all) {
+    var s = SCENARIOS[i], li = el("li"), b = el("button");
+    if (k === 0 || !!SCENARIOS[all[k - 1]].play !== !!s.play) {
+      list.append(el("li", "group", s.play ? "To play now" : "Opened by its link"));
     }
     b.type = "button";
     b.append(el("span", "code", s.code), el("span", "t", s.title),
@@ -272,7 +272,8 @@ function card(s, f, i, live) {
   hp.append(bar);
   if (frac <= 0.25) hp.classList.add("low"); else if (frac <= 0.5) hp.classList.add("mid");
   [["Attack", f.attack, f.attack], ["Armor", f.armor, f.armor_now], ["Ward", f.ward, f.ward_now],
-   ["Dodge", f.dodge, f.dodge_now], ["Soak", f.soak, f.soak_now], ["Speed", f.speed, f.speed_now]].forEach(function (p) {
+   ["Dodge", f.dodge, f.dodge_now], ["Soak", f.soak, f.soak_now], ["Speed", f.speed, f.speed_now],
+   ["Resist", 2 * f.level, 2 * f.level]].forEach(function (p) {
     var sp = el("span", null, p[0] + " "), now = p[2] === undefined ? p[1] : p[2];
     var b = el("b", now > p[1] ? "up" : now < p[1] ? "down" : null, String(now));
     if (now !== p[1]) b.title = "Without its conditions: " + p[1];
@@ -1290,8 +1291,17 @@ function cycle(d) {
   fight.aim = (fight.aim + d + n) % n;
 }
 
+/* The scenarios listed: the ones to play now (scenarios.py's PLAYING), and one opened by
+ * its link (#scenario=R-02) if it isn't among them. */
+function shown() {
+  var out = [];
+  SCENARIOS.forEach(function (s, i) { if (s.play || i === picked) out.push(i); });
+  return out;
+}
+
 function pick(d) {
-  picked = (picked + d + SCENARIOS.length) % SCENARIOS.length;
+  var all = shown(), k = all.indexOf(picked);
+  picked = all[(k + d + all.length) % all.length];
   intro();
   var cur = document.querySelector('.scenarios button[aria-current="true"]');
   if (cur) cur.focus();

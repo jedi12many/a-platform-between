@@ -31,6 +31,7 @@ async function main() {
     const s = window.arena.state();
     return { mode: s.mode, st: s.fight && s.fight.st, round: s.fight && s.fight.round,
              pack: s.fight && s.fight.pack, buttons: window.arena.buttons(),
+             listed: Array.from(document.querySelectorAll("#scenario-list .code")).map((c) => c.textContent),
              log: Array.from(document.querySelectorAll("#log li")).map((li) => li.textContent) };
   });
   const until = (m, ms) => page.waitForFunction((m) => window.arena && window.arena.state().mode === m,

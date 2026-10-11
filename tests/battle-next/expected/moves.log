@@ -10,7 +10,7 @@ round 1: 0's turn (speed 6)
   0 steps to 5,1
   0 takes 2 from the ground
   0 steps to 6,1
-  0 tries to shake off ON_FIRE: 71+85=156 vs 90: success
+  0 tries to shake off ON_FIRE: 71+2=73 vs 40: success
   0 is no longer ON_FIRE
 round 1: 1's turn (speed 4)
   1 guards

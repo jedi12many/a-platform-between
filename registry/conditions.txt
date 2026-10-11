@@ -3,7 +3,8 @@
 #
 # rounds:   how many of its bearer's turns it lasts (counted down at the end of each, but
 #           not the turn it was put on), or - (until something ends it)
-# shake:    STAT:TN, rolled at the end of its bearer's turn (d100 + the stat), or -
+# shake:    N, rolled at the end of its bearer's turn: d100 + its Resist (2 x its level)
+#           against N + the Resist of whoever put it on (docs/turn.md); or -: it can't be
 # opposite: the condition it cancels when it's put on (and that cancels it), or -
 # then:     what it becomes when its rounds run out, or -
 # tag:      a short name for the battle screen
@@ -31,21 +32,21 @@
 #                  times as much (docs/turn.md, Powers in play)
 #
 # id  NAME            rounds shake         opposite  then       tag   "Shown as"         effects
-1     POISONED        5      GRIT:100      -         -          PSN   "Poisoned"         dot=3
+1     POISONED        5      50            -         -          PSN   "Poisoned"         dot=3
 2     BLEEDING        3      -             -         -          BLD   "Bleeding"         dot=2 ends_on_heal
-3     ON_FIRE         3      GRACE:90      SOAKED    -          FIRE  "On fire"          dot=5:fire thorns=2:fire
+3     ON_FIRE         3      40            SOAKED    -          FIRE  "On fire"          dot=5:fire thorns=2:fire
 4     SOAKED          3      -             ON_FIRE   -          WET   "Soaked"           immune=ON_FIRE vulnerable=energy
 5     CHILLED         2      -             -         -          CHL   "Chilled"          speed=-1
 6     SLOWED          2      -             HASTED    -          SLOW  "Slowed"           speed=-2
 7     HASTED          3      -             SLOWED    -          HST   "Hasted"           speed=2
-8     ENTANGLED       -      MIGHT:100     -         -          TRAP  "Entangled"        speed0
+8     ENTANGLED       -      50            -         -          TRAP  "Entangled"        speed0
 9     KNOCKED_DOWN    -      -             -         -          DOWN  "Knocked down"     down dodge0
 10    STUNNED         1      -             -         -          STUN  "Stunned"          lose_turn
-11    ASLEEP          -      WITS:110      -         -          SLP   "Asleep"           lose_turn dodge0 ends_when_hit
-12    PARALYZED       2      GRIT:120      -         -          PAR   "Paralyzed"        lose_turn dodge0
+11    ASLEEP          -      60            -         -          SLP   "Asleep"           lose_turn dodge0 ends_when_hit
+12    PARALYZED       2      70            -         -          PAR   "Paralyzed"        lose_turn dodge0
 13    FROZEN          1      -             -         SOAKED     ICE   "Frozen"           lose_turn armor=10
-14    BLINDED         2      GRIT:100      -         -          BLND  "Blinded"          attacks=-30
-15    FRIGHTENED      -      PRESENCE:100  -         -          FEAR  "Frightened"       rolls=-10
+14    BLINDED         2      50            -         -          BLND  "Blinded"          attacks=-30
+15    FRIGHTENED      -      50            -         -          FEAR  "Frightened"       rolls=-10
 16    EXPOSED         1      -             -         -          EXP   "Exposed"          armor=-20
 17    MARKED          3      -             -         -          MRK   "Marked"           dodge=-10 armor=-10
 18    SHIELDED        3      -             -         -          SHLD  "Shielded"         armor=10 tiered
@@ -66,6 +67,7 @@
 33    IRRADIATED      3      -             -         -          RAD   "Irradiated"       dot=2:energy
 34    WEIGHTLESS      3      -             -         -          FLT   "Weightless"       fly melee=-10
 35    HEXED           3      -             -         -          HEX   "Hexed"            attacks=-10 tiered
+36    STAGGERED       1      -             -         -          STAG  "Staggered"        next=-20 tiered
 # The races' traits (docs/races.md): always on.
 64    LUCKY           -      -             -         -          LCK   "Lucky"            rolls=5 race=HUMAN
 65    STEADY          -      -             -         -          STDY  "Steady"           shake=10 race=HUMAN

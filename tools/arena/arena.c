@@ -25,6 +25,7 @@
  *   hazard DAMAGE TYPE COND          what the map's hazards do (TYPE 255: none; COND an
  *                                    id from registry/conditions.txt, or 0)
  *   foe ... hit COND                 a condition the foe's hits put on
+ *   foe ... level N                  its level (rules next: its Resist is twice it), 1 if not said
  *   power WHO POWER RANK             a power fighter WHO (in the order of the lines above)
  *                                    holds (an id from registry/powers.txt)
  *
@@ -238,7 +239,9 @@ static int read_file(const char *path, unsigned *fights, unsigned *seed, unsigne
             f->race = 0xFF;
             {
                 const char *hit = strstr(line, " hit ");
+                const char *lv = strstr(line, " level ");
                 if (hit) f->on_hit = (uint8_t)atoi(hit + 5);
+                f->level = lv ? (uint8_t)atoi(lv + 7) : 1;
             }
 #endif
             ++fighter_count;

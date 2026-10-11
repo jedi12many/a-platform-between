@@ -78,6 +78,10 @@ def check_start(code, s):
         return
     if "Start the fight" not in out["intro"]["buttons"]:
         fail(f"{code}: the intro has no Start button")
+    want_list = scenarios.PLAYING + ([] if code in scenarios.PLAYING else [code])
+    if out["intro"]["listed"] != want_list:
+        fail(f"{code}: the intro lists {out['intro']['listed']}, not the scenarios to play now "
+             f"{scenarios.PLAYING} (and the one linked)")
     st = out["turn"]["st"]
     sides = [f["side"] for f in st["fighters"]]
     team = 1 + len(s.get("allies", []))
@@ -92,8 +96,9 @@ def check_start(code, s):
              f"not the {s['weapon']} and Armor {want_armor}")
     for i, name in enumerate(s["foes"], team):
         f, want = st["fighters"][i], arena.REG["foes"][scenarios.foe_name(name)]
-        got = (f["health_max"], f["armor"], f["ward"], f["attack"], f["weapon"])
-        need = (want["health"], want["armor"], want["ward"], want["attack"], want["damage"])
+        got = (f["health_max"], f["armor"], f["ward"], f["attack"], f["weapon"], f["level"])
+        need = (want["health"], want["armor"], want["ward"], want["attack"], want["damage"],
+                scenarios.foe_level(name))
         if got != need:
             fail(f"{code}: foe {i} is {got}, but registry/foes.txt's {name} is {need}")
     for b in ("Attack", "Shove", "Dash", "Guard", "Pack", "Flee", "End turn", "Quick turn", "Leave"):
@@ -248,7 +253,8 @@ def main():
         started = sum(bool(check_start(code, s)) for code, s in ALL)
         if started == len(ALL):
             ok(f"all {started} scenarios show their brief and start with the fighters they say, "
-               "every button in view")
+               f"every button in view; the list is the {len(scenarios.PLAYING)} to play now "
+               f"({', '.join(scenarios.PLAYING)}), and one opened by its link")
         played = 0
         for code, s in ALL:
             for seed in SEEDS:

@@ -104,9 +104,16 @@ need them):
 a glancing hit too; a hazard on whoever it hits; a race's two traits are on from the start,
 always; a scenario or a story can put one on as a fight begins.
 
-**Shaking one off.** At the end of your turn: **d100 + the stat it names + your shake-off
-bonuses + your roll bonuses, against its TN**. A success or a crit ends it; a cost doesn't.
-A foe's card has no stats but Grace, so a foe shakes off everything with its Grace.
+**Resist** is **twice your level** (a foe's level is on its card), and it's the defense
+against conditions, so a level counts for a lot against them and no stat does. A traveler
+of level 6 has Resist 12; a level 1 rust-guard, 2. Items and traits add to it
+(the Human's Steady: +10 to shake off).
+
+**Shaking one off.** At the end of your turn: **d100 + your Resist + your shake-off
+bonuses + your roll bonuses, against the condition's number + the Resist of whoever put it
+on** (a hazard of the map's: 0). A success or a crit ends it; a cost doesn't. Two fighters
+of the same level shake each other's off as easily at level 1 as at 50; a level above
+theirs, and it's easier.
 
 **The same one twice** doesn't stack: the longer time counts. **Opposites cancel**: on fire
 and soaked, hasted and slowed, blessed and cursed; the new one goes on and the old one ends.
@@ -125,9 +132,9 @@ the arena; at each Departure's, in the game). Using one is your turn's action.
 - **Its roll** is d100 + **half its class's stat** (a Channeler's Presence, a Warden's
   Might) **+ its rank**, as a skill is half a stat plus its training; plus your roll and
   attack bonuses. A new power's rank is 2 × your level (at least 10).
-- **Its TN** is 50 + Dodge + **Ward**, + 20 in cover, as any power's is; a **mind** power's
-  is against **Resolve** (half the target's Presence: a foe's, half its Grace) instead of
-  Ward.
+- **Its TN** is 50 + Dodge + **Ward**, + 20 in cover, as any power's is; a **hex**'s, or
+  any **mind** power's, is **50 + the target's Resist** (twice its level), + 20 in cover: a
+  condition is resisted by level, not by a stat.
 
 | Shape | Target | What it does |
 |---|---|---|
@@ -142,7 +149,7 @@ the arena; at each Departure's, in the game). Using one is your turn's action.
 A hit (Bolt, Burst, Hex) also puts on the power's **condition** at its tier, and its
 element's **rider**: **fire** burns the target's square till the end of your next turn
 (5 × tier, a hazard); **cold** chills it; **kinetic** pushes it a square; **energy**
-ignores its Soak; **mind** is against Resolve. **Silenced** stops all of it.
+ignores its Soak; **mind** is against Resist. **Silenced** stops all of it.
 
 A **foe** can hold powers too (a scenario or a Departure gives them): its card has no class
 stat, so a foe's power rolls its **Attack**, and its rank sets only the tier.
@@ -189,6 +196,28 @@ falls, every kind of condition), each roll re-checked from the Python reference
 (`tools/rules/turn.py`); the reference and the C agree on Speed, TNs, damage and shaking
 off for random fighters and conditions; and random battles never crash under the
 sanitizers.
+
+## To revisit
+
+Decided for now, to come back to after more playtests:
+
+- **Pits and cliffs are a higher level's challenge.** A shove or a bull rush into a pit is
+  out of the fight, and it's the strongest thing in the game (R-02, R-11: Bull rush alone
+  84%); it stays, because shoving things off is fun. Later, hazards may have levels, and a
+  pit or a cliff on a map be for higher-level fights (or a fall be damage and a turn to
+  climb out, at low levels).
+- **Ground slam or Shockwave.** A stun for everyone round you, for one charge, may be too
+  strong: on an open floor a new Warden's slam alone takes two rust-guards and a rat from
+  4% to 29%. Shockwave is the alternative being tried: the same burst, but **staggered**
+  (−20 × tier to each one's next attack) instead of stunned: 17%. With all four powers,
+  R-13 (Ground slam) is 39% and R-14 (Shockwave) 27%. By a pit, the push into it is what
+  wins, and the two come out the same (66%).
+
+- **Resist per level.** Resist is twice the level, the same scale as a power's rank, so
+  equals stay equal at every level. Measured at 3× and 5× too: a level 6 Warden's hexers
+  need 62, 68 or 80 to land, but R-15 hardly moves (38%, 38%, 40%): what their hexes cost
+  him is their damage and the slow, not how often they land. Stats may add to Ward later,
+  if it doesn't make Grace and the like worth more than the rest.
 
 ## Still open
 

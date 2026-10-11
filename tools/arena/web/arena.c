@@ -15,7 +15,7 @@
  *                               traveler X Y PASSPORT WEAPON_ITEM
  *                               foe X Y HEALTH GRACE DODGE ARMOR WARD SOAK SPEED ATTACK
  *                                   WEAPON RANGED POWER TYPE AREA WEAK BEHAVIOR COWARD
- *                                   [hit COND]
+ *                                   [hit COND] [level N]
  *   ar_next()                 play foes until it's a traveler's turn, or the end
  *   ar_reach(who)             the squares `who` can reach this turn
  *   ar_targets(who, x, y)     who `who` can attack from x, y, and the TN for each
@@ -58,12 +58,16 @@ static uint8_t pranks[APB_POWERS_HELD];
 static uint8_t pleft[APB_POWERS_HELD];
 static uint8_t crounds[APB_COND_SLOTS];
 
+/* A condition by its name: the word at s (what follows it on the line doesn't count). */
 static uint8_t cond_named(const char *s)
 {
     uint16_t i;
+    size_t n = strcspn(s, " \t\r\n");
 
     for (i = 1; i < apb_cond_count; ++i) {
-        if (apb_conds[i].name && strcmp(apb_conds[i].name, s) == 0) return (uint8_t)i;
+        if (apb_conds[i].name && strlen(apb_conds[i].name) == n && strncmp(apb_conds[i].name, s, n) == 0) {
+            return (uint8_t)i;
+        }
     }
     return 0;
 }
@@ -141,10 +145,10 @@ static const char *end_reply(uint8_t whose)
         put("\"side\":%u,\"state\":%u,\"x\":%u,\"y\":%u,\"health\":%u,\"health_max\":%u,"
             "\"grace\":%u,\"dodge\":%u,\"armor\":%u,\"ward\":%u,\"soak\":%u,\"speed\":%u,"
             "\"attack\":%u,\"weapon\":%u,\"stat_bonus\":%u,\"ranged\":%u,\"power\":%u,"
-            "\"type\":%u,\"area\":%u,\"weak\":%d,\"guarding\":%u,\"waited\":%u",
+            "\"type\":%u,\"area\":%u,\"weak\":%d,\"guarding\":%u,\"waited\":%u,\"level\":%u",
             f.side, f.state, f.x, f.y, f.health, f.health_max, f.grace, f.dodge, f.armor, f.ward,
             f.soak, f.speed, f.attack, f.weapon, f.stat_bonus, f.ranged, f.power, f.dmg_type,
-            f.area, f.weak_type == 0xFF ? -1 : f.weak_type, f.guarding, f.waited);
+            f.area, f.weak_type == 0xFF ? -1 : f.weak_type, f.guarding, f.waited, f.level);
         put(",\"speed_now\":%u,\"move_left\":%u,\"dodge_now\":%u,\"armor_now\":%u,"
             "\"ward_now\":%u,\"soak_now\":%u,\"conds\":[", apb_battle_speed(i),
             apb_battle_move_left(i), apb_battle_dodge(i), apb_battle_armor(i), apb_battle_ward(i),
@@ -281,6 +285,7 @@ const char *ar_begin(unsigned seed, const char *spec)
             f.weak_type = (uint8_t)v[15]; f.behavior = (uint8_t)v[16]; f.coward = (uint8_t)v[17];
             f.race = 0xFF;
             if (strstr(line, " hit ")) f.on_hit = cond_named(strstr(line, " hit ") + 5);
+            f.level = (uint8_t)(strstr(line, " level ") ? atoi(strstr(line, " level ") + 7) : 1);
             if (apb_battle_add(&f) == APB_NOBODY) return refuse("a foe can't stand there");
         }
     }

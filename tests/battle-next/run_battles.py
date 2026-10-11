@@ -72,6 +72,32 @@ def fighters(path):
     return out
 
 
+def levels(path):
+    """Each fighter's level, in the order they join: a traveler's from its Passport, a
+    foe's from its line (1 if not said)."""
+    out = []
+    for line in open(path):
+        w = line.split()
+        if w and w[0] == "traveler":
+            out.append(passport.decode(w[1])["level"])
+        elif w and w[0] == "foe":
+            out.append(int(w[w.index("level") + 1]) if "level" in w else 1)
+    return out
+
+
+def resists(path):
+    """Every Resist a condition can be put on with (docs/turn.md): twice each fighter's
+    level (a foe's from its line, else 1), and 0 for a hazard's or the scenario's."""
+    out = {0}
+    for line in open(path):
+        w = line.split()
+        if w and w[0] == "traveler":
+            out.add(2 * passport.decode(w[1])["level"])
+        elif w and w[0] == "foe":
+            out.add(2 * (int(w[w.index("level") + 1]) if "level" in w else 1))
+    return out
+
+
 def absorbed(lines, i, who):
     """The barrier lines just before line i for fighter `who`: what they took."""
     took = 0
@@ -93,6 +119,8 @@ def recheck(name, path, log):
     seed = int(next(line.split()[1] for line in open(path) if line.startswith("seed")))
     dice = combat.d100s(seed)
     who = fighters(path)
+    resists_ = resists(path)
+    lv = levels(path)
     last = None
     rolls = 0
     tiers = {}
@@ -131,6 +159,9 @@ def recheck(name, path, log):
             if RESULTS[combat.resolve(roll, total, tn)] != result:
                 fail(f"{name}: {line.strip()}: the rules say {RESULTS[combat.resolve(roll, total, tn)]}")
             p = turn.POWERS[pw]
+            if (registry_shape(p) == "hex" or p["element"] == 4) \
+                    and tn not in (turn.resist_tn(lv[tgt]), turn.resist_tn(lv[tgt], True)):
+                fail(f"{name}: {line.strip()}: a hex is against Resist: 50 + {turn.resist(lv[tgt])}")
             want = 0
             if registry_shape(p) in ("bolt", "burst", "hex"):
                 kind = p["element"]
@@ -171,9 +202,10 @@ def recheck(name, path, log):
                 return rolls
             if RESULTS[combat.resolve(int(roll), int(total), int(tn))] != result:
                 fail(f"{name}: {line.strip()}: wrong result")
-            if cond and int(tn) != turn.CONDS[cond]["shake"][1]:
+            # Against its number + the Resist of whoever put it on (a fighter's, or 0).
+            if cond and int(tn) - turn.CONDS[cond]["shake"] not in resists_:
                 fail(f"{name}: {line.strip()}: {cond} is shaken off against "
-                     f"{turn.CONDS[cond]['shake'][1]}")
+                     f"{turn.CONDS[cond]['shake']} + a Resist ({sorted(resists_)})")
         elif t and t.group(3) in turn.CONDS:
             f, dmg, cond, soak, tags = t.groups()
             n, kind = turn.CONDS[cond]["effects"]["dot"]

@@ -74,14 +74,15 @@ and gear that need them; **changes sides** waits until it's clearly worth it.
 - **Put on by an attack.** An attack, a power or a hazard that carries a condition puts it
   on whoever it hits. (Whether a glancing hit does too is still open.)
 - **Some must be resisted first.** A condition put on by a power may name a defense:
-  the attack's roll beats the target's Ward (or Resolve, for the mind), as any power's
-  does. A hit is a hit; there's no second roll.
+  a hex's roll beats 50 + the target's Resist (twice its level); a bolt's or a burst's,
+  its Ward, as any power's does. A hit is a hit; there's no second roll.
 - **Wearing off.** A condition with rounds ends at the end of your turn when they run out;
   count them down at the end of each of your turns.
 - **Shaking it off.** At the end of your turn, roll once for each condition that can be
-  shaken off: **d100 + the stat it names, against its TN.** Success, it's gone. (The one
-  roll the game already has; TN 100 is a normal difficulty, as in
-  [rules-v0.md](rules-v0.md).)
+  shaken off: **d100 + your Resist (twice your level), against its number + the Resist of
+  whoever put it on** ([turn.md](turn.md#conditions-in-play)). Success, it's gone. (Its
+  number is 50 for a normal one: two fighters of a level shake each other's off half the
+  time.)
 - **Ending on a trigger.** Some end when something happens: asleep ends when you're hit,
   soaked when you're set on fire (and the fire goes out), hidden when you attack.
 - **The same condition twice doesn't stack.** The stronger counts, and the longer time.
@@ -118,10 +119,10 @@ foe or a Departure names it by its id.
 
 | Condition | Effects | Ends | From |
 |---|---|---|---|
-| **Poisoned** | 3 damage each turn (no type) | shake off: Grit, TN 100; or 5 rounds | venom, a toxin dart, a bad meal |
+| **Poisoned** | 3 damage each turn (no type) | shake off: 50; or 5 rounds | venom, a toxin dart, a bad meal |
 | **Bleeding** | 2 damage each turn | any healing, or a Medicine check | blades, claws, a bite |
 | **Diseased** | −10 to rolls; no healing over half your health | a Medicine check, or the story | plague rats, a spore cloud |
-| **Nanite swarm** | 3 energy damage each turn; spreads | shake off: Wits, TN 110 (you reprogram them) | a nanite grenade, a hive drone |
+| **Nanite swarm** | 3 energy damage each turn; spreads | shake off: 60 (you reprogram them) | a nanite grenade, a hive drone |
 | **Exhausted** | Speed −2, −10 to rolls | 3 rounds | what a stim leaves behind |
 | **Stimmed** | Speed +2, +10 to attacks; then exhausted | 3 rounds | a combat stim |
 | **Drunk** | −10 to rolls, +10 to shake off frightened | 5 rounds | the Buffer Stop's best |
@@ -130,15 +131,15 @@ foe or a Departure names it by its id.
 
 | Condition | Effects | Ends | From |
 |---|---|---|---|
-| **Frightened** | −10 to rolls; can't move closer to what frightened it | shake off: Presence, TN 100 | a roar, a horror, Intimidate |
-| **Confused** | moves and attacks at random | 2 rounds; or shake off: Wits, TN 100 | mind spike, a strobe, a bad teleport |
+| **Frightened** | −10 to rolls; can't move closer to what frightened it | shake off: 50 | a roar, a horror, Intimidate |
+| **Confused** | moves and attacks at random | 2 rounds; or shake off: 50 | mind spike, a strobe, a bad teleport |
 | **Taunted** | must attack the taunter | 2 rounds | Taunt (a Warden's) |
 | **Charmed** | can't attack the charmer | 3 rounds, or when the charmer hits it | a siren's song, a pheromone |
 | **Berserk** | +20 to melee, Dodge 0, must attack the nearest fighter | 3 rounds | rage, a war-drug, a curse |
-| **Asleep** | lose the turn; Dodge 0 | when hit; or shake off: Wits, TN 110 | Sedate, a lullaby, gas |
+| **Asleep** | lose the turn; Dodge 0 | when hit; or shake off: 60 | Sedate, a lullaby, gas |
 | **Inspired** | +10 to rolls, +10 to shake off frightened | 3 rounds | a war cry, a banner, a speech |
 | **Focused** | +20 to the next attack | your next attack | taking aim, a targeting scope |
-| **Dominated** | fights for the other side | 1 round; shake off: Presence, TN 120 | (later: the large effect) |
+| **Dominated** | fights for the other side | 1 round; shake off: 70 | (later: the large effect) |
 
 ### Movement and control
 
@@ -146,10 +147,11 @@ foe or a Departure names it by its id.
 |---|---|---|---|
 | **Slowed** | Speed −2 | 2 rounds | cold, a snare, tar |
 | **Hasted** | Speed +2 | 3 rounds | a spell, a stim, a time-skip |
-| **Entangled** | Speed 0 (can still act) | shake off: Might, TN 100 | a net, vines, sticky foam |
+| **Entangled** | Speed 0 (can still act) | shake off: 50 | a net, vines, sticky foam |
 | **Knocked down** | Dodge 0; standing up costs half your move | when you stand | a shove, a blast, a shockwave |
 | **Stunned** | lose the turn | 1 round | a stun baton, a concussion |
-| **Paralyzed** | lose the turn; Dodge 0 | 2 rounds; or shake off: Grit, TN 120 | a neural lock, a ghoul's touch |
+| **Staggered** | −20 to your next attack (× tier) | 1 round | a shockwave, a heavy blow |
+| **Paralyzed** | lose the turn; Dodge 0 | 2 rounds; or shake off: 70 | a neural lock, a ghoul's touch |
 | **Frozen** | lose the turn; Armor +10; then soaked | 1 round | Ice wall's heart, a cryo blast |
 | **Weightless** | crosses pits; −10 to melee | while it lasts | zero gravity, a levitation spell |
 | **Heavy** | Speed −1; −10 to ranged | while it lasts | heavy gravity, lead boots, a curse |
@@ -160,7 +162,7 @@ foe or a Departure names it by its id.
 
 | Condition | Effects | Ends | From |
 |---|---|---|---|
-| **Blinded** | −30 to attacks | 2 rounds; or shake off: Grit, TN 100 | a flashbang, sand, a curse |
+| **Blinded** | −30 to attacks | 2 rounds; or shake off: 50 | a flashbang, sand, a curse |
 | **Hidden** | can't be attacked from more than 1 square away | when you attack, or 3 rounds | a stealth cloak, Vanish, smoke |
 | **Marked** | Dodge −10 and Armor −10 against everyone | 3 rounds | a targeting laser, a hunter's mark |
 | **Deafened** | −10 to rolls that need hearing; immune to songs and roars | 3 rounds | a blast, earplugs (worn) |
@@ -192,7 +194,7 @@ foe or a Departure names it by its id.
 
 | Condition | Effects | Ends | From |
 |---|---|---|---|
-| **On fire** | 5 fire damage each turn; thorns 2 | 3 rounds; or shake off: Grace, TN 90; or soaked | fire, Fireball, a burning square |
+| **On fire** | 5 fire damage each turn; thorns 2 | 3 rounds; or shake off: 40; or soaked | fire, Fireball, a burning square |
 | **Soaked** | immune: on fire; vulnerable to energy | 3 rounds | water, rain, a burst pipe |
 | **Chilled** | Speed −1 | 2 rounds | cold, Ice shard |
 | **Electrified** | thorns 3 (energy) | 2 rounds | lightning, a shock coil |
@@ -264,7 +266,7 @@ Most powers either do damage or put on a condition; many do both. The class list
 
 | Class | Power: condition |
 |---|---|
-| Warden | Shield wall: shielded. Shove: knocked down (a crit). Taunt: taunted. Ground slam: stunned |
+| Warden | Shield wall: shielded. Shove: knocked down (a crit). Taunt: taunted. Ground slam: stunned (or Shockwave: staggered, being tried) |
 | Rogue | Blink: displaced. Smoke: a field of fog (hidden). Dirty trick: blinded, 1 round. Snare: slowed; entangled from tier 3. Vanish: hidden |
 | Tinker | Force field: barrier. Barricade: in cover. Shock mine: stunned. Scan: marked |
 | Channeler | Ice wall: chilled; frozen from tier 5. Fire wall, Fireball: on fire. Shield: warded. Mind spike: confused |
@@ -343,7 +345,7 @@ are printed on the character sheet; so is anything your gear gives you while wor
 ## What it needs from the engine (later)
 
 - **A registry** of conditions (`registry/conditions.txt`): each one's effects and
-  numbers, how it ends (rounds, a shake-off stat and TN, a trigger), its opposite, what it
+  numbers, how it ends (rounds, a shake-off number, a trigger), its opposite, what it
   becomes when it ends, and what it's immune to.
 - **Each fighter** keeps its conditions and their rounds left; the battle engine applies
   them at the start and end of each turn, and the battle screen shows them.

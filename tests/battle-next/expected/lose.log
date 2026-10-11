@@ -16,7 +16,7 @@ round 1: 0's turn (speed 5)
   0 is no longer STUNNED
 round 1: 1's turn (speed 2)
   1 loses the turn: ASLEEP
-  1 tries to shake off ASLEEP: 92+30=122 vs 110: success
+  1 tries to shake off ASLEEP: 92+2=94 vs 60: success
   1 is no longer ASLEEP
 round 2: 0's turn (speed 5)
   0 attacks 1: 60+55=115 vs 50: success, 14 damage [soak 0 MRK DOWN SLOW]

@@ -34,3 +34,4 @@
 19    ADRENALINE    MEDIC      ward   -        2     ally         HASTED        "Adrenaline"
 20    STIM          MEDIC      ward   -        2     ally         STIMMED       "Stim"
 21    SEDATE        MEDIC      hex    mind     2     foe          ASLEEP        "Sedate"
+22    SHOCKWAVE     WARDEN     burst  kinetic  1     around       STAGGERED     "Shockwave"

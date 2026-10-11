@@ -1,0 +1,58 @@
+0: traveler at 2,3, health 28, attack 62, speed 5, TN to hit 69 [soak 0 PLT KNT]
+1: foe a at 3,2, health 30, speed 4
+2: foe b at 3,3, health 30, speed 4
+3: foe c at 3,4, health 30, speed 4
+0 has SHOCKWAVE at rank 40 (tier 3, rolls 82)
+0 has SECOND_WIND at rank 40 (tier 3, rolls 82)
+0 has SHIELD_WALL at rank 40 (tier 3, rolls 82)
+round 1: 0's turn (speed 5)
+  0 uses SHOCKWAVE (tier 3) at 2,3
+  0's SHOCKWAVE on 1: 79+82=161 vs 57: success, 25 damage [soak 0]
+  1 is STAGGERED (1 rounds)
+  1 is pushed to 4,1
+  0's SHOCKWAVE on 2: 79+82=161 vs 57: success, 25 damage [soak 0]
+  2 is STAGGERED (1 rounds)
+  2 is pushed to 4,3
+  0's SHOCKWAVE on 3: 79+82=161 vs 57: success, 25 damage [soak 0]
+  3 is STAGGERED (1 rounds)
+  3 is slammed into something: 3 damage
+round 1: 1's turn (speed 4)
+  1 steps to 3,2
+  1 is no longer STAGGERED
+  1 attacks 0: 53+-20=33 vs 69: fail, 0 damage [soak 0 PLT KNT]
+round 1: 2's turn (speed 4)
+  2 steps to 3,3
+  2 is no longer STAGGERED
+  2 attacks 0: 90+-20=70 vs 69: success, 4 damage [soak 0 PLT KNT]
+round 1: 3's turn (speed 4)
+  3 is no longer STAGGERED
+  3 attacks 0: 86+-20=66 vs 69: cost, 2 damage [soak 0 PLT KNT]
+round 2: 0's turn (speed 5)
+  (quick: act 2 3 0 1)
+  0 attacks 1: 82+62=144 vs 62: success, 17 damage [soak 0]
+  1 is down
+round 2: 2's turn (speed 4)
+  2 attacks 0: 78+40=118 vs 69: success, 8 damage [soak 0 PLT KNT]
+round 2: 3's turn (speed 4)
+  3 attacks 0: 71+40=111 vs 69: success, 8 damage [soak 0 PLT KNT]
+round 3: 0's turn (speed 5)
+  0 uses SECOND_WIND (tier 3) at 2,3
+  0's SECOND_WIND heals 0: 15
+  0 is REGENERATING (5 rounds)
+round 3: 2's turn (speed 4)
+  2 attacks 0: 23+40=63 vs 69: cost, 2 damage [soak 0 PLT KNT REG]
+round 3: 3's turn (speed 4)
+  3 attacks 0: 9+40=49 vs 69: fail, 0 damage [soak 0 PLT KNT REG]
+round 4: 0's turn (speed 5)
+  0 heals 3 from REGENERATING
+  (quick: act 2 3 0 2)
+  0 attacks 2: 94+62=156 vs 62: success, 18 damage [soak 0]
+  2 is down
+round 4: 3's turn (speed 4)
+  3 attacks 0: 54+40=94 vs 69: success, 6 damage [soak 0 PLT KNT REG]
+round 5: 0's turn (speed 5)
+  0 heals 3 from REGENERATING
+  (quick: act 2 3 0 3)
+  0 attacks 3: 74+62=136 vs 62: success, 16 damage [soak 0]
+  3 is down
+the fight is won

@@ -211,8 +211,8 @@ CONDITION_NUMBERS = ["speed", "dodge", "armor", "ward", "soak", "rolls", "attack
 
 
 def load_conditions(root=ROOT, races=None):
-    """{NAME: condition}, each with its rounds (None: no countdown), shake ((stat, tn) or
-    None), opposite, then (names or None), tag, display, and effects: a dict of numbers and
+    """{NAME: condition}, each with its rounds (None: no countdown), shake (its number,
+    to which the Resist of whoever put it on is added; or None), opposite, then (names or None), tag, display, and effects: a dict of numbers and
     flags, dot/thorns as (n, type or None), vulnerable/immune_hazard as a type, immune as
     a list of names, race as a race's name."""
     path = os.path.join(root, "conditions.txt")
@@ -230,10 +230,7 @@ def load_conditions(root=ROOT, races=None):
         last = cid
         name = _name(path, n, f[1], out)
         rounds = None if f[2] == "-" else _int(path, n, f[2], 1, 9, "rounds")
-        shake = None
-        if f[3] != "-":
-            stat, _, tn = f[3].partition(":")
-            shake = (_one_of(path, n, stat, STATS, "shake stat"), _int(path, n, tn, 50, 200, "shake TN"))
+        shake = None if f[3] == "-" else _int(path, n, f[3], 1, 150, "shake")
         tag = f[6]
         if not (1 <= len(tag) <= 4 and tag.isalpha() and tag.isupper()):
             _fail(path, n, f"tag '{tag}' should be 1 to 4 capital letters")
