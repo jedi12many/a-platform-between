@@ -359,4 +359,3 @@ are printed on the character sheet; so is anything your gear gives you while wor
 - **Resistance** short of immunity (half the rounds?), if it's needed.
 - Conditions **between scenes** (poisoned on the road, cured by a check) beyond the story's
   own.
-- How many of the **medium** effects the first build takes on.
