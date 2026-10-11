@@ -27,6 +27,7 @@ KIND = 9
 NO_TUNE = 63
 PAID_MAX = 32                   # APB_VM_REWARD_SITES
 RECEIPT_MAX = 8                 # APB_RECEIPT_MAX
+LONGEST = 255                   # symbols: a code is this long at most (the cartridge's room)
 
 
 def encode(t):
@@ -51,21 +52,16 @@ def encode(t):
         bits += to_bits(eid, 10) + to_bits(state, 2) + to_bits(was, 2)
     data = to_bytes(bits)
     out = [(b >> (7 - i)) & 1 for b in data for i in range(8)]
-    return symbols(out + to_bits(crc16(data), 16))
-
-
-def longest(image):
-    """The most symbols a code for this image can have: every list full."""
-    bits = (4 + 16 * 3 + 12 + image["flags"] + 8 * image["vars"] + 16 + 6 + 8 + 2 + 16
-            + 6 + PAID_MAX * 19 + 16 + 2 * (4 + RECEIPT_MAX * 10) + 4 + RECEIPT_MAX * 14)
-    data = ((bits + 7) // 8 * 8 + 16 + 4) // 5
-    return data + (data + 18) // 19
+    code = symbols(out + to_bits(crc16(data), 16))
+    if len(code) > LONGEST:
+        raise PassportError("too long to save: a trip code is 255 symbols at most")
+    return code
 
 
 def decode(text, image, boarded=None):
     """The trip in a code, for the image (as image_facts gives it). With `boarded`, a code
     for another pass is refused. PassportError says what's wrong, as the game does."""
-    bits = read_symbols(text, "trip code", longest(image))
+    bits = read_symbols(text, "trip code", LONGEST)
     pos = 0
 
     def get(n):
@@ -117,11 +113,16 @@ def decode(text, image, boarded=None):
         raise PassportError("that code is for another Departure")
     if boarded is not None and t["boarded"] != boarded:
         raise PassportError("that code is for another Boarding Pass")
-    if (t["scene"] >= len(image["scenes"]) or image["scenes"][t["scene"]][2] == 0xFFFF
-            or t["dice"] == 0 or (t["tune"] is not None and t["tune"] >= image["tunes"])
-            or any(car >= image["cars"] for car, _ in t["paid"])):
+    if (t["scene"] >= len(image["scenes"]) or t["dice"] == 0
+            or (t["tune"] is not None and t["tune"] >= image["tunes"])):
         raise broken()
     return t
+
+
+def resumable(t, image):
+    """Whether the trip can go on: its scene has a menu. (Only once its car is loaded can
+    a game know; one that can't goes on derails, as a damaged save does.)"""
+    return image["scenes"][t["scene"]][2] != 0xFFFF
 
 
 # ---- images and saves -------------------------------------------------------------------
@@ -196,7 +197,10 @@ def from_save(save, d, image, boarded):
     gained = [get("H") for _ in range(get("B"))]
     lost = [get("H") for _ in range(get("B"))]
     echoes = [(get("H"), get("B"), get("B")) for _ in range(get("B"))]
-    text = bytes(save[pos + 1:pos + 1 + save[pos]]).decode("ascii")
+    # The Passport's text is in the platform's own characters: the C64's capitals are
+    # PETSCII's $C1-$DA.
+    text = "".join(chr(b - 0x80) if 0xC1 <= b <= 0xDA else chr(b)
+                   for b in save[pos + 1:pos + 1 + save[pos]])
     ch = passport.decode(text)
     # The scene whose code holds the menu: the last one starting at or before it in its car.
     scene = max((s for s, (c, at, _) in enumerate(image["scenes"]) if c == car and at <= menu_at),

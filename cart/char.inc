@@ -41,6 +41,9 @@ PW_LENGTH       = 3             ; too short, or too long, or a line under 2 symb
 PW_CHECKSUM     = 4             ; every line right, the whole not
 PW_VERSION      = 5             ; neither a Passport (2) nor a pass (8)
 PW_TOO_BIG      = 6             ; (encoding) a field that doesn't fit its bits
+PW_OTHER_IMAGE  = 7             ; (a trip code) made by another Departure's image
+PW_OTHER_PASS   = 8             ; (a trip code) for another pass or Passport
 
 KIND_PASSPORT   = 2             ; a password's first 4 bits
 KIND_PASS       = 8
+KIND_TRIP       = 9             ; a trip code (trip.s)

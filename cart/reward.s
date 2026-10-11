@@ -11,6 +11,7 @@
 
         .export reward_reset, first_pay, give, take, carrying, award_xp, set_debt
         .export echo_get, echo_set, rewind_echoes, receipt
+        .export echo_put, item_in, item_out, paid_count, paid_lo, paid_hi, paid_car, gives
         .import traveler, kind, level_max, car_index, xp_award, gain_xp, item_tier
         .import echo_dep_lo, echo_dep_hi
         .importzp ECHO_COUNT
@@ -93,7 +94,23 @@ give:   sta zp_t0
         cmp #BRANCH_GIVES
         bcs @out
         inc gives
-@give:  ldx #0
+@give:  jsr pack_put
+        lda #R_GAINED
+        ldx #R_LOST
+        jmp receipt_item
+@out:   rts
+
+; item_in: item A/X into the first empty pack slot, if there is one, the receipt as it is:
+; a trip picked up (trip.s). Changes A, X; zp_t0, zp_t1.
+item_in:
+        sta zp_t0
+        stx zp_t1
+        ; (on into pack_put)
+
+; pack_put: item zp_t0/zp_t1 into the first empty pack slot (none: the lost-and-found
+; keeps it). Changes A, X.
+pack_put:
+        ldx #0
 @slot:  lda traveler + CH_PACK + 1, x
         cmp #EMPTY_SLOT
         beq @into
@@ -101,27 +118,31 @@ give:   sta zp_t0
         inx
         cpx #SLOTS * 2
         bne @slot
-        beq @earned                 ; (always)
+        rts
 @into:  lda zp_t0
         sta traveler + CH_PACK, x
         lda zp_t1
         sta traveler + CH_PACK + 1, x
-@earned:
-        lda #R_GAINED
-        ldx #R_LOST
-        jmp receipt_item
-@out:   rts
+        rts
 
 ; take: item A/X out of the pack, or else from what's equipped: the first slot holding it.
 ;   Changes: A, X, Y; zp_t0-zp_t3.
-take:   jsr find_item
+take:   jsr item_out
+        bcs @out
+        lda #R_LOST
+        ldx #R_GAINED
+        jmp receipt_item
+@out:   rts
+
+; item_out: as take, the receipt as it is (a trip picked up, trip.s). After: C clear, or
+; C set: the traveler hasn't it. Changes A, X; zp_t0, zp_t1.
+item_out:
+        jsr find_item
         bcs @out
         lda #EMPTY_SLOT
         sta traveler, x
         sta traveler + 1, x
-        lda #R_LOST
-        ldx #R_GAINED
-        jmp receipt_item
+        clc
 @out:   rts
 
 ; carrying: A = 1 if item A/X is in the pack or equipped, else 0.
@@ -329,6 +350,15 @@ echo_set:
         jsr echo_get                ; (zp_t0/zp_t1: the Echo)
         sta zp_t3                   ; its state at boarding, if this is the first change
         jsr receipt_echo
+        jmp echo_place
+
+; echo_put: as echo_set, the receipt as it is (a trip picked up, trip.s). Changes A, X,
+; Y; zp_t0-zp_t2.
+echo_put:
+        sta zp_t0
+        stx zp_t1
+        sty zp_t2
+echo_place:
         jsr echo_look
         bcs @new
         lda zp_t2

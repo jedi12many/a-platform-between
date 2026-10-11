@@ -6,7 +6,7 @@
         .include "mem.inc"
         .include "zp.inc"
 
-        .export key_wait, log_more, menu_ask, line_ask, command_show, rows_shown
+        .export key_wait, log_more, menu_ask, menu_save, line_ask, command_show, rows_shown
         .import key_get, keys_clear, text_at, log_print, log_chars, ascii_screen, frames, log_ink
 
 CURSOR_ON = $A0                     ; a reversed space: a block
@@ -102,11 +102,16 @@ log_more:
 
 ; ----------------------------------------------------------------------------------------
 ; menu_ask: a menu's answer, a digit from 1 to its count; the answer into the story log
-; ("> 2").
+; ("> 2"). menu_save: the same, or S to save the trip (vm.s), "> s" (as the C64 has it).
 ;   Takes:   A = how many choices, 1-9 (the menu itself is printed already).
-;   After:   A = the choice, 0 to count - 1.
+;   After:   A = the choice, 0 to count - 1, Z as A; or (menu_save) $FF: save.
 ;   Changes: A, X, Y; text.s's zero page; zp_t0-zp_t3.
+menu_save:
+        ldx #1
+        bne ask                     ; (always)
 menu_ask:
+        ldx #0
+ask:    stx may_save
         clc
         adc #'1'
         sta zp_t3                   ; one past the last digit
@@ -116,11 +121,17 @@ menu_ask:
         ldy #WHITE
         jsr command_show
 @key:   jsr key_wait
-        cmp #'1'
+        ldx may_save
+        beq @digit
+        cmp #'s'
+        beq @save
+        cmp #'S'
+        beq @save
+@digit: cmp #'1'
         bcc @key
         cmp zp_t3
         bcs @key
-        sta echo + 2
+@save:  sta echo + 2
         lda #0
         sta echo + 3
         jsr echo_prefix
@@ -128,6 +139,11 @@ menu_ask:
         lda echo + 2
         sec
         sbc #'1'
+        cmp #9                      ; a digit: its choice, Z as it
+        bcs @s
+        cmp #0
+        rts
+@s:     lda #$FF                    ; S
         rts
 
 ; ----------------------------------------------------------------------------------------
@@ -213,6 +229,7 @@ nothing: .byte 0
 newline: .byte 10, 0
 
         .segment "BSS"
+may_save:       .res 1              ; menu_save: S saves
 icol:       .res 1                  ; the cursor's column on the command row
 under:      .res 1                  ; what the cursor is over
 typed:      .res 1                  ; the line's length so far

@@ -12,7 +12,7 @@
         .export pair_count, pairs_at, picture_count, pictures_at, music_count, music_at
         .export encounter_count, encounters_at
         .export car_index, car_title, code_len, code_end, string_count, offsets_at
-        .export strings_at, car_end, picture_asset, music_asset
+        .export strings_at, car_end, picture_asset, music_asset, scene_count, scene_now
         .import asset_fetch, ram_copy, vm_fail, failed
 
 CODE_AT         = CAR_AT + 9        ; a car's code
@@ -447,7 +447,11 @@ scene_enter:
         lda #<msg_bad_scene
         ldx #>msg_bad_scene
         jmp vm_fail
-@scene: lda zp_t0                   ; its entry: dir_at + 3 x scene
+@scene: lda zp_t0                   ; (the scene now: a trip code says it, trip.s)
+        sta scene_now
+        lda zp_t1
+        sta scene_now + 1
+        lda zp_t0                   ; its entry: dir_at + 3 x scene
         asl a
         sta zp_t2
         lda zp_t1
@@ -641,6 +645,7 @@ level_max:      .res 1
 flag_count:     .res 2
 var_count:      .res 1
 scene_count:    .res 2
+scene_now:      .res 2              ; the scene entered last
 start_scene:    .res 2
 depot_end:      .res 2              ; addresses, from here on
 var_init:       .res 2

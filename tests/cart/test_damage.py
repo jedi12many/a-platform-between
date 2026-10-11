@@ -88,7 +88,8 @@ def main(argv):
             pc = c.mpu.pc
             if pc == syms["main"]:
                 c.started = True
-            if pc in (syms["ending"], syms["desk_run"]):    # asset 1, run where it's staged
+            if pc in (syms["ending"], syms["desk_run"], syms["trip_show"], syms["trip_apply"]):
+                # asset 1, run where it's staged
                 c.ending = True
             elif pc == syms["fight"]:               # the fight's two, staged and copied
                 c.fighting = True

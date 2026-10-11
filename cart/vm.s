@@ -14,7 +14,7 @@
         .include "receipt.inc"
 
         .export vm_board, vm_run, vm_fail, vm_error, vm_health, vars, yard, failed
-        .export cue_scene
+        .export cue_scene, vm_resume, resuming, flags, health, music_now, vsp
         .import scene_enter, kind, dep_id, flag_count, var_count, var_init, start_scene
         .import picture_count, music_count, music_at, car_index, car_title, code_len
         .import code_end, string_count
@@ -25,7 +25,7 @@
         .import dice_roll, record_line, party_show, log_print, menu_ask, key_wait, keys_clear
         .import picture_show, number_text, skill_lo, skill_hi, item_tier, echo_default
         .import encounter_count, asset_fetch, fight, view_map, platform_map, ram_copy
-        .import tune_find, tune_cue
+        .import tune_find, tune_cue, menu_save, trip_show
         .import __FIGHT_RUN__, __FIGHT_SIZE__
         .importzp ITEM_COUNT, ECHO_COUNT
         .importzp SKILL_COUNT
@@ -61,7 +61,8 @@ OP_LAST         = $4D
 ; vm_board: a trip begins (apb_vm_board, apb_vm_board_pass): the traveler (`traveler`) at
 ; full health, the story's flags clear and its vars as they start, a clean receipt, the
 ; dice from the seed; the first scene entered. With a pass: its seed and its ticket, and
-; on a Rewind, this Departure's Echoes forgotten.
+; on a Rewind, this Departure's Echoes forgotten. With `resuming` not 0, all that but the
+; first scene: a trip picked up (play.s: trip.s's trip_apply, then vm_resume).
 ;   Takes:   A = 1 with a Boarding Pass (`pass`), 0 with a Passport; X/Y = the seed when
 ;            there's no pass (low/high).
 ;   Before:  vm_open has the depot.
@@ -139,9 +140,65 @@ vm_board:
         sta music_cued
         sta car_index
         sta last_picture
-        lda start_scene
+        lda resuming
+        beq @enter
+        clc
+        rts
+@enter: lda start_scene
         ldx start_scene + 1
         jmp scene_enter
+
+; ----------------------------------------------------------------------------------------
+; vm_resume: a trip picked up (apb_vm_resume, from a trip code: docs/boarding.md): into
+; the scene it was saved in, at its menu block, which builds the menu again from the
+; flags; the story's tune cued; "Picking up where you left off."
+;   Takes:   A/X = the scene (low/high).
+;   Before:  vm_board (resuming) and trip.s's trip_apply have made the trip as it was.
+;   After:   C clear; or C set: the VM has failed (a scene with no menu: "bad trip code").
+;   Changes: A, X, Y; zp_ip; zp_t0-zp_t3; and scene_enter's.
+vm_resume:
+        jsr scene_enter
+        bcs @out
+        lda failed
+        bne @fail
+        lda zp_ip                   ; its menu offset: the 2 bytes before
+        sec
+        sbc #2
+        sta zp_t0
+        lda zp_ip + 1
+        sbc #0
+        sta zp_t1
+        ldy #0
+        lda (zp_t0), y
+        sta zp_t2
+        iny
+        lda (zp_t0), y
+        tax
+        and zp_t2
+        cmp #$FF
+        beq @bad                    ; $FFFF: no menu
+        lda zp_t0                   ; the menu block (the run loop checks it's inside)
+        clc
+        adc zp_t2
+        sta zp_ip
+        txa
+        adc zp_t1
+        sta zp_ip + 1
+        bcs @bad
+        lda music_now
+        cmp #$FF
+        beq @tuned
+        jsr cue_music
+@tuned: lda #<picking_up
+        ldx #>picking_up
+        jsr log_print
+        clc
+        rts
+@bad:   lda #<msg_bad_trip
+        ldx #>msg_bad_trip
+        jsr vm_fail
+@fail:  sec
+@out:   rts
 
 ; vm_health: the traveler's health now. After: A. Changes A.
 vm_health:
@@ -796,7 +853,16 @@ op_menu:
         sta steps
         sta steps + 1
         lda menu_count
-        jsr menu_ask
+        jsr menu_save
+        cmp #$FF
+        bne @picked
+        jsr save_trip               ; S: the trip saved, then the menu again
+        lda op_at
+        sta zp_ip
+        lda op_at + 1
+        sta zp_ip + 1
+        rts
+@picked:
         tax
         lda menu_target_lo, x
         pha
@@ -804,6 +870,40 @@ op_menu:
         tax
         pla
         jmp jump_to
+
+; save_trip: the trip as a trip code (trip.s, in asset 1), its lines in the story log and
+; its QR code in the view; on a key, the view as it was. Changes A, X, Y; zp_t0-zp_t3;
+; and trip.s's zero page.
+save_trip:
+        lda #ASSET_ENDING
+        jsr asset_fetch
+        bcs @cant
+        jsr trip_show
+        bcs @said                   ; (it said why it couldn't)
+        lda #<press
+        ldx #>press
+        jsr log_print
+        jsr keys_clear
+        jsr key_wait
+        jmp show_view
+@cant:  lda #<cant_save
+        ldx #>cant_save
+        jmp log_print
+@said:  rts
+
+; show_view: the story's picture in the view again (or the platform), and the party's
+; health. Changes A, X, Y; and picture_show's.
+show_view:
+        lda last_picture
+        cmp #$FF
+        beq @map
+        jsr picture_show
+        jmp @party
+@map:   lda #<platform_map
+        ldx #>platform_map
+        jsr view_map
+@party: lda health
+        jmp party_show
 
 ; next_line: line_at on to the next menu line's room. Changes A.
 next_line:
@@ -1043,16 +1143,7 @@ op_fight:                           ; FIGHT: the encounter, the surprise (0-2)
         jsr push
         lda #SCENE_BACK             ; the story's tune again, and its view
         jsr cue_scene
-        lda last_picture
-        cmp #$FF
-        beq @map
-        jsr picture_show
-        jmp @party
-@map:   lda #<platform_map
-        ldx #>platform_map
-        jsr view_map
-@party: lda health
-        jmp party_show
+        jmp show_view
 @out:   rts
 
 op_yard:                            ; FIGHT_YARD, PICK: the Deep Yards, not yet
@@ -1382,6 +1473,9 @@ scene_lo:           .byte <scene_battle, <scene_won, <scene_lost
 scene_hi:           .byte >scene_battle, >scene_won, >scene_lost
 msg_no_yards:       .byte "no yards yet", 0
 msg_bad_fight:      .byte "bad fight", 0
+msg_bad_trip:       .byte "bad trip code", 0
+picking_up:         .byte "Picking up where you left off.", 10, 10, 0
+cant_save:          .byte "The trip couldn't be saved.", 10, 0
 msg_no_fight:       .byte "can't load the fight", 0
 
         .segment "BSS"
@@ -1390,6 +1484,7 @@ error_n:        .res 1
 failed:         .res 1
 ended:          .res 1
 with_pass:      .res 1
+resuming:       .res 1              ; vm_board: a trip picked up (play.s)
 seed:           .res 2
 yard:           .res 2              ; the trip's seed: the Deep Yards' floors come from it
 health:         .res 1

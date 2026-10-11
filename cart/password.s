@@ -12,12 +12,13 @@
         .include "char.inc"
 
         .export pw_read, pw_write, pw_close, bits_clear, bits_rewind, bits_get, bits_put, bits_crc
-        .export pw_buffer, pw_pos, pw_len, pw_bad_line, crc
+        .export pw_buffer, pw_pos, pw_len, pw_bad_line, crc, pw_trip
         .export symbols
 
-MAX_SYMBOLS = 163                   ; the longest Boarding Pass (every list full); more is
+PASS_LONGEST = 163                  ; the longest Boarding Pass (every list full); more is
                                     ; the wrong length
 PASSPORT_LONGEST = 149              ; and the longest Passport (docs/passport-spec.md)
+MAX_SYMBOLS = 255                   ; and the longest trip code (docs/boarding.md)
 LINE        = 20                    ; symbols a line: 19 data, 1 check
 
         .segment "RESIDENT"
@@ -26,7 +27,9 @@ LINE        = 20                    ; symbols a line: 19 data, 1 check
 ; pw_read: a typed password's bits, its line checks checked. Forgiving, as the spec says:
 ; small letters are capitals, spaces, dashes and line breaks are skipped, O reads as 0, and
 ; I and L as 1. Symbols are counted in lines of 20 however they were typed.
-;   Takes:   A/X = the text (low/high), ASCII, ending in 0 (any length).
+;   Takes:   A/X = the text (low/high), ASCII, ending in 0 (any length); pw_trip not 0
+;            if a trip code may be read (149 symbols at most, or a pass's 163, or with
+;            pw_trip a trip code's 255: the first symbol says which it is).
 ;   After:   A = PW_OK, the bits in pw_buffer (pw_len of them, pw_pos 0), Z set; or
 ;            PW_SYMBOL, PW_LENGTH, or PW_LINE (pw_bad_line: the line, from 1), Z clear.
 ;   Changes: A, X, Y; zp_pw_text, zp_pw_value, zp_pw_n, zp_pw_sum; zp_t0-zp_t3.
@@ -75,20 +78,27 @@ pw_read:
         rts
 @found: txa
         ldx count
-        cpx #MAX_SYMBOLS
-        bcs @long
-        cpx #PASSPORT_LONGEST       ; past a Passport's longest: only a pass, whose first
-        bcc @keep                   ; symbol's top 4 bits say so
+        cpx #PASSPORT_LONGEST       ; past a Passport's longest: only a pass or a trip code,
+        bcc @keep                   ; whose first symbol's top 4 bits say so, to its own
         pha
         lda values
         lsr a
+        cmp #KIND_TRIP
+        beq @trip
         cmp #KIND_PASS
         bne @too_long
-        pla
+        cpx #PASS_LONGEST
+        bcs @too_long
+        bcc @kept                   ; (always)
+@trip:  lda pw_trip                 ; (a trip code only where one's asked for: trip.s)
+        beq @too_long
+        cpx #MAX_SYMBOLS
+        bcs @too_long
+@kept:  pla
         jmp @keep
 @too_long:
         pla
-@long:  lda #PW_LENGTH
+        lda #PW_LENGTH
         rts
 @keep:  sta values, x
         inc count
@@ -464,6 +474,7 @@ pw_buffer:      .res 256            ; the bits
 pw_pos:         .res 2              ; the next bit to read or write
 pw_len:         .res 2              ; how many there are
 pw_bad_line:    .res 1              ; the line a PW_LINE is on, from 1
+pw_trip:        .res 1              ; not 0: a trip code may be read (its own longest)
 close_to:       .res 2              ; pw_close: where the text goes
 crc:            .res 2
 values:         .res MAX_SYMBOLS    ; the symbols read, as values

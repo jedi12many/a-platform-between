@@ -198,7 +198,7 @@ fight, is about 60 symbols, three lines.
 | health | 8 | |
 | gives | 2 | the items a Branch Line has given (0-3) |
 | Debt | 16 | the traveler's Debt now |
-| rewards paid | 6 + 19 each | a count (0-32), then each `GIVE`, `XP` and `DEBT` already reached this trip: its car (6), its offset in the car's code (13) |
+| rewards paid | 6 + 19 each | a count (0-32), then each `GIVE`, `XP` and `DEBT` already reached this trip: its car (6), its offset in the car's code (13) (one the image hasn't is never reached) |
 | XP | 16 | the receipt so far |
 | items gained | 4 + 10 each | |
 | items lost | 4 + 10 each | |
@@ -211,11 +211,13 @@ ticket); then the code's flags, vars, dice, seed, tune, health, gives, rewards p
 receipt so far; the traveler as the trip has made them: their Debt the code's, the
 receipt's items lost taken (from the pack first, then what they have equipped), its items
 gained put in the pack's first empty slots, its XP gained (`apb_gain_xp`), its Echoes set;
-then the scene's car, and its menu block. A save is only made at a menu with nothing on
-the expression stack. Refused, as a password is ([passport-spec.md](passport-spec.md#whats-refused)):
-a symbol the alphabet hasn't, a typo (naming its line), the wrong length or a broken rule
-(a count too big, a scene, tune or car the image hasn't), a checksum; and a code for
-another pass or another image, said as such.
+then the scene's car, and its menu block (a scene with no menu: the train derails, as on
+a damaged save). A save is only made at a menu with nothing on the expression stack, and
+a code is 255 symbols at most: a trip that would need more can't be saved. Refused, as a password is ([passport-spec.md](passport-spec.md#whats-refused)):
+a symbol the alphabet hasn't, a typo (naming its line), the wrong length (over 255
+symbols, or not the fields' length), a checksum (a count too big, as it's read); then,
+after the CRC, a code for another image, then for another pass, said as such; then a
+broken rule (a scene or tune the image hasn't, dice of 0) as a checksum.
 
 `tools/passport/trip.py` is the reference, written from this page; the cartridge writes
 and reads them (`cart/trip.s`).

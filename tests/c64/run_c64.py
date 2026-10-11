@@ -27,6 +27,7 @@ as the memory map (fe/c64/apb.cfg) only has room for 512.
 
     python3 tests/c64/run_c64.py DISK.d64 SYMBOLS CHOICES [--then CHOICES2] [--max-steps N]
         [--shots DIR]           a PNG of the screen each time it waits for a key
+        [--save-to FILE]        the save the game left on the disk, written to FILE
 
 With --then, the machine is switched off and on again after the first run, with the
 disk as the first run left it (a save, say), and plays CHOICES2.
@@ -595,6 +596,13 @@ def main(argv):
             print(f"[the C stack went {used} bytes deep, over {STACK_LIMIT}]")
             failed = True
         files = c64.files
+    if "--save-to" in argv:                                 # the save the game left on the disk
+        saved = [data for name, data in files.items() if name.lower() == "save"]
+        if not saved:
+            print("[no save on the disk]")
+            return 1
+        with open(argv[argv.index("--save-to") + 1], "wb") as f:
+            f.write(saved[0])
     return 1 if failed else 0
 
 

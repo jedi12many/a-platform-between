@@ -1,8 +1,8 @@
 ; The game (docs/cartridge.md): the Departure's depot and its music opened, the boarding
-; desk, the trip, its receipt and Travel Stamp (receipt.s); then the desk again, for the
-; next. The desk and the trip's end are asset 1's, staged between trips. The view
-; has the platform's map at the desk, the story's pictures on the trip, and the Travel
-; Stamp's QR code at its end.
+; desk, the trip (or one picked up from its trip code: trip.s), its receipt and Travel
+; Stamp (receipt.s); then the desk again, for the next. The desk and the trip's end are
+; asset 1's, staged between trips. The view has the platform's map at the desk, the
+; story's pictures on the trip, and the Travel Stamp's QR code at its end.
 
         .include "hw.inc"
         .include "mem.inc"
@@ -11,6 +11,7 @@
         .export play, platform_map
         .import vm_open, vm_board, vm_run, vm_error, dep_id, desk_run, view_map
         .import log_print, keys_clear, key_wait, frames, asset_fetch, ending, music_open
+        .import resuming, vm_resume, trip_apply, trip_scene, joined
 
         .segment "RESIDENT"
 
@@ -40,16 +41,27 @@ play:
         ldx dep_id + 1
         jsr desk_run                ; A = 1 with a pass
         pha
+        lda resuming                ; (a blank line before a new trip, as the C64 has it)
+        bne @told
         lda #<newline
         ldx #>newline
         jsr log_print
-        pla
+@told:  pla
         ldx frames                  ; the seed, without a pass: the clock's
         ldy VIC_RASTER
         jsr vm_board
-        bcc @run
+        bcc @boarded
         jsr cant_board
         jmp @trip
+@boarded:
+        lda resuming                ; a trip picked up: as its code says, at its menu
+        beq @run
+        lda #<joined                ; (asset 1 still staged: the desk's)
+        ldx #>joined
+        jsr trip_apply
+        lda trip_scene
+        ldx trip_scene + 1
+        jsr vm_resume               ; (failed: vm_run says so)
 @run:   jsr vm_run
         cmp #$FF
         beq @again                  ; (derailed: vm_run said so)

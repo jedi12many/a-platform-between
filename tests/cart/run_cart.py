@@ -1,7 +1,7 @@
 """Play the cartridge, or its disk, without a C64 (docs/cartridge.md, "Building and testing").
 
     python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--c64 TRANSCRIPT]
-                                   [--c64-story TRANSCRIPT]
+                                   [--c64-story TRANSCRIPT] [--c64-save SAVE DEPARTURE]
                                    [--pictures DIR] [--shot FILE.png]
                                    [--shot-at RECORD FILE.png] [--music FILE.music]
                                    [--update]
@@ -37,12 +37,17 @@ the C64 around it played in Python:
   RETURN; at anything else (a menu, a fight) the line's first character, or RETURN for
   an empty line;
 - the joystick in port 2: a line "joy right" (up, down, left, right, the diagonals as
-  "up left", and fire) pushes it for two frames, read on CIA 1's port A.
+  "up left", and fire) pushes it for two frames, read on CIA 1's port A;
+- a line "[switch off]" turns the machine off and on again: its RAM and chips cleared,
+  the game started cold (a trip saved as a trip code, picked up again).
 
 The transcript is the story log's bottom row, read each time it scrolls (log_newline), and
 each record (record_line: a roll, a picture, a tune). It must match EXPECTED (--update
 writes it: read the diff); with --c64, it must also tell the story the C64 version's
-TRANSCRIPT tells (tests/c64/run_c64.py's), from the boarding desk to the trip's end. The
+TRANSCRIPT tells (tests/c64/run_c64.py's), from the boarding desk to the trip's end (a
+trip saved and picked up, as the C64 saves it: as_the_c64_saves); with --c64-save, the
+trip code it showed must be the one tools/passport/trip.py makes of the C64's SAVE at the
+same menu, for DEPARTURE (its split files). The
 run ends when CHOICES does, and checks: every change to the frames' registers lands between
 line 178's last character and line 179's fetch of row 16 (cycles 56 of line 178 to 11 of
 line 179), and the view's in the bottom border; the font, the map's characters and tiles
@@ -194,6 +199,9 @@ def wrap(text, width):
     return rows + [row]
 
 
+OFF = "[switched off and on again]"       # a choices line "[switch off]" does it
+
+
 class C64:
     def __init__(self, image, syms):
         self.syms = syms
@@ -223,6 +231,8 @@ class C64:
         self.ended = None
         self.desk_view = None               # the view's screen and colours at the first key
         self.load_spans = []                # (first, last cycle) of each KERNAL load
+        self.switched = []                  # the cycle of each switch-off
+        self.saved_qrs = []                 # (a trip code shown, its QR code's problems)
         if image[:16] == b"C64 CARTRIDGE   ":
             self.chips, kind = crt.read_bytes(image)
             if kind != crt.EASYFLASH:
@@ -420,6 +430,24 @@ class C64:
         m.sp = 0xF6
         m.pc = self.syms["disk_start"]
 
+    def switch_off(self):
+        """The machine off and on again: its RAM and chips cleared, the cartridge at bank
+        0, Ultimax (or the disk's program loaded again), and the game started from cold."""
+        for i in range(0x10000):
+            self.ram[i] = 0
+        self.io[:] = bytes(len(self.io))
+        if self.mode is not None:
+            self.mode, self.bank = 5, 0
+        m = self.mpu
+        m.a = m.x = m.y = 0
+        m.sp, m.p = 0xFF, m.BREAK | m.UNUSED | m.INTERRUPT
+        self.held, self.presses, self.stick = [], [], []
+        self.lines.append(OFF)
+        self.ended_rows.append(None)
+        self.switched.append(self.mpu.processorCycles)
+        self.printed = 0
+        self.boot()
+
     def row23(self):
         return self.screen(TEXT, 23, LOG_COLS).rstrip()
 
@@ -433,6 +461,10 @@ class C64:
         if self.desk_view is None:                          # the view at the desk: the map
             self.desk_view = (bytes(self.ram[VIEW:VIEW + 640]), bytes(self.io[0x800:0x800 + 640]))
         self.most_printed = max(self.most_printed, self.printed)
+        if self.lines and self.lines[-1] == "(press a key)" and saved_code(self.lines[-12:]):
+            code = saved_code(self.lines[-12:])             # a trip saved: its QR code, now
+            if len(code) <= 114 and code not in [k for k, _ in self.saved_qrs]:
+                self.saved_qrs.append((code, qr_problems(self, code)))
         if row.endswith("-- more --"):
             keys = [" "]
             self.mores += 1
@@ -441,6 +473,9 @@ class C64:
                 self.ended = "[end of input]"
                 return
             line = self.choices.pop(0)
+            if line == "[switch off]":                      # off, and on again: a cold start
+                self.switch_off()
+                return
             keys = list(line) + ["RETURN"] if row.startswith(">") else [line[:1] or "RETURN"]
             if line.startswith("joy "):                     # the joystick, pushed a moment
                 frame = self.mpu.processorCycles // FRAME + 1
@@ -595,32 +630,25 @@ def view_image(c):
     return img
 
 
-def check_qr(c, what):
-    """The trip's end: the Travel Stamp the log shows is the QR code in the view. Its
-    modules (qr.s's, at QR_MATRIX) are the qrcode library's for the same text,
-    alphanumeric, level L, mask 0, the smallest version; the view is hires, the code
-    black on white; and OpenCV, reading the view as the VIC shows it, gets the stamp
-    back. (Not segno: it puts a zero byte after the data the standard doesn't, when the
-    terminator ends on a byte.)"""
+def qr_problems(c, text):
+    """What's wrong with the QR code in the view, for this text: its modules (qr.s's, at
+    QR_MATRIX) must be the qrcode library's for the same text, alphanumeric, level L, mask
+    0, the smallest version; the view hires, the code black on white; and OpenCV, reading
+    the view as the VIC shows it, must get the text back. (Not segno: it puts a zero byte
+    after the data the standard doesn't, when the terminator ends on a byte.) After: the
+    problems, the version, the modules a side; or None if it can't be checked."""
     try:
         import qrcode
-        import cv2
+        import cv2  # noqa: F401
         import numpy
     except ImportError as e:
-        fail(f"{what}: the QR code can't be checked without {e.name} (pip install qrcode "
+        fail(f"the QR code can't be checked without {e.name} (pip install qrcode "
              f"opencv-python-headless)")
-        return
-    text = " ".join(c.lines)
-    after = text[text.index("Your Travel Stamp."):]
-    at = max(i for i, ln in enumerate(c.lines) if ln.endswith("Passport:")) + 2
-    stamp = ""                                              # its lines, after a blank
-    while at < len(c.lines) and c.lines[at].startswith("  "):
-        stamp += c.lines[at].strip()
-        at += 1
-    version = next(v for v, top in ((1, 25), (2, 47), (3, 77), (4, 114)) if len(stamp) <= top)
+        return None
+    version = next(v for v, top in ((1, 25), (2, 47), (3, 77), (4, 114)) if len(text) <= top)
     qr = qrcode.QRCode(version=version, error_correction=qrcode.constants.ERROR_CORRECT_L,
                        mask_pattern=0, border=0)
-    qr.add_data(qrcode.util.QRData(stamp, mode=qrcode.util.MODE_ALPHA_NUM))
+    qr.add_data(qrcode.util.QRData(text, mode=qrcode.util.MODE_ALPHA_NUM))
     qr.make(fit=False)
     want = [[1 if v else 0 for v in row] for row in qr.get_matrix()]
     size = c.ram[c.syms["qr_size"]]
@@ -633,13 +661,57 @@ def check_qr(c, what):
     if view_regs(c) != (MEM_PICTURE, 0x3B, 0, 0x08):
         problems.append(f"the view's registers {view_regs(c)}, not a hires bitmap")
     read = scan(numpy.array(view_image(c).convert("L")))
-    if read != stamp:
+    if read != text:
         problems.append(f"scanned, it reads {read!r}")
+    return problems, version, size
+
+
+def check_qr(c, what):
+    """The trip's end: the Travel Stamp the log shows is the QR code in the view
+    (qr_problems)."""
+    text = " ".join(c.lines)
+    after = text[text.index("Your Travel Stamp."):]
+    at = max(i for i, ln in enumerate(c.lines) if ln.endswith("Passport:")) + 2
+    stamp = ""                                              # its lines, after a blank
+    while at < len(c.lines) and c.lines[at].startswith("  "):
+        stamp += c.lines[at].strip()
+        at += 1
+    checked = qr_problems(c, stamp)
+    if checked is None:
+        return
+    problems, version, size = checked
     if problems or "Waystation" not in after:
         fail(f"{what}: the QR code of {stamp!r}: {'; '.join(problems)}")
     else:
         ok(f"{what}: the Travel Stamp's QR code, version {version}, {size} modules a side: "
            f"the qrcode library's, module for module; scanned off the screen, it reads {stamp}")
+
+
+def saved_code(lines):
+    """The trip code the log shows last (cart/trip.s): its lines after "...this code:"."""
+    k = max((i for i, ln in enumerate(lines) if ln.endswith("this code:")), default=None)
+    if k is None:
+        return None
+    code = ""
+    for ln in lines[k + 1:]:
+        if ln == "(press a key)":
+            return code
+        code += ln
+    return None
+
+
+def check_saved_qr(c, what):
+    """A trip saved: the code the log shows is the QR code in the view, as the game waited
+    for its key (seen then: answer)."""
+    for code, checked in c.saved_qrs:
+        if checked is None:
+            continue
+        problems, version, size = checked
+        if problems:
+            fail(f"{what}: the trip code's QR code ({code}): {'; '.join(problems)}")
+        else:
+            ok(f"{what}: the trip code's QR code, version {version}, {size} modules a side: "
+               f"the qrcode library's; scanned off the screen, it reads {code}")
 
 
 def check_picture(c, what):
@@ -771,7 +843,8 @@ def check(c):
     party = c.screen(TEXT, 16, 9, 26)
     bar = bytes(c.ram[TEXT + 16 * 40 + 35:TEXT + 16 * 40 + 40])
     bar_ink = {c.io[0x800 + 16 * 40 + 35 + i] & 15 for i in range(5)}
-    rolls = [ln[1:-1] for ln in c.lines if ln.startswith("[") and " vs " in ln]
+    since = c.lines[len(c.lines) - c.lines[::-1].index(OFF):] if OFF in c.lines else c.lines
+    rolls = [ln[1:-1] for ln in since if ln.startswith("[") and " vs " in ln]  # (since on)
     dice = (c.screen(TEXT, 22, 14, 26).rstrip(), c.screen(TEXT, 23, 14, 26).rstrip())
     want_dice = tuple(rolls[-1].split(" vs ")) if rolls else ("", "")
     want_dice = (want_dice[0], "vs " + want_dice[1]) if rolls else want_dice
@@ -844,6 +917,8 @@ def check_music(c, path, what):
     data, names = musicc.build(open(path).read())
     want, last = [], None
     for ln in c.lines:
+        if ln == OFF:                                       # switched off: silence
+            last = None
         m = re.fullmatch(r"\[music (.+)\]", ln)
         if not m:
             continue
@@ -866,7 +941,9 @@ def check_music(c, path, what):
     # KERNAL load holds interrupts off at times, so the frames a load is in don't count.)
     frames = [cyc // FRAME for cyc, _ in c.ghosts]
     span = frames[-1] - frames[0] + 1 if frames else 0
-    loading = {f for a, b in c.load_spans for f in range(a // FRAME, b // FRAME + 2)
+    # (Nor do the frames from a switch-off till the music is back: a cold start.)
+    cold = [(a, next((cyc for cyc, _ in c.ghosts if cyc > a), a)) for a in c.switched]
+    loading = {f for a, b in c.load_spans + cold for f in range(a // FRAME, b // FRAME + 2)
                if frames and frames[0] <= f <= frames[-1]}
     if not frames or not (span - len(loading)) * 0.98 <= len(frames) <= span:
         fail(f"{what}: {len(frames)} frames of music in {span} frames ({len(loading)} loading)")
@@ -900,15 +977,57 @@ def c64_story_matches(lines, path):
     c64_matches(ours, path, theirs[start:])
 
 
+def as_the_c64_saves(lines):
+    """A trip saved and picked up, as the C64 version's transcript tells it: where the
+    cartridge shows the trip code (its words, its lines, a key), the C64 says "Saved."; and
+    where the cartridge, switched on again, takes the pass and the code, the C64 (its save
+    on the disk) asks only whether to pick the trip up."""
+    lines = list(lines)
+    if OFF not in lines:
+        return lines
+    k = next(i for i, ln in enumerate(lines) if ln.startswith("Saved. To pick"))
+    j = lines.index("(press a key)", k)
+    lines[k:j + 1] = ["Saved."]
+    o = lines.index(OFF)
+    p = next(i for i in range(o, len(lines)) if lines[i].startswith("Picking up where"))
+    p -= lines[p - 1].startswith("[music ")
+    lines[o:p] = ["[end of input]", OFF, "1. Board", "2. Pick up a saved trip", "> 2"]
+    return lines
+
+
+def c64_saved(c, choices, departure):
+    """The trip code the cartridge showed is the one tools/passport/trip.py makes of the
+    C64 version's save at the same menu (tests/c64/run_c64.py --save-to), for the pass the
+    choices board with (their first lines)."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "passport"))
+    import trip
+    shown = saved_code(c.lines)
+    typed = open(choices).read().split("\n\n")[0]
+    d, cars = trip.read_image(departure)
+    want = trip.from_save(open(c.c64_save, "rb").read(), d, trip.image_facts(d, cars),
+                          trip.boarded_crc(typed))
+    if shown != want:
+        fail(f"the trip code shown, {shown}, isn't the one the C64's save makes: {want}")
+    else:
+        ok(f"the trip code shown is the one tools/passport/trip.py makes of the C64's save "
+           f"at the same menu ({shown})")
+
+
 def c64_matches(lines, path, theirs=None):
     """The C64 version (the C engine) tells the same story: its transcript (tests/c64/*.
     expected, made by tests/c64/run_c64.py) from the boarding desk to its last "(press a
-    key)", receipt and Travel Stamp and all; but for what the cartridge doesn't have: the
-    start menu (the cartridge's saves are passwords: A6). The cartridge's own lines after
-    the stamp (its QR code's) come after that."""
+    key)", receipt and Travel Stamp and all; but for where a saved trip is picked up: the
+    C64 asks at its start (its save holds the traveler), the cartridge after the pass (a
+    trip code goes with it). The cartridge's own lines after the stamp (its QR code's)
+    come after that."""
     theirs = theirs or open(path).read().split("\n")
     if theirs[:3] == ["1. Board", "2. Pick up a saved trip", "> 1"]:
         theirs = theirs[3:]
+    lines = as_the_c64_saves(lines)
+    for i in range(len(lines) - 1):
+        if lines[i:i + 2] == ["2. Pick up a saved trip", "3. Start over"]:
+            lines[i:i + 2] = ["2. Start over"]
+            break
     for end in ("(press a key)", "[end of input]"):
         if end in theirs:
             theirs = theirs[:len(theirs) - theirs[::-1].index(end) - 1]
@@ -953,9 +1072,13 @@ def main(argv):
         ok(f"{argv[1]}: the transcript is {argv[4]}'s ({len(c.lines)} lines)")
     if "--c64" in argv:
         c64_matches(c.lines, argv[argv.index("--c64") + 1])
+    if "--c64-save" in argv:
+        c.c64_save = argv[argv.index("--c64-save") + 1]
+        c64_saved(c, argv[3], argv[argv.index("--c64-save") + 2])
     if "--c64-story" in argv:
         c64_story_matches(c.lines, argv[argv.index("--c64-story") + 1])
     check(c)
+    check_saved_qr(c, "the cartridge" if c.mode is not None else "the disk")
     if "--music" in argv:
         check_music(c, argv[argv.index("--music") + 1], "the cartridge" if c.mode is not None
                     else "the disk")

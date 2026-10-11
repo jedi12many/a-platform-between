@@ -33,7 +33,8 @@ against. For `cart/`:
   `build/eighteen-minutes.d64` and `build/deep-yards.d64` (`LOAD"APB",8` in VICE; see
   `docs/c64.md`).
 - `make test-python`: the Python Passport reference (`tools/passport/`) must decode the
-  C engine's password; the registry and Quest Script parser tests must pass; and every
+  C engine's password; trip codes (`tools/passport/trip.py`) must round-trip and refuse
+  damage (`tests/passport/test_trip.py`); the registry and Quest Script parser tests must pass; and every
   picture in `content/` must come through the C64's rules unchanged
   (`tools/test_pictures.py`; needs Pillow and numpy).
 - `make check-registry`: the generated C registry must match `registry/*.txt`.
@@ -107,7 +108,10 @@ against. For `cart/`:
   `tests/c64/fare-edge.expected`, and the desk's route and the fight's played by
   `build/the-fare.d64`), word for word and roll for roll, receipt and Travel Stamp and
   all (the fight's battle screen on keys and the joystick, its prompts as records); a
-  disk with a `PASS` file boards without typing, and one with a typo in it says so and asks; every raster
+  disk with a `PASS` file boards without typing, and one with a typo in it says so and asks;
+  a trip saved at a menu (`S`) shows a trip code, `tools/passport/trip.py`'s of the C64's
+  own save there, its QR code scanned back, and switched off (`[switch off]` in the
+  choices) and boarded again with that code goes on as the C64's does; every raster
   split's writes land in the gap between the view's last line and row 16's fetch, to the
   cycle; the graphics are the tools'; the view (the story's pictures as
   `tools/c64pic.py` converts them; at a trip's end the Travel Stamp's QR code, the
@@ -120,7 +124,8 @@ against. For `cart/`:
   back through `tools/passport/stamp.py`, and QR codes of every version 1-4 match
   `qrcode` and scan. `tests/cart/test_damage.py`: damaged Departures (and fights' encounters)
   stop the story VM cleanly, never run wild. And `tests/cart/test_passwords.py`: the cartridge's Passports
-  and Boarding Passes must decode, encode and refuse as the Python reference does. And
+  and Boarding Passes must decode, encode and refuse as the Python reference does, and
+  `tests/cart/test_trips.py` its trip codes as `tools/passport/trip.py` does. And
   `tests/cart/test_battle.py`: the fight's rules (`cart/combat.s`, `cart/battle.s`) must
   play `tests/battle/*.txt` to their reviewed logs, make fighters and roll as
   `tools/rules/combat.py` says, and play random battles event for event as `build/battle`. The

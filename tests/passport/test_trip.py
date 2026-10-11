@@ -36,7 +36,7 @@ def random_trip(rng, image):
             "dice": rng.randrange(1, 65536),
             "tune": rng.choice([None] + list(range(image["tunes"]))),
             "health": rng.randrange(256), "gives": rng.randrange(4), "debt": rng.randrange(65536),
-            "paid": [(rng.randrange(3), rng.randrange(8192)) for _ in range(rng.randrange(33))],
+            "paid": [(rng.randrange(64), rng.randrange(8192)) for _ in range(rng.randrange(20))],
             "xp": rng.randrange(65536),
             "gained": [rng.randrange(1024) for _ in range(rng.randrange(9))],
             "lost": [rng.randrange(1024) for _ in range(rng.randrange(9))],
@@ -74,6 +74,8 @@ for n in range(400):
     refused(code, image, t["boarded"] ^ 1, "another Boarding Pass")
     other = dict(image, hash=image["hash"] ^ 1)
     refused(code, other, t["boarded"], "another Departure")
+    if not trip.resumable(got, image):
+        fail(f"trip {n}: its scene has a menu, but it can't go on")
     fewer = dict(image, scenes=image["scenes"][:t["scene"]])
     refused(code, fewer, t["boarded"], "checksum")
     refused(code[:-1], image, None, "")

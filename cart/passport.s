@@ -14,7 +14,7 @@
 
         .export password_decode, passport_encode, traveler, pass, password_kind
         .import pw_close, pw_read, pw_write, bits_clear, bits_rewind, bits_get, bits_put, bits_crc
-        .import pw_pos, pw_len, crc
+        .import pw_pos, pw_len, crc, pw_trip
 
 VERSION = 2
 
@@ -31,6 +31,7 @@ VERSION = 2
 password_decode:
         ldy #0                      ; (A/X: the text)
         sty refused
+        sty pw_trip                 ; (a Passport's longest, or a pass's)
         jsr pw_read
         beq @read
         rts

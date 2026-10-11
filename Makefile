@@ -172,7 +172,7 @@ c64: build/demo.prg build/the-fare.d64 build/eighteen-minutes.d64 build/deep-yar
 # Flash, and the same game on a disk for an SD2IEC. Modules common to both, then each one's
 # start-up; tools/crt.py makes the .crt of the linked chips.
 CART_COMMON := main assets copy split text screen view keys command password passport number name desk play \
-               depot vm expand reward rules dice party picture receipt stamp qr qrview combat battle fight fightext tactics tune asset0
+               depot vm expand reward rules dice party picture receipt stamp trip qr qrview combat battle fight fightext tactics tune asset0
 CART_INC    := $(wildcard cart/*.inc)
 CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskstart diskaddr)) \
                $(CART_INC) cart/cart.cfg cart/disk.cfg build/cart/tiles16 build/cart/font build/cart/names.s \
@@ -253,6 +253,20 @@ test-cart: build/apb.crt build/the-fare.d64 build/battle
 	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/fare-fight.choices \
 	    tests/cart/fare-fight.expected --c64 build/cart/fight.c64 \
 	    --music content/s1/00-the-fare/the-fare.music
+	(echo 1; head -21 tests/cart/fare-fight.choices | sed -e 's/^joy fire$$//' -e 's/^joy right$$/6/'; \
+	    echo s) > build/cart/save-c64.choices
+	printf '2\n3\n3\n1\n1\n3\n' > build/cart/resume-c64.choices    # (fare-save's, after its code)
+	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/save-c64.choices \
+	    --then build/cart/resume-c64.choices --save-to build/cart/fare.c64save > build/cart/save.c64
+	python3 tests/cart/run_cart.py build/apb.crt build/cart/apb.lbl tests/cart/fare-save.choices \
+	    tests/cart/fare-save.expected --c64 build/cart/save.c64 \
+	    --c64-save build/cart/fare.c64save build/cart/fare \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/run_cart.py build/apb-disk.d64 build/cart/apb-disk.lbl tests/cart/fare-save.choices \
+	    tests/cart/fare-save.expected --c64 build/cart/save.c64 \
+	    --c64-save build/cart/fare.c64save build/cart/fare \
+	    --music content/s1/00-the-fare/the-fare.music
+	python3 tests/cart/test_trips.py build/apb.crt build/cart/apb.lbl build/cart/fare --cases 40
 	python3 tests/cart/run_cart.py build/apb-kestrel.d64 build/cart/apb-disk.lbl \
 	    tests/cart/kestrel-file.choices tests/cart/kestrel-file.expected --c64-story tests/c64/fare-edge.expected \
 	    --music content/s1/00-the-fare/the-fare.music

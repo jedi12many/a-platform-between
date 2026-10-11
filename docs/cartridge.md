@@ -115,8 +115,9 @@ No other module knows where an asset came from:
 
 **The assets**: asset 0 is the screen's graphics; asset 1 is code for between trips: a
 trip's end (the receipt, the Travel Stamp, its QR code: `receipt.s`, `stamp.s`, `qr.s`,
-`qrview.s`) and the boarding desk (`desk.s`), linked at $8000 and run there once it's
-staged: nothing else is fetched while it runs;
+`qrview.s`), the boarding desk (`desk.s`) and trip codes (`trip.s`: staged at a menu to
+save, and still staged from the desk to pick a trip up), linked at $8000 and run there
+once it's staged: nothing else is fetched while it runs;
 assets 2 and 3 are code too, a fight: asset 2 (the rules, `combat.s`; the battle,
 `battle.s`; the battle screen, `tactics.s`) staged and run the same way, and asset 3 (the
 fight itself, `fight.s`, and its words, `fightext.s`) staged first and copied on to
@@ -178,7 +179,8 @@ The interrupt (`split.s`) uses no zero page at all.
   and cars, loaded and checked), `vm.s` (the story VM), `expand.s` (the story's strings),
   `reward.s` (items, XP, Debt, Echoes, the receipt), `rules.s` (the dice, checks, health,
   XP), `dice.s` (the dice log), `party.s` (the party frame), `picture.s` (the story's
-  pictures), `receipt.s` (a trip's end), `stamp.s` (the Travel Stamp), `qr.s` (a QR
+  pictures), `receipt.s` (a trip's end), `stamp.s` (the Travel Stamp), `trip.s` (trip
+  codes: a trip saved, and picked up), `qr.s` (a QR
   code), `qrview.s` (a QR code in the view), `combat.s` (the combat rules), `battle.s`
   (the battle), `tactics.s` (the battle screen), `fight.s` (a fight, from its encounter),
   `fightext.s` (a fight in words), and more as they come (`music.s`). The registry's names are generated into `build/cart/names.s`
@@ -400,7 +402,13 @@ engine) tells, word for word and roll for roll (`--c64`): *The Fare* by
 `tests/c64/fare-edge.expected`, and the desk's route and the fight's (`fare-fight`, into
 Lost Property: a Move, a Wait, a Wait refused, an Aim, then Quick) by the C64 program playing them there and then
 (`tests/c64/run_c64.py`). A choices line `joy right` or `joy fire` pushes the joystick in
-port 2 instead (the C64's run of the route has the keypad's key for it). It checks the split's timing every frame, the graphics
+port 2 instead (the C64's run of the route has the keypad's key for it). A line `[switch
+off]` turns the machine off and on again: `fare-save` saves after the fight, switches off,
+boards with the same pass, gives the trip code and plays on to the end, and the C64
+program plays the same trip, saving on its disk and picking it up (`--c64`, with the
+cartridge's code and the C64's question as each has them); the code the cartridge showed
+must be the one `tools/passport/trip.py` makes of the C64's save at that menu
+(`--c64-save`), and its QR code, scanned, the code. It checks the split's timing every frame, the graphics
 against the tools' own files, the view (the map at the desk; at the end, the last picture
 as `tools/c64pic.py` converts it), the frames (the party, the last roll), that every
 paragraph is wrapped at 25 as the rule says, that nothing scrolled off unread, and that no
@@ -418,6 +426,9 @@ data's terminator ends on a byte). Disks with a `PASS` file (`tests/cart/kestrel
 `typo.pass`) board from it, or say why not. `tests/cart/test_ending.py` checks the
 stamp encoder against `tools/passport/stamp.py` on random receipts, and QR codes of every
 version. `--shot FILE` saves the screen as the VIC-II would show it.
+`tests/cart/test_trips.py` holds the trip codes to `tools/passport/trip.py`: random trips
+written symbol for symbol, read back to the same state, typed every way, and damaged
+codes (and codes for another image or pass, or that break a rule) refused the same.
 `tests/cart/test_damage.py`
 breaks bytes of the depot, the cars and the pictures and plays them (and, with `--fights`,
 of the fight's encounter, playing into the fight): the VM must stop cleanly or play on,
@@ -447,4 +458,6 @@ rules and battle to the references (below, A4).
   Departure's tunes as an asset, played from the raster interrupt, cued by the story and
   the fights, with the fights' sound effects. (To make room in bank 0, the boarding desk
   went into asset 1, with the trip's end.)
-- **A6, trip passwords**: saving and resuming a trip.
+- **A6, trip codes** (done): a trip saved at a menu as a password, shown as its lines and
+  a QR code, and picked up after boarding with the same pass (`trip.s`; the format in
+  [boarding.md](boarding.md#trip-code-format), the reference `tools/passport/trip.py`).
