@@ -19,6 +19,13 @@
  *   foe X Y HEALTH GRACE DODGE ARMOR WARD SOAK SPEED ATTACK WEAPON RANGED POWER TYPE AREA
  *       WEAK BEHAVIOR COWARD         a foe's card, as registry/foes.txt has it
  *
+ * Built on the rules lab's engine (build/arena-next: core/next/, docs/turn.md), it also
+ * reads:
+ *
+ *   hazard DAMAGE TYPE COND          what the map's hazards do (TYPE 255: none; COND an
+ *                                    id from registry/conditions.txt, or 0)
+ *   foe ... hit COND                 a condition the foe's hits put on
+ *
  * Prints a line per fight:
  *
  *   fight I RESULT ROUNDS  then, per fighter: HEALTH DEALT DOWN
@@ -41,6 +48,9 @@ static apb_fighter fighters[APB_FIGHTERS_MAX];
 static uint8_t fighter_count;
 static char rows[APB_MAP_H_MAX][APB_MAP_W_MAX + 1];
 static int map_w, map_h;
+#ifdef APB_RULES_NEXT
+static int hazard[3] = { APB_HAZARD_DAMAGE, APB_DMG_KINETIC, 0 };
+#endif
 static unsigned dealt[APB_FIGHTERS_MAX];
 static unsigned down_round[APB_FIGHTERS_MAX];
 static unsigned round_now;
@@ -104,6 +114,9 @@ static int traveler(apb_fighter *f, const char *passport, const char *arch, int 
     f->weapon = (uint8_t)(tier ? 5 * tier : f->weapon);
     f->dmg_type = (uint8_t)type;
     f->armor = (uint8_t)(10 * armor);
+#ifdef APB_RULES_NEXT
+    f->speed = apb_speed_v1(f->grace, (uint8_t)armor);
+#endif
     if (strcmp(arch, "ranged") == 0) {
         f->ranged = 1;
         f->stat_bonus = 0;
@@ -154,6 +167,13 @@ static int read_file(const char *path, unsigned *fights, unsigned *seed, unsigne
                 return 0;
             }
             row = 0;
+#ifdef APB_RULES_NEXT
+        } else if (strcmp(word, "hazard") == 0) {
+            if (sscanf(line, "%*s %d %d %d", &hazard[0], &hazard[1], &hazard[2]) != 3) {
+                fprintf(stderr, "arena: bad hazard: %s\n", line);
+                return 0;
+            }
+#endif
         } else if (fighter_count == APB_FIGHTERS_MAX) {
             fprintf(stderr, "arena: more than %d fighters\n", APB_FIGHTERS_MAX);
             return 0;
@@ -184,6 +204,13 @@ static int read_file(const char *path, unsigned *fights, unsigned *seed, unsigne
             f->attack = (uint8_t)v[9]; f->weapon = (uint8_t)v[10]; f->ranged = (uint8_t)v[11];
             f->power = (uint8_t)v[12]; f->dmg_type = (uint8_t)v[13]; f->area = (uint8_t)v[14];
             f->weak_type = (uint8_t)v[15]; f->behavior = (uint8_t)v[16]; f->coward = (uint8_t)v[17];
+#ifdef APB_RULES_NEXT
+            f->race = 0xFF;
+            {
+                const char *hit = strstr(line, " hit ");
+                if (hit) f->on_hit = (uint8_t)atoi(hit + 5);
+            }
+#endif
             ++fighter_count;
         }
     }
@@ -215,6 +242,9 @@ int main(int argc, char **argv)
     for (n = 0; n < fights; ++n) {
         apb_rng_seed(&rng, (uint16_t)(seed + n));
         apb_battle_init((uint8_t)map_w, (uint8_t)map_h, &rng, on_event);
+#ifdef APB_RULES_NEXT
+        apb_battle_set_hazard((uint8_t)hazard[0], (uint8_t)hazard[1], (uint8_t)hazard[2]);
+#endif
         for (y = 0; y < map_h; ++y) {
             for (x = 0; x < map_w && rows[y][x]; ++x) {
                 apb_battle_set_tile((uint8_t)x, (uint8_t)y, tile_of(rows[y][x]));

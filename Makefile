@@ -14,6 +14,10 @@ APPLY_SRC := core/src/receipt.c
 # made smaller (docs/engine-plan.md, Risks).
 BATTLE_SRC := core/src/battle.c
 CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_registry.h core/src/names.h hal/apb_hal.h
+# The rules lab's (docs/turn.md): rules v1's engine, which only the arena and its tests build.
+NEXT_INC := -Icore/next $(INC)
+NEXT_SRC := core/next/battle.c build/next/conditions.c
+NEXT_HDR := core/next/apb_battle.h $(CORE_HDR)
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
@@ -445,7 +449,8 @@ build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_
 ARENA_N := 01 02 03 04 05 06 07 08 09 10
 ARENA_DEPARTURES := $(foreach n,$(ARENA_N),build/modern/arena-$(n)/DEPOT)
 
-build/arena-play/scenarios.json: tools/arena/scenarios.py tools/arena/arena.py build/arena registry/*.txt
+build/arena-play/scenarios.json: tools/arena/scenarios.py tools/arena/arena.py build/arena build/arena-next \
+                                 registry/*.txt
 	python3 tools/arena/scenarios.py build/arena-play
 	mkdir -p build/arena-play/pictures
 
@@ -517,15 +522,16 @@ build/site/index.html: site/index.html site/arena.html build/web/apb.js build/wa
 ARENA_WEB_FLAGS := -O2 -sALLOW_MEMORY_GROWTH -sMODULARIZE -sEXPORT_NAME=ArenaRules \
                    -sEXPORTED_RUNTIME_METHODS=cwrap
 
-build/arena-web/rules.js: tools/arena/web/arena.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR)
+build/arena-web/rules.js: tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR)
 	@mkdir -p build/arena-web
-	$(EMCC) $(ARENA_WEB_FLAGS) $(INC) -DAPB_ARENA -o $@ tools/arena/web/arena.c $(BATTLE_SRC) $(CORE_SRC)
+	$(EMCC) $(ARENA_WEB_FLAGS) $(NEXT_INC) -DAPB_ARENA -o $@ tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC)
 
 build/arena-web/index.html: build/arena-web/rules.js build/arena-play/scenarios.json \
                             tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css \
                             tools/arena/web/art_json.py content/art/*.txt
 	cp tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css build/arena-web/
-	cp build/arena-play/scenarios.json build/arena-play/items.json build/arena-web/
+	cp build/arena-play/scenarios.json build/arena-play/lab.json build/arena-play/items.json \
+	    build/arena-play/conditions.json build/arena-web/
 	python3 tools/arena/web/art_json.py build/arena-web/art.json
 
 arena-web: build/arena-web/index.html
@@ -620,13 +626,14 @@ arena: build/arena
 build/arena: tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC)
 
+# The same, on the rules lab's engine (docs/turn.md): arena.py --rules next.
+build/arena-next: tools/arena/arena.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tools/arena/arena.c $(NEXT_SRC) $(CORE_SRC)
+
 # Battles: scenarios played natively and on the 6502, with the same log.
 # The rules lab (docs/turn.md): rules v1's battle engine, core/next/, which only the arena
 # and its tests build (with -Icore/next first, so its apb_battle.h is the one they see).
 # Its conditions come from registry/conditions.txt, generated, not kept.
-NEXT_INC := -Icore/next $(INC)
-NEXT_SRC := core/next/battle.c build/next/conditions.c
-NEXT_HDR := core/next/apb_battle.h $(CORE_HDR)
 
 build/next/conditions.c: registry/conditions.txt registry/races.txt tools/rules/conditions_c.py \
                          tools/registry/registry.py

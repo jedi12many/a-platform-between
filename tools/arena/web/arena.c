@@ -1,6 +1,7 @@
 /*
- * The native arena's rules (docs/arena.md, "The native arena"): the real battle engine
- * (core/src/battle.c) compiled to WebAssembly, for tools/arena/web/arena.js to play a
+ * The native arena's rules (docs/arena.md, "The native arena"): the rules lab's battle
+ * engine (core/next/battle.c: rules v1, docs/turn.md) compiled to WebAssembly, for
+ * tools/arena/web/arena.js to play a
  * fight by hand in a modern page. No story, no Boarding Pass, no Travel Stamp: a fight,
  * set up from a scenario, turn by turn.
  *
@@ -9,13 +10,19 @@
  *
  *   ar_begin(seed, spec)      set up a fight; spec is lines:
  *                               map W H, then H rows (docs/combat.md's squares)
+ *                               hazard DAMAGE TYPE COND (kinetic.. or none; a condition's
+ *                                   name, or -)
  *                               traveler X Y PASSPORT WEAPON_ITEM
  *                               foe X Y HEALTH GRACE DODGE ARMOR WARD SOAK SPEED ATTACK
  *                                   WEAPON RANGED POWER TYPE AREA WEAK BEHAVIOR COWARD
+ *                                   [hit COND]
  *   ar_next()                 play foes until it's a traveler's turn, or the end
  *   ar_reach(who)             the squares `who` can reach this turn
  *   ar_targets(who, x, y)     who `who` can attack from x, y, and the TN for each
- *   ar_act(who, kind, x, y, target)    a turn: move to x, y, then APB_ACT_*
+ *   ar_dash(who, x, y)        the squares a Dash from x, y could reach
+ *   ar_shoves(who, x, y)      who `who` can shove from x, y, and the TN for each
+ *   ar_act(who, kind, x, y, target, dx, dy)   a turn: move to x, y, then APB_ACT_* (a Dash
+ *                             on to dx, dy)
  *   ar_quick(who)             the turn the computer would play for `who`
  *   ar_equip(who, slot, item) gear from the pack: slot 0 the hand (0: bare-handed), slot 1
  *                             the body (0: no armor)
@@ -40,6 +47,29 @@ static char json[32768];
 static size_t used;
 static int events;                       /* events written since the last call */
 static uint8_t reach[APB_MAP_H_MAX][APB_MAP_W_MAX];
+static const char *const types[] = { "kinetic", "energy", "fire", "cold", "mind" };
+static uint8_t cids[APB_COND_SLOTS];
+static uint8_t crounds[APB_COND_SLOTS];
+
+static uint8_t cond_named(const char *s)
+{
+    uint16_t i;
+
+    for (i = 1; i <= APB_COND_MAX; ++i) {
+        if (apb_conds[i].name && strcmp(apb_conds[i].name, s) == 0) return (uint8_t)i;
+    }
+    return 0;
+}
+
+static uint8_t type_named(const char *s)
+{
+    uint8_t i;
+
+    for (i = 0; i < 5; ++i) {
+        if (strcmp(types[i], s) == 0) return i;
+    }
+    return APB_NO_TYPE;
+}
 
 static void put(const char *fmt, ...)
 {
@@ -53,15 +83,20 @@ static void put(const char *fmt, ...)
 }
 
 static const char *const event_kinds[] = {
-    "turn", "move", "attack", "down", "hazard", "guard", "wait", "flee", "gone", "end", "free"
+    "turn", "move", "attack", "down", "hazard", "guard", "wait", "flee", "gone", "end", "free",
+    "cond_on", "cond_off", "immune", "tick", "heal", "skip", "shake", "stand", "dash", "shove",
+    "push", "slam", "fall", "thorns", "absorb"
 };
+#define EVENT_KINDS 26
 
 static void on_event(const apb_event *e)
 {
     put(events++ ? ",{" : "{");
-    put("\"kind\":\"%s\",\"actor\":%u,\"target\":%u,\"x\":%u,\"y\":%u,\"value\":%u",
-        e->kind < 11 ? event_kinds[e->kind] : "?", e->actor, e->target, e->x, e->y, e->value);
-    if (e->kind == APB_EV_ATTACK || e->kind == APB_EV_FLEE) {
+    put("\"kind\":\"%s\",\"actor\":%u,\"target\":%u,\"x\":%u,\"y\":%u,\"value\":%u,\"cond\":%u",
+        e->kind < EVENT_KINDS ? event_kinds[e->kind] : "?", e->actor, e->target, e->x, e->y,
+        e->value, e->cond);
+    if (e->kind == APB_EV_ATTACK || e->kind == APB_EV_FLEE || e->kind == APB_EV_SHAKE
+        || e->kind == APB_EV_SHOVE) {
         put(",\"roll\":%u,\"total\":%d,\"tn\":%d,\"result\":%u", e->roll.roll, e->roll.total,
             e->roll.tn, e->roll.result);
     }
@@ -81,6 +116,8 @@ static const char *end_reply(uint8_t whose)
     uint8_t i;
     uint8_t x;
     uint8_t y;
+    uint8_t k;
+    uint8_t n;
     apb_fighter f;
 
     put("],\"round\":%u,\"result\":%u,\"whose\":%d,\"map\":[", apb_battle_round(),
@@ -101,6 +138,13 @@ static const char *end_reply(uint8_t whose)
             f.side, f.state, f.x, f.y, f.health, f.health_max, f.grace, f.dodge, f.armor, f.ward,
             f.soak, f.speed, f.attack, f.weapon, f.stat_bonus, f.ranged, f.power, f.dmg_type,
             f.area, f.weak_type == 0xFF ? -1 : f.weak_type, f.guarding, f.waited);
+        put(",\"speed_now\":%u,\"move_left\":%u,\"dodge_now\":%u,\"armor_now\":%u,"
+            "\"ward_now\":%u,\"soak_now\":%u,\"conds\":[", apb_battle_speed(i),
+            apb_battle_move_left(i), apb_battle_dodge(i), apb_battle_armor(i), apb_battle_ward(i),
+            apb_battle_soak(i));
+        n = apb_battle_conditions(i, cids, crounds);
+        for (k = 0; k < n; ++k) put(k ? ",[%u,%u]" : "[%u,%u]", cids[k], crounds[k]);
+        put("]");
         if (is_traveler[i]) {
             put(",\"item\":%u,\"armor_item\":%u,\"melee_bonus\":%u", weapon_of[i],
                 chars[i].equipped[1], apb_melee_bonus(&chars[i]));
@@ -179,6 +223,11 @@ const char *ar_begin(unsigned seed, const char *spec)
             row = 0;
         } else if (row < 0) {
             return refuse("the map comes first");
+        } else if (strcmp(word, "hazard") == 0) {
+            static char kind[32];
+            static char cond[32];
+            if (sscanf(line, "%*s %d %31s %31s", &v[0], kind, cond) != 3) return refuse("bad hazard");
+            apb_battle_set_hazard((uint8_t)v[0], type_named(kind), cond_named(cond));
         } else if (strcmp(word, "traveler") == 0) {
             who = apb_battle_count();
             if (who >= APB_FIGHTERS_MAX
@@ -207,6 +256,8 @@ const char *ar_begin(unsigned seed, const char *spec)
             f.attack = (uint8_t)v[9]; f.weapon = (uint8_t)v[10]; f.ranged = (uint8_t)v[11];
             f.power = (uint8_t)v[12]; f.dmg_type = (uint8_t)v[13]; f.area = (uint8_t)v[14];
             f.weak_type = (uint8_t)v[15]; f.behavior = (uint8_t)v[16]; f.coward = (uint8_t)v[17];
+            f.race = 0xFF;
+            if (strstr(line, " hit ")) f.on_hit = cond_named(strstr(line, " hit ") + 5);
             if (apb_battle_add(&f) == APB_NOBODY) return refuse("a foe can't stand there");
         }
     }
@@ -264,8 +315,50 @@ const char *ar_targets(unsigned who, unsigned x, unsigned y)
     return json;
 }
 
+static const char *reach_reply(void)
+{
+    uint8_t x;
+    uint8_t y;
+
+    used = 0;
+    put("{\"reach\":[");
+    for (y = 0; y < apb_battle_height(); ++y) {
+        put(y ? ",\"" : "\"");
+        for (x = 0; x < apb_battle_width(); ++x) put("%u", reach[y][x]);
+        put("\"");
+    }
+    put("]}");
+    return json;
+}
+
 EMSCRIPTEN_KEEPALIVE
-const char *ar_act(unsigned who, unsigned kind, unsigned x, unsigned y, unsigned target)
+const char *ar_dash(unsigned who, unsigned x, unsigned y)
+{
+    apb_battle_dash_map((uint8_t)who, (uint8_t)x, (uint8_t)y, reach);
+    return reach_reply();
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *ar_shoves(unsigned who, unsigned x, unsigned y)
+{
+    uint8_t i;
+    int n = 0;
+
+    used = 0;
+    put("{\"targets\":[");
+    for (i = 0; i < apb_battle_count(); ++i) {
+        if (apb_battle_can_shove((uint8_t)who, i, (uint8_t)x, (uint8_t)y)) {
+            put(n++ ? ",{" : "{");
+            put("\"who\":%u,\"tn\":%d}", i, apb_battle_shove_tn(i));
+        }
+    }
+    put("]}");
+    return json;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *ar_act(unsigned who, unsigned kind, unsigned x, unsigned y, unsigned target,
+                   unsigned dx, unsigned dy)
 {
     apb_action a;
 
@@ -273,6 +366,8 @@ const char *ar_act(unsigned who, unsigned kind, unsigned x, unsigned y, unsigned
     a.move_y = (uint8_t)y;
     a.kind = (uint8_t)kind;
     a.target = (uint8_t)target;
+    a.dash_x = (uint8_t)dx;
+    a.dash_y = (uint8_t)dy;
     begin_reply();
     if (!apb_battle_act((uint8_t)who, &a)) {
         used = 0;

@@ -116,6 +116,96 @@ SCENARIOS = [
 ]
 
 
+# The rules lab's scenarios (docs/turn.md): rules v1's movement and conditions, played only
+# in the modern arena (tools/arena/web/), as the game itself is still on v0. Codes R-01...
+# Each may name a race, its foes' hits (FOE:CONDITION), and what its hazards do.
+LAB = [
+    {"title": "Through the fire",
+     "issue": "A new Warden against a scrap gunner on the far side of a band of fire. Every "
+              "square of fire you step into burns you (5 fire damage) and sets you on fire; "
+              "there's no way round.",
+     "watch": "What crossing costs you, whether a Dash (D) to get through in one turn is worth "
+              "it, and whether shaking off the flames feels fair.",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "foes": ["SCRAP_GUNNER"], "hazard": [5, "fire", "ON_FIRE"],
+     "map": ["############",
+             "#...^^^....#",
+             "#@..^^^...a#",
+             "#...^^^....#",
+             "############"]},
+    {"title": "Over the edge",
+     "issue": "A new Warden against two rust-guards on a ledge between two pits. Shove (S) one "
+              "off and it's out of the fight; they can't do it back.",
+     "watch": "Whether Shove is too strong next to a pit, and how often it works (Athletics "
+              "against the guard's TN).",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "foes": ["RUST_GUARD", "RUST_GUARD"],
+     "map": ["############",
+             "#OOOOOOOOOO#",
+             "#.....a....#",
+             "#@.........#",
+             "#.....b....#",
+             "#OOOOOOOOOO#",
+             "############"]},
+    {"title": "Venom",
+     "issue": "A new Warden against three ash rats whose bites poison: 3 damage at the start "
+              "of each of your turns, until you shake it off (Grit, TN 100) or five rounds pass.",
+     "watch": "How much the poison adds, and whether shaking it off comes often enough.",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "foes": ["ASH_RAT:POISONED", "ASH_RAT:POISONED", "ASH_RAT:POISONED"],
+     "map": ["############",
+             "#.........a#",
+             "#@.........#",
+             "#.........b#",
+             "#.........c#",
+             "############"]},
+    {"title": "Cold shot",
+     "issue": "A new Warden against two scrap gunners behind cover whose shots chill you "
+              "(Speed -1). Crossing to them is slower each time they hit.",
+     "watch": "Whether being chilled makes the walk miserable, or just a little slower.",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "foes": ["SCRAP_GUNNER:CHILLED", "SCRAP_GUNNER:CHILLED"],
+     "map": ["############",
+             "#..+.....a.#",
+             "#@.+.......#",
+             "#..+.....b.#",
+             "############"]},
+    {"title": "Wings",
+     "issue": "A Moth-folk Rogue, who flies (Winged), against a rust-guard, with pits between "
+              "them. The guard has to walk round; the Rogue can hang over a pit and shoot.",
+     "watch": "Whether flying over pits is too strong, and what the guard can do about it.",
+     "cls": "ROGUE", "level": 1, "weapon": "SCRAP_PISTOL", "armor": None, "race": "MOTH_FOLK",
+     "foes": ["RUST_GUARD"],
+     "map": ["############",
+             "#...OOOO...#",
+             "#@..OOOO..a#",
+             "#...OOOO...#",
+             "#..........#",
+             "############"]},
+    {"title": "Run and gun",
+     "issue": "A new Channeler against a rust-guard on an open floor. Dash (D) moves you twice "
+              "instead of attacking: you can keep away, but you don't shoot that turn.",
+     "watch": "Whether running away with Dash is too strong, or never worth a lost shot.",
+     "cls": "CHANNELER", "level": 1, "weapon": "EMBER_WAND", "armor": None,
+     "foes": ["RUST_GUARD"],
+     "map": ["##############",
+             "#............#",
+             "#............#",
+             "#@..........a#",
+             "#............#",
+             "#............#",
+             "##############"]},
+]
+
+
+def foe_name(f):
+    return f.split(":")[0]
+
+
+def foe_hit(f):
+    return f.split(":")[1] if ":" in f else None
+
+
 def ring(s):
     """The scenario's map, its foes' letters only (a spare letter becomes open ground)."""
     used = "abcdefgh"[:len(s["foes"])]
@@ -128,7 +218,7 @@ def item_id(name):
 
 def traveler(s):
     """The scenario's traveler: built by the arena's quick builder, gear equipped."""
-    ch = arena.build(s["cls"], s["level"], name=s["cls"][:8])
+    ch = arena.build(s["cls"], s["level"], s.get("race"), name=s["cls"][:8])
     ch["equipped"] = {0: item_id(s["weapon"])}
     if s["armor"]:
         ch["equipped"][1] = item_id(s["armor"])
@@ -204,15 +294,21 @@ def native(s, ch):
     clean = ["".join("." if (c == "@" or c.islower()) else c for c in r) for r in rows]
     x, y = spots["@"]
     lines = [f"map {len(clean[0])} {len(clean)}"] + clean
+    if s.get("hazard"):
+        d, t, c = s["hazard"]
+        lines.append(f"hazard {d} {t or 'none'} {c or '-'}")
     lines.append(f"traveler {x} {y} {arena.passport.encode(ch)} {item_id(s['weapon'])}")
-    figures = [arena.DEFAULT_RACE[s["cls"]]]
+    figures = [s.get("race") or arena.DEFAULT_RACE[s["cls"]]]
     names = [arena.REG["classes"][s["cls"]]["display"]]
+    plain = [foe_name(f) for f in s["foes"]]
     for i, f in enumerate(s["foes"]):
         fx, fy = spots["abcdefgh"[i]]
-        lines.append(arena.foe_line(f, fx, fy))
-        figures.append(f)
-        same = s["foes"].count(f) > 1
-        names.append(arena.REG["foes"][f]["display"] + (f" {s['foes'][:i + 1].count(f)}" if same else ""))
+        hit = foe_hit(f)
+        lines.append(arena.foe_line(foe_name(f), fx, fy) + (f" hit {hit}" if hit else ""))
+        figures.append(foe_name(f))
+        same = plain.count(foe_name(f)) > 1
+        names.append(arena.REG["foes"][foe_name(f)]["display"]
+                     + (f" {plain[:i + 1].count(foe_name(f))}" if same else ""))
     return {"spec": "\n".join(lines) + "\n", "figures": figures, "names": names,
             "pack": pack(s), "skills": {k: arena.rating(ch, k.upper()) for k in
                                         ("melee", "ranged", "channel", "athletics")}}
@@ -231,18 +327,70 @@ def items():
     return out
 
 
-def measured(s):
-    """A thousand fights of the same scenario on the battle engine, both sides on quick."""
+def matchup(s, rules="v0"):
+    """The scenario as an arena matchup, by rules v0 or the rules lab's (next)."""
     m = arena.Matchup()
+    m.set_rules(rules)
     item = arena.REG["items"][s["weapon"]]
     arch = arena.registry.ARCHETYPES[item["archetype"]]
     armor = arena.REG["items"][s["armor"]]["tier"] if s["armor"] else 0
-    m.travelers.append(arena.Traveler([s["cls"], str(s["level"]), "weapon", arch,
-                                       str(item["tier"]), arena.registry.DAMAGE[item["damage"]],
-                                       "armor", str(armor)]))
+    m.travelers.append(arena.Traveler(([s["race"]] if s.get("race") else [])
+                                      + [s["cls"], str(s["level"]), "weapon", arch,
+                                         str(item["tier"]), arena.registry.DAMAGE[item["damage"]],
+                                         "armor", str(armor)]))
     for f in s["foes"]:
-        m.add_foe(f)
+        m.add_foe(foe_name(f) + (f" hit {foe_hit(f)}" if foe_hit(f) else ""))
+    if s.get("hazard"):
+        d, t, c = s["hazard"]
+        m.set_hazard([str(d), t or "none", c or "-"])
     m.map = ring(s)
+    return m
+
+
+def conditions():
+    """What the modern arena shows of each condition: its tag, its name, and what it does,
+    in words (registry/conditions.txt)."""
+    words = {"speed0": "can't move", "dodge0": "Dodge 0", "lose_turn": "loses its turn",
+             "down": "knocked down: standing takes half its Speed", "ends_when_hit": "ends when hit",
+             "ends_on_heal": "ends when healed", "no_powers": "no powers", "no_heal": "no healing",
+             "fly": "flies", "first": "acts first"}
+    out = {}
+    for c in arena.CONDS.values():
+        e, said = c["effects"], []
+        for k, v in e.items():
+            if k in words:
+                said.append(words[k])
+            elif k in ("dot", "thorns"):
+                n, t = v
+                kind = f" {arena.registry.DAMAGE[t]}" if t is not None else ""
+                said.append(f"{n}{kind} damage each turn" if k == "dot" else f"thorns {n}{kind}")
+            elif k in ("vulnerable", "immune_hazard"):
+                t = arena.registry.DAMAGE[v]
+                said.append(f"double {t} damage" if k == "vulnerable" else f"no {t} damage from hazards")
+            elif k == "immune":
+                said.append("immune: " + ", ".join(arena.CONDS[x]["display"].lower() for x in v))
+            elif k == "race":
+                continue
+            elif k == "heal":
+                said.append(f"heals {v} each turn")
+            elif k == "barrier":
+                said.append(f"absorbs the next {v} damage")
+            elif k == "next":
+                said.append(f"{v:+d} to its next attack")
+            else:
+                said.append(f"{k.capitalize()} {v:+d}")
+        if c["rounds"]:
+            said.append(f"{c['rounds']} round{'s' * (c['rounds'] > 1)}")
+        if c["shake"]:
+            said.append(f"shake off: {arena.registry.STATS[c['shake'][0]].capitalize()}, TN {c['shake'][1]}")
+        out[c["id"]] = {"name": c["name"], "tag": c["tag"], "display": c["display"],
+                        "what": "; ".join(said), "trait": "race" in e}
+    return out
+
+
+def measured(s, rules="v0"):
+    """A thousand fights of the same scenario on the battle engine, both sides on quick."""
+    m = matchup(s, rules)
     results, foes = arena.fight(m)
     sm = arena.summary(m, results, foes)
     return {"won": round(sm["won"]), "lost": round(sm["lost"]), "fled": round(sm["fled"]),
@@ -273,12 +421,28 @@ def main(argv):
             "foes": [arena.REG["foes"][f]["display"] for f in s["foes"]],
             "passport": arena.passport.encode(ch),
             "arena": measured(s),
+            "lab": measured(s, "next"),
             "native": native(s, ch)})
     with open(os.path.join(out, "scenarios.json"), "w") as f:
         json.dump(data, f, indent=1)
+    lab = []
+    for n, s in enumerate(LAB, 1):
+        ch = traveler(s)
+        lab.append({
+            "n": n, "code": f"R-{n:02d}", "title": s["title"], "issue": s["issue"],
+            "watch": s["watch"], "lab_only": True,
+            "traveler": f"{arena.REG['classes'][s['cls']]['display']}, level {s['level']}",
+            "foes": [arena.REG["foes"][foe_name(f)]["display"] for f in s["foes"]],
+            "hazard": s.get("hazard"),
+            "lab": measured(s, "next"),
+            "native": native(s, ch)})
+    with open(os.path.join(out, "lab.json"), "w") as f:
+        json.dump(lab, f, indent=1)
     with open(os.path.join(out, "items.json"), "w") as f:
         json.dump(items(), f, indent=1)
-    print(f"arena: {len(data)} scenarios in {out}")
+    with open(os.path.join(out, "conditions.json"), "w") as f:
+        json.dump(conditions(), f, indent=1)
+    print(f"arena: {len(data)} scenarios and {len(lab)} of the rules lab's in {out}")
     return 0
 
 

@@ -102,7 +102,11 @@ coats, ids 9-14). Change a scenario there, `make site`, and the page follows.
 ## The native arena
 
 The same scenarios, played in a modern page instead of on the train: no story, no Boarding
-Pass, no Travel Stamp, no C64 screen. It's a tool in the **studio**, beside the art desk:
+Pass, no Travel Stamp, no C64 screen, and **by rules v1** ([turn.md](turn.md): the rules
+lab's movement and conditions), where the train still plays v0. Six more scenarios
+(R-01 to R-06) are there only, to try v1: fire to cross, a ledge to shove foes off,
+poisoned bites, chilling shots, flying over pits, and running with Dash. It's a tool in
+the **studio**, beside the art desk:
 
     make studio            then open http://localhost:8064/arena/
 
@@ -115,8 +119,14 @@ Pass, no Travel Stamp, no C64 screen. It's a tool in the **studio**, beside the 
   reach from there are marked with the TN to hit them. Click one, or press A, to attack.
   Cards on the right show everyone's health and numbers; the log shows every roll.
 - **Every button is always on screen**, with its key, and changes with the moment: your
-  turn (Attack, Guard, Wait, Pack, Flee, Undo move, End turn, Quick turn), aiming, the pack,
-  the foes' turn, the end. A button that can't be used now is greyed, and says why.
+  turn (Attack, Shove, Dash, Guard, Wait, Pack, Flee, Undo move, End turn, Quick turn),
+  aiming, dashing, the pack, the foes' turn, the end. A button that can't be used now is
+  greyed, and says why.
+- **Shove** (S) a foe next to the square you've chosen, and **Dash** (D): pick a second
+  square, as far again, from the first. **Conditions** show as chips on the cards (hover
+  for what each does and how long it has left), as tags under the figures, and in the log
+  as they go on, tick, are shaken off and end; a race's two traits are blue chips. Numbers
+  a condition has moved are green (up) or red (down).
 - **The pack** (P): what's held and worn, and the pack's items with their damage, kind and
   the skill each rolls with this traveler. Take one up, wear one, or put one away. It's
   free, as the rules say ([items.md](items.md#swapping)): it doesn't use the turn. Each
@@ -126,9 +136,11 @@ Pass, no Travel Stamp, no C64 screen. It's a tool in the **studio**, beside the 
   the swaps) beside what the computer gets. Fight again (R), give feedback (F: the same
   playtest issue form), or back to the scenarios.
 
-It's the real rules: `tools/arena/web/arena.c` is the battle engine (`core/src/battle.c`)
-compiled to WebAssembly (`make arena-web` builds `build/arena-web/`), with one addition only
-the arena builds (`APB_ARENA`): `apb_battle_rearm`, gear changed mid-fight. The art comes as
+It's the real rules: `tools/arena/web/arena.c` is the rules lab's battle engine
+(`core/next/battle.c`) compiled to WebAssembly (`make arena-web` builds `build/arena-web/`),
+with one addition only the arena builds (`APB_ARENA`): `apb_battle_rearm`, gear changed
+mid-fight. "What the computer says" is a thousand fights by v1 (`build/arena-next`), with
+v0's figure beside it; the computer never shoves or dashes. The art comes as
 `art.json` (`tools/arena/web/art_json.py`); in the studio it's made from the art files as
 they are now, so a figure drawn in the art desk is in the arena when the page is reloaded.
 The scenarios, their maps, fighters and packs come from `tools/arena/scenarios.py`. It isn't
@@ -137,9 +149,14 @@ adapted then.
 
 `make test-arena-web` (`tests/arena/check_native.py`) plays it in headless Chromium: every
 scenario starts with the fighters it says and its buttons in view; fights on Auto with fixed
-dice (three for each scenario) end as `build/arena` (the same engine, natively) says, round
-for round and health for health; and the pack's swaps fight by the rules and don't use the
-turn.
+dice (three for each scenario, the rules lab's too) end as `build/arena-next` (the same
+engine, natively) says, round for round and health for health; the pack's swaps fight by
+the rules and don't use the turn; a Dash goes where it's pointed; a Shove by a pit drops
+the foe in.
+
+The arena runner plays v1 too: `python3 tools/arena/arena.py "Warden 1" vs RUST_GUARD --rules
+next`, and a matchup can say `rules next`, `hazard 5 fire ON_FIRE` and `foe ASH_RAT x4 hit
+POISONED`.
 
 ## How it's checked
 
@@ -179,6 +196,28 @@ the gunner's damage up) moved the Channeler against a rust-guard from 99% to 96%
 gunner from a certain win to 98%. Ward equal to Armor would bring the Channeler to 87%,
 level with the Rogue; a lone gunner stays weak, but two beat a new Warden 73% of the time.
 The details, and what's next, are on that page.
+
+### Rules v1, first measured
+
+The same scenarios by v0 and by v1 (1000 fights each, both sides on quick, which never
+shoves or dashes):
+
+| | v0 | v1 | Why |
+|---|---|---|---|
+| A-01 A fair fight | 82% | 89% | the Salvaged Warden's Plated (Armor +10) |
+| A-05 Two of them | 5% | 12% | Plated |
+| A-06 Level 4: still a wall | 12% | 30% | Plated: levels count for more with it |
+| A-07 Level 5: new gear | 61% | 80% | |
+| A-08 The swarm (4 rats) | 43% | 76% | Plated: the rats' 2s mostly miss |
+| A-10 Shooters in a pair | 44% | 62% | |
+| R-01 Through the fire | | 73% | three squares of fire cost about 15 health |
+| R-02 Over the edge | | 39% | two rust-guards, without shoving them off |
+| R-03 Venom (3 rats) | | 82% | |
+| R-05 Wings | | 82% | |
+| R-06 Run and gun | | 100% | a Rad-Dryad Channeler (Rooted: Soak +2) against a brute |
+
+Races' traits are worth more than their +10: Plated alone moves the Warden's fights by
+7 to 33 points. Rats that make you bleed (`hit BLEEDING`) take four from 76% back to 39%.
 
 ## Next
 

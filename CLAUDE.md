@@ -156,8 +156,20 @@ has ten scenarios to play by hand (`docs/arena.md`;
 `python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --sweep level 1-10`): use it to
 balance the rules.
 `make studio` serves the studio: the art desk (http://localhost:8064/) and the native arena
-(http://localhost:8064/arena/, `docs/arena.md`; `make test-arena-web` plays it in headless
-Chromium). `make artdesk` serves the art desk alone: figures, effects and tiles,
+(http://localhost:8064/arena/, `docs/arena.md`, by rules v1; `make test-arena-web` plays it
+in headless Chromium).
+
+**Rules v1 is in the rules lab** (`docs/turn.md`): movement (Speed 5-7, paths, hazards on
+every step, Shove, Dash, pushes and falls, flying) and conditions (`registry/conditions.txt`,
+read by `registry.load_conditions()`; its C table is generated into `build/next/`). Its
+engine is `core/next/battle.c`, the same house rules as the core: builds that want it put
+`-Icore/next` first (`NEXT_INC`, `NEXT_SRC` in the Makefile). The arena plays it
+(`arena.py --rules next`, `build/arena-next`, the modern arena); the game (C64, cartridge,
+story VM) stays on v0 in `core/src/battle.c` until v1 is frozen and ported. `make
+test-rules-next`: reviewed battles in `tests/battle-next/` (the same on sim65; `--update`
+rewrites the logs: read the diff), every roll and damage re-worked by `tools/rules/turn.py`
+and `combat.py`, the engine and `turn.py` agreeing on random fighters, random battles under
+the sanitizers. `make artdesk` serves the art desk alone: figures, effects and tiles,
 drawn under the C64's rules and saved to `content/art/` (`docs/art.md`).
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website

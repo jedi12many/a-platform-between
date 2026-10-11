@@ -1,6 +1,7 @@
 /* The native arena (docs/arena.md, "The native arena"): a scenario's fight, played by hand
- * in a modern page. The rules are the real battle engine (core/src/battle.c) as
- * WebAssembly (rules.js, from tools/arena/web/arena.c); the pictures are the game's art
+ * in a modern page. The rules are rules v1's battle engine, the rules lab's
+ * (core/next/battle.c, docs/turn.md), as WebAssembly (rules.js, from
+ * tools/arena/web/arena.c); the pictures are the game's art
  * (content/art/, as art.json), drawn crisp at any size; the scenarios are
  * tools/arena/scenarios.py's. No story, no codes: a fight, again, or another.
  */
@@ -10,10 +11,10 @@ var REPO = "https://github.com/jedi12many/a-platform-between";
 var TYPES = ["kinetic", "energy", "fire", "cold", "mind"];
 var TYPE_COLOUR = { kinetic: 1, energy: 3, fire: 8, cold: 14, mind: 4 };   /* C64 colours */
 var SQ = 32;                                  /* a square, in the art's pixels */
-var ACT = { attack: 0, guard: 1, wait: 2, flee: 3, done: 4 };
+var ACT = { attack: 0, guard: 1, wait: 2, flee: 3, done: 4, shove: 5, dash: 6 };
 var RESULTS = ["miss", "glancing", "hit", "critical"];
 
-var ART, SCENARIOS, ITEMS, BUILD = "studio";
+var ART, SCENARIOS, ITEMS, CONDS, BUILD = "studio";
 var rules = {};                               /* the WebAssembly calls */
 var sprites = {};                             /* drawn art, by name */
 
@@ -122,6 +123,15 @@ var auto = false;        /* the traveler plays on quick */
 var hover = null;        /* the square under the mouse */
 
 function itemOf(id) { return id ? ITEMS[String(id)] : null; }
+function condOf(id) { return CONDS[String(id)] || { tag: "?", display: "?", what: "" }; }
+
+/* What a scenario's hazards do, in words. */
+function hazardText(h) {
+  if (!h) return "";
+  var c = h[2] ? CONDS[Object.keys(CONDS).filter(function (k) { return CONDS[k].name === h[2]; })[0]] : null;
+  return "Its hazards (^) are " + (h[1] || "plain") + ": " + h[0] + (h[1] ? " " + h[1] : "") +
+    " damage to anyone who steps in or starts a turn there" + (c ? ", and " + c.display.toLowerCase() : "") + ".";
+}
 
 function weaponText(f) {
   var it = itemOf(f.item), kind = f.power ? "power" : f.ranged ? "ranged" : "melee";
@@ -141,10 +151,11 @@ function newFight() {
   var st = r;
   fight = {
     seed: seed, st: st, round: 0, whose: -1, me: -1, plan: null, reach: null, targets: [],
-    aim: 0, log: [], floaters: [], effects: [],
+    shoves: [], aim: 0, aimKind: "attack", dash: null, dashReach: null, log: [], floaters: [], effects: [],
     pack: S.native.pack.slice(),
     shown: st.fighters.map(function (f) {
-      return { x: f.x, y: f.y, health: f.health, state: f.state, alpha: 1, flash: 0, lunge: null };
+      return { x: f.x, y: f.y, health: f.health, state: f.state, alpha: 1, flash: 0, lunge: null,
+               fall: 0 };
     }),
     dealt: 0, taken: 0, hits: 0, swings: 0, swaps: 0
   };
@@ -175,6 +186,9 @@ function intro() {
   list.textContent = "";
   SCENARIOS.forEach(function (s, i) {
     var li = el("li"), b = el("button");
+    if (i === 0 || SCENARIOS[i - 1].lab_only !== s.lab_only) {
+      list.append(el("li", "group", s.lab_only ? "Rules v1: movement and conditions" : "The first ten"));
+    }
     b.type = "button";
     b.append(el("span", "code", s.code), el("span", "t", s.title),
              el("span", "who", s.traveler + " vs " + count(s.foes)));
@@ -207,6 +221,7 @@ function brief(s) {
   p1.append(el("b", null, "What we want tested: "), document.createTextNode(s.issue));
   p2.append(el("b", null, "Watch for: "), document.createTextNode(s.watch));
   test.append(p1, p2);
+  if (s.hazard) test.append(el("p", "hz", hazardText(s.hazard)));
   st.fighters.forEach(function (f, i) {
     (f.side === 0 ? mine : theirs).append(card(s, f, i, false));
   });
@@ -215,17 +230,18 @@ function brief(s) {
   l.append(h1, mine);
   r.append(h2, theirs);
   m.append(l, el("div", "vs", "vs"), r);
-  var a = s.arena, odds = el("div", "odds"), bar = el("div", "oddsbar");
+  var a = s.lab, odds = el("div", "odds"), bar = el("div", "oddsbar");
   ["won", "lost", "fled"].forEach(function (k) {
     var i = el("i", k);
     i.style.width = a[k] + "%";
     i.title = k + " " + a[k] + "%";
     bar.append(i);
   });
-  odds.append(el("h3", null, "What the computer says"), bar,
-    el("p", "oddsnote", "Playing both sides a thousand times, the traveler wins " + a.won +
+  odds.append(el("h3", null, "What the computer says (rules v1)"), bar,
+    el("p", "oddsnote", "Playing both sides a thousand times (it never shoves or dashes), the traveler wins " + a.won +
       "%, loses " + a.lost + "%" + (a.fled ? ", flees " + a.fled + "%" : "") + "; a fight lasts " +
       a.rounds + " rounds, and a winner keeps " + a.health_left + "% of their health." +
+      (s.arena ? " By rules v0, as the game plays now: " + s.arena.won + "%." : "") +
       (plays(s.code, 0) ? " You've played it " + plays(s.code, 0) + " times here." : "")));
   var go = el("div", "start"), btn = el("button", "primary");
   btn.type = "button";
@@ -247,15 +263,18 @@ function card(s, f, i, live) {
     c.classList.add("turn");
   }
   nm.append(el("span", null, s.native.names[i]),
-            el("small", null, live && f.state === 1 ? "down" : live && f.state === 2 ? "gone"
+            el("small", null, live && f.state === 1 ? (fight.shown[i].fell ? "fell" : "down")
+                              : live && f.state === 2 ? "gone"
                               : health + " / " + f.health_max));
   bar.style.width = Math.max(0, 100 * frac) + "%";
   hp.append(bar);
   if (frac <= 0.25) hp.classList.add("low"); else if (frac <= 0.5) hp.classList.add("mid");
-  [["Attack", f.attack], ["Armor", f.armor], ["Ward", f.ward], ["Dodge", f.dodge],
-   ["Soak", f.soak], ["Speed", f.speed]].forEach(function (p) {
-    var sp = el("span", null, p[0] + " ");
-    sp.append(el("b", null, String(p[1])));
+  [["Attack", f.attack, f.attack], ["Armor", f.armor, f.armor_now], ["Ward", f.ward, f.ward_now],
+   ["Dodge", f.dodge, f.dodge_now], ["Soak", f.soak, f.soak_now], ["Speed", f.speed, f.speed_now]].forEach(function (p) {
+    var sp = el("span", null, p[0] + " "), now = p[2] === undefined ? p[1] : p[2];
+    var b = el("b", now > p[1] ? "up" : now < p[1] ? "down" : null, String(now));
+    if (now !== p[1]) b.title = "Without its conditions: " + p[1];
+    sp.append(b);
     st.append(sp);
   });
   var w = el("b", null, weaponText(f));
@@ -268,6 +287,16 @@ function card(s, f, i, live) {
   }
   if (live && f.guarding) gear.append(document.createTextNode(" · on guard"));
   c.append(pic, nm, hp, st, gear);
+  if (f.conds && f.conds.length) {
+    var chips = el("div", "chips");
+    f.conds.forEach(function (cr) {
+      var cd = condOf(cr[0]), chip = el("span", "chip" + (cd.trait ? " trait" : ""),
+                                         cd.display + (cr[1] ? " " + cr[1] : ""));
+      chip.title = cd.display + ": " + cd.what + (cr[1] ? " (" + cr[1] + " left)" : "");
+      chips.append(chip);
+    });
+    c.append(chips);
+  }
   return c;
 }
 
@@ -329,7 +358,7 @@ function settle(r) {
   r.fighters.forEach(function (f, i) {
     var s = fight.shown[i];
     s.x = f.x; s.y = f.y; s.health = f.health; s.state = f.state;
-    s.alpha = f.state === 2 ? 0 : 1;
+    s.alpha = f.state === 2 || s.fell ? 0 : 1;
   });
   cards();
 }
@@ -350,8 +379,12 @@ function beginTurn(who) {
 
 function aimFrom() {
   fight.targets = call("ar_targets", fight.me, fight.plan.x, fight.plan.y).targets;
+  fight.shoves = call("ar_shoves", fight.me, fight.plan.x, fight.plan.y).targets;
   if (fight.aim >= fight.targets.length) fight.aim = 0;
 }
+
+/* The list being aimed at: attacks or shoves. */
+function aimList() { return fight.aimKind === "shove" ? fight.shoves : fight.targets; }
 
 function canReach(x, y) {
   return fight.reach && y >= 0 && y < fight.reach.length && x >= 0 && x < fight.reach[y].length &&
@@ -371,11 +404,12 @@ function moved() {
   return fight.plan.x !== f.x || fight.plan.y !== f.y;
 }
 
-async function act(kind, target) {
-  var r = call("ar_act", fight.me, kind, fight.plan.x, fight.plan.y, target === undefined ? 0 : target);
+async function act(kind, target, dx, dy) {
+  var r = call("ar_act", fight.me, kind, fight.plan.x, fight.plan.y, target === undefined ? 0 : target,
+               dx === undefined ? 0 : dx, dy === undefined ? 0 : dy);
   if (r.refused) {
     toast(kind === ACT.flee ? "No way out from here: flee from an exit, or next to no one."
-                            : "That can't be done from here.");
+          : kind === ACT.dash ? "Can't dash there from here." : "That can't be done from here.");
     return;
   }
   setMode("busy");
@@ -389,14 +423,42 @@ function quick() {
   if (mode !== "turn") return;
   var q = call("ar_quick", fight.me);
   fight.plan = { x: q.x, y: q.y };
-  act(q.kind, q.target);
+  act(q.kind, q.target, q.x, q.y);
 }
 
 function attack() {
   if (!fight.targets.length) { toast("Nobody in reach from here."); return; }
   if (fight.targets.length === 1) return act(ACT.attack, fight.targets[0].who);
   fight.aim = 0;
+  fight.aimKind = "attack";
   setMode("aim");
+}
+
+/* Shove: a foe next to the square chosen (docs/turn.md): pushed a square away. */
+function shove() {
+  if (!fight.shoves.length) { toast("Nobody next to you to shove from here."); return; }
+  if (fight.shoves.length === 1) return act(ACT.shove, fight.shoves[0].who);
+  fight.aim = 0;
+  fight.aimKind = "shove";
+  setMode("aim");
+}
+
+/* Dash: instead of acting, a second move from the square chosen. */
+function dash() {
+  fight.dashReach = call("ar_dash", fight.me, fight.plan.x, fight.plan.y).reach;
+  fight.dash = { x: fight.plan.x, y: fight.plan.y };
+  setMode("dash");
+}
+
+function canDash(x, y) {
+  return fight.dashReach && y >= 0 && y < fight.dashReach.length && x >= 0 &&
+    x < fight.dashReach[y].length && fight.dashReach[y][x] === "1";
+}
+
+function dashTo(x, y) {
+  if (!canDash(x, y)) return false;
+  fight.dash = { x: x, y: y };
+  return true;
 }
 
 function waitTurn() {
@@ -471,7 +533,7 @@ function swap(slot, item) {
 
 function finish(result) {
   var won = result === 1, title = $("end-title"), body = $("end-body");
-  var f = fight.st.fighters[0], a = S.arena;
+  var f = fight.st.fighters[0], a = S.lab;
   fight.whose = -1;
   title.textContent = won ? "Victory" : result === 2 ? "Defeated" : "Escaped";
   title.className = won ? "won" : result === 2 ? "lost" : "";
@@ -485,7 +547,7 @@ function finish(result) {
     d.append(el("b", null, String(p[0])), el("span", null, p[1]));
     grid.append(d);
   });
-  body.append(grid, el("p", "note", "The computer, playing both sides, wins this " + a.won +
+  body.append(grid, el("p", "note", "The computer, playing both sides by rules v1, wins this " + a.won +
     "% of the time in " + a.rounds + " rounds. How did yours feel?"));
   log(title.textContent + ".", won ? "good" : "bad");
   setMode("end");
@@ -537,8 +599,24 @@ async function play(events) {
   }
 }
 
+/* Damage shown as it lands: health down, a flash, a number rising. */
+function hurtShown(who, n, why, cls) {
+  var s = fight.shown[who];
+  if (n > 0) {
+    s.health = Math.max(0, s.health - n);
+    s.flash = performance.now();
+    if (fight.st.fighters[who].side === 0) fight.taken += n;
+  }
+  floater(s.x, s.y, n > 0 ? "-" + n : "0", n > 0 ? "#ef6b5b" : "#9a98a6");
+  if (why) log(why, cls || (n > 0 ? (fight.st.fighters[who].side === 0 ? "bad" : "good") : null));
+}
+
+function rolled(e) {
+  return e.roll + "+" + (e.total - e.roll) + "=" + e.total + " vs " + e.tn;
+}
+
 async function show1(e) {
-  var s, t, f;
+  var s, t, c = e.cond ? condOf(e.cond) : null;
   switch (e.kind) {
   case "turn":
     if (e.value !== fight.round) {
@@ -550,8 +628,13 @@ async function show1(e) {
     if (fight.st.fighters[e.actor].side !== 0) await wait(220);
     break;
   case "move":
+  case "push":
     s = fight.shown[e.actor];
-    await tween(s, e.x, e.y, 110 * Math.max(Math.abs(e.x - s.x), Math.abs(e.y - s.y), 1) + 60);
+    await tween(s, e.x, e.y, e.kind === "push" ? 140 : 110);
+    if (e.kind === "push") log(name(e.actor) + " is pushed back.");
+    break;
+  case "dash":
+    log(name(e.actor) + " dashes on.");
     break;
   case "free":
     log(name(e.actor) + " gets a free attack on " + name(e.target) + ".", "bad");
@@ -560,19 +643,79 @@ async function show1(e) {
   case "attack":
     await strike(e);
     break;
+  case "shove":
+    s = fight.shown[e.actor];
+    t = fight.shown[e.target];
+    s.lunge = { x: t.x - s.x, y: t.y - s.y, t0: performance.now(), dur: fast ? 50 : 240 };
+    log([el("span", null, name(e.actor) + " shoves " + name(e.target) + ": "), el("span", "roll", rolled(e)),
+         el("span", null, ", " + RESULTS[e.result] + ".")], e.result ? "good" : null);
+    await wait(220);
+    break;
+  case "slam":
+    hurtShown(e.actor, e.value, name(e.actor) + " slams into something: " + e.value + " damage.");
+    await wait(250);
+    break;
+  case "fall":
+    s = fight.shown[e.actor];
+    for (t = 0; t <= 1; t += 0.1) { s.fall = t; await wait(30); }
+    s.alpha = 0;
+    s.fell = true;
+    log(name(e.actor) + " falls into the pit!", fight.st.fighters[e.actor].side === 0 ? "bad" : "good");
+    break;
   case "down":
     fight.shown[e.target].state = 1;
     log(name(e.target) + " is down!", fight.st.fighters[e.target].side === 0 ? "bad" : "good");
     await wait(350);
     break;
   case "hazard":
-    s = fight.shown[e.actor];
-    s.health = Math.max(0, s.health - e.value);
-    s.flash = performance.now();
-    floater(s.x, s.y, "-" + e.value, "#ef6b5b");
-    log(name(e.actor) + " takes " + e.value + " from the ground.", "bad");
-    if (fight.st.fighters[e.actor].side === 0) fight.taken += e.value;
+    hurtShown(e.actor, e.value, name(e.actor) + " takes " + e.value + " from the ground.");
     await wait(300);
+    break;
+  case "cond_on":
+    s = fight.shown[e.actor];
+    floater(s.x, s.y + 0.35, c.tag, "#e8c547");
+    log(name(e.actor) + " is " + c.display.toLowerCase() + (e.value ? " (" + e.value + " rounds)" : "") +
+        ": " + c.what + ".", fight.st.fighters[e.actor].side === 0 ? "bad" : "good");
+    await wait(180);
+    break;
+  case "cond_off":
+    log(name(e.actor) + " is no longer " + c.display.toLowerCase() + ".");
+    break;
+  case "immune":
+    s = fight.shown[e.actor];
+    floater(s.x, s.y + 0.35, "immune", "#6fb3ff");
+    log(name(e.actor) + " is immune to " + c.display.toLowerCase() + ".");
+    break;
+  case "tick":
+    hurtShown(e.actor, e.value, name(e.actor) + " takes " + e.value + " from " + c.display.toLowerCase() + ".");
+    await wait(250);
+    break;
+  case "heal":
+    s = fight.shown[e.actor];
+    s.health = Math.min(fight.st.fighters[e.actor].health_max, s.health + e.value);
+    floater(s.x, s.y, e.value ? "+" + e.value : "no healing", "#7fcf7a");
+    log(name(e.actor) + (e.value ? " heals " + e.value : " can't heal") + " (" + c.display.toLowerCase() + ").");
+    await wait(200);
+    break;
+  case "skip":
+    log(name(e.actor) + " loses the turn: " + c.display.toLowerCase() + ".", fight.st.fighters[e.actor].side === 0 ? "bad" : "good");
+    await wait(300);
+    break;
+  case "shake":
+    log([el("span", null, name(e.actor) + " tries to shake off " + c.display.toLowerCase() + ": "),
+         el("span", "roll", rolled(e)), el("span", null, e.result >= 2 ? ", and does." : ", and can't.")]);
+    break;
+  case "stand":
+    log(name(e.actor) + " stands up (" + e.value + " squares of move left).");
+    break;
+  case "thorns":
+    hurtShown(e.target, e.value, name(e.target) + " is hurt by " + name(e.actor) + "'s " +
+              c.display.toLowerCase() + ": " + e.value + ".");
+    break;
+  case "absorb":
+    s = fight.shown[e.actor];
+    floater(s.x, s.y + 0.2, "barrier " + e.value, "#6fb3ff");
+    log(name(e.actor) + "'s barrier takes " + e.value + ".");
     break;
   case "guard":
     log(name(e.actor) + " stands guard.");
@@ -592,7 +735,6 @@ async function show1(e) {
     log(name(e.actor) + " is gone.");
     break;
   }
-  f = null;
 }
 
 async function strike(e) {
@@ -620,7 +762,7 @@ async function strike(e) {
   } else {
     floater(st.x, st.y, "miss", "#9a98a6");
   }
-  if (mine) {
+  if (mine && fight.st.fighters[e.target].side !== 0) {
     fight.swings++;
     if (e.value) fight.hits++;
     fight.dealt += e.value;
@@ -715,6 +857,17 @@ function frame(now) {
     pulse = 0.6 + 0.4 * Math.sin(now / 220);
     bracket(fight.plan.x, fight.plan.y, "rgba(232,197,71," + pulse + ")", 2);
   }
+  /* A Dash: where the second move can go, from the square chosen. */
+  if (mode === "dash") {
+    ctx.fillStyle = "rgba(232,197,71,.16)";
+    for (y = 0; y < map.length; ++y) {
+      for (x = 0; x < map[y].length; ++x) if (canDash(x, y)) ctx.fillRect(x * SQ + 1, y * SQ + 1, SQ - 2, SQ - 2);
+    }
+    if (hover && canDash(hover.x, hover.y)) bracket(hover.x, hover.y, "rgba(230,228,220,.5)", 1);
+    bracket(fight.plan.x, fight.plan.y, "rgba(232,197,71,.5)", 1);
+    pulse = 0.6 + 0.4 * Math.sin(now / 220);
+    bracket(fight.dash.x, fight.dash.y, "rgba(232,197,71," + pulse + ")", 2);
+  }
 
   order = fight.shown.map(function (s, i) { return i; }).sort(function (a, b) {
     return fight.shown[a].y - fight.shown[b].y;
@@ -722,12 +875,12 @@ function frame(now) {
   order.forEach(function (i) {
     var s = fight.shown[i], f = fight.st.fighters[i], px = s.x, py = s.y, img, l, k, fl;
     if (s.alpha <= 0) return;
-    if (i === fight.me && (mode === "turn" || mode === "aim") && s.state === 0) {
+    if (i === fight.me && (mode === "turn" || mode === "aim" || mode === "dash") && s.state === 0) {
       ctx.globalAlpha = 0.3;
       ctx.drawImage(figureSprite(S.native.figures[i]), px * SQ + 3, py * SQ + 8);
       ctx.globalAlpha = 1;
-      px = fight.plan.x;
-      py = fight.plan.y;
+      px = mode === "dash" ? fight.dash.x : fight.plan.x;
+      py = mode === "dash" ? fight.dash.y : fight.plan.y;
     }
     if (s.lunge) {
       l = (now - s.lunge.t0) / s.lunge.dur;
@@ -758,6 +911,16 @@ function frame(now) {
       ctx.stroke();
     }
     img = figureSprite(S.native.figures[i]);
+    if (s.fall) {
+      /* Into the pit: smaller and smaller. */
+      ctx.save();
+      ctx.translate(px * SQ + 16, py * SQ + 20);
+      ctx.scale(1 - s.fall, 1 - s.fall);
+      ctx.drawImage(img, -13, -12);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+      return;
+    }
     ctx.drawImage(img, px * SQ + 3, py * SQ + 8);
     fl = (now - s.flash) / 180;
     if (s.flash && fl < 1) {
@@ -775,15 +938,29 @@ function frame(now) {
     ctx.fillStyle = frac > 0.5 ? "#7fcf7a" : frac > 0.25 ? "#e8c547" : "#ef6b5b";
     ctx.fillRect(px * SQ + 5, py * SQ + 3, w * frac, 3);
     if (f.guarding) { ctx.fillStyle = "#e8c547"; ctx.fillRect(px * SQ + 28, py * SQ + 2, 2, 5); }
+    /* Its conditions (not a race's traits), as tags under its feet. */
+    var tags = (f.conds || []).filter(function (cr) { return !condOf(cr[0]).trait; })
+      .map(function (cr) { return condOf(cr[0]).tag; }).slice(0, 3);
+    if (tags.length) {
+      ctx.font = "700 5px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      var text = tags.join(" "), tw = ctx.measureText(text).width + 4;
+      ctx.fillStyle = "rgba(10,10,14,.85)";
+      ctx.fillRect(px * SQ + 16 - tw / 2, py * SQ + 28.5, tw, 6);
+      ctx.fillStyle = "#e8c547";
+      ctx.fillText(text, px * SQ + 16, py * SQ + 31.7);
+    }
     ctx.globalAlpha = 1;
   });
 
   /* Who can be attacked from the square chosen, and the TN for each. */
   if (mode === "turn" || mode === "aim") {
-    fight.targets.forEach(function (t, n) {
+    (mode === "aim" ? aimList() : fight.targets).forEach(function (t, n) {
       var s = fight.shown[t.who], on = mode === "aim" && n === fight.aim;
       bracket(s.x, s.y, on ? "#ef6b5b" : "rgba(239,107,91,.6)", on ? 2.2 : 1.2);
-      tag(s.x, s.y, "TN " + t.tn, on ? "#ffffff" : "#ef9b8f");
+      tag(s.x, s.y, (mode === "aim" && fight.aimKind === "shove" ? "Shove " : "TN ") + t.tn,
+          on ? "#ffffff" : "#ef9b8f");
     });
   }
 
@@ -825,6 +1002,7 @@ function frame(now) {
 /* Each: [key label, text, what it does, disabled?, why it's disabled, primary?] */
 function buttons() {
   var t = fight && fight.targets ? fight.targets.length : 0;
+  var sh = fight && fight.shoves ? fight.shoves.length : 0;
   switch (mode) {
   case "intro":
     return [["↑ ↓", "Choose a scenario", function () { pick(1); }, false, "", false, "hint"],
@@ -832,6 +1010,8 @@ function buttons() {
   case "turn":
     return [["Arrows", "Move (or click a lit square)", null, false, "", false, "hint"],
             ["A", t > 1 ? "Attack…" : "Attack", attack, !t, "Nobody in reach from here", true],
+            ["S", sh > 1 ? "Shove…" : "Shove", shove, !sh, "Nobody next to you to shove"],
+            ["D", "Dash", dash],
             ["G", "Guard", function () { act(ACT.guard, 0); }],
             ["W", "Wait", waitTurn, moved() || me().waited, moved() ? "Only before you move" : "Once a round"],
             ["P", "Pack", openPack],
@@ -845,7 +1025,14 @@ function buttons() {
             ["X", "Leave", leave]];
   case "aim":
     return [["← →", "Next target", function () { cycle(1); }],
-            ["Enter", "Strike", function () { act(ACT.attack, fight.targets[fight.aim].who); }, false, "", true],
+            ["Enter", fight.aimKind === "shove" ? "Shove" : "Strike", function () {
+              act(fight.aimKind === "shove" ? ACT.shove : ACT.attack, aimList()[fight.aim].who);
+            }, false, "", true],
+            ["Esc", "Back", function () { setMode("turn"); }]];
+  case "dash":
+    return [["Arrows", "Where to dash (or click a lit square)", null, false, "", false, "hint"],
+            ["Enter", "Dash there", function () { act(ACT.dash, 0, fight.dash.x, fight.dash.y); },
+             fight.dash.x === fight.plan.x && fight.dash.y === fight.plan.y, "Pick a square first", true],
             ["Esc", "Back", function () { setMode("turn"); }]];
   case "pack":
     return [["1-6", "Hold or wear from the pack", null, false, "", false, "hint"],
@@ -901,7 +1088,7 @@ function leave() {
 }
 
 function cycle(d) {
-  var n = fight.targets.length;
+  var n = aimList().length;
   fight.aim = (fight.aim + d + n) % n;
 }
 
@@ -932,6 +1119,12 @@ function onKey(e) {
     if (!planTo(f.x + step[0], f.y + step[1])) toast("Can't get there this turn.");
     return;
   }
+  if (mode === "dash" && step) {
+    e.preventDefault();
+    if (!dashTo(fight.dash.x + step[0], fight.dash.y + step[1])) toast("Can't dash there.");
+    actions();
+    return;
+  }
   if (mode === "aim" && (k === "ArrowRight" || k === "ArrowDown" || k === "Tab")) { e.preventDefault(); cycle(1); return; }
   if (mode === "aim" && (k === "ArrowLeft" || k === "ArrowUp")) { e.preventDefault(); cycle(-1); return; }
   if (mode === "pack" && /^[1-6]$/.test(k)) {
@@ -954,6 +1147,17 @@ function onClick(e) {
   if (!fight) return;
   var sq = squareAt(e.offsetX, e.offsetY), who, t;
   if (!sq) return;
+  if (mode === "dash") {
+    if (dashTo(sq.x, sq.y)) act(ACT.dash, 0, sq.x, sq.y);
+    else toast("Can't dash there.");
+    return;
+  }
+  if (mode === "aim" && fight.aimKind === "shove") {
+    who = fighterAt(sq.x, sq.y);
+    t = fight.shoves.filter(function (x) { return x.who === who; })[0];
+    if (t) act(ACT.shove, t.who);
+    return;
+  }
   if (mode === "turn" || mode === "aim") {
     who = fighterAt(sq.x, sq.y);
     t = fight.targets.filter(function (x) { return x.who === who; })[0];
@@ -967,8 +1171,8 @@ function onMove(e) {
   hover = squareAt(e.offsetX, e.offsetY);
   var who = hover ? fighterAt(hover.x, hover.y) : -1;
   var t = fight.targets && fight.targets.some(function (x) { return x.who === who; });
-  board.style.cursor = (mode === "turn" || mode === "aim") && (t || (hover && canReach(hover.x, hover.y)))
-    ? "pointer" : "default";
+  board.style.cursor = ((mode === "turn" || mode === "aim") && (t || (hover && canReach(hover.x, hover.y))))
+    || (mode === "dash" && hover && canDash(hover.x, hover.y)) ? "pointer" : "default";
   board.title = who >= 0 ? name(who) + (t ? ": click to attack" : "") : "";
 }
 
@@ -985,15 +1189,16 @@ function published() {
 }
 
 async function boot() {
-  var got = await Promise.all(["art.json", "scenarios.json", "items.json"].map(function (f) {
+  var got = await Promise.all(["art.json", "scenarios.json", "items.json", "lab.json", "conditions.json"].map(function (f) {
     return fetch(f).then(function (r) {
       if (!r.ok) throw new Error(f + ": " + r.status);
       return r.json();
     });
   }));
   ART = got[0];
-  SCENARIOS = got[1];
+  SCENARIOS = got[3].concat(got[1]);                  /* the rules lab's first: they're new */
   ITEMS = got[2];
+  CONDS = got[4];
   fetch("build.json").then(function (r) { return r.json(); }).then(function (b) {
     BUILD = b.commit + " (" + b.built + ")";
     if (b.built !== "studio") published();
@@ -1003,7 +1208,9 @@ async function boot() {
   rules.ar_next = M.cwrap("ar_next", "string", []);
   rules.ar_reach = M.cwrap("ar_reach", "string", ["number"]);
   rules.ar_targets = M.cwrap("ar_targets", "string", ["number", "number", "number"]);
-  rules.ar_act = M.cwrap("ar_act", "string", ["number", "number", "number", "number", "number"]);
+  rules.ar_act = M.cwrap("ar_act", "string", ["number", "number", "number", "number", "number", "number", "number"]);
+  rules.ar_dash = M.cwrap("ar_dash", "string", ["number", "number", "number"]);
+  rules.ar_shoves = M.cwrap("ar_shoves", "string", ["number", "number", "number"]);
   rules.ar_quick = M.cwrap("ar_quick", "string", ["number"]);
   rules.ar_equip = M.cwrap("ar_equip", "string", ["number", "number", "number"]);
   board = $("board");
@@ -1015,7 +1222,7 @@ async function boot() {
   document.addEventListener("keydown", onKey);
   var sd = /seed=(\d+)/.exec(location.hash);
   if (sd) fixedSeed = Number(sd[1]);
-  var m = /scenario=(A-\d+)/.exec(location.hash);
+  var m = /scenario=([AR]-\d+)/.exec(location.hash);
   if (m) picked = Math.max(0, SCENARIOS.findIndex(function (s) { return s.code === m[1]; }));
   intro();
   requestAnimationFrame(frame);
