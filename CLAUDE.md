@@ -147,7 +147,8 @@ against. For `cart/`:
   server writes nothing that breaks a rule, and nothing but the art files
   (`tests/artdesk/check_artdesk.py`).
 
-Run all eighteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+Run all eighteen before pushing. CI is paused for now: it runs only by hand (Actions → CI
+→ Run workflow), not on pull requests. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
 `make arena MATCHUP=arena/FILE.txt` fights a matchup a thousand times on the battle engine,
 both sides on quick, and reports win rates, rounds and health; the site's Arena tab has
