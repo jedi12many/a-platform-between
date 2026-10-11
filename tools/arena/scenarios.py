@@ -8,7 +8,10 @@ writes, for each scenario, OUT/arena-NN.qs (a tiny Siding: the fight, its notes,
 again" and "leave"), and OUT/scenarios.json for the arena page (site/arena.html): each
 scenario's code (A-01...: playtesters' feedback names it, so keep a code with its
 scenario), notes, its traveler's Passport (built by the arena's quick builder, with the
-scenario's gear), its foes, and what a thousand fights on the battle engine say.
+scenario's gear), its foes, and what a thousand fights on the battle engine say. Each
+scenario also carries what the native arena (tools/arena/web/, docs/arena.md) needs to set
+the fight up without a story: the map, the fighters' lines for its battle engine, the
+figures to draw, and a pack of gear to try.
 """
 
 import json
@@ -178,6 +181,56 @@ fight ring
 """
 
 
+# The arena's gear: a scenario's pack is every one of these up to its weapon's tier, but
+# what it already wears or holds (the pack holds 6: docs/races.md).
+ARENA_GEAR = ["RUSTED_SABRE", "IRON_SWORD", "SCRAP_PISTOL", "ARC_PISTOL", "EMBER_WAND",
+              "PADDED_COAT", "CHAIN_COAT"]
+PACK_SIZE = 6
+
+
+def pack(s):
+    tier = arena.REG["items"][s["weapon"]]["tier"]
+    held = {s["weapon"], s["armor"]}
+    return [item_id(i) for i in ARENA_GEAR
+            if i not in held and arena.REG["items"][i]["tier"] <= tier][:PACK_SIZE]
+
+
+def native(s, ch):
+    """The fight, for the native arena: the map without its letters, a line for each
+    fighter (tools/arena/web/arena.c's spec), and the figure each is drawn with."""
+    rows = ring(s)
+    spots = {c: (x, y) for y, r in enumerate(rows) for x, c in enumerate(r) if c != "." and
+             (c == "@" or c.islower())}
+    clean = ["".join("." if (c == "@" or c.islower()) else c for c in r) for r in rows]
+    x, y = spots["@"]
+    lines = [f"map {len(clean[0])} {len(clean)}"] + clean
+    lines.append(f"traveler {x} {y} {arena.passport.encode(ch)} {item_id(s['weapon'])}")
+    figures = [arena.DEFAULT_RACE[s["cls"]]]
+    names = [arena.REG["classes"][s["cls"]]["display"]]
+    for i, f in enumerate(s["foes"]):
+        fx, fy = spots["abcdefgh"[i]]
+        lines.append(arena.foe_line(f, fx, fy))
+        figures.append(f)
+        same = s["foes"].count(f) > 1
+        names.append(arena.REG["foes"][f]["display"] + (f" {s['foes'][:i + 1].count(f)}" if same else ""))
+    return {"spec": "\n".join(lines) + "\n", "figures": figures, "names": names,
+            "pack": pack(s), "skills": {k: arena.rating(ch, k.upper()) for k in
+                                        ("melee", "ranged", "channel", "athletics")}}
+
+
+def items():
+    """What the native arena's pack shows of each item."""
+    out = {}
+    for name in ARENA_GEAR + ["PULSE_RIFLE", "BALLISTIC_WEAVE"]:
+        it = arena.REG["items"][name]
+        arch = arena.registry.ARCHETYPES[it["archetype"]]
+        out[it["id"]] = {"name": name, "display": it["display"], "kind": arch, "tier": it["tier"],
+                         "type": arena.registry.DAMAGE[it["damage"]],
+                         "damage": 5 * it["tier"] if arch != "armor" else 0,
+                         "armor": 10 * it["tier"] if arch == "armor" else 0}
+    return out
+
+
 def measured(s):
     """A thousand fights of the same scenario on the battle engine, both sides on quick."""
     m = arena.Matchup()
@@ -219,9 +272,12 @@ def main(argv):
             "weapon_tier": weapon["tier"],
             "foes": [arena.REG["foes"][f]["display"] for f in s["foes"]],
             "passport": arena.passport.encode(ch),
-            "arena": measured(s)})
+            "arena": measured(s),
+            "native": native(s, ch)})
     with open(os.path.join(out, "scenarios.json"), "w") as f:
         json.dump(data, f, indent=1)
+    with open(os.path.join(out, "items.json"), "w") as f:
+        json.dump(items(), f, indent=1)
     print(f"arena: {len(data)} scenarios in {out}")
     return 0
 

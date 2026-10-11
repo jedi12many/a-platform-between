@@ -13,6 +13,10 @@ story's pictures are another matter: see `tools/c64fit.py` and `docs/c64.md`.
 and open <http://localhost:8064/>. It runs on this machine only, and saves straight into
 `content/art/`; then `make` builds the game with the new art (and `git diff` shows it).
 
+The art desk is one tool in the **studio** (`make studio`): its other tab is the native
+arena ([arena.md](arena.md#the-native-arena)), which draws the art as it is now, so a figure
+saved here can be fought with straight away.
+
 - **Files**: Figures, Effects, Tiles 32 (the C version's map), Tiles 16 (the cartridge's).
   A dot after a file's name: it has changes not saved yet. **Save** (Ctrl+S) saves them
   all; **Revert** goes back to what's saved.

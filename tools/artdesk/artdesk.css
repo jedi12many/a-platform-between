@@ -92,3 +92,10 @@ dialog::backdrop { background: #000a; }
   background: var(--check-a); }
 #paste-notes { padding-left: 18px; }
 .paste-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+/* The studio's tools, the same on every one. */
+.studio { display: flex; gap: 2px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 2px; }
+.studio a { color: var(--dim); text-decoration: none; padding: 4px 12px; border-radius: 6px; }
+.studio a[aria-current="page"] { background: #2a2a35; color: var(--ink); }
+.studio a:hover { color: var(--ink); }

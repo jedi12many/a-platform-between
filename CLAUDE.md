@@ -155,7 +155,9 @@ both sides on quick, and reports win rates, rounds and health; the site's `arena
 has ten scenarios to play by hand (`docs/arena.md`;
 `python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --sweep level 1-10`): use it to
 balance the rules.
-`make artdesk` serves the art desk (http://localhost:8064/): figures, effects and tiles,
+`make studio` serves the studio: the art desk (http://localhost:8064/) and the native arena
+(http://localhost:8064/arena/, `docs/arena.md`; `make test-arena-web` plays it in headless
+Chromium). `make artdesk` serves the art desk alone: figures, effects and tiles,
 drawn under the C64's rules and saved to `content/art/` (`docs/art.md`).
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website

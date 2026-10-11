@@ -1,7 +1,9 @@
-"""The art desk's server (docs/art.md): serves the editor (tools/artdesk/) and the art
-files (content/art/), and saves them back when the page says so, on this machine only.
+"""The studio's server (docs/art.md, docs/arena.md): the art desk (tools/artdesk/) and the
+arena (tools/arena/web/), side by side, on this machine only. It serves the editor and the
+art files (content/art/), and saves them back when the page says so; and it serves the
+arena, which draws the art as it is now, so a figure drawn here can be fought straight away.
 
-    python3 tools/artdesk/serve.py [--port 8064] [--art DIR]     (make artdesk)
+    python3 tools/artdesk/serve.py [--port 8064] [--art DIR]     (make studio)
 
 then open http://localhost:8064/. A save is checked by tools/art.py's rules before it's
 written: a file that breaks one isn't written, and the page is told why. Only the four art
@@ -13,22 +15,37 @@ copy).
                            races and foes the game has (each needs a figure)
     GET  /art/NAME.txt     an art file
     PUT  /art/NAME.txt     saves it: 200, or 400 and what's wrong
+    GET  /arena/           the arena: its page from tools/arena/web/, its rules and
+                           scenarios from build/arena-web/ (make arena-web), and
+                           /arena/art.json made from the art files as they are now
 """
 
 import http.server
 import json
 import os
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 sys.path.insert(0, os.path.join(os.path.dirname(HERE), "registry"))
+sys.path.insert(0, os.path.join(os.path.dirname(HERE), "arena", "web"))
 import art  # noqa: E402
+import art_json  # noqa: E402
 import registry  # noqa: E402
 from c64pic import PALETTE  # noqa: E402
 
 PAGES = {"/": ("index.html", "text/html"), "/artdesk.js": ("artdesk.js", "text/javascript"),
          "/artdesk.css": ("artdesk.css", "text/css")}
+
+# The arena: its page (edited in tools/arena/web/), and what make arena-web builds.
+ARENA_PAGE = os.path.join(os.path.dirname(HERE), "arena", "web")
+ARENA_BUILT = os.path.join(os.path.dirname(HERE), "..", "build", "arena-web")
+ARENA_FILES = {"index.html": (ARENA_PAGE, "text/html"), "arena.js": (ARENA_PAGE, "text/javascript"),
+               "arena.css": (ARENA_PAGE, "text/css"), "rules.js": (ARENA_BUILT, "text/javascript"),
+               "rules.wasm": (ARENA_BUILT, "application/wasm"),
+               "scenarios.json": (ARENA_BUILT, "application/json"),
+               "items.json": (ARENA_BUILT, "application/json")}
 
 
 def meta():
@@ -72,6 +89,13 @@ class Desk(http.server.BaseHTTPRequestHandler):
             name, kind = PAGES[p]
             with open(os.path.join(HERE, name), "rb") as f:
                 return self.send(200, f.read(), kind)
+        if p == "/arena":
+            self.send_response(301)
+            self.send_header("Location", "/arena/")
+            self.end_headers()
+            return None
+        if p.startswith("/arena/"):
+            return self.arena(p[len("/arena/"):] or "index.html")
         if p == "/meta.json":
             return self.send(200, json.dumps(meta()), "application/json")
         name = self.art_name()
@@ -79,6 +103,25 @@ class Desk(http.server.BaseHTTPRequestHandler):
             with open(art.path_of(name, self.folder)) as f:
                 return self.send(200, f.read())
         self.send(404, "not here")
+
+    def arena(self, name):
+        if name == "build.json":
+            try:
+                commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True,
+                                        text=True, cwd=HERE).stdout.strip() or "unknown"
+            except OSError:
+                commit = "unknown"
+            return self.send(200, json.dumps({"commit": commit, "built": "studio"}), "application/json")
+        if name == "art.json":
+            return self.send(200, json.dumps(art_json.build(self.folder)), "application/json")
+        if name not in ARENA_FILES:
+            return self.send(404, "not here")
+        folder, kind = ARENA_FILES[name]
+        path = os.path.join(folder, name)
+        if not os.path.exists(path):
+            return self.send(404, "The arena isn't built: run make arena-web (or make studio).")
+        with open(path, "rb") as f:
+            return self.send(200, f.read(), kind)
 
     def do_PUT(self):
         name = self.art_name()
@@ -103,7 +146,8 @@ def main(argv):
     if "--art" in argv:
         Desk.folder = argv[argv.index("--art") + 1]
     server = http.server.ThreadingHTTPServer(("127.0.0.1", port), Desk)
-    print(f"The art desk: http://localhost:{port}/ (art in {os.path.abspath(Desk.folder)}); "
+    print(f"The studio: the art desk at http://localhost:{port}/, the arena at "
+          f"http://localhost:{port}/arena/ (art in {os.path.abspath(Desk.folder)}); "
           "Ctrl-C to stop", flush=True)
     try:
         server.serve_forever()

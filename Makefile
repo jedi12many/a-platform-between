@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all arena cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all arena arena-web studio test-arena-web cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 # The game's art (docs/art.md): figures, effects and tiles, as text, read by tools/art.py.
 ART := $(wildcard content/art/*.txt) tools/art.py
@@ -509,10 +509,40 @@ build/site/index.html: site/index.html site/arena.html build/web/apb.js build/wa
 	printf '{"commit": "%s", "built": "%s"}\n' "$$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
 	    "$$(date -u +%Y-%m-%d)" > build/site/build.json
 
-# The art desk (docs/art.md): an editor for the figures, effects and tiles in a browser,
-# saving to content/art/. Open http://localhost:8064/.
+# The native arena (docs/arena.md, "The native arena"): the scenarios' fights played by
+# hand in a modern page, on the battle engine as WebAssembly and the game's art. It lives
+# in the studio, beside the art desk; build/arena-web/ is also a static site on its own.
+ARENA_WEB_FLAGS := -O2 -sALLOW_MEMORY_GROWTH -sMODULARIZE -sEXPORT_NAME=ArenaRules \
+                   -sEXPORTED_RUNTIME_METHODS=cwrap
+
+build/arena-web/rules.js: tools/arena/web/arena.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p build/arena-web
+	$(EMCC) $(ARENA_WEB_FLAGS) $(INC) -DAPB_ARENA -o $@ tools/arena/web/arena.c $(BATTLE_SRC) $(CORE_SRC)
+
+build/arena-web/index.html: build/arena-web/rules.js build/arena-play/scenarios.json \
+                            tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css \
+                            tools/arena/web/art_json.py content/art/*.txt
+	cp tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css build/arena-web/
+	cp build/arena-play/scenarios.json build/arena-play/items.json build/arena-web/
+	python3 tools/arena/web/art_json.py build/arena-web/art.json
+
+arena-web: build/arena-web/index.html
+	@echo "The arena: make studio, and open http://localhost:8064/arena/"
+
+# The studio (docs/art.md, docs/arena.md): the art desk and the arena, side by side, on
+# this machine. Open http://localhost:8064/ (the art desk) or /arena/.
+studio: build/arena-web/index.html
+	python3 tools/artdesk/serve.py
+
+# The art desk alone (the arena's tab works once make arena-web has been run).
 artdesk:
 	python3 tools/artdesk/serve.py
+
+# The native arena in headless Chromium: every scenario starts, the pack swaps gear as the
+# rules say, and fights played on quick end as the battle engine says
+# (tests/arena/check_native.py).
+test-arena-web: build/arena-web/index.html
+	NODE_PATH=$$(npm root -g) python3 tests/arena/check_native.py
 
 # The art desk in headless Chromium, on a copy of the art: files come back untouched, each
 # edit lands as it should, the server writes nothing that breaks a rule

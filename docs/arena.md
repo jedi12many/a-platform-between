@@ -99,6 +99,48 @@ The scenarios live in `tools/arena/scenarios.py`, which writes each one as a tin
 data, measured by the arena. Their gear is in the registry (the sword, pistols, wand and
 coats, ids 9-14). Change a scenario there, `make site`, and the page follows.
 
+## The native arena
+
+The same scenarios, played in a modern page instead of on the train: no story, no Boarding
+Pass, no Travel Stamp, no C64 screen. It's a tool in the **studio**, beside the art desk:
+
+    make studio            then open http://localhost:8064/arena/
+
+- **The intro** lists the scenarios. The chosen one shows what we want tested and what to
+  watch for, both sides' cards (worked out by the rules, not typed in), and what a thousand
+  fights on the computer say. Enter starts the fight.
+- **The fight** is the battle map at whatever size the window is, drawn from the game's art
+  (`content/art/`) with every pixel crisp. Your turn shows where you can go. Pick a square
+  with the arrows (or the keypad's digits for diagonals) or by clicking a lit one. Foes in
+  reach from there are marked with the TN to hit them. Click one, or press A, to attack.
+  Cards on the right show everyone's health and numbers; the log shows every roll.
+- **Every button is always on screen**, with its key, and changes with the moment: your
+  turn (Attack, Guard, Wait, Pack, Flee, Undo move, End turn, Quick turn), aiming, the pack,
+  the foes' turn, the end. A button that can't be used now is greyed, and says why.
+- **The pack** (P): what's held and worn, and the pack's items with their damage, kind and
+  the skill each rolls with this traveler. Take one up, wear one, or put one away. It's
+  free, as the rules say ([items.md](items.md#swapping)): it doesn't use the turn. Each
+  scenario's pack has the arena's gear up to its own tier.
+- **Auto** (T) plays your turns as quick does; **Fast** (Z) speeds up what's shown.
+- **The end** shows how it went (rounds, health left, damage each way, how often you hit,
+  the swaps) beside what the computer gets. Fight again (R), give feedback (F: the same
+  playtest issue form), or back to the scenarios.
+
+It's the real rules: `tools/arena/web/arena.c` is the battle engine (`core/src/battle.c`)
+compiled to WebAssembly (`make arena-web` builds `build/arena-web/`), with one addition only
+the arena builds (`APB_ARENA`): `apb_battle_rearm`, gear changed mid-fight. The art comes as
+`art.json` (`tools/arena/web/art_json.py`); in the studio it's made from the art files as
+they are now, so a figure drawn in the art desk is in the arena when the page is reloaded.
+The scenarios, their maps, fighters and packs come from `tools/arena/scenarios.py`. It isn't
+on the C64 or the cartridge, and needn't be: if the game ever offers it there, it will be
+adapted then.
+
+`make test-arena-web` (`tests/arena/check_native.py`) plays it in headless Chromium: every
+scenario starts with the fighters it says and its buttons in view; fights on Auto with fixed
+dice (three for each scenario) end as `build/arena` (the same engine, natively) says, round
+for round and health for health; and the pack's swaps fight by the rules and don't use the
+turn.
+
 ## How it's checked
 
 `make test-waystation` runs `tests/arena/check_play.py`: each scenario's traveler is the
