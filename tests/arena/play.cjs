@@ -41,6 +41,8 @@ async function main() {
       await page.goto(url + "arena.html");
       await page.waitForSelector(".scenarios li button");
       console.log(`listed ${await page.locator(".scenarios li").count()}`);
+      await page.waitForFunction(() => /This build: /.test(document.getElementById("build").textContent));
+      console.log("feedback " + await page.locator(".scenarios li a.feedback").nth(n - 1).getAttribute("href"));
       await page.locator(".scenarios li button").nth(n - 1).click();
       await page.waitForURL(/play\/#departure=arena-/, { timeout: 30000 });
       console.log("departure " + new URL(page.url()).hash.match(/departure=([\w-]+)/)[1]);

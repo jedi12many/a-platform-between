@@ -53,6 +53,11 @@ ol.scenarios { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75
 button { font: 600 0.95rem/1 var(--body); color: var(--board); background: var(--board-ink);
   border: 0; border-radius: 4px; padding: 0.55rem 1rem; cursor: pointer; }
 button:disabled { opacity: 0.5; cursor: wait; }
+a.feedback { font: 600 0.95rem/1 var(--body); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 4px; padding: 0.5rem 1rem; text-decoration: none; }
+a.feedback:hover { border-color: var(--muted); }
+.played { font-size: 0.85rem; color: var(--muted); }
+.build { font: 0.8rem/1.4 var(--mono); color: var(--muted); }
 .problem { margin: 0; color: var(--danger); font-size: 0.9rem; }
 footer { font-size: 0.85rem; color: var(--muted); }
 </style>
@@ -64,8 +69,10 @@ footer { font-size: 0.85rem; color: var(--muted); }
   </header>
   <p class="lede">Each scenario is one fight on the battle screen, with a traveler made for it.
     Play it by hand as often as you like (each time with new dice), and compare it with what a
-    thousand fights, the computer playing both sides, say. Note what feels wrong: that's what
-    we change next.</p>
+    thousand fights, the computer playing both sides, say. Then press <b>Give feedback</b>: it
+    opens a GitHub issue with the scenario and this build already filled in (you'll need a
+    GitHub account). Note what feels wrong: that's what we change next.</p>
+  <p class="build" id="build"></p>
   <ol class="scenarios" id="scenarios"><li>Loading the scenarios…</li></ol>
   <footer>The same fights run a thousand times with <code>tools/arena/arena.py</code>; the
     numbers here come from it (<code>docs/arena.md</code>). Nothing you do here touches your
@@ -115,6 +122,7 @@ function play(s, button) {
     var pass = call("ws_issue", ["number", "number", "number", "number", "number"],
                     [s.id, ticket >>> 16, ticket & 0xFFFF, random(16), 0]);
     if (!pass) throw new Error("no pass could be issued");
+    plays(s.code, 1);
     location.href = "play/#departure=" + s.dir + "&pass=" + encodeURIComponent(pass);
   }).catch(function (e) {
     button.disabled = false;
@@ -123,6 +131,36 @@ function play(s, button) {
     p.textContent = "It can't start just now: " + e.message + ".";
     button.parentNode.after(p);
   });
+}
+
+/* Feedback: a GitHub issue from the playtest form (.github/ISSUE_TEMPLATE/playtest.yml),
+ * the scenario, the build and the plays filled in, so every note says what it's about. */
+var REPO = "https://github.com/jedi12many/a-platform-between";
+var BUILD = "unknown";
+fetch("build.json").then(function (r) { return r.json(); }).then(function (b) {
+  BUILD = b.commit + " (" + b.built + ")";
+  $("build").textContent = "This build: " + BUILD;
+}).catch(function () {});
+
+/* How often each scenario's been played in this browser (a convenience only). */
+function plays(code, add) {
+  var key = "apb-arena-plays-" + code, n = 0;
+  try {
+    n = Number(localStorage.getItem(key)) || 0;
+    if (add) localStorage.setItem(key, String(n += add));
+  } catch (e) {}
+  return n;
+}
+
+function feedbackUrl(s) {
+  var q = new URLSearchParams({
+    template: "playtest.yml",
+    title: "[" + s.code + "] " + s.title,
+    scenario: s.code + " " + s.title,
+    build: BUILD,
+    played: String(plays(s.code, 0))
+  });
+  return REPO + "/issues/new?" + q.toString();
 }
 
 function el(tag, cls, text) {
@@ -139,7 +177,7 @@ fetch("arena/scenarios.json").then(function (r) { return r.json(); }).then(funct
     var li = el("li");
     var top = el("div", "top");
     var h = el("h2");
-    h.append(el("span", "n", String(s.n).padStart(2, "0")), s.title);
+    h.append(el("span", "n", s.code), s.title);
     top.append(h);
     li.append(top);
     var who = el("p", "who");
@@ -167,7 +205,13 @@ fetch("arena/scenarios.json").then(function (r) { return r.json(); }).then(funct
     var b = el("button", "", "Play");
     b.type = "button";
     b.addEventListener("click", function () { play(s, b); });
-    act.append(b);
+    var f = el("a", "feedback", "Give feedback");
+    f.target = "_blank";
+    f.rel = "noopener";
+    f.addEventListener("click", function () { f.href = feedbackUrl(s); });
+    f.href = feedbackUrl(s);
+    var n = plays(s.code, 0);
+    act.append(b, f, el("span", "played", n ? "Played " + n + (n === 1 ? " time" : " times") + " here" : ""));
     li.append(act);
     ol.append(li);
   });

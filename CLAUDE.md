@@ -96,8 +96,11 @@ against. For `cart/`:
   travelers are kept with notes, chosen to land a stamp, and, on the site signed in (a
   stand-in for claude.ai's store), kept on the player's account and boarded from the list.
   And the arena page (`site/arena.html`, `tools/arena/scenarios.py`): its ten scenarios'
-  travelers are what it says, their numbers the arena's, and every Play starts its fight
-  (`tests/arena/check_play.py`).
+  travelers are what it says, their numbers the arena's, every Play starts its fight, and
+  every Give feedback opens the playtest issue form with its scenario code and build
+  (`tests/arena/check_play.py`). Playtesters' feedback arrives as issues labelled
+  `playtest`, the scenario's code (`A-02`) in the title; the site is published to GitHub
+  Pages by hand (Actions → Publish playtest).
 - `make test-music`: the music players (`docs/music.md`) must write the same SID registers
   frame by frame: the Python reference (`tools/music/player.py`), the C player
   (`client/music.c`, under the sanitizers) and the C64's 6502 player (`fe/c64/music.s`, on

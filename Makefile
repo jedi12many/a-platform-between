@@ -506,6 +506,8 @@ build/site/index.html: site/index.html site/arena.html build/web/apb.js build/wa
 	cp build/web/* build/site/play/
 	cp build/waystation/* build/site/waystation/
 	cp build/arena-play/scenarios.json build/site/arena/
+	printf '{"commit": "%s", "built": "%s"}\n' "$$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
+	    "$$(date -u +%Y-%m-%d)" > build/site/build.json
 
 # The art desk (docs/art.md): an editor for the figures, effects and tiles in a browser,
 # saving to content/art/. Open http://localhost:8064/.

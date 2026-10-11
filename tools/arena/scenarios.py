@@ -6,7 +6,8 @@ thousand times in tools/arena/arena.py.
 
 writes, for each scenario, OUT/arena-NN.qs (a tiny Siding: the fight, its notes, "fight
 again" and "leave"), and OUT/scenarios.json for the arena page (site/arena.html): each
-scenario's notes, its traveler's Passport (built by the arena's quick builder, with the
+scenario's code (A-01...: playtesters' feedback names it, so keep a code with its
+scenario), notes, its traveler's Passport (built by the arena's quick builder, with the
 scenario's gear), its foes, and what a thousand fights on the battle engine say.
 """
 
@@ -209,7 +210,8 @@ def main(argv):
         ch = traveler(s)
         weapon = arena.REG["items"][s["weapon"]]
         data.append({
-            "n": n, "id": FIRST_ID + n - 1, "dir": f"arena-{n:02d}", "title": s["title"],
+            "n": n, "code": f"A-{n:02d}", "id": FIRST_ID + n - 1, "dir": f"arena-{n:02d}",
+            "title": s["title"],
             "issue": s["issue"], "watch": s["watch"],
             "traveler": f"{arena.REG['classes'][s['cls']]['display']}, level {s['level']}",
             "gear": ", ".join(arena.REG["items"][i]["display"]

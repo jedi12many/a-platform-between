@@ -8,7 +8,9 @@
 3. The page's numbers are the arena's: the same matchup, run again by tools/arena/arena.py,
    gives the same win rate.
 4. In headless Chromium, the page lists all ten, and every Play boards its scenario's
-   Departure, reaches its menu, and starts the fight.
+   Departure, reaches its menu, and starts the fight; and each Give feedback opens the
+   repository's playtest form (.github/ISSUE_TEMPLATE/playtest.yml), its title, scenario
+   and build (build/site/build.json) filled in.
 
     NODE_PATH=$(npm root -g) python3 tests/arena/check_play.py    (make test-waystation)
 """
@@ -75,12 +77,27 @@ def main():
     out = p.stdout.split("\n")
     fights = out.count("fighting")
     want = [f"departure arena-{n:02d}" for n in range(1, 11)]
+    from urllib.parse import parse_qs, urlparse
+    build = json.load(open(os.path.join(ROOT, "build", "site", "build.json")))
+    form = open(os.path.join(ROOT, ".github", "ISSUE_TEMPLATE", "playtest.yml")).read()
+    links = [ln[len("feedback "):] for ln in out if ln.startswith("feedback ")]
+    for n, (link, s) in enumerate(zip(links, data), 1):
+        u = urlparse(link)
+        q = {k: v[0] for k, v in parse_qs(u.query).items()}
+        if (u.netloc != "github.com" or not u.path.endswith("/issues/new")
+                or q.get("template") != "playtest.yml" or q.get("title") != f"[A-{n:02d}] {s['title']}"
+                or q.get("scenario") != f"A-{n:02d} {s['title']}" or not q.get("build", "").startswith(build["commit"])
+                or any(f"id: {k}" not in form for k in q if k not in ("template", "title"))):
+            fail(f"scenario {n}'s feedback link: {link}")
+    if len(links) != 10:
+        fail(f"{len(links)} feedback links read")
     if p.returncode or any("page error" in ln or "error:" in ln for ln in out) \
             or [ln for ln in out if ln.startswith("departure ")] != want or fights != 10 \
             or out.count("listed 10") != 10:
         fail("the arena page in Chromium:\n" + p.stdout + p.stderr)
     else:
-        ok("in Chromium the page lists ten, and every Play boards its scenario and starts the fight")
+        ok("in Chromium the page lists ten, every Play boards its scenario and starts the fight, "
+           "and every Give feedback opens the playtest form with its scenario and build")
     print(f"arena page: {failures} failed")
     return 1 if failures else 0
 

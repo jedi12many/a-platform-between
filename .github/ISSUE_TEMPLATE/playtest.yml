@@ -1,0 +1,50 @@
+name: Playtest feedback
+description: Notes from playing an arena scenario (the arena page fills in the first fields).
+title: "[A-00] "
+labels: ["playtest"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for playing. Tell us what the fight felt like: what seemed unfair, too easy,
+        too hard, or just right. There are no wrong answers.
+  - type: input
+    id: scenario
+    attributes:
+      label: Scenario
+      description: Its ID and name, filled in by the arena page (e.g. A-02 Magic is safe).
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Build
+      description: Which version of the rules you played, filled in by the arena page.
+  - type: input
+    id: played
+    attributes:
+      label: Times played
+      description: How many fights you played (the page counts the times you pressed Play).
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: How did it go for you?
+      options:
+        - I won almost every time
+        - I won more than I lost
+        - About even
+        - I lost more than I won
+        - I lost almost every time
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What felt wrong?
+      description: Unfair, too easy, too hard, confusing, slow...
+  - type: textarea
+    id: right
+    attributes:
+      label: What felt right?
+  - type: textarea
+    id: else
+    attributes:
+      label: Anything else?

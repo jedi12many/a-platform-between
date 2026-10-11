@@ -79,6 +79,21 @@ full health) or leave.
 | 9 | A lone shooter | Rogue 1, scrap pistol | a scrap gunner | a shooter alone is no threat |
 | 10 | Shooters in a pair | Warden 1 | two scrap gunners, behind cover | shooters come in groups |
 
+### Playtesting
+
+The site goes on GitHub Pages for playtesters: **Actions → Publish playtest → Run workflow**
+(`.github/workflows/pages.yml`) builds it with `make site` and publishes it at
+`https://jedi12many.github.io/a-platform-between/` (the arena: `arena.html`). It runs only
+when started by hand.
+
+Each scenario has a **code** (`A-01` ... `A-10`). Its **Give feedback** button opens a new
+GitHub issue from the playtest form (`.github/ISSUE_TEMPLATE/playtest.yml`) with the
+title (`[A-02] Magic is safe`), the scenario, the **build** (the commit the site was built
+from, in `build.json`) and the times played in that browser already filled in; the tester
+says how it went, what felt wrong and what felt right. Issues are labelled `playtest`; the
+code in the title says which scenario, the build which rules. Keep a code with its
+scenario: if a scenario changes a lot, give it a new code rather than reuse the old one.
+
 The scenarios live in `tools/arena/scenarios.py`, which writes each one as a tiny Siding
 (`arena-01`...`arena-10`, ids 1101-1110, bundled into the browser game) and the page's
 data, measured by the arena. Their gear is in the registry (the sword, pistols, wand and
