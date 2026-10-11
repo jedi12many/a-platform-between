@@ -17,7 +17,7 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all arena cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 # The game's art (docs/art.md): figures, effects and tiles, as text, read by tools/art.py.
 ART := $(wildcard content/art/*.txt) tools/art.py
@@ -553,9 +553,19 @@ build/attack: tests/combat/attack.c $(CORE_SRC) $(CORE_HDR) | build
 build/attack.sim: tests/combat/attack.c $(CORE_SRC) $(CORE_HDR) | build
 	$(CL65) -t sim6502 -O $(INC) -o $@ tests/combat/attack.c $(CORE_SRC)
 
-test-combat: build/attack build/attack.sim build/battle build/battle.sim build/battle.asan
+test-combat: build/attack build/attack.sim build/battle build/battle.sim build/battle.asan build/arena
 	python3 tests/combat/check_combat.py
 	python3 tests/battle/run_battles.py
+	python3 tests/arena/check_arena.py
+
+# The arena (docs/arena.md): a matchup fought many times, e.g.
+#   make arena MATCHUP=arena/party-of-four.txt
+arena: build/arena
+	python3 tools/arena/arena.py $(or $(MATCHUP),arena/warden-vs-rust-guard.txt)
+
+# The arena (docs/arena.md): many fights on the battle engine, both sides on quick.
+build/arena: tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tools/arena/arena.c $(BATTLE_SRC) $(CORE_SRC)
 
 # Battles: scenarios played natively and on the 6502, with the same log.
 build/battle: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build

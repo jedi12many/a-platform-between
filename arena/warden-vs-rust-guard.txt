@@ -1,0 +1,5 @@
+# The Fare's own fight, more or less: a new Warden against a rust-guard.
+# python3 tools/arena/arena.py arena/warden-vs-rust-guard.txt
+fights 1000
+traveler Warden 1
+foe RUST_GUARD

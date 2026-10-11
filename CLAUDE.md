@@ -62,7 +62,9 @@ against. For `cart/`:
   sheets, natively and on sim65; and the battle scenarios (`tests/battle/*.txt`, the engine
   in `core/src/battle.c`) must match their reviewed logs on both, with every roll
   re-checked, and random battles must never crash under the sanitizers.
-  `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff.
+  `python3 tests/battle/run_battles.py --update` rewrites the logs: read the diff. And the
+  arena's fights (`tools/arena/`) must be the battle runner's, blow for blow, and its quick
+  builder's characters must keep the rules (`tests/arena/check_arena.py`).
 - `make test-c64`: the C64 program from the `.d64` must play The Fare, Eighteen Minutes
   and the Deep Yards on a 6502 emulator
   (py65: `pip install py65`; the disk's pictures need Pillow) with the KERNAL answered
@@ -142,6 +144,10 @@ against. For `cart/`:
 
 Run all eighteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
+`make arena MATCHUP=arena/FILE.txt` fights a matchup a thousand times on the battle engine,
+both sides on quick, and reports win rates, rounds and health (`docs/arena.md`;
+`python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --sweep level 1-10`): use it to
+balance the rules.
 `make artdesk` serves the art desk (http://localhost:8064/): figures, effects and tiles,
 drawn under the C64's rules and saved to `content/art/` (`docs/art.md`).
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make

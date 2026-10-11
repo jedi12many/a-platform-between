@@ -1,0 +1,11 @@
+# Range against melee, in a corridor with cover: no room to kite.
+fights 1000
+traveler Channeler 3
+traveler Warden 3
+foe RUST_GUARD x2
+map
+##########
+#@...+..a#
+#@...+..b#
+##########
+end

@@ -1,0 +1,5 @@
+# How many ash rats does it take to beat a new Warden? A count sweep.
+fights 1000
+traveler Warden 1
+foe ASH_RAT
+sweep count 1-6

@@ -1,0 +1,8 @@
+# A party of four at level 3 against a scrapyard patrol.
+fights 1000
+traveler Warden 3
+traveler Channeler 3
+traveler Rogue 3
+traveler Medic 3
+foe RUST_GUARD x2
+foe SCRAP_GUNNER x2
