@@ -497,23 +497,26 @@ build/waystation/ws.js: waystation/ws.c $(CORE_SRC) $(APPLY_SRC) $(CORE_HDR) way
 	cp waystation/site/* build/waystation/
 	python3 waystation/registry_json.py build/waystation/registry.json
 
-# The site (site/, docs/waystation-web.md): the platform page, with the player's travelers,
-# and the Waystation and the train in a frame. Serve build/site/ and open it.
-build/site/index.html: site/index.html site/arena.html build/web/apb.js build/waystation/ws.js \
-                       build/arena-play/scenarios.json build/arena-web/index.html
+# The site (site/, docs/waystation-web.md): tabs for the platform (the player's travelers and
+# the train), the Waystation, the rules (docs/rules.md's pages), the art desk and the arena.
+# Serve build/site/ and open it.
+build/site/index.html: site/index.html build/web/apb.js build/waystation/ws.js \
+                       build/arena-web/index.html tools/artdesk/index.html tools/artdesk/artdesk.js \
+                       tools/artdesk/artdesk.css tools/artdesk/serve.py content/art/*.txt \
+                       tools/rules/rules_site.py docs/*.md
 	rm -rf build/site
-	mkdir -p build/site/play build/site/waystation build/site/arena build/site/studio/arena
-	for page in index arena; do \
-	  ( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
-	    printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
-	    cat site/$$page.html; printf '</body></html>\n' ) > build/site/$$page.html; \
-	done
+	mkdir -p build/site/play build/site/waystation build/site/studio/arena
+	( printf '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">\n'; \
+	  printf '<meta name="viewport" content="width=device-width,initial-scale=1"></head><body>\n'; \
+	  cat site/index.html; printf '</body></html>\n' ) > build/site/index.html
 	cp build/web/* build/site/play/
 	cp build/waystation/* build/site/waystation/
-	cp build/arena-play/scenarios.json build/site/arena/
+	python3 tools/rules/rules_site.py build/site/rules
+	python3 tools/artdesk/serve.py --publish build/site/studio
 	cp build/arena-web/* build/site/studio/arena/
 	printf '{"commit": "%s", "built": "%s"}\n' "$$(git rev-parse --short HEAD 2>/dev/null || echo unknown)" \
 	    "$$(date -u +%Y-%m-%d)" > build/site/build.json
+	cp build/site/build.json build/site/studio/
 	cp build/site/build.json build/site/studio/arena/
 
 # The native arena (docs/arena.md, "The native arena"): the scenarios' fights played by
@@ -569,7 +572,6 @@ waystation: build/waystation/ws.js
 # and stats rolled as the rules say (tests/waystation/check_site.py).
 test-waystation: build/waystation/ws.js build/site/index.html build/apb
 	NODE_PATH=$$(npm root -g) python3 tests/waystation/check_site.py
-	NODE_PATH=$$(npm root -g) python3 tests/arena/check_play.py
 
 # The desktop must play the C64's routes as the C64 does (Travel Stamps and all), and the
 # browser as the desktop does; a save survives a restart on both. Needs SDL2, Emscripten,

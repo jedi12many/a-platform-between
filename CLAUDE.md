@@ -95,12 +95,11 @@ against. For `cart/`:
   are spent and stats rolled as the references say (`tests/waystation/check_site.py`);
   travelers are kept with notes, chosen to land a stamp, and, on the site signed in (a
   stand-in for claude.ai's store), kept on the player's account and boarded from the list.
-  And the arena page (`site/arena.html`, `tools/arena/scenarios.py`): its ten scenarios'
-  travelers are what it says, their numbers the arena's, every Play starts its fight, and
-  every Give feedback opens the playtest issue form with its scenario code and build
-  (`tests/arena/check_play.py`). Playtesters' feedback arrives as issues labelled
-  `playtest`, the scenario's code (`A-02`) in the title; the site is published to GitHub
-  Pages by hand (Actions → Publish playtest).
+  And the site's tabs (Platform, Waystation, Rules, Art desk, Arena) each open their place,
+  the art desk saving by download there, and a link (`#arena:scenario=R-15`) opens one.
+  Playtesters' feedback (the arena's Give feedback) arrives as issues labelled `playtest`,
+  the scenario's code (`R-13`) in the title; the site is published to GitHub Pages by hand
+  (Actions → Publish playtest).
 - `make test-music`: the music players (`docs/music.md`) must write the same SID registers
   frame by frame: the Python reference (`tools/music/player.py`), the C player
   (`client/music.c`, under the sanitizers) and the C64's 6502 player (`fe/c64/music.s`, on
@@ -151,8 +150,8 @@ against. For `cart/`:
 Run all eighteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
 `make arena MATCHUP=arena/FILE.txt` fights a matchup a thousand times on the battle engine,
-both sides on quick, and reports win rates, rounds and health; the site's `arena.html`
-has ten scenarios to play by hand (`docs/arena.md`;
+both sides on quick, and reports win rates, rounds and health; the site's Arena tab has
+the scenarios to play by hand now (`PLAYING` in `tools/arena/scenarios.py`; `docs/arena.md`;
 `python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --sweep level 1-10`): use it to
 balance the rules.
 `make studio` serves the studio: the art desk (http://localhost:8064/) and the native arena
@@ -173,9 +172,10 @@ the sanitizers. `make artdesk` serves the art desk alone: figures, effects and t
 drawn under the C64's rules and saved to `content/art/` (`docs/art.md`).
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website
-(serve `build/waystation/`); `make site` builds the whole site, the platform page with
-the player's travelers and the Waystation and the train in a frame (serve `build/site/`;
-it's what's published). The 6502 test harness holds a 4 KB car, so keep each chapter of a covered Departure under that
+(serve `build/waystation/`); `make site` builds the whole site: tabs for the platform (the
+player's travelers and the train), the Waystation, the rules (`docs/rules.md`'s pages, by
+`tools/rules/rules_site.py`), the art desk (Save downloads there) and the arena (serve
+`build/site/`; it's what's published). The 6502 test harness holds a 4 KB car, so keep each chapter of a covered Departure under that
 (`qsc.py build` prints the sizes). It has no room for the whole engine: `build/harness.sim`
 leaves out the Deep Yards, and `build/harness-yards.sim` the boarding desk, so the yards'
 cases board the built-in traveler (`SEED+LEVEL` makes it a veteran).

@@ -1409,11 +1409,9 @@ function onMove(e) {
  * only in the studio, on a machine with the game): the first tab goes back to the
  * platform's arena page instead. */
 function published() {
-  var a = $("to-art");
-  a.textContent = "The platform";
-  a.href = "../../arena.html";
   document.querySelector("h1").firstChild.textContent = "Arena ";
 }
+if (window.top !== window) document.documentElement.classList.add("framed");
 
 async function boot() {
   var got = await Promise.all(["art.json", "scenarios.json", "items.json", "lab.json", "conditions.json",

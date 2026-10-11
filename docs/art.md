@@ -15,7 +15,9 @@ and open <http://localhost:8064/>. It runs on this machine only, and saves strai
 
 The art desk is one tool in the **studio** (`make studio`): its other tab is the native
 arena ([arena.md](arena.md#the-native-arena)), which draws the art as it is now, so a figure
-saved here can be fought with straight away.
+saved here can be fought with straight away. On the published site it's the **Art desk**
+tab (`make site`; `serve.py --publish` writes it as plain files): there's no server there
+to save into the game's files, so Save is **Download**, and the changed file is sent in.
 
 - **Files**: Figures, Effects, Tiles 32 (the C version's map), Tiles 16 (the cartridge's).
   A dot after a file's name: it has changes not saved yet. **Save** (Ctrl+S) saves them
