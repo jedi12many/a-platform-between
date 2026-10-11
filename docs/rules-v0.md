@@ -1,5 +1,7 @@
 # Rules v0
 
+*Part of the rules: see [rules.md](rules.md) for every page, in reading order.*
+
 A first proposal, open for change. What's marked as implemented lives in `core/` and is
 tested on both PC and 6502. The numbers are first guesses; playtests will tune them.
 
@@ -329,8 +331,11 @@ the other road open.
 
 ## Open questions
 
-- How powers are gained and raised.
-- Weapon damage: proposed in [combat.md](combat.md) (by tier, margin and Might), awaiting playtests.
+All the rules' open questions are gathered in [rules.md](rules.md#open-questions). This
+page's own:
+
+- Weapon damage: proposed in [combat.md](combat.md) (by tier, margin and Might); the arena
+  ([arena.md](arena.md)) finds gear outweighs levels.
 - Limits on stacking buffs and debuffs, if playtests show runaway combinations.
 - Companions: recruitable per Departure only, or carried on the Passport?
 - How fast Debt goes down. Going home should be possible well before level 100, so
