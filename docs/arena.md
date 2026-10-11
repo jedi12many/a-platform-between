@@ -60,11 +60,10 @@ straightforward play; a clever player does better, and that's fine.
 
 ## Playing it
 
-The site has an arena page (`site/arena.html`, served as `arena.html` with `make site`):
-**ten scenarios**, each a fight to play by hand on the battle screen, with a traveler made
-for it, beside what a thousand fights say. Press Play: the page issues that traveler a
-Boarding Pass with new dice, and the train opens on the fight; after it, fight again (at
-full health) or leave.
+The site's **Arena** tab is the native arena (below): the scenarios to play now, each a
+fight to play by hand beside what a thousand fights say. The first ten scenarios, by rules
+v0, were a page of their own that boarded the train; that page is gone, and they open in
+the arena by their codes (`#arena:scenario=A-02` on the site), played by rules v1:
 
 | # | Scenario | Traveler | Against | It shows |
 |---|---|---|---|---|
@@ -83,10 +82,10 @@ full health) or leave.
 
 The site goes on GitHub Pages for playtesters: **Actions → Publish playtest → Run workflow**
 (`.github/workflows/pages.yml`) builds it with `make site` and publishes it at
-`https://jedi12many.github.io/a-platform-between/` (the arena: `arena.html`). It runs only
-when started by hand.
+`https://jedi12many.github.io/a-platform-between/` (the arena: its **Arena** tab, or
+`#arena`). It runs only when started by hand.
 
-Each scenario has a **code** (`A-01` ... `A-10`). Its **Give feedback** button opens a new
+Each scenario has a **code** (`A-01`, `R-13` ...). Its **Give feedback** button opens a new
 GitHub issue from the playtest form (`.github/ISSUE_TEMPLATE/playtest.yml`) with the
 title (`[A-02] Magic is safe`), the scenario, the **build** (the commit the site was built
 from, in `build.json`) and the times played in that browser already filled in; the tester
@@ -172,10 +171,8 @@ POISONED`.
 
 ## How it's checked
 
-`make test-waystation` runs `tests/arena/check_play.py`: each scenario's traveler is the
-class, level and gear the page says, built by the rules; each Departure compiles clean; the
-page's numbers are the arena's; and in headless Chromium every Play boards its scenario
-and starts the fight. `make test-combat` runs `tests/arena/check_arena.py`: fights from the arena, played again
+`make test-arena-web` plays the native arena in headless Chromium (below), and `make
+test-waystation` checks the site's tabs open it. `make test-combat` runs `tests/arena/check_arena.py`: fights from the arena, played again
 by the battle tests' own runner (`tests/battle/battle.c`) from the same seed, must have the
 same blows in the same order and the same ending; and the quick builder's characters must
 keep the creation and level-up rules, at every level from 1 to 100. The battle engine

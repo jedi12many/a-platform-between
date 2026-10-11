@@ -10,6 +10,8 @@
 //   node site.cjs sheet PASSPORT                                 the tabletop sheet's text
 //   node site.cjs keep PASSPORT STAMP NOTE    saved to Your travelers, the page loaded again,
 //                                             the stamp landed by choosing them: what's kept
+//   node site.cjs tabs                        the site's tabs (build/site/): each opens its place,
+//                                             and #arena:scenario=R-15 opens the arena on R-15
 //   node site.cjs shell PASSPORT              the site (build/site/) signed in, with a stand-in
 //                                             for claude.ai's store: the traveler saved in the
 //                                             Waystation's frame, then boarded from the train's
@@ -240,6 +242,45 @@ const commands = {
       window.__docs = docs;
       window.claude = { use: (name) => new Promise((ok) => setTimeout(() => ok(name === "db" ? db : name === "user" ? user : null))) };
     });
+  },
+
+  // The site's tabs: Platform, Waystation, Rules, Art desk, Arena; and a link to one.
+  async tabs() {
+    ROOT = path.join(__dirname, "..", "..", "build", "site");
+    return session(async (page) => {
+      const out = { tabs: await page.$$eval("nav.tabs button", (bs) => bs.map((b) => b.textContent)) };
+      const frame = () => page.frames().find((f) => f !== page.mainFrame());
+      const open = async (name, ready) => {
+        await page.click(`nav.tabs button:has-text("${name}")`);
+        await page.waitForFunction((n) => {
+          const b = Array.from(document.querySelectorAll("nav.tabs button")).find((x) => x.textContent === n);
+          return b && b.getAttribute("aria-current") === "page";
+        }, name);
+        await page.waitForFunction(() => document.getElementById("frame").src !== "about:blank");
+        await page.waitForTimeout(200);
+        await frame().waitForFunction(ready, null, { timeout: 60000 });
+        return { url: frame().url(), hash: await page.evaluate(() => location.hash) };
+      };
+      out.waystation = await open("Waystation", () => document.body.dataset.ready === "1");
+      out.rules = await open("Rules", () => !!document.querySelector("main h1"));
+      out.rules.title = await frame().textContent("main h1");
+      out.rules.pages = await frame().$$eval("nav.order a", (as) => as.map((a) => a.getAttribute("href")));
+      out.art = await open("Art desk", () => window.artdesk && window.artdesk.ready);
+      out.art.save = await frame().textContent("#save");
+      out.art.studio_nav = await frame().isVisible("nav.studio");
+      out.arena = await open("Arena", () => window.arena && window.arena.state().mode === "intro");
+      out.arena.listed = await frame().$$eval("#scenario-list .code", (cs) => cs.map((c) => c.textContent));
+      await page.click("#home");
+      out.home = await page.evaluate(() => ({ away: document.body.classList.contains("away"), hash: location.hash }));
+      await page.goto(page.url().split("#")[0] + "#arena:scenario=R-15");
+      await page.reload();
+      await page.waitForFunction(() => document.getElementById("frame").src.includes("arena"));
+      await page.waitForTimeout(200);
+      await frame().waitForFunction(() => window.arena && window.arena.state().mode === "intro", null,
+                                    { timeout: 60000 });
+      out.link = await frame().evaluate(() => ({ code: document.querySelector("#brief .code").textContent }));
+      return JSON.stringify(out);
+    }, () => {});
   },
 
   async sheet(text) {

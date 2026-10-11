@@ -1,6 +1,7 @@
 name: Publish playtest
 
-# The site (platform page, Waystation, the train and the arena) to GitHub Pages, from the
+# The site (its tabs: the platform and the train, the Waystation, the rules, the art desk and
+# the arena) to GitHub Pages, from the
 # branch it's run on. Only by hand: Actions -> Publish playtest -> Run workflow.
 on:
   workflow_dispatch:
