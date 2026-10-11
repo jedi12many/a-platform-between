@@ -58,9 +58,38 @@ the nearest foe, a ranged one or a focus-user shoots whoever it can see. Foes pl
 printed behaviour (charge, shoot, guard, coward). So the arena measures the rules with
 straightforward play; a clever player does better, and that's fine.
 
+## Playing it
+
+The site has an arena page (`site/arena.html`, served as `arena.html` with `make site`):
+**ten scenarios**, each a fight to play by hand on the battle screen, with a traveler made
+for it, beside what a thousand fights say. Press Play: the page issues that traveler a
+Boarding Pass with new dice, and the train opens on the fight; after it, fight again (at
+full health) or leave.
+
+| # | Scenario | Traveler | Against | It shows |
+|---|---|---|---|---|
+| 1 | A fair fight | Warden 1, rusted sabre, padded coat | a rust-guard | the model fight |
+| 2 | Magic is safe | Channeler 1, ember wand | a rust-guard | powers aim at Ward, which is below Armor |
+| 3 | Magic up close | the same, in a corridor | a rust-guard | how much of that is distance |
+| 4 | The right weakness | Rogue 1, arc pistol | a rust-guard (weak to energy) | a weakness opens Armor |
+| 5 | Two of them | Warden 1 | two rust-guards | numbers: two is a wall |
+| 6 | Level 4: still a wall | Warden 4, the same gear | two rust-guards | levels count for little |
+| 7 | Level 5: new gear | Warden 5, iron sword, chain coat | two rust-guards | a tier of gear counts for a lot |
+| 8 | The swarm | Warden 1 | four ash rats | small hits add up |
+| 9 | A lone shooter | Rogue 1, scrap pistol | a scrap gunner | a shooter alone is no threat |
+| 10 | Shooters in a pair | Warden 1 | two scrap gunners, behind cover | shooters come in groups |
+
+The scenarios live in `tools/arena/scenarios.py`, which writes each one as a tiny Siding
+(`arena-01`...`arena-10`, ids 1101-1110, bundled into the browser game) and the page's
+data, measured by the arena. Their gear is in the registry (the sword, pistols, wand and
+coats, ids 9-14). Change a scenario there, `make site`, and the page follows.
+
 ## How it's checked
 
-`make test-combat` runs `tests/arena/check_arena.py`: fights from the arena, played again
+`make test-waystation` runs `tests/arena/check_play.py`: each scenario's traveler is the
+class, level and gear the page says, built by the rules; each Departure compiles clean; the
+page's numbers are the arena's; and in headless Chromium every Play boards its scenario
+and starts the fight. `make test-combat` runs `tests/arena/check_arena.py`: fights from the arena, played again
 by the battle tests' own runner (`tests/battle/battle.c`) from the same seed, must have the
 same blows in the same order and the same ending; and the quick builder's characters must
 keep the creation and level-up rules, at every level from 1 to 100. The battle engine

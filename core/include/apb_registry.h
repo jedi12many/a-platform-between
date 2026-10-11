@@ -55,7 +55,13 @@ enum {
 #define APB_ITEM_MERIDIAN_CORE 6  /* focus t2 mind TL8 ML0 */
 #define APB_ITEM_TICKET_STUB 7  /* focus t1 mind TL5 ML5 */
 #define APB_ITEM_PORTERS_HOOK 8  /* melee t1 kinetic TL3 ML0 */
-#define APB_ITEM_COUNT 9  /* highest id + 1 */
+#define APB_ITEM_IRON_SWORD 9  /* melee t2 kinetic TL3 ML0 */
+#define APB_ITEM_SCRAP_PISTOL 10  /* ranged t1 kinetic TL5 ML0 */
+#define APB_ITEM_ARC_PISTOL 11  /* ranged t1 energy TL5 ML0 */
+#define APB_ITEM_EMBER_WAND 12  /* focus t1 fire TL2 ML4 */
+#define APB_ITEM_PADDED_COAT 13  /* armor t1 kinetic TL2 ML0 */
+#define APB_ITEM_CHAIN_COAT 14  /* armor t2 kinetic TL3 ML0 */
+#define APB_ITEM_COUNT 15  /* highest id + 1 */
 
 /* Echoes: 1..1023. States are 1..3; 0 means unset. */
 #define APB_ECHO_MERIDIAN 1  /* Departure 01 */

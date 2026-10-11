@@ -28,8 +28,9 @@ LINE        = 20                    ; symbols a line: 19 data, 1 check
 ; small letters are capitals, spaces, dashes and line breaks are skipped, O reads as 0, and
 ; I and L as 1. Symbols are counted in lines of 20 however they were typed.
 ;   Takes:   A/X = the text (low/high), ASCII, ending in 0 (any length); pw_trip not 0
-;            if a trip code may be read (149 symbols at most, or a pass's 163, or with
-;            pw_trip a trip code's 255: the first symbol says which it is).
+;            where a trip code is asked for. At most 149 symbols (a Passport's longest),
+;            or a pass's 163 if the first symbol says it's one; with pw_trip, 255 (a trip
+;            code's), whatever the first symbol.
 ;   After:   A = PW_OK, the bits in pw_buffer (pw_len of them, pw_pos 0), Z set; or
 ;            PW_SYMBOL, PW_LENGTH, or PW_LINE (pw_bad_line: the line, from 1), Z clear.
 ;   Changes: A, X, Y; zp_pw_text, zp_pw_value, zp_pw_n, zp_pw_sum; zp_t0-zp_t3.
@@ -78,21 +79,19 @@ pw_read:
         rts
 @found: txa
         ldx count
-        cpx #PASSPORT_LONGEST       ; past a Passport's longest: only a pass or a trip code,
-        bcc @keep                   ; whose first symbol's top 4 bits say so, to its own
-        pha
+        cpx #PASSPORT_LONGEST       ; past a Passport's longest: only a pass, whose first
+        bcc @keep                   ; symbol's top 4 bits say so, to its own; or, where a
+        pha                         ; trip code is asked for (trip.s), anything to its own
+        lda pw_trip
+        bne @trip
         lda values
         lsr a
-        cmp #KIND_TRIP
-        beq @trip
         cmp #KIND_PASS
         bne @too_long
         cpx #PASS_LONGEST
         bcs @too_long
         bcc @kept                   ; (always)
-@trip:  lda pw_trip                 ; (a trip code only where one's asked for: trip.s)
-        beq @too_long
-        cpx #MAX_SYMBOLS
+@trip:  cpx #MAX_SYMBOLS
         bcs @too_long
 @kept:  pla
         jmp @keep

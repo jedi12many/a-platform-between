@@ -95,6 +95,9 @@ against. For `cart/`:
   are spent and stats rolled as the references say (`tests/waystation/check_site.py`);
   travelers are kept with notes, chosen to land a stamp, and, on the site signed in (a
   stand-in for claude.ai's store), kept on the player's account and boarded from the list.
+  And the arena page (`site/arena.html`, `tools/arena/scenarios.py`): its ten scenarios'
+  travelers are what it says, their numbers the arena's, and every Play starts its fight
+  (`tests/arena/check_play.py`).
 - `make test-music`: the music players (`docs/music.md`) must write the same SID registers
   frame by frame: the Python reference (`tools/music/player.py`), the C player
   (`client/music.c`, under the sanitizers) and the C64's 6502 player (`fe/c64/music.s`, on
@@ -145,7 +148,8 @@ against. For `cart/`:
 Run all eighteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
 `make arena MATCHUP=arena/FILE.txt` fights a matchup a thousand times on the battle engine,
-both sides on quick, and reports win rates, rounds and health (`docs/arena.md`;
+both sides on quick, and reports win rates, rounds and health; the site's `arena.html`
+has ten scenarios to play by hand (`docs/arena.md`;
 `python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --sweep level 1-10`): use it to
 balance the rules.
 `make artdesk` serves the art desk (http://localhost:8064/): figures, effects and tiles,

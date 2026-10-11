@@ -88,7 +88,8 @@ way; `make test-python` and `make test-cart` hold them to it.
   training or a power's rank over 100.
 - A Travel Stamp's lists hold 8 at most, refused as they're read.
 - A trip code ([boarding.md](boarding.md#trip-code-format)) is read against the image it's
-  for: over 255 symbols is the wrong length; more than 32 rewards paid or 8 in a list,
+  for: over 255 symbols is the wrong length, whatever the first symbol says (it's read
+  where a trip code is asked for); more than 32 rewards paid or 8 in a list,
   refused as it's read, is a checksum. After the CRC, a code for another image, then for
   another pass, is said as such; then a scene or tune the image hasn't, or dice of 0, is
   a checksum.

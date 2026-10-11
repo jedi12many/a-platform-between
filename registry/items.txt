@@ -13,3 +13,9 @@
 6     MERIDIAN_CORE     focus      2     mind     8   0   "MERIDIAN's core"      # Departure 01
 7     TICKET_STUB       focus      1     mind     5   5   "Blank ticket stub"    # Departure 00
 8     PORTERS_HOOK      melee      1     kinetic  3   0   "Porter's hook"        # Departure 00
+9     IRON_SWORD        melee      2     kinetic  3   0   "Iron sword"           # the arena
+10    SCRAP_PISTOL      ranged     1     kinetic  5   0   "Scrap pistol"         # the arena
+11    ARC_PISTOL        ranged     1     energy   5   0   "Arc pistol"           # the arena
+12    EMBER_WAND        focus      1     fire     2   4   "Ember wand"           # the arena
+13    PADDED_COAT       armor      1     kinetic  2   0   "Padded coat"          # the arena
+14    CHAIN_COAT        armor      2     kinetic  3   0   "Chain coat"           # the arena
