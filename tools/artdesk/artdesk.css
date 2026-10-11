@@ -99,3 +99,6 @@ dialog::backdrop { background: #000a; }
 .studio a { color: var(--dim); text-decoration: none; padding: 4px 12px; border-radius: 6px; }
 .studio a[aria-current="page"] { background: #2a2a35; color: var(--ink); }
 .studio a:hover { color: var(--ink); }
+
+/* In the site's Art desk tab, the site's tabs take the studio's place. */
+.framed nav.studio { display: none; }

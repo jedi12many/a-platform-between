@@ -5,7 +5,14 @@ arena, which draws the art as it is now, so a figure drawn here can be fought st
 
     python3 tools/artdesk/serve.py [--port 8064] [--art DIR]     (make studio)
 
-then open http://localhost:8064/. A save is checked by tools/art.py's rules before it's
+then open http://localhost:8064/. For the published site (make site):
+
+    python3 tools/artdesk/serve.py --publish DIR
+
+writes the art desk to DIR as plain files (the page, meta.json, art/NAME.txt): there, with
+no server to save to, Save downloads the changed files instead.
+
+A save A save is checked by tools/art.py's rules before it's
 written: a file that breaks one isn't written, and the page is told why. Only the four art
 files can be written, nothing else. --art points it at another folder (the tests use a
 copy).
@@ -144,10 +151,26 @@ class Desk(http.server.BaseHTTPRequestHandler):
         pass
 
 
+def publish(out, folder=None):
+    """The art desk as plain files, for the published site (make site)."""
+    os.makedirs(os.path.join(out, "art"), exist_ok=True)
+    for name, _ in PAGES.values():
+        with open(os.path.join(HERE, name), "rb") as f, open(os.path.join(out, name), "wb") as g:
+            g.write(f.read())
+    with open(os.path.join(out, "meta.json"), "w") as f:
+        json.dump(meta(), f)
+    for name in art.FILES:
+        with open(art.path_of(name, folder)) as f, open(os.path.join(out, "art", f"{name}.txt"), "w") as g:
+            g.write(f.read())
+
+
 def main(argv):
     port = int(argv[argv.index("--port") + 1]) if "--port" in argv else 8064
     if "--art" in argv:
         Desk.folder = argv[argv.index("--art") + 1]
+    if "--publish" in argv:
+        publish(argv[argv.index("--publish") + 1], Desk.folder)
+        return 0
     server = http.server.ThreadingHTTPServer(("127.0.0.1", port), Desk)
     print(f"The studio: the art desk at http://localhost:{port}/, the arena at "
           f"http://localhost:{port}/arena/ (art in {os.path.abspath(Desk.folder)}); "

@@ -127,8 +127,9 @@ Dock 3"), so nobody has to copy twenty-letter lines around.
 - **The platform page** (`site/index.html`) lists them: missions to board, notes to edit,
   Passports to copy, a mark on anyone with a stamp to land, and *Remove*.
 
-**Signing in.** The site is the platform page with the Waystation and the train in a frame
-under it (`make site`, `build/site/`). Published on claude.ai, the platform page is signed
+**Signing in.** The site is the platform page, with tabs for the Waystation, the rules, the
+art desk and the arena, each opening in a frame under them, as the train does (`make site`,
+`build/site/`). Published on claude.ai, the platform page is signed
 in as whoever opens it, and keeps their travelers in its private store, in their own place
 (`data/users/<their id>/<traveler>`, which nobody else, the page's owner included, can
 read). It asks claude.ai for that (the page's `user` and `db` capabilities); the Waystation

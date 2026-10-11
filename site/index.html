@@ -8,6 +8,7 @@
   --danger: #a33a2a;
   --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --tabs-h: 2.75rem;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -81,15 +82,38 @@ kbd { font: 0.85em var(--mono); border: 1px solid var(--line); border-bottom-wid
 .notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; font-size: 0.92rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1rem; }
 .notes strong { color: var(--ink); font-weight: 600; }
 
+/* The tabs, over everything: the platform (this page), and the places that open under them */
+nav.tabs {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 2; height: var(--tabs-h);
+  display: flex; align-items: stretch; gap: 2px; padding: 0 16px; overflow-x: auto;
+  background: var(--board); font-family: var(--mono);
+}
+nav.tabs button {
+  font: inherit; font-size: 0.85rem; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  background: none; color: #c9c2ae; border: 0; border-bottom: 3px solid transparent; padding: 0 0.9rem; cursor: pointer;
+}
+nav.tabs button:hover { color: var(--board-ink); }
+nav.tabs button[aria-current="page"] { color: var(--board-ink); border-bottom-color: var(--board-ink); }
+nav.tabs button:focus-visible { outline: 2px solid var(--lamp); outline-offset: -2px; }
+nav.tabs #place-name { margin-left: auto; align-self: center; padding-left: 1rem; font-size: 0.8rem;
+  letter-spacing: 0.06em; color: var(--board-ink); white-space: nowrap; }
+body { padding-top: var(--tabs-h); }
+
 /* A place, full-size */
-#place { position: fixed; inset: 0; display: none; flex-direction: column; background: var(--bg); }
-#place .bar { display: flex; align-items: center; gap: 1rem; padding: 0.4rem 16px; background: var(--board); color: var(--board-ink); font-family: var(--mono); }
-#place .bar button { font: inherit; background: none; color: var(--board-ink); border: 1px solid #5a5440; border-radius: 4px; padding: 0.15rem 0.6rem; cursor: pointer; }
-#place .bar span { font-size: 0.9rem; letter-spacing: 0.06em; }
+#place { position: fixed; inset: var(--tabs-h) 0 0 0; display: none; flex-direction: column; background: var(--bg); }
 #place iframe { flex: 1; width: 100%; border: 0; background: #000; }
 body.away .wrap { display: none; }
 body.away #place { display: flex; }
 </style>
+
+<nav class="tabs" aria-label="The site">
+  <button type="button" id="home" aria-current="page">Platform</button>
+  <button type="button" data-place="waystation">Waystation</button>
+  <button type="button" data-place="rules">Rules</button>
+  <button type="button" data-place="art">Art desk</button>
+  <button type="button" data-place="arena">Arena</button>
+  <span id="place-name" role="status"></span>
+</nav>
 
 <div class="wrap">
   <header class="board" aria-label="Departures">
@@ -147,16 +171,14 @@ body.away #place { display: flex; }
       when you're signed in.</li>
     <li><strong>After The Fare,</strong> <em>Eighteen Minutes</em> is on the same train
       menu: Departure 01, all five chapters.</li>
-    <li><strong>Testing the rules?</strong> <a href="arena.html">The Arena</a> has ten fights,
-      each with a traveler made for it, to play by hand beside what a thousand fights say.</li>
+    <li><strong>Testing the rules?</strong> The <em>Arena</em> tab has the fights we need
+      played now, each with what to watch for, beside what a thousand fights say; the
+      <em>Rules</em> tab has the rules themselves, and the <em>Art desk</em> the game's
+      figures and tiles, to draw and send in.</li>
   </ul>
 </div>
 
-<div id="place" role="region" aria-label="The Waystation or the train">
-  <div class="bar">
-    <button type="button" id="home">&larr; Platform</button>
-    <span id="place-name"></span>
-  </div>
+<div id="place" role="region" aria-label="The Waystation, the train, the rules, the art desk or the arena">
   <iframe id="frame" title="A Platform Between" allow="clipboard-write; autoplay"></iframe>
 </div>
 
@@ -316,14 +338,26 @@ function draw() {
 
 /* ------------------------------------------------------- the frames */
 
-var PLACES = { waystation: ["waystation/index.html", "THE WAYSTATION"], play: ["play/index.html", "PLATFORM"] };
+/* The places that open under the tabs (the train opens from the platform, under its tab).
+ * A tab's place is in the address too (#arena; #arena:scenario=R-13 for the arena's own). */
+var PLACES = { waystation: "waystation/index.html", play: "play/index.html", rules: "rules/index.html",
+               art: "studio/index.html", arena: "studio/arena/index.html" };
+
+function tab(name) {
+  document.querySelectorAll("nav.tabs button").forEach(function (b) {
+    var mine = b.id === "home" ? name === "home" || name === "play" : b.dataset.place === name;
+    if (mine) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+  });
+}
 
 function go(place, hash, name) {
   var p = PLACES[place];
   if (!p) return;
-  $("frame").src = p[0] + (hash || "");
-  $("place-name").textContent = name || p[1];
+  $("frame").src = p + (hash || "");
+  $("place-name").textContent = name || "";
   document.body.classList.add("away");
+  tab(place);
+  if (place !== "play") history.replaceState(null, "", "#" + place + (hash ? ":" + hash.slice(1) : ""));
 }
 
 /* -------------------------------------------- boarding from the list */
@@ -461,7 +495,14 @@ document.querySelectorAll("[data-place]").forEach(function (b) {
 $("home").addEventListener("click", function () {
   document.body.classList.remove("away");
   $("frame").src = "about:blank";
+  $("place-name").textContent = "";
+  tab("home");
+  history.replaceState(null, "", location.pathname + location.search);
 });
+(function () {
+  var m = /^#(waystation|rules|art|arena)(?::(.*))?$/.exec(location.hash);
+  if (m) go(m[1], m[2] ? "#" + m[2] : "");
+})();
 
 // What the frame asks (travelers.js), and the answers.
 window.addEventListener("message", function (e) {

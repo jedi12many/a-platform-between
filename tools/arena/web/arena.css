@@ -180,3 +180,6 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--dim); font-weight: 600; }
 .gear.powers .pw.spent { color: var(--dim); text-decoration: line-through; }
 .actions button.power { border-color: #5b4a80; }
 .actions button.power kbd { color: #c9a7ff; }
+
+/* In the site's Arena tab, the site's tabs take the studio's place. */
+.framed nav.studio { display: none; }

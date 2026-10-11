@@ -104,6 +104,39 @@ def raise_by_hand(ch, clicks):
     return ch
 
 
+def check_tabs():
+    """The site's tabs (build/site/): each opens its place in the frame, and a link opens one."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "arena"))
+    import scenarios
+    got = site("tabs")
+    if got is None:
+        return
+    got = json.loads(got)
+    problems = []
+    if got["tabs"][:5] != ["Platform", "Waystation", "Rules", "Art desk", "Arena"]:
+        problems.append(f"the tabs are {got['tabs']}")
+    for tab, path, hash_ in (("waystation", "/waystation/", "#waystation"), ("rules", "/rules/", "#rules"),
+                             ("art", "/studio/index.html", "#art"), ("arena", "/studio/arena/", "#arena")):
+        if path not in got[tab]["url"] or got[tab]["hash"] != hash_:
+            problems.append(f"the {tab} tab opened {got[tab]['url']} at {got[tab]['hash']}")
+    if got["rules"]["title"] != "The rules, in reading order" or "turn.html" not in got["rules"]["pages"]:
+        problems.append(f"the Rules tab shows {got['rules']['title']!r} with {got['rules']['pages']}")
+    if got["art"]["save"] != "Download" or got["art"]["studio_nav"]:
+        problems.append(f"the art desk on the site: Save says {got['art']['save']!r}, studio nav shown "
+                        f"{got['art']['studio_nav']}")
+    if got["arena"]["listed"] != scenarios.PLAYING:
+        problems.append(f"the arena lists {got['arena']['listed']}, not {scenarios.PLAYING}")
+    if got["home"] != {"away": False, "hash": ""}:
+        problems.append(f"Platform didn't come back home: {got['home']}")
+    if got["link"]["code"] != "R-15":
+        problems.append(f"#arena:scenario=R-15 opened {got['link']['code']}")
+    if problems:
+        fail("the site's tabs: " + "; ".join(problems))
+    else:
+        ok("the site's tabs open the Waystation, the rules (in reading order), the art desk (saving"
+           " by download) and the arena (the scenarios to play now), and a link opens R-15")
+
+
 def main():
     # 1. Made in the browser, boarded in the terminal.
     choices = ("Wren", "Glassfolk", "Tinker", "45,40,55,60,40,60", "Persuade")
@@ -146,6 +179,7 @@ def main():
         else:
             ok("saved with a note, Wren is chosen to land her stamp, and her new Passport is kept"
                " (the old one too)")
+    check_tabs()
     got = site("shell", wren, "\n".join(["1"] + FARE_PICKS) + "\n")
     if got is not None:
         got = json.loads(got)
