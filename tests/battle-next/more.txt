@@ -1,0 +1,35 @@
+# More conditions (docs/turn.md): Ivy (a Rad-Dryad Channeler, an ember wand) is silenced
+# (no powers: she can't attack with a focus) and focused (+20 on her next attack). Foe a
+# regenerates, which ends its bleeding; frozen, it loses a turn, then it's soaked. Foe b
+# regenerates but is cursed (no healing), and was on fire till soaking put it out.
+seed 61
+map
+##########
+#........#
+#@......a#
+#.......b#
+##########
+end
+traveler 4KDJ000006C1026PP9QKNAT000000030264MMABH50203006BX6 12
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 50 30  6 10 10  0  4 40  4  0  0  0  0 255 0  0
+foe b 50 20  4 10 10  0  4 30  4  0  0  0  0 255 2  0
+put 0 SILENCED
+put 0 FOCUSED
+put 1 BLEEDING
+put 1 REGENERATING
+put 1 FROZEN
+put 2 REGENERATING
+put 2 CURSED
+put 2 ON_FIRE
+put 2 SOAKED
+act 1 2 0 1
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q

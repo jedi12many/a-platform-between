@@ -1,0 +1,26 @@
+# Shoving (docs/turn.md): Bram (Salvaged: Plated, Knightly) shoves foes into a pit, a
+# hazard and a wall. Athletics against the foe's TN as for a melee attack; foes stand
+# guard, so stepping next to one gives it a free attack.
+seed 21
+map
+##########
+#..O.....#
+#..a..b^.#
+#.@......#
+#.......c#
+##########
+end
+traveler 4542T0000A0105APR5DFA26000000001H60M8A5V5020180615T 5
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 20 10  2  0  0  0  4 20  4  0  0  0  0 255 2  0
+foe b 20 10  2  0  0  0  4 20  4  0  0  0  0 255 2  0
+foe c 20 10  2 20  0  0  4 20  4  0  0  0  0 255 2  0
+# From 3,3, under a: shoved north into the pit at 3,1, it falls, and it's out.
+act 3 3 5 1
+# From 5,2, west of b: shoved east onto the hazard at 7,2 (5, as a plain hazard is).
+act 5 2 5 2
+# From 7,4, west of c (Armor 20): shoved east into the wall.
+act 7 4 5 3
+act 7 4 5 3
+act 7 4 5 3
+act 7 4 5 3

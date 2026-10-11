@@ -1,0 +1,39 @@
+# Powers on allies and foes (docs/turn.md): Tess, a Glassfolk Medic (Patch up, Stim,
+# Sedate), and Gear, a Glassfolk Tinker (Force field, Barricade, Shock mine, Arc shot),
+# against two rust-guards.
+seed 81
+map
+############
+#..........#
+#@.......a.#
+#@.......b.#
+#..........#
+############
+end
+traveler 58B7600004G1026VPANMBAT000000005264MAA7X50202G1CD87 10 10
+traveler 4EA340000481026VPANABAT00000000A264MCA8Q50202R03KZ6 11
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 30 20  4 20 10  2  4 45  6  0  0  0  0 1 0  0
+foe b 30 20  4 20 10  2  4 45  6  0  0  0  0 1 0  0
+power 0 PATCH_UP 20
+power 0 STIM 20
+power 0 SEDATE 20
+power 1 FORCE_FIELD 20
+power 1 BARRICADE 20
+power 1 SHOCK_MINE 20
+power 1 ARC_SHOT 20
+# Tess patches herself up; Gear puts a force field on Tess.
+act 1 2 7 0 0 0 0
+act 1 3 7 0 0 0 0
+# Tess sedates a; Gear throws a shock mine at 5,2, by b and a.
+act 1 2 7 2 0 0 2
+act 1 3 7 0 5 2 2
+# Tess stims Gear; Gear builds a barricade across the middle.
+act 1 2 7 1 0 0 1
+act 1 3 7 0 4 3 1
+act q
+act q
+act q
+act q
+act q
+act q

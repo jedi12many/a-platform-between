@@ -1,0 +1,30 @@
+# Losing turns (docs/turn.md): Hollow stunned for its first turn; asleep until hit; knocked down
+# staying down while it can't act, then standing with half a Speed; five conditions on
+# one fighter (the fifth replaces the one with fewest rounds left, an opposite ends its
+# opposite); and immunity: Hollow, a Hollowborn's trait, keeps poison off.
+seed 41
+map
+##########
+#........#
+#.@a.....#
+#........#
+##########
+end
+traveler 4GYRRZE0020104CPT1D2A26000000001H60M8A5V5020180DKT4 5
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 60 30  6  0  0  0  4 40  3  0  0  0  0 255 0  0 hit POISONED
+put 0 STUNNED
+put 1 ASLEEP
+put 1 STUNNED
+put 1 KNOCKED_DOWN
+put 1 CHILLED
+put 1 MARKED
+put 1 HASTED
+put 1 SLOWED
+act 2 2 0 1
+act 2 2 0 1
+act 2 2 0 1
+act q
+act q
+act q
+act q

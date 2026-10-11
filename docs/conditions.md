@@ -1,7 +1,8 @@
 # Conditions
 
 *Draft for review. The numbers are starting points, to be tuned in the arena
-([arena.md](arena.md)). Nothing here is in the engine yet.*
+([arena.md](arena.md)). The first build (the core effects and the small ones) is in the
+rules lab: `registry/conditions.txt`, played as [turn.md](turn.md) says.*
 
 A **condition** is something true of a combatant for a while, or for good: poisoned,
 asleep, on fire, slowed, shielded, out of sync with time. Conditions are where the game's
@@ -263,7 +264,7 @@ Most powers either do damage or put on a condition; many do both. The class list
 
 | Class | Power: condition |
 |---|---|
-| Warden | Shield wall: shielded. Shove: knocked down (a crit). Taunt: taunted. Ground slam: knocked down |
+| Warden | Shield wall: shielded. Shove: knocked down (a crit). Taunt: taunted. Ground slam: stunned |
 | Rogue | Blink: displaced. Smoke: a field of fog (hidden). Dirty trick: blinded, 1 round. Snare: slowed; entangled from tier 3. Vanish: hidden |
 | Tinker | Force field: barrier. Barricade: in cover. Shock mine: stunned. Scan: marked |
 | Channeler | Ice wall: chilled; frozen from tier 5. Fire wall, Fireball: on fire. Shield: warded. Mind spike: confused |
@@ -359,4 +360,3 @@ are printed on the character sheet; so is anything your gear gives you while wor
 - **Resistance** short of immunity (half the rounds?), if it's needed.
 - Conditions **between scenes** (poisoned on the road, cured by a check) beyond the story's
   own.
-- How many of the **medium** effects the first build takes on.

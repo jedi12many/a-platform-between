@@ -1,0 +1,80 @@
+0: traveler at 1,2, health 24, attack 62, speed 5, TN to hit 59 [soak 2 RADF ROOT]
+1: foe a at 8,2, health 50, speed 4
+2: foe b at 8,3, health 50, speed 4
+  0 is SILENCED (2 rounds)
+  0 is FOCUSED
+  1 is BLEEDING (3 rounds)
+  1 is REGENERATING (5 rounds)
+  1 is FROZEN (1 rounds)
+  2 is REGENERATING (5 rounds)
+  2 is CURSED (5 rounds)
+  2 is ON_FIRE (3 rounds)
+  2 is no longer ON_FIRE
+  2 is SOAKED (3 rounds)
+round 1: 0's turn (speed 5)
+  (not allowed: act 1 2 0 1)
+  (quick: act 6 1 4 0)
+  0 steps to 2,2
+  0 steps to 3,2
+  0 steps to 4,2
+  0 steps to 5,2
+  0 steps to 6,1
+round 1: 1's turn (speed 4)
+  1 takes 2 from BLEEDING [soak 0 BLD REG ICE]
+  1 heals 2 from REGENERATING
+  1 is no longer BLEEDING
+  1 loses the turn: FROZEN
+  1 is no longer FROZEN
+  1 is SOAKED (3 rounds)
+round 1: 2's turn (speed 4)
+  2 heals 0 from REGENERATING
+  2 guards
+round 2: 0's turn (speed 5)
+  (quick: act 7 1 4 0)
+  0 steps to 7,1
+  0 is no longer SILENCED
+round 2: 1's turn (speed 4)
+  1 attacks 0: 87+40=127 vs 59: success, 8 damage [soak 2 RADF ROOT FOC]
+round 2: 2's turn (speed 4)
+  2 heals 0 from REGENERATING
+  2 guards
+round 3: 0's turn (speed 5)
+  (quick: act 7 1 0 1)
+  0 is no longer FOCUSED
+  0 attacks 1: 31+82=113 vs 66: success, 9 damage [soak 0 WET REG]
+round 3: 1's turn (speed 4)
+  1 heals 3 from REGENERATING
+  1 attacks 0: 63+40=103 vs 59: success, 6 damage [soak 2 RADF ROOT]
+round 3: 2's turn (speed 4)
+  2 heals 0 from REGENERATING
+  2 guards
+  2 is no longer SOAKED
+round 4: 0's turn (speed 5)
+  (quick: act 7 1 0 1)
+  0 attacks 1: 47+62=109 vs 66: success, 9 damage [soak 0 WET REG]
+round 4: 1's turn (speed 4)
+  1 heals 3 from REGENERATING
+  1 attacks 0: 35+40=75 vs 59: success, 3 damage [soak 2 RADF ROOT]
+  1 is no longer SOAKED
+round 4: 2's turn (speed 4)
+  2 heals 0 from REGENERATING
+  2 guards
+round 5: 0's turn (speed 5)
+  (quick: act 7 1 0 1)
+  0 attacks 1: 88+62=150 vs 66: crit, 26 damage [soak 0 REG]
+round 5: 1's turn (speed 4)
+  1 heals 3 from REGENERATING
+  1 attacks 0: 29+40=69 vs 59: success, 3 damage [soak 2 RADF ROOT]
+  1 is no longer REGENERATING
+round 5: 2's turn (speed 4)
+  2 heals 0 from REGENERATING
+  2 guards
+  2 is no longer REGENERATING
+  2 is no longer CURSED
+round 6: 0's turn (speed 5)
+  (quick: act 7 1 0 1)
+  0 attacks 1: 63+62=125 vs 66: success, 10 damage [soak 0]
+round 6: 1's turn (speed 4)
+  1 attacks 0: 52+40=92 vs 59: success, 5 damage [soak 2 RADF ROOT]
+  0 is down
+the fight is lost
