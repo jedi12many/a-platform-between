@@ -1,8 +1,18 @@
 name: CI
 
+# On pull requests and on main only: work on a feature branch is checked locally (all
+# eighteen, as CLAUDE.md says) before it's pushed, and again here when it's proposed for
+# main. Actions -> CI -> Run workflow runs it on any branch by hand.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch or pull request cancels the run it makes obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   rules-core:
