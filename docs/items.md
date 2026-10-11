@@ -151,37 +151,38 @@ powers that suit it, a level at a time.
 ## Power lists
 
 A first list for each class, about six each, to be playtested and grown. Each is a shape
-and an element, at will or with charges; its tier comes from its rank.
+and an element, at will or with charges; its tier comes from its rank. Many put on a
+**condition** ([conditions.md](conditions.md#powers)); the tier sets its numbers or rounds.
 
-| Class | Power | Effect |
-|---|---|---|
-| **Warden** | Second wind | Mend, yourself only, 1 charge |
-| | Shield wall | Ward (Armor) on an ally next to you, 2 charges |
-| | Shove | Shift + kinetic, a foe next to you, at will |
-| | Taunt | Hex + mind: −10 × tier to its attacks on anyone but you, 2 charges |
-| | Ground slam | Burst + kinetic, centred on you (you're not hit), 1 charge |
-| **Rogue** | Blink | Shift, yourself, 2 charges |
-| | Smoke | Field + mind (mist: cover), 2 charges |
-| | Dirty trick | Hex + mind, at will |
-| | Snare | Hex + cold: slowed, 2 charges |
-| | Vanish | Ward (Armor), yourself, until you attack, 1 charge |
-| **Tinker** | Arc shot | Bolt + energy, at will |
-| | Force field | Ward (Ward) on yourself or an ally, 2 charges |
-| | Barricade | Field + kinetic (a wall), 1 charge |
-| | Shock mine | Burst + energy, 1 charge |
-| | Scan | Sense |
-| **Channeler** | Firebolt | Bolt + fire, at will |
-| | Ice wall | Field + cold, 2 charges |
-| | Fire wall | Field + fire, 1 charge |
-| | Shield | Ward (Armor), yourself, 2 charges |
-| | Fireball | Burst + fire, 1 charge |
-| | Mind spike | Hex + mind, 2 charges |
-| **Medic** | Patch up | Mend, 3 charges |
-| | Adrenaline | Shift, an ally in sight (they move), 2 charges |
-| | Stim | Ward (Armor) on an ally next to you, 2 charges |
-| | Sedate | Hex + mind, 2 charges |
-| | Diagnose | Sense |
-| **Any class** | Out of Time (from level 20) | anchors items: below |
+| Class | Power | Effect | Condition |
+|---|---|---|---|
+| **Warden** | Second wind | Mend, yourself only, 1 charge | |
+| | Shield wall | Ward (Armor) on an ally next to you, 2 charges | shielded |
+| | Shove | Shift + kinetic, a foe next to you, at will | knocked down (a crit) |
+| | Taunt | Hex + mind, 2 charges | taunted |
+| | Ground slam | Burst + kinetic, centred on you (you're not hit), 1 charge | knocked down |
+| **Rogue** | Blink | Shift, yourself, 2 charges | displaced |
+| | Smoke | Field + mind (mist: cover), 2 charges | fog: hidden |
+| | Dirty trick | Hex + mind, at will | blinded, 1 round |
+| | Snare | Hex + cold, 2 charges | slowed; entangled from tier 3 |
+| | Vanish | yourself, until you attack, 1 charge | hidden |
+| **Tinker** | Arc shot | Bolt + energy, at will | |
+| | Force field | Ward on yourself or an ally, 2 charges | barrier |
+| | Barricade | Field + kinetic (a wall), 1 charge | in cover, behind it |
+| | Shock mine | Burst + energy, 1 charge | stunned |
+| | Scan | Sense | marked |
+| **Channeler** | Firebolt | Bolt + fire, at will | |
+| | Ice wall | Field + cold, 2 charges | chilled; frozen from tier 5 |
+| | Fire wall | Field + fire, 1 charge | on fire |
+| | Shield | Ward (Ward), yourself, 2 charges | warded |
+| | Fireball | Burst + fire, 1 charge | on fire |
+| | Mind spike | Hex + mind, 2 charges | confused |
+| **Medic** | Patch up | Mend, 3 charges | ends bleeding |
+| | Adrenaline | Shift, an ally in sight (they move), 2 charges | hasted |
+| | Stim | an ally next to you, 2 charges | stimmed, then exhausted |
+| | Sedate | Hex + mind, 2 charges | asleep |
+| | Diagnose | Sense | |
+| **Any class** | Out of Time (from level 20) | anchors items: below | |
 
 ## Out of Time
 
