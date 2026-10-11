@@ -8,7 +8,8 @@
 ; Gold Box games: Move, Aim, Guard, Wait, Flee, Quick, Done. Keys: the cursor keys or the
 ; joystick (port 2), or the digits as a keypad, to move; RETURN, space or fire to choose;
 ; DEL or RUN/STOP to go back; a command's first letter for it. Every prompt is also a
-; record (record_line), as the C64 version's are, so the tests read a fight in words.
+; record (record_line), as the C64 version's are, so the tests read a fight in words. The
+; sound effects are client/tactics.c's, played on the music's third voice (tune.s).
 ; Code in the fight's asset (asset 2).
 
         .include "hw.inc"
@@ -25,7 +26,7 @@
         .import fight_text, fight_roll, fight_text_reset, fight_name, said, said_len
         .import view_square, view_set, view_ink, view_mode, frames, traveler
         .import log_print, record_line, command_show, key_wait, number_text
-        .import party_show, party_state, cue_scene
+        .import party_show, party_state, cue_scene, tune_effect
 
 VIEW_PLAIN      = 0                 ; view.s's view_set
 VIEW_MARKED     = 1
@@ -42,6 +43,14 @@ BACK            = KEY_STOP
 COMMANDS        = 7
 LIGHT_GREY      = 15
 CURSOR_MOVE     = YELLOW | 8        ; the cursor's colour (multicolour)
+SFX_STEP        = 0                 ; the sound effects (client/sfx.c, client/apb_scene.h)
+SFX_SWING       = 1
+SFX_SHOT        = 2
+SFX_HIT         = 3
+SFX_MISS        = 4
+SFX_DOWN        = 5
+SFX_SELECT      = 6
+SFX_NO          = 7
 CURSOR_AIM      = RED | 8
 LOOK_NAMES      = 21                ; a foe's look's name: a length, then 20
 RECORD_MAX      = 60                ; a prompt, as a record
@@ -504,6 +513,8 @@ walk:   sta walker
         jsr next_step
         ldy step_y
         jsr show_square
+        lda #SFX_STEP
+        jsr tune_effect
         lda #1
         sta slide
 @slide: ldx walker
@@ -638,6 +649,9 @@ blow:   ldx ev_actor
         ldx ev_actor
         lda fighters + F_RANGED, x
         bne @pause
+        lda #SFX_SWING
+        jsr tune_effect
+        ldx ev_actor
         stx fig                     ; the lunge
         lda shown_x, x
         ldy shown_y, x
@@ -666,13 +680,19 @@ blow:   ldx ev_actor
         ldx ev_actor
         jsr place
         jmp @hit
-@pause: lda #4
+@pause: lda #SFX_SHOT
+        jsr tune_effect
+        lda #4
         jsr frames_wait
 @hit:   lda ev_result
         bne @flash
+        lda #SFX_MISS
+        jsr tune_effect
         lda #4
         jmp frames_wait
-@flash: ldx ev_target
+@flash: lda #SFX_HIT
+        jsr tune_effect
+        ldx ev_target
         lda #WHITE
         ; (on into flash)
 
@@ -745,12 +765,16 @@ scene_event:
         jmp @said
 @down:  cmp #EV_DOWN
         bne @hazard
+        lda #SFX_DOWN
+        jsr tune_effect
         ldx ev_target
         jsr place
         jmp @said
 @hazard:
         cmp #EV_HAZARD
         bne @gone
+        lda #SFX_HIT
+        jsr tune_effect
         ldx ev_actor
         lda #RED
         jsr flash
@@ -1009,6 +1033,8 @@ scene_turn:
 @not:   dex
         bpl @find
         jsr draw_bar
+        lda #SFX_SELECT
+        jsr tune_effect
         lda pressed
         cmp #'M'
         bne @aim
@@ -1042,6 +1068,8 @@ scene_turn:
         lda #ACT_WAIT
         jmp act
 @no_wait:
+        lda #SFX_NO
+        jsr tune_effect
         lda #<only_wait
         ldx #>only_wait
         ldy #RED
@@ -1130,13 +1158,13 @@ choose_square:
         adc dir_dx, x
         sta try_x
         cmp map_w
-        bcs @show
+        bcs @no
         lda pick_y
         clc
         adc dir_dy, x
         sta try_y
         cmp map_h
-        bcs @show
+        bcs @no
         asl a
         asl a
         asl a
@@ -1145,11 +1173,16 @@ choose_square:
         tax
         lda cost_to, x
         cmp #$FF
-        beq @show
+        beq @no
         lda try_x
         sta pick_x
         lda try_y
         sta pick_y
+        lda #SFX_STEP
+        jsr tune_effect
+        jmp @show
+@no:    lda #SFX_NO
+        jsr tune_effect
         jmp @show
 
 ; choose_target: Aim: the cursor goes round the foes in reach from to_x, to_y; fire to
@@ -1181,6 +1214,8 @@ choose_target:
         jmp @find
 @found: lda n_targets
         bne @some
+        lda #SFX_NO
+        jsr tune_effect
         lda #<nobody_text
         ldx #>nobody_text
         ldy #RED
@@ -1218,6 +1253,10 @@ choose_target:
         rts
 @dir:   jsr is_dir
         bcs @aim
+        lda #SFX_SELECT
+        stx pressed
+        jsr tune_effect
+        ldx pressed
         cpx #KEY_LEFT               ; left, up and the diagonals left and up: the one
         beq @before                 ; before; the rest, the one after
         cpx #KEY_UP

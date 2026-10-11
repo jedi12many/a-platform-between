@@ -5,7 +5,7 @@ expand.s): never trust the image.
                                       [--fights]
 
 Each case breaks a few bytes of the depot, a car or a picture, as the cartridge holds
-them (assets 4, 5-7 and 8 on: tools/cart/departure.py), or its length, and plays CHOICES
+them (assets 4, 5-7, the music 8, and 9 on: tools/cart/departure.py), or its length, and plays CHOICES
 on the emulated C64 (tests/cart/run_cart.py) till they run out. With --fights, it's the
 bytes of the fight's encounter record (CHOICES must go into the fight). The VM may play on (the
 damage was in a string it never reached, or it spoiled a picture) or stop ("The train
@@ -88,7 +88,7 @@ def main(argv):
             pc = c.mpu.pc
             if pc == syms["main"]:
                 c.started = True
-            if pc == syms["ending"]:                # the ending asset, run where it's staged
+            if pc in (syms["ending"], syms["desk_run"]):    # asset 1, run where it's staged
                 c.ending = True
             elif pc == syms["fight"]:               # the fight's two, staged and copied
                 c.fighting = True

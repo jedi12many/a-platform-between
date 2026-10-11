@@ -96,7 +96,8 @@ against. For `cart/`:
   frame by frame: the Python reference (`tools/music/player.py`), the C player
   (`client/music.c`, under the sanitizers) and the C64's 6502 player (`fe/c64/music.s`, on
   py65), for every tune in `content/` and `tests/music/` under scripts of commands, and for
-  damaged files. `tools/music/musicc.py build NAME.music -o FILE` compiles a tune file.
+  damaged files; and the same 6502 player as the cartridge has it (`-D MUSIC_CART`, from
+  `build/apb.crt`), for every tune and script. `tools/music/musicc.py build NAME.music -o FILE` compiles a tune file.
 
 - `make test-cart`: the cartridge (`build/apb.crt`) and its disk (`build/apb-disk.d64`)
   boot on a 6502 emulator that plays an EasyFlash, or the KERNAL's loads and file reads
@@ -111,7 +112,9 @@ against. For `cart/`:
   cycle; the graphics are the tools'; the view (the story's pictures as
   `tools/c64pic.py` converts them; at a trip's end the Travel Stamp's QR code, the
   `qrcode` library's module for module, and scanned back off the screen by OpenCV) and
-  the frames are right; no figure's sprite reaches the split; paragraphs wrap at 25;
+  the frames are right; no figure's sprite reaches the split; the music plays (each cue
+  sends its tune, a frame every frame, the first tune `tools/music/player.py`'s register
+  for register, the fights' sound effects); paragraphs wrap at 25;
   nothing scrolls off unread. `--shot FILE` draws the screen (`--shot-at RECORD FILE`
   when that record comes: `build/cart-fight-shot.png`). `tests/cart/test_ending.py`: Travel Stamps of random receipts read
   back through `tools/passport/stamp.py`, and QR codes of every version 1-4 match

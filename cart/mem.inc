@@ -31,6 +31,14 @@ ASSET_FIGHT     = 3             ; code: the fight itself (fight.s, fightext.s), 
 ASSET_DEPOT     = 4             ; the Departure's assets: its depot, then its cars (and
 ASSET_CAR0      = 5             ; its pictures: the depot says where)
 
+; The music (tune.s; the player is fe/c64/music.s, assembled for the cartridge): the
+; Departure's tune file, padded to 1536 bytes, then the note table and the sound effects
+; (its asset, as it's staged, after a length), then the player's state: 2 KB, at the top
+; of the RAM the resident engine has (cart.cfg leaves it out).
+MUSIC_AT        = $7800
+MUSIC_COPY      = $06F0         ; what the asset brings: tunes, notes, effects
+MUSIC_FILE_MAX  = $0600         ; a tune file's most
+
 ; ------------------------------------------------------------------ VIC bank 3
 TEXT_SCREEN     = $C000         ; the frames (and the status row)
 VIEW_SCREEN     = $C400         ; the view: the map's characters, or a picture's colours

@@ -1,5 +1,6 @@
-; The game (docs/cartridge.md): the Departure's depot opened, the boarding desk, the trip,
-; its receipt and Travel Stamp (receipt.s); then the desk again, for the next. The view
+; The game (docs/cartridge.md): the Departure's depot and its music opened, the boarding
+; desk, the trip, its receipt and Travel Stamp (receipt.s); then the desk again, for the
+; next. The desk and the trip's end are asset 1's, staged between trips. The view
 ; has the platform's map at the desk, the story's pictures on the trip, and the Travel
 ; Stamp's QR code at its end.
 
@@ -9,7 +10,7 @@
 
         .export play, platform_map
         .import vm_open, vm_board, vm_run, vm_error, dep_id, desk_run, view_map
-        .import log_print, keys_clear, key_wait, frames, asset_fetch, ending
+        .import log_print, keys_clear, key_wait, frames, asset_fetch, ending, music_open
 
         .segment "RESIDENT"
 
@@ -22,11 +23,20 @@ play:
         ldx #>platform_map
         jsr view_map
 @open:  jsr vm_open
-        bcc @trip
+        bcc @music
         jsr cant_board              ; no Departure to board: say why, and on a key try
         jsr press_key               ; again (another disk, perhaps)
         jmp @open
-@trip:  lda dep_id
+@music: jsr music_open               ; its tunes (tune.s), for every trip from here
+@trip:  lda #ASSET_ENDING           ; the desk: in asset 1, with the trip's end
+        jsr asset_fetch
+        bcc @desk
+        lda #<no_desk
+        ldx #>no_desk
+        jsr log_print
+        jsr press_key
+        jmp @trip
+@desk:  lda dep_id
         ldx dep_id + 1
         jsr desk_run                ; A = 1 with a pass
         pha
@@ -90,3 +100,4 @@ platform_map:
 newline:        .byte 10, 0
 press:          .byte "(press a key)", 10, 0
 cant:           .byte "This Departure can't be boarded: ", 0
+no_desk:        .byte "The boarding desk couldn't be loaded.", 10, 0

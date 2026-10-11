@@ -70,6 +70,37 @@ class C64Player:
         return [self.mpu.memory[g + i] for i in range(25)]
 
 
+class CartPlayer(C64Player):
+    """The same player as the cartridge has it (fe/c64/music.s assembled -D MUSIC_CART, in
+    the resident engine of build/apb.crt): its code copied from bank 0 to where it runs,
+    its tunes, note table and effects at MUSIC_AT (cart/mem.inc), in the same layout."""
+
+    def __init__(self, crt_path, labels, data):
+        sys.path.insert(0, os.path.join(HERE, "..", "..", "tools"))
+        import crt
+        self.sym = {}
+        for line in open(labels):
+            parts = line.split()
+            if len(parts) == 3 and parts[0] == "al":
+                self.sym[parts[2].lstrip(".")] = int(parts[1], 16)
+        chips, _ = crt.read_bytes(open(crt_path, "rb").read())
+        bank0 = chips[(0, "L")] + chips[(0, "H")]           # $8000-$BFFF
+        self.mpu = MPU()
+        mem = self.mpu.memory
+        run, size = self.sym["__RESIDENT_RUN__"], self.sym["__RESIDENT_SIZE__"]
+        load = self.sym["__RESIDENT_LOAD__"] - 0x8000
+        mem[run:run + size] = list(bank0[load:load + size])
+        at = self.sym["MUSIC_AT"]
+        mem[at:at + len(data)] = list(data)
+        notes = at + 0x600
+        mem[notes:notes + 96] = [n & 0xFF for n in player.NOTES]
+        mem[notes + 96:notes + 192] = [n >> 8 for n in player.NOTES]
+        flat = [b for e in player.effects() for b in e]
+        mem[notes + 192:notes + 192 + len(flat)] = flat
+        self.cycles = 0
+        self.call("music_init", len(data) & 0xFF, len(data) >> 8)
+
+
 def main(argv):
     if len(argv) < 6:
         print(__doc__)

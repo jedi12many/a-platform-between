@@ -44,6 +44,10 @@ zp_qr           = $40           ; 2: a module's place in the QR code, or the vie
 zp_enc          = $42           ; 2: the encounter's record (in the depot)
 zp_name         = $44           ; 2: a foe's name
 
+; the music player (fe/c64/music.s for the cartridge): only it, from the raster
+; interrupt, or with interrupts off
+zp_music        = $46           ; 6
+
 ; scratch: arguments and loop counters
 zp_t0           = $24
 zp_t1           = $25

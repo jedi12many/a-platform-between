@@ -12,20 +12,22 @@
         .export pair_count, pairs_at, picture_count, pictures_at, music_count, music_at
         .export encounter_count, encounters_at
         .export car_index, car_title, code_len, code_end, string_count, offsets_at
-        .export strings_at, car_end, picture_asset
+        .export strings_at, car_end, picture_asset, music_asset
         .import asset_fetch, ram_copy, vm_fail, failed
 
 CODE_AT         = CAR_AT + 9        ; a car's code
 CODE_OFF        = 9
 SCENE_CARS      = 64                ; a scene's car is one of these
+DEPOT_HEAD      = 4                 ; the asset: the depot's length, its first picture's asset, its
+                                    ; music's, then it
 MUSIC_MAX       = 32
 TUNE_NAME_MAX   = 20
 
         .segment "RESIDENT"
 
 ; ----------------------------------------------------------------------------------------
-; vm_open: the depot, from its asset (its length, the asset of its first picture, then
-; it: tools/cart/departure.py), checked as load_depot checks it: its header; the pair
+; vm_open: the depot, from its asset (its length, the asset of its first picture, the
+; music's asset, then it: tools/cart/departure.py), checked as load_depot checks it: its header; the pair
 ; table, each pair made of bytes and pairs before it; the pictures', encounters' and (v1)
 ; tunes' lists end to end, inside it, with nothing after; every scene's car under 64.
 ;   Before:  $01 = $35.
@@ -39,8 +41,10 @@ vm_open:
         lda #ASSET_DEPOT
         jsr asset_fetch
         bcs @lost
-        lda STAGING + 2             ; the asset of its first picture
+        lda STAGING + 2             ; the asset of its first picture, and its music's
         sta picture_asset
+        lda STAGING + 3
+        sta music_asset
         lda STAGING                 ; its length: DEPOT_MAX at most
         sta zp_len
         lda STAGING + 1
@@ -60,9 +64,9 @@ vm_open:
         lda zp_len + 1
         adc #>DEPOT_AT
         sta depot_end + 1
-        lda #<(STAGING + 3)
+        lda #<(STAGING + DEPOT_HEAD)
         sta zp_src
-        lda #>(STAGING + 3)
+        lda #>(STAGING + DEPOT_HEAD)
         sta zp_src + 1
         lda #<DEPOT_AT
         sta zp_dst
@@ -630,6 +634,7 @@ msg_car_sizes:      .byte "bad car sizes", 0
         .segment "BSS"
 version:        .res 1
 picture_asset:  .res 1              ; the asset of the depot's first picture
+music_asset:    .res 1              ; the asset of its music ($FF: none)
 kind:           .res 1              ; 0 official, 1 a Branch Line, 2 a Siding
 dep_id:         .res 2
 level_max:      .res 1

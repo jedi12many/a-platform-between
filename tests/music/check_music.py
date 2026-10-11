@@ -4,7 +4,8 @@ The Python reference (tools/music/player.py) plays every tune in content/ and in
 tests/music/, alone and under a script of commands (change, fade out, effects, volume);
 the C player (client/music.c, built with the sanitizers as build/music_trace) and the
 6502 player (fe/c64/music.s, from build/c64/apb.prg, on py65) must write the same 25
-registers, frame by frame. Damaged files must agree too, and never crash the C player.
+registers, frame by frame; and so must the same player as the cartridge has it (assembled
+for its RAM and zero page, from build/apb.crt), for every tune under every script. Damaged files must agree too, and never crash the C player.
 No frame of a real tune may take the 6502 more than BUDGET cycles: the raster interrupt
 plays it, under the screen.
 """
@@ -26,6 +27,8 @@ import c64_trace  # noqa: E402
 
 TRACE = os.path.join(ROOT, "build", "music_trace")
 PRG = os.path.join(ROOT, "build", "c64", "apb.prg")
+CRT = os.path.join(ROOT, "build", "apb.crt")
+CART_LABELS = os.path.join(ROOT, "build", "cart", "apb.lbl")
 DBG = os.path.join(ROOT, "build", "c64", "apb.dbg")
 FRAMES = 400
 BUDGET = 10000      # 6502 cycles a frame a real tune may take: half a PAL frame (docs/c64.md)
@@ -54,8 +57,9 @@ def c_trace(path, tune, frames, script):
     return [[int(x, 16) for x in line.split()] for line in out.stdout.splitlines()]
 
 
-def c64_run(data, tune, frames, script):
-    p = c64_trace.C64Player(PRG, DBG, data)
+def c64_run(data, tune, frames, script, cart=False):
+    p = (c64_trace.CartPlayer(CRT, CART_LABELS, data) if cart
+         else c64_trace.C64Player(PRG, DBG, data))
     p.call("music_command", 1, tune)
     out, most = [], 0
     for f in range(frames):
@@ -138,6 +142,17 @@ def main():
                     compare(f"{name} tune {tune} script {k}", data, tune, FRAMES, script, tmp,
                             failures, worst, BUDGET)
                     runs += 1
+            # The cartridge's build of the same player.
+            for tune in range(data[3]):
+                for k, script in enumerate(scripts(data[3])):
+                    ref = player.trace(data, tune, FRAMES, script)
+                    got, _ = c64_run(data, tune, FRAMES, script, cart=True)
+                    d = first_difference(ref, got)
+                    if d:
+                        f, x, y = d
+                        failures.append(f"{name} tune {tune} script {k}: the cartridge's player "
+                                        f"differs at frame {f}")
+                    runs += 1
         real = worst[0]
         rng = random.Random(1541)
         for name, data in files:
@@ -155,7 +170,8 @@ def main():
             print("FAIL", f)
         print(f"{len(failures)} of {runs} runs failed")
         return 1
-    print(f"test-music: {runs} runs from {len(files)} files: Python, C and 6502 agree "
+    print(f"test-music: {runs} runs from {len(files)} files: Python, C and 6502 (the C64's and "
+          f"the cartridge's) agree "
           f"(most 6502 cycles in a frame: {real}; on a damaged file, {worst[0]})")
     return 0
 

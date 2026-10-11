@@ -3,7 +3,7 @@
 ;
 ;   line 250, under the screen: the view's registers ($D018, $D016, $D011, $D021: the
 ;       map's multicolour characters, or a picture's bitmap and its background), for the
-;       next frame's rows 0-15; then the keyboard (keys.s);
+;       next frame's rows 0-15; then the keyboard (keys.s) and a frame of music (tune.s);
 ;   line 176: the frames' background (black) while the view's last two rows are drawn:
 ;       a picture's are a black bar of colour-RAM pixels, which the background doesn't
 ;       touch, and the map's background is black already; then wait for line 178, the view's last line, and change to the frames' (our
@@ -19,7 +19,7 @@
 
         .export irq_ram, irq_kernal, nmi, split_on, frames
         .export view_mode, view_mode_hires
-        .import keys_scan
+        .import keys_scan, tune_tick
 
 FRAME_LINE  = 250
 SPLIT_IRQ   = 176
@@ -110,6 +110,7 @@ irq_kernal:
         lda #1
         sta phase
         jsr keys_scan
+        jsr tune_tick               ; a frame of music (tune.s), under the screen
         jmp done
 
 ; Line 176: wait for line 178, then for the end of its characters. Line 178's character
@@ -121,6 +122,11 @@ irq_kernal:
 split:
         lda #BLACK                  ; (line 176: under the view's black bar)
         sta VIC_BACK
+        lda VIC_CTRL1               ; come late (a load, or a long frame of music, held
+        bmi late                    ; the interrupt back): past line 255, or 178
+        lda VIC_RASTER
+        cmp #SPLIT_LINE + 1
+        bcs late
         ldx #SPLIT_LINE
 @wait:  cpx VIC_RASTER              ; 4 (reads at its last cycle: r)
         bne @wait                   ; 2 falling through: r + 2
@@ -134,10 +140,24 @@ split:
         sta VIC_MEM                 ; writes at r + 56
         stx VIC_CTRL2               ; r + 60
         sty VIC_CTRL1               ; r + 64
+split_done:
         lda #FRAME_LINE
         sta VIC_RASTER
         lda #0
         sta phase
+        jmp done
+
+; late: the split's moment has gone this frame (it would wait a whole one for line 178,
+; and drag the next interrupt with it): the frames at once (this frame shows the change
+; where it lands, once), and on to line 250 as ever.
+late:   lda #MEM_FRAMES
+        sta VIC_MEM
+        lda #CTRL2_HIRES
+        sta VIC_CTRL2
+        lda #CTRL1_TEXT
+        sta VIC_CTRL1
+        jmp split_done
+
 done:   pla
         tay
         pla

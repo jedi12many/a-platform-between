@@ -61,7 +61,8 @@ loads from a disk (`cart/assets.s`).
 | $0100-$01FF | the stack |
 | $0200-$03FF | buffers (on a disk, the KERNAL's own) |
 | $0400-$0FFF | a string of the story as it's expanded (`EXPAND_AT`) |
-| $1000-$7FFF | the resident engine, copied there at the start (`RESIDENT`), and its state (`BSS`) |
+| $1000-$77FF | the resident engine, copied there at the start (`RESIDENT`), and its state (`BSS`) |
+| $7800-$7FFF | the music: the Departure's tunes, the note table, the sound effects, the player's state (`MUSIC_AT`) |
 | $8000-$9FFF | the staging RAM: the asset fetched last ([Assets](#assets)) |
 | $A000-$B7FF | the chapter: the Departure's car being played (`CAR_AT`, 6 KB) |
 | $B800-$BFFF | the Departure's depot (`DEPOT_AT`, 2 KB) |
@@ -112,15 +113,16 @@ No other module knows where an asset came from:
   serial routines hold interrupts off at times, so a split may come late for a frame:
   assets are fetched between scenes.
 
-**The assets**: asset 0 is the screen's graphics; asset 1 is code, a trip's end (the
-receipt, the Travel Stamp, its QR code: `receipt.s`, `stamp.s`, `qr.s`, `qrview.s`),
-linked at $8000 and run there once it's staged: nothing else is fetched while it runs;
+**The assets**: asset 0 is the screen's graphics; asset 1 is code for between trips: a
+trip's end (the receipt, the Travel Stamp, its QR code: `receipt.s`, `stamp.s`, `qr.s`,
+`qrview.s`) and the boarding desk (`desk.s`), linked at $8000 and run there once it's
+staged: nothing else is fetched while it runs;
 assets 2 and 3 are code too, a fight: asset 2 (the rules, `combat.s`; the battle,
 `battle.s`; the battle screen, `tactics.s`) staged and run the same way, and asset 3 (the
 fight itself, `fight.s`, and its words, `fightext.s`) staged first and copied on to
 `EXPAND_AT`, $0400, and run there: the story expands no text while it fights. A
-Departure's depot is asset 4, its car k (a chapter) asset 5 + k, and its pictures the
-assets after the cars (`tools/cart/departure.py`, from `qsc.py build --split`): the
+Departure's depot is asset 4, its car k (a chapter) asset 5 + k, its music the asset
+after the cars, and its pictures the assets after that (`tools/cart/departure.py`, from `qsc.py build --split`): the
 file's length in 2 bytes, then the file (the depot's with the asset of its first picture
 between). The VM copies the depot to $B800 and the car it's in to $A000, so the staging
 RAM is free again.
@@ -156,7 +158,8 @@ Each module owns its part; nothing else touches it.
 | $3A-$3F | `vm.s`, `depot.s`, `expand.s` | the next byte of code ($3A-$3B), the string being expanded ($3C-$3D), where its text goes ($3E-$3F) |
 | $40-$41 | `qr.s`, `qrview.s` | a module's place in the QR code, or a byte of the view's bitmap |
 | $42-$45 | `fight.s`, `fightext.s` (in a fight) | the encounter's record, a foe's name |
-| $46-$8F | free (the music will take its from here) | |
+| $46-$4B | the music player (`fe/c64/music.s`, for the cartridge) | its pointers and scratch: only in the interrupt, or with interrupts off |
+| $4C-$8F | free | |
 | $90-$FF | the KERNAL's, on a disk (while it loads) | |
 
 The interrupt (`split.s`) uses no zero page at all.
@@ -246,8 +249,12 @@ cycle 12 to fetch row 16's characters. So the three writes that change to the fr
 (`$D018`, `$D016`, `$D011`) must land between line 178's last character (cycle 55) and
 cycle 11 of line 179. The interrupt comes at line 176, waits in a 7-cycle loop for line
 178, then counts cycles, so the writes land at cycles 56-62, 60-66 and 64-70 (line 179's
-1-7), wherever in the loop line 178 is seen: inside the gap, so nothing shows. `make
-test-cart` holds every frame to that, on the emulator's model of the timing (no sprite
+1-7), wherever in the loop line 178 is seen: inside the gap, so nothing shows. An
+interrupt that comes too late for that (after a load, which holds interrupts off, the
+interrupt at line 250 comes late and plays its frame of music past line 176) changes to
+the frames at once rather than wait a whole frame for line 178, so the next frame is on
+time again (the frame a load ends in may show the change a few lines low). `make
+test-cart` holds every frame to that (but a load's last frame and the one after it), on the emulator's model of the timing (no sprite
 may be on lines 176-178, which would steal cycles there). It still wants checking in
 VICE's cycle-exact x64sc, and on a real C64.
 
@@ -333,9 +340,39 @@ the command row, keys or the joystick; `fightext.s` tells it in `client/battle_t
 words, each roll in the dice log. After it, the story's tune and its picture come back.
 The Deep Yards (`FIGHT_YARD`, `PICK`) stop the VM ("no yards yet").
 
-Until the later milestones: a tune is only a record for the tests (`[music
-concourse]`, `[music battle]`, as the C64 version's transcripts have them; so is each
-picture shown, `[picture pic02]`; and each prompt in a fight, `[Kestrel: choose.]`).
+For the tests, each tune cued is also a record (`[music concourse]`, `[music battle]`, as
+the C64 version's transcripts have them), and so is each picture shown (`[picture
+pic02]`) and each prompt in a fight (`[Kestrel: choose.]`).
+
+## Music
+
+The player is the C64 version's (`fe/c64/music.s`, `docs/music.md`), assembled again for
+the cartridge with `-D MUSIC_CART`: the same code, which `make test-music` holds to the
+reference (`tools/music/player.py`) register for register, both ways. On the cartridge it's
+in the resident engine, its zero page `zp_music`, and its tunes, note table, sound effects
+and state at `MUSIC_AT` ($7800-$7FFF), in plain RAM, in the same layout as the C64's
+$D800. `cart/tune.s` is the way in:
+
+- **The tunes**: a Departure's music file (`tools/music/musicc.py build`) is an asset
+  after its cars (`tools/cart/departure.py`; the depot's asset says which): the file's
+  length, the file padded to 1536 bytes, the note table and the sound effects, the C64
+  disk's MUSIC file but its load address. When the depot opens, it's staged and copied to
+  `MUSIC_AT` (`music_open`), once for every trip.
+- **A frame a frame**: the raster interrupt at line 250, under the screen, after the
+  keyboard, plays a frame and copies its 25 registers to the SID (`tune_tick`). A real
+  tune's frame takes the player at most about 8,200 cycles (`make test-music` measures
+  it), so it's done long before line 176.
+- **Cues**: the story's (`~ music NAME`, vm.s's `cue_music`) and the fights' (`battle`,
+  `won`, `lost`, then the story's again: `cue_scene`) find the tune by its name in the
+  file, as `client/cue.c` does: from silence a tune starts at once, else the one playing
+  fades first; a name the file hasn't changes nothing; `off` fades out.
+- **Sound effects** in a fight, on the third voice, where `client/tactics.c` makes them:
+  a step, a swing or a shot, a hit or a miss, a figure down, the select and refusal blips.
+
+The player is shared with the interrupt, so the game calls it with interrupts off when the
+call is short (a command is only queued for the next frame); looking a tune up by name
+takes longer, so it's done with interrupts on and the interrupt told to skip that frame's
+music (`tune_busy`), rather than hold the split up.
 
 ## Building and testing
 
@@ -359,7 +396,10 @@ port 2 instead (the C64's run of the route has the keypad's key for it). It chec
 against the tools' own files, the view (the map at the desk; at the end, the last picture
 as `tools/c64pic.py` converts it), the frames (the party, the last roll), that every
 paragraph is wrapped at 25 as the rule says, that nothing scrolled off unread, and that no
-figure's sprite reaches the split's lines. The party's health is checked against the
+figure's sprite reaches the split's lines. With `--music`, the music: every cue in the
+transcript sends the player that tune (numbered from the Departure's music file), a frame
+plays every frame (but while a load holds interrupts off), the SID has each, and the first
+tune is `tools/music/player.py`'s, register for register, till the next command. The party's health is checked against the
 rules and the fights' words (what the attacks say they took). `--shot-at RECORD FILE`
 saves the screen when a record is made: `build/cart-fight-shot.png`, the fight as Kestrel
 aims.
@@ -395,5 +435,8 @@ rules and battle to the references (below, A4).
   the battle (against `core/src/battle.c`'s reviewed logs and random battles), the battle
   screen, the joystick, `FIGHT` in the VM. (No multiplexer: a fight's eight fighters are
   the VIC's eight sprites. The Deep Yards come later.)
-- **A5, music**: the player (`fe/c64/music.s`) moved over, tunes in banks.
+- **A5, music** (done): the C64 version's player assembled for the cartridge, a
+  Departure's tunes as an asset, played from the raster interrupt, cued by the story and
+  the fights, with the fights' sound effects. (To make room in bank 0, the boarding desk
+  went into asset 1, with the trip's end.)
 - **A6, trip passwords**: saving and resuming a trip.

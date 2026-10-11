@@ -25,6 +25,7 @@
         .import dice_roll, record_line, party_show, log_print, menu_ask, key_wait, keys_clear
         .import picture_show, number_text, skill_lo, skill_hi, item_tier, echo_default
         .import encounter_count, asset_fetch, fight, view_map, platform_map, ram_copy
+        .import tune_find, tune_cue
         .import __FIGHT_RUN__, __FIGHT_SIZE__
         .importzp ITEM_COUNT, ECHO_COUNT
         .importzp SKILL_COUNT
@@ -542,9 +543,10 @@ op_music:
 @good:  sta music_now
         ; (on into cue_music)
 
-; cue_music: the tune `music_now` cued, unless it's the one cued last (client/cue.c). A5
-; plays it; for now, its record: "[music NAME]", or "[music off]". Changes A, X, Y;
-; zp_t0, zp_t1.
+; cue_music: the tune `music_now` cued, unless it's the one cued last (client/cue.c): its
+; record, "[music NAME]" or "[music off]", and the music: the tune of that name in the
+; Departure's music (tune.s), or silence; a name it hasn't changes nothing. Changes A, X,
+; Y; zp_t0, zp_t1.
 cue_music:
         lda music_now
         cmp music_cued
@@ -583,17 +585,38 @@ cue_music:
         sta music_name - 1, y
         dex
         bne @char
+        lda #0                      ; its name, to find it by (the record's "]" after)
+        sta music_name, y
+        sty name_end
+        lda #<music_name
+        ldx #>music_name
+        jsr tune_find
+        sta found
+        ldy name_end
         lda #']'
         sta music_name, y
         lda #0
         sta music_name + 1, y
-@send:  lda #<music_record
+        lda found                   ; a name the music hasn't: whatever plays, plays on
+        cmp #$FF
+        beq @send
+        sta story_tune
+        jsr @send
+        lda story_tune
+        jmp tune_cue
+@send:  lda #<music_record          ; ("off": silence)
         ldx #>music_record
-        jmp record_line
+        jsr record_line
+        lda music_cued
+        cmp #$FF
+        bne @done
+        sta story_tune
+        jmp tune_cue
+@done:  rts
 
 ; cue_scene: a fight's tune (client/cue.c's apb_cue_scene, apb_cue_back): A = SCENE_FIGHT,
-; SCENE_WON or SCENE_LOST cues "battle", "won" or "lost"; SCENE_BACK the story's tune
-; again. For now, only the record. Changes A, X, Y; zp_t0, zp_t1.
+; SCENE_WON or SCENE_LOST cues "battle", "won" or "lost" (if the music has it); SCENE_BACK
+; the story's tune again. Each has its record. Changes A, X, Y; zp_t0, zp_t1.
 cue_scene:
         cmp #SCENE_BACK
         bcc @fight
@@ -603,12 +626,23 @@ cue_scene:
         cmp music_cued
         beq @same
         sta music_cued
+        stx scene
         lda scene_lo, x
         pha
         lda scene_hi, x
         tax
         pla
-        jmp record_line
+        jsr record_line
+        ldx scene                   ; the tune, by its name
+        lda tune_lo, x
+        pha
+        lda tune_hi, x
+        tax
+        pla
+        jsr tune_find
+        cmp #$FF
+        beq @same
+        jmp tune_cue
 @same:  rts
 
 op_pause:
@@ -1339,6 +1373,11 @@ msg_underflow:      .byte "stack underflow", 0
 scene_battle:       .byte "[music battle]", 0
 scene_won:          .byte "[music won]", 0
 scene_lost:         .byte "[music lost]", 0
+tune_battle:        .byte "battle", 0
+tune_won:           .byte "won", 0
+tune_lost:          .byte "lost", 0
+tune_lo:            .byte <tune_battle, <tune_won, <tune_lost
+tune_hi:            .byte >tune_battle, >tune_won, >tune_lost
 scene_lo:           .byte <scene_battle, <scene_won, <scene_lost
 scene_hi:           .byte >scene_battle, >scene_won, >scene_lost
 msg_no_yards:       .byte "no yards yet", 0
@@ -1384,6 +1423,10 @@ which_var:      .res 1
 flag_hi:        .res 1
 music_now:      .res 1              ; the tune the story has on ($FF: none)
 music_cued:     .res 1              ; the one cued last
+story_tune:     .res 1              ; the story's tune, as the music numbers it ($FF: none)
+name_end:       .res 1
+found:          .res 1
+scene:          .res 1
 last_picture:   .res 1              ; the picture in the view, or $FF (a fight puts it back)
 encounter:      .res 1
 surprise:       .res 1

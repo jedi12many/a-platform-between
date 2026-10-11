@@ -3,7 +3,8 @@
     python3 tests/cart/run_cart.py IMAGE LABELS CHOICES EXPECTED [--c64 TRANSCRIPT]
                                    [--c64-story TRANSCRIPT]
                                    [--pictures DIR] [--shot FILE.png]
-                                   [--shot-at RECORD FILE.png] [--update]
+                                   [--shot-at RECORD FILE.png] [--music FILE.music]
+                                   [--update]
 
 IMAGE is the EasyFlash cartridge (build/apb.crt) or the disk (build/apb-disk.d64); LABELS
 the linker's label file (ld65 -Ln). The machine code runs on a 6502 emulator (py65), with
@@ -210,6 +211,8 @@ class C64:
         self.held = []                      # matrix positions down now
         self.presses = []                   # [(positions, first frame, last frame)]
         self.stick = []                     # [(port 2's bits, first frame, last frame)]
+        self.music_cmds = []                # [(cycle, command, argument)] to the player
+        self.ghosts = []                    # [(cycle, its 25 registers)], a frame each
         self.lines = []                     # the transcript
         self.ended_rows = []                # each line: True if the text ended it (None: a
                                             # record)
@@ -469,8 +472,14 @@ class C64:
         m = self.mpu
         wait, wait_end = self.syms["key_wait"], self.syms["log_more"]
         newline = self.syms["log_newline"]
+        command, ticked = self.syms.get("music_command"), self.syms.get("tune_ticked")
         while not self.ended:
             pc = m.pc
+            if pc == command:                               # the music player, told to
+                self.music_cmds.append((m.processorCycles, m.a, m.x))
+            elif pc == ticked:                              # a frame played: its registers
+                g = self.syms["music_ghost"]
+                self.ghosts.append((m.processorCycles, bytes(self.ram[g:g + 25])))
             if wait <= pc < wait_end and m.processorCycles >= self.answer_until:
                 self.sprites_seen()
                 self.answer()                               # (key_wait, waiting)
@@ -823,6 +832,65 @@ def health_bar(c):
     return cells, 2 if health * 3 <= most else 5
 
 
+def check_music(c, path, what):
+    """The music (cart/tune.s, fe/c64/music.s): every "[music NAME]" cue in the transcript
+    sends the player that tune (numbered as tools/music/musicc.py numbers the Departure's
+    music file, worked out here), or silence; a frame plays every frame, its registers to
+    the SID; and from the first tune's start, the registers are tools/music/player.py's,
+    frame for frame, till the next command."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "music"))
+    import musicc
+    import player
+    data, names = musicc.build(open(path).read())
+    want, last = [], None
+    for ln in c.lines:
+        m = re.fullmatch(r"\[music (.+)\]", ln)
+        if not m:
+            continue
+        t = 255 if m.group(1) == "off" else names.index(m.group(1)) if m.group(1) in names else None
+        if t is not None and t != last:
+            want.append(t)
+            last = t
+    got = [x for _, a, x in c.music_cmds if a in (1, 2)]
+    effects = [x for _, a, x in c.music_cmds if a == 3]
+    if got != want:
+        fail(f"{what}: the tunes cued were {got}, the transcript's cues say {want}")
+    else:
+        ok(f"{what}: every cue sends its tune ({len(got)}: "
+           f"{', '.join(names[t] if t < len(names) else 'off' for t in got)})"
+           + (f"; {len(effects)} sound effects in the fights" if effects else ""))
+    if any(e >= 8 for e in effects):
+        fail(f"{what}: a sound effect that isn't one: {sorted(set(effects))}")
+    # A frame a frame.
+    # (A frame held back by a copy with interrupts off ends up in the next: count them. A
+    # KERNAL load holds interrupts off at times, so the frames a load is in don't count.)
+    frames = [cyc // FRAME for cyc, _ in c.ghosts]
+    span = frames[-1] - frames[0] + 1 if frames else 0
+    loading = {f for a, b in c.load_spans for f in range(a // FRAME, b // FRAME + 2)
+               if frames and frames[0] <= f <= frames[-1]}
+    if not frames or not (span - len(loading)) * 0.98 <= len(frames) <= span:
+        fail(f"{what}: {len(frames)} frames of music in {span} frames ({len(loading)} loading)")
+    elif bytes(c.io[0x400:0x419]) != c.ghosts[-1][1]:
+        fail(f"{what}: the SID doesn't have the player's last frame")
+    else:
+        ok(f"{what}: a frame of music every frame ({len(frames)}), the SID given each")
+    # The first tune, against the reference.
+    starts = [(cyc, x) for cyc, a, x in c.music_cmds if a == 1]
+    if not starts:
+        return
+    at, tune = starts[0]
+    after = [cyc for cyc, _, _ in c.music_cmds if cyc > at]
+    ours = [g for cyc, g in c.ghosts if cyc > at and (not after or cyc < after[0])][:400]
+    ref = [bytes(r) for r in player.trace(data, tune, len(ours), {})]
+    diff = next((i for i, (a, b) in enumerate(zip(ours, ref)) if a != b), None)
+    if diff is not None or not ours:
+        fail(f"{what}: {names[tune]}'s frame {diff} isn't tools/music/player.py's:\n"
+             f"  cartridge {ours[diff].hex(' ') if ours else ''}\n  reference {ref[diff].hex(' ') if ours else ''}")
+    else:
+        ok(f"{what}: {names[tune]}, as tools/music/player.py plays it, register for register "
+           f"({len(ours)} frames)")
+
+
 def c64_story_matches(lines, path):
     """As c64_matches, from the first chapter's title on (the boarding desk aside: a PASS
     file boards without typing)."""
@@ -888,6 +956,9 @@ def main(argv):
     if "--c64-story" in argv:
         c64_story_matches(c.lines, argv[argv.index("--c64-story") + 1])
     check(c)
+    if "--music" in argv:
+        check_music(c, argv[argv.index("--music") + 1], "the cartridge" if c.mode is not None
+                    else "the disk")
     if "--shot" in argv:
         shot(c, argv[argv.index("--shot") + 1])
     print(f"{argv[1]}: {failures} failed")

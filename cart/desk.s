@@ -1,15 +1,16 @@
 ; The boarding desk (docs/boarding.md; the C version is client/desk.c, and this says what
 ; it says): the player types their Boarding Pass, or their Passport, a line at a time, then
 ; a blank line. Lines the wrong length, or with a typo, are asked for again by number; then
-; the traveler is shown, and the player boards or starts again.
+; the traveler is shown, and the player boards or starts again. Code in asset 1, with the
+; trip's end (receipt.s): both only between trips, staged and run there.
 
         .include "hw.inc"
         .include "mem.inc"
         .include "zp.inc"
         .include "char.inc"
 
-        .export desk_run, name_text
-        .import log_print, line_ask, menu_ask, number_text
+        .export desk_run
+        .import log_print, line_ask, menu_ask, number_text, name_text
         .import password_decode, traveler, pass, password_kind, pw_bad_line, pass_file
         .import race_lo, race_hi, class_lo, class_hi
         .importzp RACE_COUNT, CLASS_COUNT   ; (8-bit numbers: "zero page" to ca65)
@@ -19,7 +20,8 @@ TYPED   = 36                        ; a typed line, spaces and dashes and all
 FILE_ROOM = 255                     ; a PASS file's text: `joined` has room
 SLOT    = TYPED + 1                 ; its room in `typed_lines`
 
-        .segment "RESIDENT"
+        .segment "ENDING"               ; (between trips, in asset 1 with the trip's end:
+                                        ; play.s stages it)
 
 ; ----------------------------------------------------------------------------------------
 ; desk_run: the desk, until the player boards.
@@ -379,45 +381,6 @@ say:
 @done:  rts
 
 ; ----------------------------------------------------------------------------------------
-; name_text: the traveler's name as it reads: "Kestrel", "Moth-Folk Ana". Names are kept
-; in capitals; each word's first letter stays one, the rest go small; the padding goes.
-;   After:   A/X = the name (low/high), ending in 0 (name_buf: kept until the next).
-;   Changes: A, X, Y.
-name_text:
-        ldy #8                      ; how long, without the padding
-@trim:  lda traveler + CH_NAME - 1, y
-        cmp #' '
-        bne @long
-        dey
-        bne @trim
-@long:  sty name_len
-        ldx #0
-        ldy #1                      ; 1: the next letter starts a word
-@char:  cpx name_len
-        beq @end
-        lda traveler + CH_NAME, x
-        cpy #0
-        bne @first
-        cmp #'A'
-        bcc @first
-        cmp #'Z' + 1
-        bcs @first
-        ora #%00100000              ; small
-@first: sta name_buf, x
-        ldy #0
-        cmp #' '
-        beq @word
-        cmp #'-'
-        bne @next
-@word:  ldy #1
-@next:  inx
-        bne @char                   ; (always)
-@end:   lda #0
-        sta name_buf, x
-        lda #<name_buf
-        ldx #>name_buf
-        rts
-
 ; ----------------------------------------------------------------------------------------
 ; Where each typed line goes.
 slot_lo:
@@ -484,6 +447,4 @@ count:          .res 1              ; lines typed
 typed_lines:    .res LINES * SLOT
 joined:         .res LINES * SLOT + 1
 say_buf:        .res 64
-name_buf:       .res 9
-name_len:       .res 1
 join_y:         .res 1
