@@ -161,7 +161,7 @@ and an element, at will or with charges; its tier comes from its rank. Many put 
 | | Shove | Shift + kinetic, a foe next to you, at will | knocked down (a crit) |
 | | Taunt | Hex + mind, 2 charges | taunted |
 | | Ground slam | Burst + kinetic, centred on you (you're not hit), 1 charge | stunned |
-| **Rogue** | Blink | Shift, yourself, 2 charges | displaced |
+| **Rogue** | Blink | Shift, yourself, 2 charges: your move, not your action | displaced |
 | | Smoke | Field + mind (mist: cover), 2 charges | fog: hidden |
 | | Dirty trick | Hex + mind, at will | blinded, 1 round |
 | | Snare | Hex + cold, 2 charges | slowed; entangled from tier 3 |

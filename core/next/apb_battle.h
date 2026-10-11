@@ -77,6 +77,8 @@ typedef struct {
     uint8_t target;
     uint8_t dash_x, dash_y;   /* a Dash's square, or a power's                 */
     uint8_t use;              /* which of the fighter's powers                 */
+    uint8_t move_use;         /* 0: walk to move_x, move_y; else power move_use - 1, a
+                               * shift of yourself (Blink), takes you there instead */
 } apb_action;
 
 enum {

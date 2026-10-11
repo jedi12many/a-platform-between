@@ -9,6 +9,8 @@
 //   node native.cjs URL dash CODE SEED N  the first turn: a Dash, N squares east of the start
 //   node native.cjs URL power CODE SEED KEY   the first turn: the power on KEY (1-4), on the
 //                                         first target or square the page offers
+//   node native.cjs URL blink CODE SEED   the first turn: Blink (key 1) as the move, to the
+//                                         square the page offers, then an attack from there
 //   node native.cjs URL shove CODE SEED KEYS   the first turn: KEYS (arrows: R L U D) to
 //                                         move, then a Shove of the first foe in reach
 //   node native.cjs URL shot CODE PATH    a screenshot of the first turn
@@ -33,7 +35,7 @@ async function main() {
   });
   const until = (m, ms) => page.waitForFunction((m) => window.arena && window.arena.state().mode === m,
                                                 m, { timeout: ms || 20000 });
-  const seeded = ["fight", "dash", "shove", "power"].includes(what);
+  const seeded = ["fight", "dash", "shove", "power", "blink"].includes(what);
   const hash = "#scenario=" + code + (seeded ? "&seed=" + arg : "");
   await page.goto(url + hash);
   await until("intro");
@@ -81,6 +83,22 @@ async function main() {
     await page.keyboard.press(process.argv[6]);
     out.chose = await page.evaluate(() => window.arena.state().mode);
     if (["cast", "aim"].includes(out.chose)) await page.keyboard.press("Enter");
+    await page.waitForFunction(() => ["turn", "end"].includes(window.arena.state().mode), null, { timeout: 30000 });
+    out.after = await state();
+  } else if (what === "blink") {
+    await page.keyboard.press("1");
+    out.chose = await page.evaluate(() => window.arena.state().mode);
+    await page.keyboard.press("Enter");
+    await until("turn");
+    out.blinked = await state();
+    out.plan = await page.evaluate(() => window.arena.state().fight.plan);
+    out.blink = await page.evaluate(() => window.arena.state().fight.blink);
+    out.targets = await page.evaluate(() => window.arena.state().fight.targets);
+    await page.keyboard.press("a");
+    if (out.targets.length > 1) {
+      await until("aim");
+      await page.keyboard.press("Enter");
+    }
     await page.waitForFunction(() => ["turn", "end"].includes(window.arena.state().mode), null, { timeout: 30000 });
     out.after = await state();
   } else if (what === "shove") {

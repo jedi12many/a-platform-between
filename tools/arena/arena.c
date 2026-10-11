@@ -304,6 +304,9 @@ int main(int argc, char **argv)
             apb_battle_quick(who, &act);
             if (!apb_battle_act(who, &act)) {        /* quick's choice refused: just end */
                 act.kind = APB_ACT_DONE;
+#ifdef APB_RULES_NEXT
+                act.move_use = 0;
+#endif
                 apb_battle_fighter(who, &now);
                 act.move_x = now.x;
                 act.move_y = now.y;

@@ -136,10 +136,11 @@ the **studio**, beside the art desk:
 - **Powers** are on the keys **1-4** (and their buttons, with charges left). One with a
   single target goes off at once; with several, aim as for an attack; one that goes on a
   square (a burst, a field, a blink) lights where it can go, and shows what it would touch
-  (the blast, the wall's line) under the cursor. Each card lists its fighter's powers
+  (the blast, the wall's line) under the cursor. **Blink is your move**: pick its square
+  first (before walking), then act from there; Esc undoes it. Each card lists its fighter's powers
   (hover for tier, roll and what each does).
-- **Auto** (T) plays your turns as quick does (with weapons: the computer doesn't use
-  powers yet); **Fast** (Z) speeds up what's shown.
+- **Auto** (T) plays your turns as quick does, powers and all
+  ([turn.md](turn.md#how-the-computer-uses-powers)); **Fast** (Z) speeds up what's shown.
 - **The end** shows how it went (rounds, health left, damage each way, how often you hit,
   the swaps) beside what the computer gets. Fight again (R), give feedback (F: the same
   playtest issue form), or back to the scenarios.
@@ -239,8 +240,9 @@ makes it harmless but for crits.
 took the Rogue's hexes from costing it 13 points to earning it 19; Ground slam stuns
 (it knocked down, which costs a foe already next to you nothing, and pushed them out of
 reach besides); a Mend puts on its condition, so Second wind heals 5 and then 3 a turn; and
-the computer blinks only out of every foe's reach (it blinked into the rats' next move and
-lost a shot each time: Blink alone took the Rogue from 49% to 7%).
+Blink is a move, not an action (the computer blinked into the rats' next move and lost a
+shot each time: Blink alone took the Rogue from 49% to 7%). Now it costs no shot, and the
+computer blinks only where fewer foes can reach it: in these rooms, never.
 
 Soak is strong against swarms: a Soak equal to a foe's damage
 makes it harmless but for crits.

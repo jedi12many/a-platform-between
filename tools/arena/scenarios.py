@@ -247,10 +247,12 @@ LAB += [
              "#.......b..#",
              "############"]},
     {"title": "Blink and snare",
-     "issue": "A new Rogue who can blink (up to 3 squares, no free attacks), snare (3 cold "
+     "issue": "A new Rogue who can blink as her move (up to 3 squares, no free attacks, then "
+              "shoot), snare (3 cold "
               "damage; slowed, hexed, chilled) and play a dirty trick (3 damage; blinded), against a rust-guard and two "
               "ash rats.",
-     "watch": "Whether keeping out of reach is fun or tedious, and if the hexes feel strong.",
+     "watch": "Whether blinking past the guard then shooting is fun or too slippery, and if the "
+              "hexes feel strong.",
      "cls": "ROGUE", "level": 1, "weapon": "SCRAP_PISTOL", "armor": None,
      "powers": [["BLINK", 10], ["SNARE", 10], ["DIRTY_TRICK", 10]],
      "foes": ["RUST_GUARD", "ASH_RAT", "ASH_RAT"],

@@ -385,6 +385,7 @@ function beginTurn(who) {
   fight.whose = who;
   f = me();
   fight.plan = { x: f.x, y: f.y };
+  fight.blink = 0;
   fight.reach = call("ar_reach", who).reach;
   aimFrom();
   setMode("turn");
@@ -409,6 +410,11 @@ function usePower(k) {
   if (!p) return;
   if (p[2] === 0) { toast("No charges left."); return; }
   pd = powerOf(p[0]);
+  if (isBlink(pd)) {
+    /* Blink is your move (docs/turn.md): from where you stand, instead of walking. */
+    if (fight.blink) { toast("You've blinked: that was your move."); return; }
+    if (moved()) { toast("Blink is your move: undo your walk first (Esc)."); return; }
+  }
   info = call("ar_power", fight.me, k, fight.plan.x, fight.plan.y);
   fight.puse = k;
   if (pd.target === "around") return act(ACT.power, 0, 0, 0, k);
@@ -428,6 +434,32 @@ function usePower(k) {
   fight.aim = 0;
   fight.aimKind = "power";
   setMode("aim");
+}
+
+function isBlink(pd) { return pd.shape === "shift" && pd.target === "square"; }
+
+/* The cast's square chosen: a Blink is the move, and the turn goes on from there; any
+ * other power is the turn's action. */
+function castAt(x, y) {
+  var pd = powerOf(me().powers[fight.puse][0]);
+  if (!isBlink(pd)) return act(ACT.power, 0, x, y, fight.puse);
+  fight.blink = fight.puse + 1;
+  fight.walk = fight.reach;
+  fight.reach = fight.reach.map(function (r) { return r.replace(/1/g, "0"); });
+  fight.plan = { x: x, y: y };
+  aimFrom();
+  setMode("turn");
+}
+
+function undoMove() {
+  var f = me();
+  if (fight.blink) {
+    fight.blink = 0;
+    fight.reach = fight.walk;
+  }
+  fight.plan = { x: f.x, y: f.y };
+  aimFrom();
+  actions();
 }
 
 /* Where a square power's cursor starts: on the nearest foe it can reach, or the nearest
@@ -494,7 +526,8 @@ function moved() {
 
 async function act(kind, target, dx, dy, use) {
   var r = call("ar_act", fight.me, kind, fight.plan.x, fight.plan.y, target === undefined ? 0 : target,
-               dx === undefined ? 0 : dx, dy === undefined ? 0 : dy, use === undefined ? 0 : use);
+               dx === undefined ? 0 : dx, dy === undefined ? 0 : dy, use === undefined ? 0 : use,
+               fight.blink || 0);
   if (r.refused) {
     toast(kind === ACT.flee ? "No way out from here: flee from an exit, or next to no one."
           : kind === ACT.dash ? "Can't dash there from here."
@@ -512,6 +545,7 @@ function quick() {
   if (mode !== "turn") return;
   var q = call("ar_quick", fight.me);
   fight.plan = { x: q.x, y: q.y };
+  fight.blink = q.blink;
   act(q.kind, q.target, q.dx, q.dy, q.use);
 }
 
@@ -1157,7 +1191,7 @@ function buttons() {
             ["W", "Wait", waitTurn, moved() || me().waited, moved() ? "Only before you move" : "Once a round"],
             ["P", "Pack", openPack],
             ["F", "Flee", function () { act(ACT.flee, 0); }],
-            ["Esc", "Undo move", function () { var f = me(); planTo(f.x, f.y); }, !moved(), "You haven't moved"],
+            ["Esc", fight.blink ? "Undo blink" : "Undo move", undoMove, !moved(), "You haven't moved"],
             ["Enter", "End turn", function () { act(ACT.done, 0); }],
             ["Q", "Quick turn", quick],
             ["gap"],
@@ -1175,7 +1209,7 @@ function buttons() {
   case "cast":
     return [["Arrows", "Where (or click a lit square)", null, false, "", false, "hint"],
             ["Enter", powerOf(me().powers[fight.puse][0]).display + " there", function () {
-              act(ACT.power, 0, fight.cast.x, fight.cast.y, fight.puse);
+              castAt(fight.cast.x, fight.cast.y);
             }, !canCast(fight.cast.x, fight.cast.y), "It can't go there", true],
             ["Esc", "Back", function () { setMode("turn"); }]];
   case "dash":
@@ -1203,9 +1237,13 @@ function buttons() {
 function powerButtons() {
   var f = me();
   return (f.powers || []).map(function (p, k) {
-    var pd = powerOf(p[0]);
-    return [String(k + 1), pd.display + (p[2] >= 0 ? " (" + p[2] + ")" : ""), function () { usePower(k); },
-            p[2] === 0, "No charges left this fight", false, "power"];
+    var pd = powerOf(p[0]), blink = isBlink(pd);
+    var off = p[2] === 0 ? "No charges left this fight"
+            : blink && fight.blink ? "You've blinked this turn"
+            : blink && moved() ? "Blink is your move: before you walk" : "";
+    return [String(k + 1), pd.display + (blink ? " (move" + (p[2] >= 0 ? ", " + p[2] : "") + ")"
+            : p[2] >= 0 ? " (" + p[2] + ")" : ""), function () { usePower(k); },
+            !!off, off, false, "power"];
   });
 }
 
@@ -1315,7 +1353,7 @@ function onClick(e) {
   var sq = squareAt(e.offsetX, e.offsetY), who, t;
   if (!sq) return;
   if (mode === "cast") {
-    if (canCast(sq.x, sq.y)) act(ACT.power, 0, sq.x, sq.y, fight.puse);
+    if (canCast(sq.x, sq.y)) castAt(sq.x, sq.y);
     else toast("It can't go there.");
     return;
   }
@@ -1389,7 +1427,8 @@ async function boot() {
   rules.ar_next = M.cwrap("ar_next", "string", []);
   rules.ar_reach = M.cwrap("ar_reach", "string", ["number"]);
   rules.ar_targets = M.cwrap("ar_targets", "string", ["number", "number", "number"]);
-  rules.ar_act = M.cwrap("ar_act", "string", ["number", "number", "number", "number", "number", "number", "number", "number"]);
+  rules.ar_act = M.cwrap("ar_act", "string", ["number", "number", "number", "number", "number", "number", "number", "number",
+                                              "number"]);
   rules.ar_power = M.cwrap("ar_power", "string", ["number", "number", "number", "number"]);
   rules.ar_dash = M.cwrap("ar_dash", "string", ["number", "number", "number"]);
   rules.ar_shoves = M.cwrap("ar_shoves", "string", ["number", "number", "number"]);

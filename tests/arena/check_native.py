@@ -182,6 +182,28 @@ def check_shove():
         ok(f"Shove: next to a pit, the rust-guard goes in ({said[0].split(': ')[1]})")
 
 
+def check_blink():
+    """R-10: the Rogue blinks (key 1) as her move, and still shoots from where she lands."""
+    out = page("blink", "R-10", "4")
+    if not out:
+        return
+    start = out["turn"]["st"]["fighters"][0]
+    end = out["after"]["st"]["fighters"][0]
+    blink = [p for p in end["powers"] if scenarios.arena.POWERS["BLINK"]["id"] == p[0]]
+    used = [line for line in out["after"]["log"] if "uses Blink" in line]
+    shots = [line for line in out["after"]["log"] if " → " in line and "Blink" not in line]
+    if out["chose"] != "cast" or out["blink"] != 1 or not out["targets"]:
+        fail(f"Blink from key 1: the page went to {out['chose']}, blink {out['blink']}, "
+             f"targets {out['targets']}")
+    elif (end["x"], end["y"]) != (out["plan"]["x"], out["plan"]["y"]) or (end["x"], end["y"]) == (start["x"], start["y"]):
+        fail(f"blinked to {out['plan']}, the Rogue is at {end['x']},{end['y']}")
+    elif not used or not shots or not blink or blink[0][2] != 1:
+        fail(f"Blink then a shot: the log says {used + shots[:2]}, Blink's charges {blink}")
+    else:
+        ok(f"Blink is the move: key 1 takes the Rogue to {end['x']},{end['y']}, a charge spent, "
+           "and she still shoots from there")
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -238,6 +260,7 @@ def main():
         check_dash()
         check_shove()
         check_powers()
+        check_blink()
     finally:
         server.terminate()
         server.wait()

@@ -1338,6 +1338,16 @@ static uint8_t power_hits(uint8_t who, uint8_t use, uint8_t t, uint8_t roll, int
     return shot.result;
 }
 
+/* Is power `use` a shift of yourself to a square (Blink)? That's a move, not an action. */
+static uint8_t self_shift(uint8_t who, uint8_t use)
+{
+    const apb_power_def *d;
+
+    if (use >= APB_POWERS_HELD || !p_id[who][use]) return 0;
+    d = &apb_powers[p_id[who][use]];
+    return (uint8_t)(d->shape == APB_SH_SHIFT && d->target == APB_TG_SQUARE);
+}
+
 static void use_power(uint8_t who, uint8_t use, uint8_t t, uint8_t sx, uint8_t sy)
 {
     const apb_power_def *d = &apb_powers[p_id[who][use]];
@@ -1470,6 +1480,7 @@ static uint8_t nearest(uint8_t who, uint8_t x, uint8_t y, uint8_t attackable)
 
 static uint8_t plan_x;
 static uint8_t plan_y;
+static uint8_t plan_blink;      /* 0, or the power (+1) the plan's move is a blink by */
 static uint8_t plan_target;
 static uint8_t plan_kind;          /* APB_ACT_ATTACK, or APB_ACT_POWER          */
 static uint8_t plan_use;
@@ -1569,6 +1580,24 @@ static uint8_t blast_count(uint8_t who, uint8_t cx, uint8_t cy, uint8_t a, uint8
     return n;
 }
 
+/* How many of who's melee foes could reach x, y next turn (within their Speed and a
+ * step); and in *closest, the distance to the nearest foe of all. */
+static uint8_t reachers(uint8_t who, uint8_t x, uint8_t y, uint8_t *closest)
+{
+    uint8_t i;
+    uint8_t d;
+    uint8_t n = 0;
+
+    *closest = 0xFF;
+    for (i = 0; i < count; ++i) {
+        if (f_state[i] != APB_IN_FIGHT || f_side[i] == f_side[who]) continue;
+        d = dist(x, y, f_x[i], f_y[i]);
+        if (d < *closest) *closest = d;
+        if (!f_ranged[i] && d <= apb_battle_speed(i) + 1) ++n;
+    }
+    return n;
+}
+
 /* Would a push of n along dx, dy from t's square drop it in a pit (or onto a hazard)? */
 static uint8_t push_lands_badly(uint8_t t, int8_t dx, int8_t dy, uint8_t n)
 {
@@ -1608,6 +1637,7 @@ static void plan_power(uint8_t who)
     const apb_power_def *d;
 
     plan_kind = APB_ACT_ATTACK;
+    plan_blink = 0;
     for (step = 1; step <= 8; ++step) {
         for (k = 0; k < APB_POWERS_HELD; ++k) {
             if (!usable(who, k)) continue;
@@ -1633,37 +1663,35 @@ static void plan_power(uint8_t who)
                 plan_target = best;
                 return;
             case 2:
-                /* Blink away: a shooter next to two foes or more goes where it's
-                 * furthest from them. */
-                if (d->shape != APB_SH_SHIFT || d->target != APB_TG_SQUARE || !f_ranged[who]) break;
-                if (foes_within(who, f_x[who], f_y[who], 1) < 2) break;
-                /* Only out of every melee foe's reach (its Speed and a step): blinking
-                 * to where they'll be on you again next turn costs a shot for nothing. */
+                /* Blink as your move: a shooter with a foe next to it goes where fewer
+                 * melee foes can reach it next turn (their Speed and a step) than where
+                 * it stands; of those, the fewest, then where it can still shoot someone,
+                 * then the furthest from them. Then it acts from there. */
+                if (plan_blink || !self_shift(who, k) || !f_ranged[who]) break;
+                if (!foes_within(who, f_x[who], f_y[who], 1)) break;
+                n = reachers(who, f_x[who], f_y[who], &x);
                 apb_battle_power_squares(who, k, f_x[who], f_y[who], sq);
-                best = 0;
+                bv = 0;
                 for (y = 0; y < map_h; ++y) {
-                    for (x = 0; x < map_w; ++x) {
-                        if (!sq[y][x] || tiles[y][x] == APB_TILE_HAZARD) continue;
-                        bv = 0x7FFF;
-                        for (i = 0; i < count; ++i) {
-                            if (f_state[i] != APB_IN_FIGHT || f_side[i] == f_side[who]) continue;
-                            v = (int16_t)(dist(x, y, f_x[i], f_y[i]));
-                            if (!f_ranged[i] && v <= apb_battle_speed(i) + 1) bv = 0;
-                            else if (v < bv) bv = v;
-                        }
-                        if (bv > best) {
-                            best = (uint8_t)(bv > 255 ? 255 : bv);
-                            plan_sx = x;
+                    for (i = 0; i < map_w; ++i) {
+                        if (!sq[y][i] || tiles[y][i] == APB_TILE_HAZARD) continue;
+                        tier = reachers(who, i, y, &bi);
+                        if (tier >= n) continue;
+                        v = (int16_t)((n - tier) * 0x200 + bi
+                                      + (nearest(who, i, y, 1) != APB_NOBODY ? 0x100 : 0));
+                        if (v > bv) {
+                            bv = v;
+                            plan_sx = i;
                             plan_sy = y;
                         }
                     }
                 }
-                if (!best) break;
-                plan_x = f_x[who];
-                plan_y = f_y[who];
-                plan_kind = APB_ACT_POWER;
-                plan_use = k;
-                return;
+                if (!bv) break;
+                plan_blink = (uint8_t)(k + 1);
+                plan_x = plan_sx;
+                plan_y = plan_sy;
+                plan_target = nearest(who, plan_x, plan_y, 1);
+                break;
             case 3:
                 /* A shove of a power (Bull rush) that drops a foe in a pit, or onto a hazard. */
                 if (d->shape != APB_SH_SHIFT || d->target != APB_TG_FOE) break;
@@ -1798,7 +1826,8 @@ static void foe_turn(uint8_t who)
 
     plan(who);
     plan_power(who);
-    move_to(who, plan_x, plan_y);
+    if (plan_blink) use_power(who, (uint8_t)(plan_blink - 1), APB_NOBODY, plan_x, plan_y);
+    else move_to(who, plan_x, plan_y);
     if (f_state[who] != APB_IN_FIGHT) return;
     if (plan_kind == APB_ACT_POWER) {
         /* As the player's would be: checked again from where it got to. */
@@ -1830,6 +1859,7 @@ void apb_battle_quick(uint8_t who, apb_action *out)
     out->dash_x = plan_x;
     out->dash_y = plan_y;
     out->kind = APB_ACT_DONE;
+    out->move_use = plan_blink;
     if (plan_kind == APB_ACT_POWER) {
         out->kind = APB_ACT_POWER;
         out->use = plan_use;
@@ -2017,7 +2047,12 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
     uint8_t oy;
 
     if (result != APB_BATTLE_ON || who >= count || order[next] != who || !begun) return 0;
-    if (a->move_x != f_x[who] || a->move_y != f_y[who]) {
+    if (a->move_use) {
+        /* Blink is a move: from where you stand, instead of walking. */
+        i = (uint8_t)(a->move_use - 1);
+        if (i >= APB_POWERS_HELD || !usable(who, i) || !self_shift(who, i)
+            || !power_square_ok(who, i, f_x[who], f_y[who], a->move_x, a->move_y)) return 0;
+    } else if (a->move_x != f_x[who] || a->move_y != f_y[who]) {
         if (!apb_battle_can_reach(who, a->move_x, a->move_y)) return 0;
     }
     switch (a->kind) {
@@ -2042,25 +2077,19 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
         f_y[who] = oy;
         break;
     case APB_ACT_POWER:
-        ok = usable(who, a->use);
+        /* Shifting yourself is your move, not your action. */
+        ok = (uint8_t)(usable(who, a->use) && !self_shift(who, a->use));
         if (!ok) break;
-        if (apb_powers[p_id[who][a->use]].target == APB_TG_SQUARE) {
-            ox = f_x[who];
-            oy = f_y[who];
-            f_x[who] = a->move_x;
-            f_y[who] = a->move_y;
-            ok = power_square_ok(who, a->use, a->move_x, a->move_y, a->dash_x, a->dash_y);
-            f_x[who] = ox;
-            f_y[who] = oy;
-        } else if (apb_powers[p_id[who][a->use]].target != APB_TG_AROUND) {
-            ox = f_x[who];
-            oy = f_y[who];
-            f_x[who] = a->move_x;
-            f_y[who] = a->move_y;
-            ok = power_can_target(who, a->use, t, a->move_x, a->move_y);
-            f_x[who] = ox;
-            f_y[who] = oy;
-        }
+        /* As if standing where the move ends. */
+        ox = f_x[who];
+        oy = f_y[who];
+        f_x[who] = a->move_x;
+        f_y[who] = a->move_y;
+        i = apb_powers[p_id[who][a->use]].target;
+        if (i == APB_TG_SQUARE) ok = power_square_ok(who, a->use, a->move_x, a->move_y, a->dash_x, a->dash_y);
+        else if (i != APB_TG_AROUND) ok = power_can_target(who, a->use, t, a->move_x, a->move_y);
+        f_x[who] = ox;
+        f_y[who] = oy;
         break;
     case APB_ACT_GUARD:
     case APB_ACT_FLEE:
@@ -2079,7 +2108,12 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
         begun = 0;
         return 1;
     }
-    move_to(who, a->move_x, a->move_y);
+    if (a->move_use) {
+        use_power(who, (uint8_t)(a->move_use - 1), APB_NOBODY, a->move_x, a->move_y);
+        move_left[who] = 0;
+    } else {
+        move_to(who, a->move_x, a->move_y);
+    }
     if (f_state[who] == APB_IN_FIGHT) {
         switch (a->kind) {
         case APB_ACT_ATTACK: attack(who, t); break;

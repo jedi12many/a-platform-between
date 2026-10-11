@@ -18,9 +18,10 @@
  *   trait WHO COND                       a condition for good (a foe's nature)
  *   put WHO COND                         a condition as the fight begins
  *   power WHO NAME RANK                  a power the fighter holds (registry/powers.txt)
- *   act X Y KIND TARGET [DX DY [USE]]    a traveler's turn (KIND: APB_ACT_*, 5 Shove,
+ *   act X Y KIND TARGET [DX DY [USE [BLINK]]]  a traveler's turn (KIND: APB_ACT_*, 5 Shove,
  *                                        6 Dash to DX, DY, 7 power USE on TARGET or the
- *                                        square DX, DY)
+ *                                        square DX, DY); BLINK: power BLINK - 1 takes them
+ *                                        to X, Y instead of walking
  *   act q                                a traveler's turn on quick
  *
  * Every attack's line ends with the target's Soak and its conditions' tags, so
@@ -37,9 +38,9 @@ static apb_rng rng;
 static apb_character ch;
 static apb_fighter f;
 static apb_action act;
-static char line[200];
-static char word[200];
-static char name[64];
+static char line[128];
+static char word[32];
+static char name[32];
 static char rows[APB_MAP_H_MAX][APB_MAP_W_MAX + 2];
 static int v[17];
 static uint8_t ids[APB_COND_SLOTS];
@@ -251,7 +252,7 @@ int main(int argc, char **argv)
             continue;
         }
         if (line[0] == '#' || line[0] == '\0') continue;
-        if (sscanf(line, "%s", word) != 1) continue;
+        if (sscanf(line, "%31s", word) != 1) continue;
         if (strcmp(word, "seed") == 0) {
             seed = (uint16_t)atol(line + 5);
             apb_rng_seed(&rng, seed);
@@ -262,15 +263,17 @@ int main(int argc, char **argv)
             in_map = 1;
             h = w = 0;
         } else if (strcmp(word, "hazard") == 0) {
-            if (sscanf(line, "%*s %d %63s %63s", &v[0], word, name) != 3) {
+            if (sscanf(line, "%*s %d %31s %31s", &v[0], word, name) != 3) {
                 printf("bad hazard: %s\n", line);
                 return 1;
             }
             apb_battle_set_hazard((uint8_t)v[0], type_named(word), cond_named(name));
         } else if (strcmp(word, "traveler") == 0) {
+            /* The Passport is read where it is in the line (v[15] to v[16]). */
             v[1] = -1;
-            if (sscanf(line, "%*s %s %d %d", word, &v[0], &v[1]) < 2
-                || apb_passport_decode(word, &ch, 0) != APB_PP_OK) {
+            v[15] = v[16] = 0;
+            if (sscanf(line, "%*s %n%*s%n %d %d", &v[15], &v[16], &v[0], &v[1]) < 1 || !v[16]
+                || (line[v[16]] = '\0', apb_passport_decode(line + v[15], &ch, 0) != APB_PP_OK)) {
                 printf("bad traveler: %s\n", line);
                 return 1;
             }
@@ -305,14 +308,14 @@ int main(int argc, char **argv)
             f.power = (uint8_t)v[10]; f.dmg_type = (uint8_t)v[11]; f.area = (uint8_t)v[12];
             f.weak_type = (uint8_t)v[13]; f.behavior = (uint8_t)v[14]; f.coward = (uint8_t)v[15];
             p = line + n;
-            if (sscanf(p, " hit %63s", name) == 1) f.on_hit = cond_named(name);
+            if (sscanf(p, " hit %31s", name) == 1) f.on_hit = cond_named(name);
             find(letter, 0, &f.x, &f.y);
             who = apb_battle_add(&f);
             if (who == APB_NOBODY) printf("couldn't place it\n");
             else printf("%u: foe %c at %u,%u, health %u, speed %u\n", who, letter, f.x, f.y, f.health,
                         apb_battle_speed(who));
         } else if (strcmp(word, "power") == 0) {
-            if (sscanf(line, "%*s %d %63s %d", &v[0], name, &v[1]) != 3 || !(c = power_named(name))) {
+            if (sscanf(line, "%*s %d %31s %d", &v[0], name, &v[1]) != 3 || !(c = power_named(name))) {
                 printf("bad power: %s\n", line);
                 return 1;
             }
@@ -321,7 +324,7 @@ int main(int argc, char **argv)
             else printf("%d has %s at rank %d (tier %u, rolls %u)\n", v[0], name, v[1],
                         apb_power_tier((uint8_t)v[1]), apb_battle_power_rating((uint8_t)v[0], i));
         } else if (strcmp(word, "trait") == 0 || strcmp(word, "put") == 0) {
-            if (sscanf(line, "%*s %d %63s", &v[0], name) != 2 || !(c = cond_named(name))) {
+            if (sscanf(line, "%*s %d %31s", &v[0], name) != 2 || !(c = cond_named(name))) {
                 printf("bad %s: %s\n", word, line);
                 return 1;
             }
@@ -340,10 +343,13 @@ int main(int argc, char **argv)
             if (who == APB_NOBODY) break;
             if (strcmp(line, "act q") == 0) {
                 apb_battle_quick(who, &act);
-                printf("  (quick: act %u %u %u %u)\n", act.move_x, act.move_y, act.kind, act.target);
+                printf("  (quick: act %u %u %u %u", act.move_x, act.move_y, act.kind, act.target);
+                if (act.move_use) printf(" %u %u %u %u", act.dash_x, act.dash_y, act.use, act.move_use);
+                printf(")\n");
             } else {
-                v[4] = v[5] = v[6] = 0;
-                sscanf(line, "%*s %d %d %d %d %d %d %d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6]);
+                v[4] = v[5] = v[6] = v[7] = 0;
+                sscanf(line, "%*s %d %d %d %d %d %d %d %d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6],
+                       &v[7]);
                 act.move_x = (uint8_t)v[0];
                 act.move_y = (uint8_t)v[1];
                 act.kind = (uint8_t)v[2];
@@ -351,6 +357,7 @@ int main(int argc, char **argv)
                 act.dash_x = (uint8_t)v[4];
                 act.dash_y = (uint8_t)v[5];
                 act.use = (uint8_t)v[6];
+                act.move_use = (uint8_t)v[7];
             }
             if (!apb_battle_act(who, &act)) printf("  (not allowed: %s)\n", line);
         }

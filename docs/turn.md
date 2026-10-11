@@ -15,7 +15,8 @@ attacks and damage, sight, the foes' rules, fleeing) is as [combat.md](combat.md
    tick: damage each turn, then healing each turn. If you're knocked down, you stand up
    (it takes half your Speed). If a condition takes your turn (stunned, asleep, paralyzed,
    frozen), the turn goes straight to step 4.
-2. **Move**, up to your Speed.
+2. **Move**, up to your Speed; or, instead of walking, **Blink** (a power that shifts
+   you to a square: see *Powers in play*).
 3. **One action**: Attack, Shove, Dash, Guard, Wait (only before you've moved, once a
    round), Flee, or Done. Swapping gear is free, any time on your turn
    ([items.md](items.md#swapping)).
@@ -136,7 +137,7 @@ the arena; at each Departure's, in the game). Using one is your turn's action.
 | **Ward** | you, or a traveler next to you | its condition, at its tier (shielded: Armor + 10 × tier) |
 | **Mend** | you, or a traveler next to you | heals 5 × tier, and puts on its condition (Second wind: regenerating) |
 | **Field** | a square in sight, on open or rough ground | a line of tier + 2 squares through it, across the line from you, for 3 of your turns: fire or energy (a hazard: 5 × tier, and its condition), cold (rough ground), kinetic (wall), mind (cover). Not on anyone's square |
-| **Shift** | yourself to a square; or a foe next to you | yourself: straight there (8 ways), up to tier + 2 squares, through nothing that blocks sight, and no free attacks for leaving; a foe: rolled against its Ward, pushed tier + 2 squares away (as a Shove's push: pits, walls, hazards) |
+| **Shift** | yourself to a square; or a foe next to you | yourself: straight there (8 ways), up to tier + 2 squares, through nothing that blocks sight, and no free attacks for leaving. **It's your move, not your action**: instead of walking, from where you start, and then you act from where you land (a shot, a Shove, a Dash, another power); a foe: rolled against its Ward, pushed tier + 2 squares away (as a Shove's push: pits, walls, hazards) |
 
 A hit (Bolt, Burst, Hex) also puts on the power's **condition** at its tier, and its
 element's **rider**: **fire** burns the target's square till the end of your next turn
@@ -152,9 +153,11 @@ On Quick and Auto, and for foes, the computer moves as it always has ([combat.md
 then takes the **first** of these it can, from where it ends up; if none, it uses its weapon:
 
 1. **Mend** you, or a friend next to you, at half health or less (the most hurt first).
-2. **Blink** away, if you shoot and two foes or more are next to you: to a square out of
-   every melee foe's reach (further than its Speed and a step), the furthest from them; if
-   there's none, it stays and shoots.
+2. **Blink**, as your move, if you shoot and a foe is next to you: to where fewer melee
+   foes could reach you next turn (within their Speed and a step) than where you stand;
+   of those, where the fewest can, then where you can still shoot someone, then furthest
+   from them. Then the rest of this list, and your weapon, from where you land. If
+   nowhere is better, you stay and shoot.
 3. **Shove with a power** (Bull rush) a foe next to you that it would drop in a pit or
    onto a hazard.
 4. **Burst** where it catches two foes or more, and none of your side.
@@ -194,14 +197,16 @@ sanitizers.
   Vanish, Mind spike's confusion: until then Mind spike frightens).
 - **What the arena says about powers** ([arena.md](arena.md#first-findings), 1000 fights a
   scenario, the computer playing them as above). After the second pass (hexes hurt,
-  Ground slam stuns, Second wind regenerates, Blink only out of reach): a Medic beside a
+  Ground slam stuns, Second wind regenerates, Blink a move): a Medic beside a
   Warden lifts them from 80% to 91%; a Tinker's powers take a fight nobody wins to 9%; a
   Rogue's hexes from 49% to 69%; a Warden's four from 14% to 91% against two guards and a
   rat. **Bull rush by a pit is the strongest thing in the game** (84% alone): a fall is out
   of the fight, and whether it should be (rather than damage and a turn to climb out) is
   open, with Shove's. A **stunning Ground slam** (66% alone) may be too much for one
-  charge. Blink, as the computer plays it, is seldom worth a shot: whether shifting yourself
-  should take your move rather than your action is open.
+  charge. **Blink is a move now**: the computer uses it only to get where fewer foes can
+  reach it, and in the arena's small rooms there's never such a square three squares away
+  (a rat's reach is 7), so it's the player's tool there: a way past a wall, a pit or a
+  line of foes, before the shot.
 - Whether a fire hit should both burn the square and set the target on fire (Fireball,
   Fire wall do both now): fire is strong.
 - Foes with a shove or a knockback of their own, and **teleporting** (no free attacks).

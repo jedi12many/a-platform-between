@@ -23,8 +23,10 @@
  *   ar_power(who, use, x, y)  what power `use` could be used on from x, y: fighters (with
  *                             the TN, 0 if there's no roll) and squares
  *   ar_shoves(who, x, y)      who `who` can shove from x, y, and the TN for each
- *   ar_act(who, kind, x, y, target, dx, dy, use)   a turn: move to x, y, then APB_ACT_* (a
- *                             Dash on to dx, dy; power `use` on target, or the square dx, dy)
+ *   ar_act(who, kind, x, y, target, dx, dy, use, blink)   a turn: move to x, y (walking,
+ *                             or by Blink, power blink - 1, if blink isn't 0), then
+ *                             APB_ACT_* (a Dash on to dx, dy; power `use` on target, or the
+ *                             square dx, dy)
  *   ar_quick(who)             the turn the computer would play for `who`
  *   ar_equip(who, slot, item) gear from the pack: slot 0 the hand (0: bare-handed), slot 1
  *                             the body (0: no armor)
@@ -404,7 +406,7 @@ const char *ar_shoves(unsigned who, unsigned x, unsigned y)
 
 EMSCRIPTEN_KEEPALIVE
 const char *ar_act(unsigned who, unsigned kind, unsigned x, unsigned y, unsigned target,
-                   unsigned dx, unsigned dy, unsigned use)
+                   unsigned dx, unsigned dy, unsigned use, unsigned blink)
 {
     apb_action a;
 
@@ -415,6 +417,7 @@ const char *ar_act(unsigned who, unsigned kind, unsigned x, unsigned y, unsigned
     a.dash_x = (uint8_t)dx;
     a.dash_y = (uint8_t)dy;
     a.use = (uint8_t)use;
+    a.move_use = (uint8_t)blink;    /* 0: walk; else Blink (power blink - 1) is the move */
     begin_reply();
     if (!apb_battle_act((uint8_t)who, &a)) {
         used = 0;
@@ -431,8 +434,8 @@ const char *ar_quick(unsigned who)
 
     apb_battle_quick((uint8_t)who, &a);
     used = 0;
-    put("{\"x\":%u,\"y\":%u,\"kind\":%u,\"target\":%u,\"dx\":%u,\"dy\":%u,\"use\":%u}", a.move_x,
-        a.move_y, a.kind, a.target, a.dash_x, a.dash_y, a.use);
+    put("{\"x\":%u,\"y\":%u,\"kind\":%u,\"target\":%u,\"dx\":%u,\"dy\":%u,\"use\":%u,\"blink\":%u}",
+        a.move_x, a.move_y, a.kind, a.target, a.dash_x, a.dash_y, a.use, a.move_use);
     return json;
 }
 
