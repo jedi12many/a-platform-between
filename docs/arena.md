@@ -103,7 +103,7 @@ coats, ids 9-14). Change a scenario there, `make site`, and the page follows.
 The same scenarios, played in a modern page instead of on the train: no story, no Boarding
 Pass, no Travel Stamp, no C64 screen, and **by rules v1** ([turn.md](turn.md): the rules
 lab's movement, conditions and powers), where the train still plays v0. More scenarios
-(R-01 to R-15) are there only, to try v1: fire to cross, a ledge to shove foes
+(R-01 to R-17) are there only, to try v1: fire to cross, a ledge to shove foes
 off, poisoned bites, chilling shots, flying over pits, running with Dash; and powers: a
 Channeler's fire and ice, a Medic beside a Warden, a Tinker's barricade and shock mine, a
 Rogue's blink and snare, a Warden's bull rush. It's a tool in
@@ -112,7 +112,7 @@ the **studio**, beside the art desk:
     make studio            then open http://localhost:8064/arena/
 
 - **The intro** lists only what needs playing now, a few at a time (`PLAYING` in
-  `tools/arena/scenarios.py`: R-13, R-14, R-15 and R-10 this round); any other opens by
+  `tools/arena/scenarios.py`: R-16, R-17, R-13, R-14 and R-15 this round); any other opens by
   its link (`arena/#scenario=R-02`). The chosen one shows what we want tested and what to
   watch for, both sides' cards (worked out by the rules, not typed in), and what a thousand
   fights on the computer say. Enter starts the fight.
@@ -215,8 +215,8 @@ shoves or dashes):
 |---|---|---|---|
 | A-01 A fair fight | 82% | 89% | the Salvaged Warden's Plated (Armor +10) |
 | A-05 Two of them | 5% | 12% | Plated |
-| A-06 Level 4: still a wall | 12% | 30% | Plated: levels count for more with it |
-| A-07 Level 5: new gear | 61% | 80% | |
+| A-06 Level 4: still a wall | 12% | 52% | Plated, and a level counts twice (+6 at level 4) |
+| A-07 Level 5: new gear | 61% | 80% | v1's gentler tier (8 damage, Armor 15), and +8 for the levels |
 | A-08 The swarm (4 rats) | 43% | 76% | Plated: the rats' 2s mostly miss |
 | A-10 Shooters in a pair | 44% | 62% | |
 | R-01 Through the fire | | 68% | three squares of fire cost about 15 health |
@@ -232,7 +232,9 @@ shoves or dashes):
 | R-12 They have powers too | | 20% | 29% if the foes have none: the gunner's Snare costs you 9 points |
 | R-13 Ground slam, no pit | | 39% | 4% without powers; the slam alone 29% |
 | R-14 Shockwave, no pit | | 27% | 4% without powers; Shockwave alone 17% |
-| R-15 Above their level | | 38% | 48% if the foes have no powers: a level 6 Warden (Resist 12) with an iron sword and a chain coat; their hexes need 62, and still cost him 10 points |
+| R-15 Above their level | | 45% | 58% if the foes have no powers: a level 6 Warden (Resist 12, +10 to attack and Dodge) with an iron sword and a chain coat; their hexes need 62, and still cost him 13 points |
+| R-16 Level 4, the old gear | | 52% | A-05's fight at level 4: 12% at level 1 |
+| R-17 Level 5, the new gear | | 80% | the next level, and the next tier of gear: a step, not a cliff |
 
 From R-07 on, both sides use their powers as [turn.md](turn.md#how-the-computer-uses-powers)
 says. Soak is strong against swarms: a Soak equal to a foe's damage
