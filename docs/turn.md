@@ -190,6 +190,22 @@ falls, every kind of condition), each roll re-checked from the Python reference
 off for random fighters and conditions; and random battles never crash under the
 sanitizers.
 
+## To revisit
+
+Decided for now, to come back to after more playtests:
+
+- **Pits and cliffs are a higher level's challenge.** A shove or a bull rush into a pit is
+  out of the fight, and it's the strongest thing in the game (R-02, R-11: Bull rush alone
+  84%); it stays, because shoving things off is fun. Later, hazards may have levels, and a
+  pit or a cliff on a map be for higher-level fights (or a fall be damage and a turn to
+  climb out, at low levels).
+- **Ground slam or Shockwave.** A stun for everyone round you, for one charge, may be too
+  strong: on an open floor a new Warden's slam alone takes two rust-guards and a rat from
+  4% to 29%. Shockwave is the alternative being tried: the same burst, but **staggered**
+  (−20 × tier to each one's next attack) instead of stunned: 17%. With all four powers,
+  R-13 (Ground slam) is 39% and R-14 (Shockwave) 27%. By a pit, the push into it is what
+  wins, and the two come out the same (66%).
+
 ## Still open
 
 - **Phased** (through walls, untouchable), **hidden**, **spreading**, **at random**,

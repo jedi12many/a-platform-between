@@ -298,6 +298,35 @@ LAB += [
 ]
 
 
+# Two ways of slamming (docs/turn.md, To revisit): the same Warden on an open floor, no
+# pit to push into, with Ground slam (stuns) or Shockwave (staggers), to feel which.
+OPEN_FLOOR = ["############",
+              "#..........#",
+              "#@........a#",
+              "#.........b#",
+              "#.........c#",
+              "############"]
+LAB += [
+    {"title": "Ground slam, no pit",
+     "issue": "A new Warden against two rust-guards and an ash rat on an open floor, with "
+              "Ground slam (everyone round you hit, stunned: they lose their next turn), "
+              "Bull rush, Shield wall and Second wind.",
+     "watch": "Whether a stun for everyone round you is too much for one charge. Play R-14 "
+              "next: the same fight with Shockwave instead.",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "powers": [["BULL_RUSH", 10], ["GROUND_SLAM", 10], ["SHIELD_WALL", 10], ["SECOND_WIND", 10]],
+     "foes": ["RUST_GUARD", "RUST_GUARD", "ASH_RAT"], "map": OPEN_FLOOR},
+    {"title": "Shockwave, no pit",
+     "issue": "The same fight as R-13, but the slam is Shockwave: everyone round you hit and "
+              "staggered (-20 to their next attack) instead of stunned.",
+     "watch": "Whether Shockwave still feels worth its one charge, and which slam you'd rather "
+              "the Warden had.",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "powers": [["BULL_RUSH", 10], ["SHOCKWAVE", 10], ["SHIELD_WALL", 10], ["SECOND_WIND", 10]],
+     "foes": ["RUST_GUARD", "RUST_GUARD", "ASH_RAT"], "map": OPEN_FLOOR},
+]
+
+
 def foe_name(f):
     """A scenario's foe: NAME, NAME:HIT, or {"foe": NAME, "hit": .., "powers": [[NAME, rank]]}."""
     return f["foe"] if isinstance(f, dict) else f.split(":")[0]

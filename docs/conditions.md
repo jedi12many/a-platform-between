@@ -149,6 +149,7 @@ foe or a Departure names it by its id.
 | **Entangled** | Speed 0 (can still act) | shake off: Might, TN 100 | a net, vines, sticky foam |
 | **Knocked down** | Dodge 0; standing up costs half your move | when you stand | a shove, a blast, a shockwave |
 | **Stunned** | lose the turn | 1 round | a stun baton, a concussion |
+| **Staggered** | −20 to your next attack (× tier) | 1 round | a shockwave, a heavy blow |
 | **Paralyzed** | lose the turn; Dodge 0 | 2 rounds; or shake off: Grit, TN 120 | a neural lock, a ghoul's touch |
 | **Frozen** | lose the turn; Armor +10; then soaked | 1 round | Ice wall's heart, a cryo blast |
 | **Weightless** | crosses pits; −10 to melee | while it lasts | zero gravity, a levitation spell |
@@ -264,7 +265,7 @@ Most powers either do damage or put on a condition; many do both. The class list
 
 | Class | Power: condition |
 |---|---|
-| Warden | Shield wall: shielded. Shove: knocked down (a crit). Taunt: taunted. Ground slam: stunned |
+| Warden | Shield wall: shielded. Shove: knocked down (a crit). Taunt: taunted. Ground slam: stunned (or Shockwave: staggered, being tried) |
 | Rogue | Blink: displaced. Smoke: a field of fog (hidden). Dirty trick: blinded, 1 round. Snare: slowed; entangled from tier 3. Vanish: hidden |
 | Tinker | Force field: barrier. Barricade: in cover. Shock mine: stunned. Scan: marked |
 | Channeler | Ice wall: chilled; frozen from tier 5. Fire wall, Fireball: on fire. Shield: warded. Mind spike: confused |

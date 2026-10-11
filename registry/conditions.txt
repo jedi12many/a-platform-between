@@ -66,6 +66,7 @@
 33    IRRADIATED      3      -             -         -          RAD   "Irradiated"       dot=2:energy
 34    WEIGHTLESS      3      -             -         -          FLT   "Weightless"       fly melee=-10
 35    HEXED           3      -             -         -          HEX   "Hexed"            attacks=-10 tiered
+36    STAGGERED       1      -             -         -          STAG  "Staggered"        next=-20 tiered
 # The races' traits (docs/races.md): always on.
 64    LUCKY           -      -             -         -          LCK   "Lucky"            rolls=5 race=HUMAN
 65    STEADY          -      -             -         -          STDY  "Steady"           shake=10 race=HUMAN

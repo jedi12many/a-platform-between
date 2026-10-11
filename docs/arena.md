@@ -231,6 +231,8 @@ shoves or dashes):
 | R-10 Blink and snare | | 69% | 49% without; Snare alone 68%, Dirty trick alone 54% |
 | R-11 Bull rush | | 91% | 14% without; Bull rush alone 84% (the pit), Ground slam 66%, Shield wall 26%, Second wind 23% |
 | R-12 They have powers too | | 23% | 29% if the foes have none: the gunner's Snare costs you 6 points |
+| R-13 Ground slam, no pit | | 39% | 4% without powers; the slam alone 29% |
+| R-14 Shockwave, no pit | | 27% | 4% without powers; Shockwave alone 17% |
 
 From R-07 on, both sides use their powers as [turn.md](turn.md#how-the-computer-uses-powers)
 says. Soak is strong against swarms: a Soak equal to a foe's damage
