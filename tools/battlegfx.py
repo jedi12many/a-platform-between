@@ -1,5 +1,6 @@
 """The battle map's graphics (docs/frames.md, E12): one file every front end with graphics
-loads for a fight, built from the art below and checked against the C64's rules.
+loads for a fight, built from the art in content/art/ (docs/art.md, tools/art.py; edited
+with the art desk, tools/artdesk/) and checked against the C64's rules.
 
     python3 tools/battlegfx.py OUT.bgfx [--sheet SHEET.png] [--c64 DIR] [--cart16 FILE]
 
@@ -50,14 +51,12 @@ SHAPES_LOW = 48                 # sprite shapes at $EC00, the rest at $FC00
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "registry"))
 from c64pic import PALETTE  # noqa: E402
+import art  # noqa: E402
 import registry  # noqa: E402
 
 (BLACK, WHITE, RED, CYAN, PURPLE, GREEN, BLUE, YELLOW,
  ORANGE, BROWN, PINK, DGREY, GREY, LGREEN, LBLUE, LGREY) = range(16)
 
-SPRITE_SHARED = (DGREY, LGREY)          # sprite multicolour 1 ($D025) and 2 ($D026)
-SCREEN_BG = BLACK
-TILE_SHARED = (DGREY, GREY)             # multicolour character colours 1 and 2
 
 # ------------------------------------------------------------------ the font
 
@@ -82,17 +81,17 @@ def glyph(rows):
     return out
 
 
-# ------------------------------------------------------------------ tiles
-# Each tile is 16 multicolour dots wide and 32 rows tall (4 x 4 characters): letters
-# k (the background, black), d and g (the shared dark grey and grey), o (the tile's own
-# colour). The tiles are the battle map's squares (docs/combat.md): open, wall, pit,
-# rough, cover, hazard, high ground, exit. Flat, so the squares that matter stand out.
+# ------------------------------------------------------------------ the art
+# The art itself is in content/art/ (docs/art.md, tools/art.py), drawn as text grids and
+# edited with the art desk (tools/artdesk/). The tiles: k the background, d and g the
+# shared colours, o the tile's own. The C version's are 16 multicolour dots wide and 32
+# tall (4 x 4 characters); the cartridge's (docs/cartridge.md, "The view"), squares of 16
+# pixels, 8 wide and 16 tall (2 x 2 characters). The figures: 12 multicolour dots wide,
+# 21 tall, a and b the sprites' shared dark grey and light grey, c the figure's own
+# colour, . see-through, feet on the bottom row.
 
 TW, TH = 16, 32
-
-
-def blank(c="g"):
-    return [[c] * TW for _ in range(TH)]
+T16W, T16H = 8, 16
 
 
 def fill(t, x0, y0, x1, y1, c):
@@ -101,162 +100,22 @@ def fill(t, x0, y0, x1, y1, c):
             t[y][x] = c
 
 
-def slab_floor():
-    t = blank("g")
-    fill(t, TW - 1, 0, TW - 1, TH - 1, "d")         # a faint seam right and below
-    fill(t, 0, TH - 1, TW - 1, TH - 1, "d")
-    return t
+def _tiles(name):
+    a = art.load(name)
+    return [([list(r) for r in e.rows], e.colour) for e in a.entries[:8]], a
 
 
-def wall():
-    t = blank("d")
-    fill(t, 0, TH - 1, TW - 1, TH - 1, "k")         # its foot
-    return t
-
-
-def pit():
-    t = slab_floor()
-    fill(t, 1, 3, 14, 28, "k")
-    fill(t, 1, 3, 14, 4, "d")                       # the far rim, in shadow
-    for x, y in ((4, 10), (10, 15), (6, 21), (11, 24)):
-        t[y][x] = "o"                               # far down, something glints
-    return t
-
-
-def rough():
-    t = slab_floor()
-    for (x, y, w, h) in ((2, 4, 4, 3), (9, 3, 3, 2), (4, 13, 5, 4), (11, 12, 3, 3),
-                         (2, 22, 3, 3), (8, 21, 5, 4)):
-        fill(t, x, y, x + w - 1, y + h - 1, "d")
-        fill(t, x, y + h, x + w - 1, y + h, "k")    # each lump's shadow
-    return t
-
-
-def cover():
-    t = slab_floor()
-    fill(t, 2, 5, 13, 27, "k")                      # a crate, outlined
-    fill(t, 3, 6, 12, 26, "o")
-    fill(t, 3, 16, 12, 16, "k")                     # its planks
-    return t
-
-
-def hazard():
-    t = slab_floor()
-    for top in (7, 15, 23):                         # three waves
-        for x in range(2, 14):
-            y = top + (0, 1, 2, 1)[(x // 2) % 4]
-            t[y][x] = t[y + 1][x] = "o"
-            t[y + 2][x] = "k"
-    return t
-
-
-def high():
-    t = blank("g")
-    fill(t, 0, 0, TW - 1, 1, "o")                   # its lit edge
-    fill(t, 0, 0, 0, 25, "o")
-    fill(t, 0, 26, TW - 1, 30, "d")                 # the raised step's front
-    fill(t, 0, TH - 1, TW - 1, TH - 1, "k")
-    return t
-
-
-def exit_():
-    t = slab_floor()
-    fill(t, 1, 1, 14, 29, "o")                      # a lit doorway
-    arrow = ["....kk......", "...kkk......", "..kkkkkkkkk.", ".kkkkkkkkkk.", ".kkkkkkkkkk.",
-             "..kkkkkkkkk.", "...kkk......", "....kk......"]
-    for dy, row in enumerate(arrow):
-        for dx, c in enumerate(row):
-            if c == "k":
-                t[12 + dy][2 + dx] = "k"            # this way out
-    return t
-
-
-TILES = [  # (art, its own colour)
-    (slab_floor(), BLACK), (wall(), BLACK), (pit(), BLUE), (rough(), BLACK),
-    (cover(), RED), (hazard(), YELLOW), (high(), WHITE), (exit_(), GREEN),
-]
-
-# ------------------------------------------------------------------ the cartridge's tiles
-# The cartridge's map (docs/cartridge.md, "The view") has squares of 16 pixels: each tile
-# 8 multicolour dots wide and 16 rows tall (2 x 2 characters), the same eight, as flat.
-
-T16W, T16H = 8, 16
-
-
-def blank16(c="g"):
-    return [[c] * T16W for _ in range(T16H)]
-
-
-def floor16():
-    t = blank16("g")
-    fill(t, T16W - 1, 0, T16W - 1, T16H - 1, "d")   # a faint seam right and below
-    fill(t, 0, T16H - 1, T16W - 1, T16H - 1, "d")
-    return t
-
-
-def wall16():
-    t = blank16("d")
-    fill(t, 0, T16H - 1, T16W - 1, T16H - 1, "k")   # its foot
-    return t
-
-
-def pit16():
-    t = floor16()
-    fill(t, 1, 2, 6, 13, "k")
-    fill(t, 1, 2, 6, 2, "d")                        # the far rim
-    t[7][3] = t[10][5] = "o"                        # something glints
-    return t
-
-
-def rough16():
-    t = floor16()
-    for (x, y, w, h) in ((1, 2, 2, 2), (4, 6, 3, 2), (1, 10, 3, 2)):
-        fill(t, x, y, x + w - 1, y + h - 1, "d")
-        fill(t, x, y + h, x + w - 1, y + h, "k")    # each lump's shadow
-    return t
-
-
-def cover16():
-    t = floor16()
-    fill(t, 1, 2, 6, 13, "k")                       # a crate, outlined
-    fill(t, 2, 3, 5, 12, "o")
-    fill(t, 2, 7, 5, 7, "k")                        # its planks
-    return t
-
-
-def hazard16():
-    t = floor16()
-    for top in (3, 9):                              # two waves
-        for x in range(1, 7):
-            y = top + (0, 1, 2, 1)[x % 4]
-            t[y][x] = "o"
-            t[y + 1][x] = "k"
-    return t
-
-
-def high16():
-    t = blank16("g")
-    fill(t, 0, 0, T16W - 1, 0, "o")                 # its lit edge
-    fill(t, 0, 0, 0, 11, "o")
-    fill(t, 0, 12, T16W - 1, 14, "d")               # the raised step's front
-    fill(t, 0, T16H - 1, T16W - 1, T16H - 1, "k")
-    return t
-
-
-def exit16():
-    t = floor16()
-    fill(t, 1, 1, 6, 14, "o")                       # a lit doorway
-    for dy, row in enumerate(["..k...", ".kkkk.", ".kkkk.", "..k..."]):
-        for dx, c in enumerate(row):
-            if c == "k":
-                t[6 + dy][1 + dx] = "k"             # this way out
-    return t
-
-
-TILES16 = [  # (art, its own colour), in the same order as TILES
-    (floor16(), BLACK), (wall16(), BLACK), (pit16(), BLUE), (rough16(), BLACK),
-    (cover16(), RED), (hazard16(), YELLOW), (high16(), WHITE), (exit16(), GREEN),
-]
+TILES, _T32 = _tiles("tiles32")          # [(art, its own colour)], the terrain's order
+TILES16, _T16 = _tiles("tiles16")
+_FIGURES = art.load("figures")
+LOOKS = {e.name: (e.colour, e.rows) for e in _FIGURES.entries}
+EFFECTS = {e.name: e.rows for e in art.load("effects").entries}
+SPRITE_SHARED = _FIGURES.shared          # sprite multicolour 1 ($D025) and 2 ($D026)
+SCREEN_BG = _T32.background
+TILE_SHARED = _T32.shared                # multicolour character colours 1 and 2
+REG = registry.load()
+RACES = [n for n, _ in sorted(REG["races"].items(), key=lambda kv: kv[1]["id"])]
+FOES = [n for n, _ in sorted(REG["foes"].items(), key=lambda kv: kv[1]["id"])]
 
 
 def marked16(art):
@@ -313,6 +172,13 @@ def chars16(art, own):
     return chars, [own | 8] * 4
 
 
+# The colours the cartridge sets itself (cart/screen.s: the map's; cart/tactics.s: the
+# figures' second shared colour, the first being black there, the drawn-in outline).
+CART_TILE_COLOURS = (art.COLOURS.index("black"), art.COLOURS.index("dgrey"),
+                     art.COLOURS.index("grey"))
+CART_SPRITE_MC2 = art.COLOURS.index("lgrey")
+
+
 def build16():
     """The cartridge's graphics for a map (docs/cartridge.md, "The view"):
 
@@ -330,6 +196,12 @@ def build16():
 
     The looks are the C version's: the races at their ids (0-6), a stranger at 7, the foes
     at 8-15."""
+    if (_T16.background,) + _T16.shared != CART_TILE_COLOURS:
+        raise Problem("tiles16.txt: the cartridge's map is black, dgrey and grey (cart/screen.s "
+                      "sets them): change them there too, and here")
+    if SPRITE_SHARED[1] != CART_SPRITE_MC2:
+        raise Problem("figures.txt: the cartridge's figures' second shared colour is lgrey "
+                      "(cart/tactics.s sets it): change it there too, and here")
     charset = [[0] * 8 for _ in range(256)]
     table, marks = bytearray(), bytearray()
     at = 1
@@ -365,107 +237,6 @@ def build16():
     return (bytes(b for ch in charset for b in ch) + bytes(table) + bytes(marks) + bytes(shapes)
             + bytes(colours) + bytes(names))
 
-
-# ------------------------------------------------------------------ figures
-# 12 multicolour dots wide, 21 tall: a and b the sprites' shared dark grey and light
-# grey, c the figure's own colour, . see-through. Feet on the bottom row.
-
-LOOKS = {
-    "HUMAN": (PINK, [
-        "....bbbb....", "...bccccb...", "...bccccb...", "....cccc....", ".....cc.....",
-        "...aaaaaa...", "..aabbbbaa..", "..aabbbbaa..", ".caabbbbaac.", ".c.aabbaa.c.",
-        ".c.aaaaaa.c.", "...aaaaaa...", "...aa..aa...", "...aa..aa...", "...aa..aa...",
-        "...aa..aa...", "...aa..aa...", "...aa..aa...", "..aaa..aaa..", "..aaa..aaa..",
-        "............"]),
-    "HOLLOWBORN": (BROWN, [
-        "...cccccc...", "..cbbccbbc..", "..cccccccc..", "..cc.aa.cc..", "...cccccc...",
-        ".cccccccccc.", "ccaaccccaacc", "cca.cccc.acc", "cc..cccc..cc", "cc..caac..cc",
-        "cc..cccc..cc", "....cccc....", "...cc..cc...", "...cc..cc...", "...cc..cc...",
-        "...cc..cc...", "..ccc..ccc..", "..ccc..ccc..", "..aaa..aaa..", "............",
-        "............"]),
-    "GLASSFOLK": (CYAN, [
-        ".....b......", "....bcb.....", "...bcccb....", "...cbcbc....", "....ccc.....",
-        "...bcccb....", "..bcbcbcb...", ".bc.ccc.cb..", ".c..cbc..c..", ".b..ccc..b..",
-        "....cbc.....", "...cc.cc....", "...cb.bc....", "...c...c....", "...c...c....",
-        "...b...b....", "..bc...cb...", "..cc...cc...", "............", "............",
-        "............"]),
-    "RAD_DRYAD": (GREEN, [
-        "..cc.cc.cc..", ".cccccccccc.", "cccbcccbcccc", ".ccccccccc..", "...aaaaaa...",
-        "...abbbba...", "...aaaaaa...", "..aaaaaaaa..", ".ca.aaaa.ac.", "c..aaaaaa..c",
-        "...aaaaaa...", "...aaaaaa...", "...aa..aa...", "...aa..aa...", "...aa..aa...",
-        "..aaa..aaa..", ".aaa....aaa.", ".a.a....a.a.", "............", "............",
-        "............"]),
-    "CHRONOMITE": (YELLOW, [
-        "....aaaa....", "...acccca...", "..acbcbca...", "..accbcca...", "...acccca...",
-        "....aaaa....", "...aaaaaa...", "..aacccaa...", ".a.acbca.a..", ".a.acccaa.a.",
-        "...aaaaaa...", "...aa..aa...", "...aa..aa...", "...aa..aa...", "...aa..aa...",
-        "..aaa..aaa..", "............", "............", "............", "............",
-        "............"]),
-    "SALVAGED": (CYAN, [
-        "....aaaa....", "...abbbba...", "...acccca...", "...abbbba...", "....aaaa....",
-        "..bbbbbbbb..", ".babbbbbbab.", ".ba.bbbb.abaaaa", ".ba.bbbb.aaaa.", ".bb.bbbb.bb.",
-        "....aaaa....", "....acca....", "....aaaa....", "...bb..bb...", "...bb..bb...",
-        "...aa..aa...", "...aa..aa...", "..aaa..aaa..", "..aaa..aaa..", "............",
-        "............"]),
-    "MOTH_FOLK": (PURPLE, [
-        "...b....b...", "....b..b....", "....bbbb....", "....bccb....", ".....bb.....",
-        "cc..aaaa..cc", "ccc.abba.ccc", "cccbaaaabccc", "cccc.aa.cccc", ".ccc.aa.ccc.",
-        "..cc.aa.cc..", "....aaaa....", "....a..a....", "....a..a....", "....a..a....",
-        "...aa..aa...", "............", "............", "............", "............",
-        "............"]),
-    "STRANGER": (LGREY, [
-        "....aaaa....", "...aaaaaa...", "...aaaaaa...", "....aaaa....", "...aaaaaa...",
-        "..aaaaaaaa..", "..aaaaaaaa..", "..aaaaaaaa..", "..aaaaaaaa..", "..aaaaaaaa..",
-        "..aaaaaaaa..", "..aaaaaaaa..", "...aa..aa...", "...aa..aa...", "...aa..aa...",
-        "...aa..aa...", "..aaa..aaa..", "............", "............", "............",
-        "............"]),
-    "RUST_GUARD": (ORANGE, [
-        "...cccccc...", "..cccccccc..", "..caaaaaac..", "..cccccccc..", "...cccccc...",
-        ".cccccccccc.", "ccbccccccbcc", "cc.cccccc.cc", "cc.ccaacc.cc", "bb.cccccc.bb",
-        "...cccccc...", "...ccaacc...", "...cc..cc...", "...cc..cc...", "...cc..cc...",
-        "...cc..cc...", "..ccc..ccc..", "..aaa..aaa..", "............", "............",
-        "............"]),
-    "SCRAP_GUNNER": (BROWN, [
-        "....cccc....", "...cbbbbc...", "....cccc....", "...cccccc...", "..cccccccc..",
-        "..cc.cc.ccaaaaa", "..cc.cc.caaaaa.", "..cc.cc.cc..", "....cccc....", "....cccc....",
-        "...cc..cc...", "...cc..cc...", "...cc..cc...", "..ccc..ccc..", "..aaa..aaa..",
-        "............", "............", "............", "............", "............",
-        "............"]),
-    "ASH_RAT": (GREY, [
-        "............", "............", "............", "............", "............",
-        "............", "............", "............", "...bb.......", "..bbbb......",
-        ".bccccc.....", "bbcccccccc..", "bccccccccccb", ".ccccccccc.b", "..cccccccc.b",
-        "..c.cc.c.c..", "..a....a....", "............", "............", "............",
-        "............"]),
-    "MAINT_DRONE": (YELLOW, [
-        "............", "............", "....aaaa....", "...abbbba...", "..abbbbbba..",
-        ".aaaaaaaaaa.", ".accccccca..", ".acaaaaaca..", ".acabbbaca.b", ".acaaaaacabb",
-        ".accccccca.b", ".aaaaaaaaa..", "..a......a..", "..a......a..", ".aaa....aaa.",
-        "............", "............", "............", "............", "............",
-        "............"]),
-}
-REG = registry.load()
-RACES = [n for n, _ in sorted(REG["races"].items(), key=lambda kv: kv[1]["id"])]
-FOES = [n for n, _ in sorted(REG["foes"].items(), key=lambda kv: kv[1]["id"])]
-
-EFFECTS = {
-    "CURSOR": ["###....###"] + ["#........#"] * 2 + [".........."] * 15 + ["#........#"] * 2 + ["###....###"],
-    "BOLT": ["............", "............", "............", "............", "............",
-             "............", "............", "............", "....bbbbcc..", "..bbbbcccccc",
-             "....bbbbcc..", "............", "............", "............", "............",
-             "............", "............", "............", "............", "............",
-             "............"],
-    "SPARK": ["....#...#...", ".#..#..#..#.", "..#.....#...", "...#...#....", "#....#.....#",
-              "...#...#....", "..#.....#...", ".#..#..#..#.", "....#...#...", "............",
-              "............", "............", "............", "............", "............",
-              "............", "............", "............", "............", "............",
-              "............"],
-    "SLASH": ["..........##", ".........##.", "........##..", ".......##...", "......##....",
-              ".....##.....", "....##......", "...##.......", "..##........", ".##.........",
-              "##..........", "............", "............", "............", "............",
-              "............", "............", "............", "............", "............",
-              "............"],
-}
 
 # ------------------------------------------------------------------ building
 
@@ -588,7 +359,8 @@ def build():
         raise Problem("the races' ids aren't 0, 1, 2...")
     for name in order:
         if name not in LOOKS:
-            raise Problem(f"{name} has no figure here: draw one")
+            raise Problem(f"{name} has no figure in content/art/figures.txt: draw one "
+                          "(make artdesk)")
         colour, rows = LOOKS[name]
         down = fallen(rows)
         looks += bytes([add(mc_sprite(rows)), add(hires_sprite(outline(rows))),

@@ -1,0 +1,152 @@
+# The game's art: see docs/art.md for the format and tools/artdesk/ (make artdesk) to edit
+# it in a browser. tools/battlegfx.py builds the battle graphics from these files.
+# The map's tiles, the cartridge's squares of 16 pixels: 8 multicolour dots wide, 16 tall (2 x 2
+# characters): k the screen's background, d and g the tiles' two
+# shared colours, o the tile's own (one of the first eight). The first eight are the
+# rules' terrain, in its order; any after them are scenery, for rooms to come.
+background black
+shared dgrey grey
+
+tile open black
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+gggggggd
+dddddddd
+
+tile wall black
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+dddddddd
+kkkkkkkk
+
+tile pit blue
+gggggggd
+gggggggd
+gddddddd
+gkkkkkkd
+gkkkkkkd
+gkkkkkkd
+gkkkkkkd
+gkkokkkd
+gkkkkkkd
+gkkkkkkd
+gkkkkokd
+gkkkkkkd
+gkkkkkkd
+gkkkkkkd
+gggggggd
+dddddddd
+
+tile rough black
+gggggggd
+gggggggd
+gddggggd
+gddggggd
+gkkggggd
+gggggggd
+ggggdddd
+ggggdddd
+ggggkkkd
+gggggggd
+gdddgggd
+gdddgggd
+gkkkgggd
+gggggggd
+gggggggd
+dddddddd
+
+tile cover red
+gggggggd
+gggggggd
+gkkkkkkd
+gkooookd
+gkooookd
+gkooookd
+gkooookd
+gkkkkkkd
+gkooookd
+gkooookd
+gkooookd
+gkooookd
+gkooookd
+gkkkkkkd
+gggggggd
+dddddddd
+
+tile hazard yellow
+gggggggd
+gggggggd
+gggggggd
+ggggoggd
+gogokogd
+gkokgkod
+ggkgggkd
+gggggggd
+gggggggd
+ggggoggd
+gogokogd
+gkokgkod
+ggkgggkd
+gggggggd
+gggggggd
+dddddddd
+
+tile high white
+oooooooo
+oggggggg
+oggggggg
+oggggggg
+oggggggg
+oggggggg
+oggggggg
+oggggggg
+oggggggg
+oggggggg
+oggggggg
+oggggggg
+dddddddd
+dddddddd
+dddddddd
+kkkkkkkk
+
+tile exit green
+gggggggd
+gooooood
+gooooood
+gooooood
+gooooood
+gooooood
+gookoood
+gokkkkod
+gokkkkod
+gookoood
+gooooood
+gooooood
+gooooood
+gooooood
+gooooood
+dddddddd

@@ -17,7 +17,10 @@ CORE_HDR := core/include/apb.h core/include/apb_battle.h core/include/apb_regist
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all cart test-cart test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+
+# The game's art (docs/art.md): figures, effects and tiles, as text, read by tools/art.py.
+ART := $(wildcard content/art/*.txt) tools/art.py
 
 all: test
 
@@ -175,7 +178,7 @@ CART_DEPS   := $(addprefix cart/,$(addsuffix .s,$(CART_COMMON) boot start diskst
                $(CART_INC) cart/cart.cfg cart/disk.cfg build/cart/tiles16 build/cart/font build/cart/names.s \
                tools/crt.py tools/cart/departure.py tools/c64pic.py content/s1/00-the-fare/the-fare.qs $(FARE_PICS)
 
-build/cart/font: tools/c64font.py tools/battlegfx.py fe/modern/font8x8.h
+build/cart/font: tools/c64font.py tools/battlegfx.py $(ART) fe/modern/font8x8.h
 	@mkdir -p build/cart
 	python3 tools/c64font.py $@
 
@@ -183,7 +186,7 @@ build/cart/names.s: tools/registry/registry_asm.py tools/registry/registry.py $(
 	@mkdir -p build/cart
 	python3 tools/registry/registry_asm.py $@
 
-build/cart/tiles16: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt)
+build/cart/tiles16: tools/battlegfx.py $(ART) tools/c64pic.py $(wildcard registry/*.txt)
 	@mkdir -p build/cart
 	python3 tools/battlegfx.py build/cart/battle.bgfx --cart16 $@
 
@@ -377,10 +380,10 @@ build/apb-modern: fe/modern/sdl.c $(MODERN_SRC) $(MODERN_HDR) $(MODERN_VIEW_SRC)
 	    $(MODERN_VIEW_SRC) $(VM_SRC) $(CORE_SRC) $$(sdl2-config --libs)
 
 # The battle graphics, for every front end with graphics; the C64 has them as three files.
-build/battle.bgfx: tools/battlegfx.py tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h | build
+build/battle.bgfx: tools/battlegfx.py $(ART) tools/c64pic.py $(wildcard registry/*.txt) fe/modern/font8x8.h | build
 	python3 tools/battlegfx.py $@
 
-build/c64/bgfx/btab: tools/battlegfx.py tools/c64font.py tools/c64pic.py $(wildcard registry/*.txt) \
+build/c64/bgfx/btab: tools/battlegfx.py $(ART) tools/c64font.py tools/c64pic.py $(wildcard registry/*.txt) \
                      fe/modern/font8x8.h
 	@mkdir -p build/c64/bgfx
 	python3 tools/battlegfx.py build/c64/battle.bgfx --c64 build/c64/bgfx
@@ -458,6 +461,17 @@ build/site/index.html: site/index.html build/web/apb.js build/waystation/ws.js
 	  cat site/index.html; printf '</body></html>\n' ) > $@
 	cp build/web/* build/site/play/
 	cp build/waystation/* build/site/waystation/
+
+# The art desk (docs/art.md): an editor for the figures, effects and tiles in a browser,
+# saving to content/art/. Open http://localhost:8064/.
+artdesk:
+	python3 tools/artdesk/serve.py
+
+# The art desk in headless Chromium, on a copy of the art: files come back untouched, each
+# edit lands as it should, the server writes nothing that breaks a rule
+# (tests/artdesk/check_artdesk.py).
+test-art:
+	NODE_PATH=$$(npm root -g) python3 tests/artdesk/check_artdesk.py
 
 site: build/site/index.html
 	@echo "The site: serve build/site/ (python3 -m http.server -d build/site) and open it"

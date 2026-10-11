@@ -124,8 +124,17 @@ against. For `cart/`:
   cartridge plays The Fare from `content/` (`tools/cart/departure.py` makes its assets).
   Needs `pip install qrcode opencv-python-headless`.
 
-Run all seventeen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
+- `make test-art`: the art desk (`tools/artdesk/`, `docs/art.md`) in headless Chromium, on
+  a copy of `content/art/`: the art keeps its rules (`tools/art.py`) and the battle
+  graphics build from it; every file opened and saved untouched comes back byte for byte;
+  each edit (a dot, an undo, a colour, a new scenery tile, a box, a fill, flips) lands
+  exactly as worked out from the file's text; the server writes nothing that breaks a
+  rule, and nothing but the art files (`tests/artdesk/check_artdesk.py`).
+
+Run all eighteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.
+`make artdesk` serves the art desk (http://localhost:8064/): figures, effects and tiles,
+drawn under the C64's rules and saved to `content/art/` (`docs/art.md`).
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website
 (serve `build/waystation/`); `make site` builds the whole site, the platform page with
@@ -157,6 +166,12 @@ The core must build with cc65 for the 6502 and give identical results everywhere
 - Golden values in tests (dice, passwords) must be derived independently, not copied from
   the code's own output. Use `tools/passport/passport.py` for passwords.
 - Rules must stay playable at a table by hand (see `docs/tabletop.md`).
+
+## Art
+
+The battle screen's figures, effects and map tiles are text grids in `content/art/`
+(`docs/art.md`), read through `tools/art.py`, built by `tools/battlegfx.py`; edit them with
+the art desk or by hand, never in `battlegfx.py`. A new race or foe needs a figure there.
 
 ## Registries
 

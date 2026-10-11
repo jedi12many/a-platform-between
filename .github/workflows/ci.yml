@@ -61,6 +61,9 @@ jobs:
       - name: The Waystation website (made in the browser, boarded in the terminal)
         run: make test-waystation
 
+      - name: The art desk (figures and tiles edited in the browser, saved as the rules say)
+        run: make test-art
+
       - name: The Deep Yards' generator (C against the reference, PC and 6502)
         run: make test-yards
 
