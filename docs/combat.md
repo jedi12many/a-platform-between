@@ -207,7 +207,8 @@ On the C64, the desktop and in the browser, a fight is the battle screen with gr
 ([frames.md](frames.md)): the map in the view, in flat tiles of 32 pixels, the fighters as
 sprites; under it, what happens in the story log, each roll in the dice log ("Kestrel
 94" over "vs 60: hit 23"), the travelers' health in the party frame, and the command bar,
-**Move Aim Guard Wait Flee Quick Done**.
+**Move Aim Guard Wait Flee Quick Done** (rules v1's, with its powers, Shove and Dash, is
+specified in [fight-controls.md](fight-controls.md)).
 Move walks a cursor over the squares the rules allow this turn (they're marked); Aim
 cycles through the foes in reach from there, with the TN; Wait only before moving; Quick
 plays you until T takes over.

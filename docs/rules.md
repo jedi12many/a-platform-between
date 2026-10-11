@@ -14,6 +14,7 @@ an idea.
 | 4b | [races.md](races.md) | Races: the stat bonus, the body (8 worn slots, 2 hands, a pack of 6, Small), two traits each, the lost-and-found | draft |
 | 4c | [conditions.md](conditions.md) | Conditions: poisoned, asleep, on fire, slowed, shielded... from attacks, items, maps, realms and races; one short list of effects; shaking them off | draft |
 | 4d | [turn.md](turn.md) | **Rules v1**, the turn: Speed 5-7, paths and hazards on every step, Shove and Dash, pushes and falls, flying, conditions in play (`registry/conditions.txt`). In the rules lab (the arena) until the freeze | lab |
+| 4e | [fight-controls.md](fight-controls.md) | Rules v1's fight on the C64: six verbs on the command row, powers and the rarer actions in lists, the pack, looking at a fighter, keys and the joystick | spec |
 | 5 | [translation.md](translation.md) | Tech and Magic Levels: gear and bodies changing form, Force It, Dissonance | settled; partly in the engine |
 | 6 | [echoes.md](echoes.md) | Choices that follow you, in the story only: kinds, positive and negative states (negative ones in solo Departures only), party menus, reach, the Legend kept at the Waystation and the pass carrying only what a Departure needs | Passport Echoes in the engine; the rest drafted |
 | 7 | [bestiary.md](bestiary.md) | Making foes: a standard foe by level, roles, how many make a fight, the bestiary measured | draft |
