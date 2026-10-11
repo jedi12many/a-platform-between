@@ -10,6 +10,10 @@
 //   node desk.cjs URL box FILE NEW DOT X0 Y0 X1 Y1   a new entry with a box drawn, saved
 //   node desk.cjs URL fill FILE ENTRY DOT X Y     a flood fill, saved
 //   node desk.cjs URL flip FILE ENTRY             flipped twice, shifted right then left, saved
+//   node desk.cjs URL paste FILE TEXT FIT MAP INTO   art pasted as text (the file TEXT), fitted
+//                                                 (trim, squeeze), each character mapped
+//                                                 (MAP: 0=.,1=a,...), as a new entry (INTO:
+//                                                 new) or into one (an entry's name), saved
 //   node desk.cjs URL shot FILE ENTRY PATH        a screenshot
 //
 // DOT is the dot's number on the toolbar (1 is see-through or the background). Prints what
@@ -97,6 +101,21 @@ async function main() {
     await page.click("#flip");
     await page.click('[data-shift="1,0"]');
     await page.click('[data-shift="-1,0"]');
+    await save();
+  } else if (what === "paste") {
+    const [file, textFile, fit, map, target, shot] = args;
+    await open(file, target === "new" ? null : target);
+    await page.click("#paste");
+    await page.fill("#paste-text", require("fs").readFileSync(textFile, "utf8"));
+    await page.selectOption("#paste-fit", fit);
+    for (const pair of map.split(",")) {
+      const [c, d] = pair.split("=");
+      await page.selectOption(`#paste-map select[data-char="${c}"]`, d);
+    }
+    await page.check(`input[name="paste-into"][value="${target === "new" ? "new" : "this"}"]`);
+    if (shot) await page.screenshot({ path: shot });
+    console.log("notes: " + (await page.textContent("#paste-notes")));
+    await page.click("#paste-apply");
     await save();
   } else if (what === "shot") {
     const [file, entry, path] = args;

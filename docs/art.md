@@ -22,6 +22,15 @@ and open <http://localhost:8064/>. It runs on this machine only, and saves strai
   tile after them is **scenery**, for rooms to come (E13): it's kept and checked, but the
   game doesn't place it yet. Under the figures' list the desk says which race or foe has
   no figure (the build needs one for each, and a stranger's).
+- **Paste…**: art drawn elsewhere, pasted as text: a grid of characters (digits, letters,
+  dots), one row a line, with its name on a line before it and `colour: red` on another if
+  you like. Say which dot each character becomes (the choices show their colours: a
+  figure has only three and see-through, so two characters may have to share one), and
+  whether art too big for the entry is trimmed at the edges of what's drawn or squeezed
+  in; a figure keeps its feet on the bottom row. The preview shows it in the game's
+  colours, and the notes say what was given up. It goes in as a new entry, or into the
+  one open (Undo takes it back). A new race or foe also needs its entry in the registry
+  before the game draws it.
 - **Dots**: the buttons 1-4 (or the keys) are the dots an entry can have, in their colours:
   1 is see-through (a figure, an effect) or the background (a tile). The left button paints
   the chosen dot, the right button the first.

@@ -26,6 +26,7 @@
       <button id="duplicate" type="button">Duplicate</button>
       <button id="rename" type="button">Rename</button>
       <button id="delete" type="button">Delete</button>
+      <button id="paste" type="button" title="Paste art drawn elsewhere, as text">Paste&hellip;</button>
     </div>
     <p id="needs" class="note"></p>
   </aside>
@@ -68,6 +69,41 @@
     </div>
   </aside>
 </main>
+<dialog id="paste-dialog" aria-labelledby="paste-title">
+  <form method="dialog" class="paste">
+    <h2 id="paste-title">Paste art as text</h2>
+    <p class="note">A grid of characters, one row a line: digits, letters, dots, anything.
+      A line before it is taken as the name, and a line <code>colour: red</code> as its own
+      colour. Then say which dot each character becomes.</p>
+    <div class="paste-cols">
+      <div>
+        <textarea id="paste-text" rows="16" spellcheck="false"
+                  aria-label="The art, as text"></textarea>
+        <div id="paste-map" class="paste-map" aria-label="What each character becomes"></div>
+        <div class="paste-opts">
+          <label>Too wide or tall:
+            <select id="paste-fit">
+              <option value="trim">Trim the edges</option>
+              <option value="squeeze">Squeeze it in</option>
+            </select>
+          </label>
+          <label><input type="radio" name="paste-into" value="new" checked> A new entry:
+            <input id="paste-name" size="14" aria-label="The new entry's name"></label>
+          <label><input type="radio" name="paste-into" value="this">
+            Into <span id="paste-this"></span> (undoable)</label>
+        </div>
+      </div>
+      <div>
+        <div id="paste-preview"></div>
+        <ul id="paste-notes" class="note"></ul>
+      </div>
+    </div>
+    <div class="paste-buttons">
+      <button value="cancel" type="submit">Cancel</button>
+      <button id="paste-apply" class="primary" value="apply" type="submit">Add it</button>
+    </div>
+  </form>
+</dialog>
 <script src="artdesk.js"></script>
 </body>
 </html>

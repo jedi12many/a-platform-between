@@ -5,9 +5,10 @@
 1. content/art/ keeps every rule (tools/art.py), and the battle graphics build from it.
 2. Opened and saved untouched, every file comes back byte for byte.
 3. Each edit (a dot painted, painted and undone, a colour chosen, a new tile with a box
-   drawn on it, a flood fill, flips and shifts that cancel out) lands in the file exactly
-   as worked out here from the file's own text, and nothing else changes; the result is
-   one tools/art.py accepts, and the graphics still build from it.
+   drawn on it, a flood fill, flips and shifts that cancel out, art pasted as text: a new
+   figure trimmed or squeezed to size, and pasted into one) lands in the file exactly as
+   worked out here from the file's own text, and nothing else changes; the result is one
+   tools/art.py accepts, and the graphics still build from it.
 4. The server writes nothing that breaks a rule, and nothing but the art files.
 """
 
@@ -171,6 +172,26 @@ def run(folder):
         return "\n".join(lines)
     edit("fill", ["tiles16", "crate", 2, 3, 7], "tiles16", filled,
          "a flood fill inside the box, stopping at its edge")
+    # Art pasted as text (tests/artdesk/enforcer.txt: 16 x 21, five characters), as the
+    # art desk's Paste says: a new figure named by its first line, its colour by its second;
+    # each character mapped; what's drawn (columns 1-14, rows 1-20) fitted to 12 x 21, feet
+    # on the bottom row: trimmed (one column off each side) or squeezed (12 of the 14
+    # columns, each the one under the middle of its twelfth).
+    pasted = os.path.join(ROOT, "tests", "artdesk", "enforcer.txt")
+    grid = [ln for ln in open(pasted).read().split("\n")[2:] if ln]
+    to = {"0": ".", "1": "a", "2": "c", "3": "b", "4": "b"}
+
+    def figure(name, colour, cols):
+        rows = ["".join(to[grid[y][x]] for x in cols) for y in range(21)]
+        return lambda t: t + f"\nfigure {name} {colour}\n" + "\n".join(rows) + "\n"
+    edit("paste", ["figures", pasted, "trim", "0=.,1=a,2=c,3=b,4=b", "new"], "figures",
+         figure("ENFORCER", "red", range(2, 14)),
+         "art pasted as text: a new figure, ENFORCER, red, trimmed to 12 wide")
+    squeezed = [1 + (2 * i + 1) * 14 // 24 for i in range(12)]
+    edit("paste", ["figures", pasted, "squeeze", "0=.,1=a,2=c,3=b,4=b", "ENFORCER"], "figures",
+         lambda t: t.replace(figure("ENFORCER", "red", range(2, 14))(""),
+                             figure("ENFORCER", "red", squeezed)("")),
+         "art pasted into a figure, squeezed: 14 columns into 12")
     # Flips and shifts that cancel out.
     edit("flip", ["tiles32", "hazard"], "tiles32", lambda t: t,
          "flipped twice, shifted right and back: the file as it was")

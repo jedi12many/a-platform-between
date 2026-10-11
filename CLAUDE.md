@@ -135,9 +135,10 @@ against. For `cart/`:
 - `make test-art`: the art desk (`tools/artdesk/`, `docs/art.md`) in headless Chromium, on
   a copy of `content/art/`: the art keeps its rules (`tools/art.py`) and the battle
   graphics build from it; every file opened and saved untouched comes back byte for byte;
-  each edit (a dot, an undo, a colour, a new scenery tile, a box, a fill, flips) lands
-  exactly as worked out from the file's text; the server writes nothing that breaks a
-  rule, and nothing but the art files (`tests/artdesk/check_artdesk.py`).
+  each edit (a dot, an undo, a colour, a new scenery tile, a box, a fill, flips, art pasted
+  as text, trimmed or squeezed) lands exactly as worked out from the file's text; the
+  server writes nothing that breaks a rule, and nothing but the art files
+  (`tests/artdesk/check_artdesk.py`).
 
 Run all eighteen before pushing; CI runs them too. `make play` plays The Fare in a terminal;
 `make play-e18` plays Eighteen Minutes; `make play-yards` the Deep Yards.

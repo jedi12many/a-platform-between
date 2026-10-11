@@ -709,6 +709,206 @@ window.addEventListener("beforeunload", (ev) => {
   if (Object.values(files).some((f) => f.dirty)) { ev.preventDefault(); ev.returnValue = ""; }
 });
 
+// ------------------------------------------------------------------ pasting art as text
+// Art drawn elsewhere, pasted as a grid of characters: a line before the grid is its name,
+// a line "colour: red" its own colour; each character is mapped to one of the entry's
+// dots, and the grid fitted to the entry's size (feet on the bottom row for a figure,
+// centred otherwise): trimmed at the edges of what's drawn, or squeezed in.
+
+const BACKGROUND_CHARS = "0. k";      // characters taken for see-through (or background) first
+const paste = { grid: null, name: "", colour: null, map: {} };
+
+function readPasted(text) {
+  const lines = text.split(/\r?\n/).map((l) => l.replace(/\s+$/, ""));
+  let colour = null;
+  const rest = [];
+  for (const ln of lines) {
+    const m = ln.match(/^\s*colou?r\s*[:=]\s*(\w+)\s*$/i);
+    if (m) colour = m[1].toLowerCase();
+    else rest.push(ln);
+  }
+  // The grid: the longest run of lines all the same length (2 lines at least).
+  let best = null;
+  for (let i = 0; i < rest.length;) {
+    let j = i;
+    while (j < rest.length && rest[j].length && rest[j].length === rest[i].length) j++;
+    if (j - i >= 2 && (!best || j - i > best[1] - best[0])) best = [i, j];
+    i = j > i ? j : i + 1;
+  }
+  if (!best) return { grid: null, name: "", colour };
+  const named = rest.slice(0, best[0]).map((l) => l.trim()).filter(Boolean);
+  let name = named.length ? named[named.length - 1] : "";
+  const header = name.split(/\s+/);       // an art file's own "figure NAME colour" line
+  if (header.length === 3 && /^(figure|tile|effect)$/.test(header[0])) {
+    name = header[1];
+    if (header[0] !== "effect") colour = colour || header[2];
+  }
+  return { grid: rest.slice(best[0], best[1]), name: name.replace(/\W+/g, "_"), colour };
+}
+
+// The characters in the grid, background-like ones first, then in order.
+function pastedChars(grid) {
+  const seen = [...new Set(grid.join(""))];
+  const bg = seen.filter((c) => BACKGROUND_CHARS.includes(c))
+    .sort((a, b) => BACKGROUND_CHARS.indexOf(a) - BACKGROUND_CHARS.indexOf(b));
+  return bg.concat(seen.filter((c) => !bg.includes(c)).sort());
+}
+
+function pasteTarget() {
+  const into = document.querySelector('input[name="paste-into"]:checked').value;
+  const e = current();
+  if (into === "this" && e) return e;
+  const proto = files[state.file].entries[0];
+  return { kind: proto.kind, option: proto.kind === "effect" ? proto.option
+    : proto.kind === "tile" ? "black" : "grey" };
+}
+
+// Columns (or rows) to keep, n of them, from `have` (indexes of what's drawn, in order),
+// with the grid `size` wide: trimmed evenly at both ends, or squeezed (every so many kept).
+function fitIndexes(have, size, n, how, bottom) {
+  const lo = have.length ? have[0] : 0, hi = have.length ? have[have.length - 1] : size - 1;
+  const span = hi - lo + 1;
+  if (span <= n) {                       // what's drawn fits: a window round it
+    let start = bottom ? hi - n + 1 : lo - Math.floor((n - span) / 2);
+    return Array.from({ length: n }, (_, i) => start + i);
+  }
+  if (how === "squeeze") {
+    return Array.from({ length: n }, (_, i) => lo + Math.floor((i + 0.5) * span / n));
+  }
+  const cut = span - n;
+  const start = bottom ? hi - n + 1 : lo + Math.floor(cut / 2);
+  return Array.from({ length: n }, (_, i) => start + i);
+}
+
+// The pasted grid as the target's rows, and what was given up to get there.
+function pastedRows(target) {
+  const size = sizeOf(state.file, target.kind, target.option);
+  const grid = paste.grid;
+  const w = Math.max(...grid.map((r) => r.length));
+  const at = (x, y) => (y >= 0 && y < grid.length && x >= 0 && x < w ? grid[y][x] || " " : null);
+  const blank = (c) => c === null || paste.map[c] === size.dots[0];
+  const how = document.getElementById("paste-fit").value;
+  const cols = [], rows = [];
+  for (let x = 0; x < w; x++) if (grid.some((r, y) => !blank(at(x, y)))) cols.push(x);
+  for (let y = 0; y < grid.length; y++) if ([...Array(w).keys()].some((x) => !blank(at(x, y)))) rows.push(y);
+  const xs = fitIndexes(cols, w, size.w, how, false);
+  const ys = fitIndexes(rows, grid.length, size.h, how, target.kind === "figure");
+  const out = ys.map((y) => xs.map((x) => {
+    const c = at(x, y);
+    return c === null ? size.dots[0] : paste.map[c];
+  }).join(""));
+  const notes = [`${w} x ${grid.length} pasted; what's drawn is ${cols.length ? cols[cols.length - 1] - cols[0] + 1 : 0}`
+    + ` x ${rows.length ? rows[rows.length - 1] - rows[0] + 1 : 0}; ${target.kind === "effect" ? `a ${target.option} effect` : `a ${target.kind}`} is ${size.w} x ${size.h}.`];
+  for (const [list, n, what] of [[cols, size.w, "columns"], [rows, size.h, "rows"]]) {
+    const span = list.length ? list[list.length - 1] - list[0] + 1 : 0;
+    if (span > n) notes.push(how === "squeeze" ? `${span} ${what} squeezed into ${n}.`
+      : `${span - n} ${what} trimmed${what === "rows" && target.kind === "figure" ? " off the top (feet on the bottom row)" : ", from both edges"}.`);
+  }
+  const by = {};
+  for (const [c, d] of Object.entries(paste.map)) (by[d] = by[d] || []).push(c);
+  for (const [d, cs] of Object.entries(by)) {
+    if (cs.length > 1) notes.push(`${cs.slice(0, -1).join(", ")} and ${cs[cs.length - 1]} ${cs.length > 2 ? "all" : "both"} become ${dotLabel(target, d)}.`);
+  }
+  return { rows: out, notes };
+}
+
+// A dot's name, and the colour it is in this entry: "shared 1: dgrey".
+function dotLabel(target, d) {
+  const c = colourMap(state.file, target, false)[d];
+  return c === null || c === undefined ? DOT_NAMES[d] : `${DOT_NAMES[d]}: ${META.colours[c]}`;
+}
+
+function drawPaste() {
+  const box = document.getElementById("paste-map");
+  const apply = document.getElementById("paste-apply");
+  const notes = document.getElementById("paste-notes");
+  const preview = document.getElementById("paste-preview");
+  const target = { ...pasteTarget() };
+  const size = sizeOf(state.file, target.kind, target.option);
+  const said = [];
+  if (paste.colour && target.kind !== "effect" && into() === "new") {   // its own colour
+    const i = META.colours.indexOf(paste.colour);
+    if (i >= 0 && (target.kind !== "tile" || i < 8)) target.option = paste.colour;
+    else said.push(`"${paste.colour}" isn't a colour it can have: ${target.option} instead.`);
+  }
+  if (!paste.grid) {
+    box.replaceChildren();
+    preview.replaceChildren();
+    notes.replaceChildren(el("li", { text: "Paste a grid: two rows or more, all the same length." }));
+    apply.disabled = true;
+    return;
+  }
+  const chars = pastedChars(paste.grid);
+  chars.forEach((c, i) => {
+    if (!size.dots.includes(paste.map[c])) paste.map[c] = size.dots[Math.min(i, size.dots.length - 1)];
+  });
+  for (const c of Object.keys(paste.map)) if (!chars.includes(c)) delete paste.map[c];
+  box.replaceChildren(...chars.map((c) => el("label", {},
+    el("code", { text: c === " " ? "␠" : c }), "→",
+    el("select", { "data-char": c, "aria-label": `What ${c} becomes`, on: { change: (ev) => {
+      paste.map[c] = ev.target.value; drawPaste(); } } },
+      ...[...size.dots].map((d) => {
+        const o = el("option", { value: d, text: dotLabel(target, d) });
+        if (paste.map[c] === d) o.selected = true;
+        return o;
+      })))));
+  const fitted = pastedRows(target);
+  const rows = fitted.rows;
+  said.unshift(...fitted.notes);
+  const shown = { ...target, rows };
+  const multi = isMulti(shown), s = 6;
+  const cv = canvasOf(size.w * (multi ? 2 : 1), size.h, s);
+  paintRows(cv.getContext("2d"), rows, colourMap(state.file, shown, false), multi, 0, 0, s);
+  preview.replaceChildren(cv);
+  paste.result = shown;
+  notes.replaceChildren(...said.map((t) => el("li", { text: t })));
+  apply.disabled = false;
+}
+
+function into() { return document.querySelector('input[name="paste-into"]:checked').value; }
+
+document.getElementById("paste").addEventListener("click", () => {
+  const e = current();
+  document.getElementById("paste-this").textContent = e ? e.name : "(nothing open)";
+  document.querySelector('input[name="paste-into"][value="this"]').disabled = !e;
+  drawPaste();
+  document.getElementById("paste-dialog").showModal();
+  document.getElementById("paste-text").focus();
+});
+document.getElementById("paste-text").addEventListener("input", (ev) => {
+  const r = readPasted(ev.target.value);
+  paste.grid = r.grid;
+  paste.colour = r.colour;
+  const upper = state.file === "figures" || state.file === "effects";
+  if (r.name) document.getElementById("paste-name").value = upper ? r.name.toUpperCase()
+    : r.name.toLowerCase();
+  paste.map = {};
+  drawPaste();
+});
+document.querySelectorAll('input[name="paste-into"], #paste-fit').forEach((n) =>
+  n.addEventListener("change", drawPaste));
+document.getElementById("paste-dialog").addEventListener("close", () => {
+  const dlg = document.getElementById("paste-dialog");
+  if (dlg.returnValue !== "apply" || !paste.result) return;
+  const f = files[state.file];
+  if (into() === "this") {
+    const e = current();
+    if (paste.result.option !== e.option) e.option = paste.result.option;
+    commit(paste.result.rows, e.rows);
+    status(`Pasted into ${e.name}: not saved yet.`, "");
+    return;
+  }
+  const upper = state.file === "figures" || state.file === "effects";
+  const raw = document.getElementById("paste-name").value.trim();
+  const name = upper ? raw.toUpperCase() : raw.toLowerCase();
+  if (!nameOk(name)) return;
+  f.entries.push({ kind: paste.result.kind, name, option: paste.result.option, notes: [],
+                   rows: paste.result.rows });
+  state.index = f.entries.length - 1;
+  changed();
+  status(`Pasted as ${name}: not saved yet.`, "");
+});
+
 // For the tests (tests/artdesk/): the text a file would be saved as.
 window.artdesk = { serialise: (name) => serialise(files[name]), ready: false };
 
