@@ -113,8 +113,81 @@ at will or with charges, and it Translates the same way. Its **tier is 1 + rank 
 (rank 0-19 is tier 1; rank 100 is tier 6), and its attack roll adds the **rank** as an
 item adds its skill.
 
-A traveler holds up to **8 powers** (the Passport already stores them). How they're
-gained and raised is the next thing to design.
+A traveler holds up to **8 powers** (the Passport already stores them).
+
+### Gaining powers
+
+Powers come from two places:
+
+- **Your class**, at level-ups. Each class has its own list ([Power lists](#power-lists));
+  you pick a new one from it at levels **1, 3, 6, 10, 15, 21, 28 and 36**, a little
+  further apart each time. A few powers are open to every class, from a level.
+- **Echoes.** The story can give a power outside any list: the dire wolf you saved
+  answers your call. An Echo's power takes a slot but not a pick.
+
+If all 8 slots are full, a new power replaces one you choose, or you turn it down.
+
+A new power starts at **rank 2 × your level** (at least 10, at most 50), so one learned
+late isn't useless.
+
+### Raising them
+
+A power's rank is raised with **skill points**, at the same cost as a skill
+([rules-v0.md](rules-v0.md#levels)). A power from your class goes up **2 a raise**, as a
+tagged skill does; any other (an Echo's, an open one), 1.
+
+### Swapping
+
+You can **swap one power at each level-up**: give one up, take another from your class's
+list (or an open one you're high enough for). The new one keeps the old one's rank, so
+building around something you've found doesn't cost you the work you've put in. A swap
+not taken is gone; the Waystation offers it when a Travel Stamp lands with a level in it.
+
+More swaps are earned: a Departure can give a **Lethe ticket** (an item, so the Passport
+needs nothing new), used at the Waystation for one swap. Some Departures and Sidings exist
+for exactly that.
+
+### Building around loot
+
+Any item can be used by anyone: a wand needs Channel, a rifle Ranged, a sword Melee, not a
+class. Class decides which **powers** you can learn, not what you can pick up. A Warden who
+finds a staff of storms can carry it, raise Channel, and swap toward the Channeler's open
+powers that suit it, a level at a time.
+
+## Power lists
+
+A first list for each class, about six each, to be playtested and grown. Each is a shape
+and an element, at will or with charges; its tier comes from its rank.
+
+| Class | Power | Effect |
+|---|---|---|
+| **Warden** | Second wind | Mend, yourself only, 1 charge |
+| | Shield wall | Ward (Armor) on an ally next to you, 2 charges |
+| | Shove | Shift + kinetic, a foe next to you, at will |
+| | Taunt | Hex + mind: −10 × tier to its attacks on anyone but you, 2 charges |
+| | Ground slam | Burst + kinetic, centred on you (you're not hit), 1 charge |
+| **Rogue** | Blink | Shift, yourself, 2 charges |
+| | Smoke | Field + mind (mist: cover), 2 charges |
+| | Dirty trick | Hex + mind, at will |
+| | Snare | Hex + cold: slowed, 2 charges |
+| | Vanish | Ward (Armor), yourself, until you attack, 1 charge |
+| **Tinker** | Arc shot | Bolt + energy, at will |
+| | Force field | Ward (Ward) on yourself or an ally, 2 charges |
+| | Barricade | Field + kinetic (a wall), 1 charge |
+| | Shock mine | Burst + energy, 1 charge |
+| | Scan | Sense |
+| **Channeler** | Firebolt | Bolt + fire, at will |
+| | Ice wall | Field + cold, 2 charges |
+| | Fire wall | Field + fire, 1 charge |
+| | Shield | Ward (Armor), yourself, 2 charges |
+| | Fireball | Burst + fire, 1 charge |
+| | Mind spike | Hex + mind, 2 charges |
+| **Medic** | Patch up | Mend, 3 charges |
+| | Adrenaline | Shift, an ally in sight (they move), 2 charges |
+| | Stim | Ward (Armor) on an ally next to you, 2 charges |
+| | Sedate | Hex + mind, 2 charges |
+| | Diagnose | Sense |
+| **Any class** | Out of Time (from level 20) | anchors items: below |
 
 ## Out of Time
 
@@ -187,7 +260,7 @@ ash rats come at her across the scrapyard.
 
 ## Still open
 
-- How powers are gained and raised (classes, level-ups, Echoes, story).
+- The power lists: more powers, and their numbers, from playtests.
 - **Attunement** (two legendary items): later.
 - **Resonance** (effects stronger or weaker by the realm's Tech and Magic Levels): left
   out for now; we'll see whether it's needed once this plays.
