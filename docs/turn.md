@@ -92,7 +92,7 @@ Being pushed never gives free attacks.
 ## Conditions in play
 
 The conditions are [conditions.md](conditions.md)'s, in `registry/conditions.txt`. Each one
-is made of these effects (the first build: the rest come with the powers and gear that
+is made of these effects (the rest of conditions.md's come with the gear and realms that
 need them):
 
 | Effect | In play |
@@ -115,6 +115,10 @@ need them):
 | No healing | healing does nothing |
 | Flying | see *Moving* |
 | First | you act first in the order of play (then by Grace) |
+| Must attack | taunted: see *The harder conditions* |
+| Hidden | nobody can aim at you from more than a square away; it ends when you attack |
+| At random | confused: a d100 at the start of your turn |
+| Phased | weapons pass through you, and you can't use one; you walk through walls |
 
 **Getting one.** An attack or a weapon that carries a condition puts it on whoever it hits,
 a glancing hit too; a hazard on whoever it hits; a race's two traits are on from the start,
@@ -134,6 +138,28 @@ and soaked, hasted and slowed, blessed and cursed; the new one goes on and the o
 **At most 4 at a time**, besides a race's two traits. A fifth replaces the one with the
 fewest rounds left (one with no countdown counts as the most).
 
+### The harder conditions
+
+Four effects ask more of a player than a number does, so each is one plain rule:
+
+- **Taunted** (Taunt; 2 rounds). If you can attack whoever taunted you this turn (walking
+  first if you need to), your action must be aimed at them: an attack, a Shove, or a power
+  on them. If you can't get at them, you're free. A new taunt replaces the old; it does
+  nothing once the taunter's down or gone.
+- **Hidden** (Vanish, Smoke; 3 rounds). Nobody can aim at you from more than a square
+  away: no weapon attack, Shove or power on you from further off (a burst or a field still
+  catches you). **It ends when you attack**: a weapon, a Shove, or a power that rolls
+  against a foe.
+- **Confused** (Mind spike; 2 rounds, shake off 50). At the start of your turn, roll
+  d100: **01-25** you lose the turn; **26-50** you **lash out**: walk to the nearest
+  fighter, friend or foe, and attack it with your weapon (on the battle screen, of two as
+  near, the one listed first); **51-100** you act as you choose.
+- **Phased** (a ghost's nature; a phase shifter, later; 2 rounds). Weapons pass through
+  you, and you can't use one: no weapon attack or Shove on you or by you, free attacks
+  included; a power, or a focus, still touches you (and you can use them). You walk
+  through walls (a wall costs 1), but you can't stop in one, nor blink into one; a push
+  still stops at a wall.
+
 ## Powers in play
 
 A power (`registry/powers.txt`, the class lists of [items.md](items.md#power-lists)) is a
@@ -151,7 +177,7 @@ the arena; at each Departure's, in the game). Using one is your turn's action.
 | Shape | Target | What it does |
 |---|---|---|
 | **Bolt** | a foe in sight | damage 5 × tier, as a weapon's (margin, crits, glancing hits) |
-| **Burst** | a square in sight, not so near that you're in it; or **around** you | everyone in Area 1 (2 from tier 6) round it, friend or foe, one roll; damage 5 × tier |
+| **Burst** | a square in sight, not so near that you're in it; or **around** you | everyone in Area 1 (2 from tier 6) round it, friend or foe, one roll; damage 5 × tier. With no element it's a **cloud** (Smoke): no roll, no damage, its condition on you and your side in it, and it may be centred where it catches you |
 | **Hex** | a foe in sight | half a bolt's damage (5 × tier ÷ 2, rounded up), and **hexed**: −10 × tier to its attacks for 3 rounds |
 | **Ward** | you, or a traveler next to you | its condition, at its tier (shielded: Armor + 10 × tier) |
 | **Mend** | you, or a traveler next to you | heals 5 × tier, and puts on its condition (Second wind: regenerating) |
@@ -179,7 +205,8 @@ then takes the **first** of these it can, from where it ends up; if none, it use
    nowhere is better, you stay and shoot.
 3. **Shove with a power** (Bull rush) a foe next to you that it would drop in a pit or
    onto a hazard.
-4. **Burst** where it catches two foes or more, and none of your side.
+4. **Burst** where it catches two foes or more, and none of your side (not a cloud:
+   Smoke is the player's).
 5. **Ward** a friend next to you who hasn't its condition, with a foe within 3 squares of
    them; yourself only when there's nobody to attack this turn.
 6. **Hex** the foe with the best Attack that isn't hexed (or under the power's condition)
@@ -189,8 +216,10 @@ then takes the **first** of these it can, from where it ends up; if none, it use
    your weapon can't reach anyone.
 8. **Field** across the way of a melee foe 3 to 6 squares from you, halfway, if you shoot.
 
-The same in the same place always makes the same choice, so the arena's numbers repeat,
-and a player can read a foe.
+A **taunted** fighter that can get at whoever taunted it goes for them with its weapon
+and uses no power; a **confused** one rolls first, and lashing out walks to the nearest
+fighter, friend or foe. The same in the same place always makes the same choice, so the
+arena's numbers repeat, and a player can read a foe.
 
 ## Levels and gear
 
@@ -247,10 +276,11 @@ Chronomite; and so on. Lantern-eyed waits for darkness to be in the rules.
 The rules lab's engine (`core/next/battle.c`, the same house rules as the core, so it can
 replace `core/src/battle.c` at the freeze) is held to these rules by `make
 test-rules-next`: reviewed battles in `tests/battle-next/` (moving, hazards, shoves, dashes,
-falls, every kind of condition), each roll re-checked from the Python reference
-(`tools/rules/turn.py`); the reference and the C agree on Speed, TNs, damage and shaking
+falls, every kind of condition, taunts, hiding, confusion and phasing), each roll
+re-checked from the Python reference (`tools/rules/turn.py`; a confused fighter's d100 read
+off its table); the reference and the C agree on Speed, TNs, damage and shaking
 off for random fighters and conditions; and random battles never crash under the
-sanitizers.
+sanitizers, nor end a move in a wall.
 
 ## To revisit
 
@@ -284,9 +314,9 @@ Decided for now, to come back to after more playtests:
 
 ## Still open
 
-- **Phased** (through walls, untouchable), **hidden**, **spreading**, **at random**,
-  **must attack**: the medium effects, with the powers that need them (Taunt, Smoke,
-  Vanish, Mind spike's confusion: until then Mind spike frightens).
+- **Spreading**, **rewind** and **gear off** ([conditions.md](conditions.md#more-effects)):
+  they come with the gear and realms that need them. A power that phases (Phase) waits
+  for a class list to want it; for now phased is a foe's nature (a ghost).
 - **What the arena says about powers** ([arena.md](arena.md#first-findings), 1000 fights a
   scenario, the computer playing them as above). After the second pass (hexes hurt,
   Ground slam stuns, Second wind regenerates, Blink a move): a Medic beside a

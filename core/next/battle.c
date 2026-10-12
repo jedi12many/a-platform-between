@@ -75,6 +75,7 @@ static uint8_t c_tier[APB_FIGHTERS_MAX][APB_COND_SLOTS];   /* a tiered one's tie
 static uint8_t c_barrier[APB_FIGHTERS_MAX];                /* a barrier's damage left     */
 static uint8_t c_from[APB_FIGHTERS_MAX][APB_COND_SLOTS];   /* the level of who put it on  */
 static uint8_t putter = APB_NOBODY;    /* who's putting conditions on now (none: a hazard) */
+static uint8_t bound[APB_FIGHTERS_MAX];   /* who put a must-attack condition on (taunted) */
 
 /* Powers: what each fighter holds in this fight. */
 static uint8_t p_id[APB_FIGHTERS_MAX][APB_POWERS_HELD];
@@ -318,6 +319,16 @@ static int16_t gap(uint8_t a, uint8_t b)
     return (int16_t)(2 * ((int16_t)level_of(a) - (int16_t)level_of(b)));
 }
 
+/* Whom `who` must aim at (taunted, docs/turn.md): whoever taunted it, while they're in the
+ * fight; else nobody. */
+static uint8_t taunter(uint8_t who)
+{
+    uint8_t t = bound[who];
+
+    if (!has_flag(who, APB_CF_MUST_ATTACK) || t >= count || f_state[t] != APB_IN_FIGHT) return APB_NOBODY;
+    return t;
+}
+
 static void put_on(uint8_t who, uint8_t cond)
 {
     put_on_tier(who, cond, 1);
@@ -348,6 +359,7 @@ static void put_on_tier(uint8_t who, uint8_t cond, uint8_t tier)
             if (c_left[who][k] && d->rounds > c_left[who][k]) c_left[who][k] = d->rounds;
             if (tier > c_tier[who][k]) c_tier[who][k] = tier;
             if (level_of(putter) > c_from[who][k]) c_from[who][k] = level_of(putter);
+            if (d->flags & APB_CF_MUST_ATTACK) bound[who] = putter;     /* the latest taunt */
             if (d->barrier) c_barrier[who] = (uint8_t)(d->barrier * c_tier[who][k]);
             return;
         }
@@ -368,6 +380,7 @@ static void put_on_tier(uint8_t who, uint8_t cond, uint8_t tier)
     c_left[who][slot] = d->rounds;
     c_tier[who][slot] = (uint8_t)((d->flags & APB_CF_TIERED) ? tier : 1);
     c_from[who][slot] = level_of(putter);
+    if (d->flags & APB_CF_MUST_ATTACK) bound[who] = putter;
     c_fresh[who][slot] = (uint8_t)(who == acting);     /* not counted the turn it went on */
     if (d->barrier) c_barrier[who] = (uint8_t)(d->barrier * c_tier[who][slot]);
     emit_c(APB_EV_COND_ON, who, APB_NOBODY, d->rounds, cond);
@@ -618,9 +631,11 @@ void apb_battle_start(uint8_t first)
 
 /* ------------------------------------------------------------- the board */
 
-/* A square's cost for `who`: flying makes pits and rough ground 1. 0: can't. */
+/* A square's cost for `who`: flying makes pits and rough ground 1; phased, walls 1 (but
+ * it can't stop in one: reach_from). 0: can't. */
 static uint8_t cost_of(uint8_t who, uint8_t tile)
 {
+    if (tile == APB_TILE_WALL && has_flag(who, APB_CF_PHASED)) return 1;
     if (flying(who) && (tile == APB_TILE_PIT || tile == APB_TILE_ROUGH)) return 1;
     return apb_tile_cost(tile);
 }
@@ -668,6 +683,10 @@ static void reach_from(uint8_t who, uint8_t sx, uint8_t sy, uint8_t budget)
                 }
             }
         }
+    }
+    /* Phased: through walls, but not to stop in one (came[][] still leads through). */
+    for (y = 0; y < map_h; ++y) {
+        for (x = 0; x < map_w; ++x) if (tiles[y][x] == APB_TILE_WALL) cost_to[y][x] = 0xFF;
     }
 }
 
@@ -741,7 +760,10 @@ uint8_t apb_battle_can_attack(uint8_t who, uint8_t target, uint8_t from_x, uint8
     if (who >= count || target >= count || who == target) return 0;
     if (f_state[target] != APB_IN_FIGHT) return 0;
     if (f_power[who] && has_flag(who, APB_CF_NO_POWERS)) return 0;
+    /* Phased: a weapon passes through it, and it can't use one (a focus is a power). */
+    if (!f_power[who] && (has_flag(who, APB_CF_PHASED) || has_flag(target, APB_CF_PHASED))) return 0;
     d = dist(from_x, from_y, f_x[target], f_y[target]);
+    if (d > 1 && has_flag(target, APB_CF_HIDDEN)) return 0;
     if (f_area[who] && d <= f_area[who]) return 0;
     if (!f_ranged[who]) return (uint8_t)(d == 1);
     return in_sight(from_x, from_y, f_x[target], f_y[target], who);
@@ -751,6 +773,7 @@ uint8_t apb_battle_can_shove(uint8_t who, uint8_t target, uint8_t from_x, uint8_
 {
     if (who >= count || target >= count || who == target) return 0;
     if (f_state[target] != APB_IN_FIGHT || f_side[target] == f_side[who]) return 0;
+    if (has_flag(who, APB_CF_PHASED) || has_flag(target, APB_CF_PHASED)) return 0;
     return (uint8_t)(dist(from_x, from_y, f_x[target], f_y[target]) == 1);
 }
 
@@ -875,6 +898,7 @@ static void attack(uint8_t who, uint8_t target)
     uint16_t dmg;
 
     putter = who;
+    take_off_flag(who, APB_CF_HIDDEN);                  /* attacking gives you away */
     bonus = (int16_t)(sum(who, 5) + sum(who, 6) + sum(who, 8) + (f_ranged[who] ? 0 : sum(who, 7)));
     if (tiles[f_y[who]][f_x[who]] == APB_TILE_HIGH && tiles[cy][cx] != APB_TILE_HIGH) {
         bonus = (int16_t)(bonus + APB_HIGH_GROUND_BONUS);
@@ -1042,6 +1066,7 @@ static void shove(uint8_t who, uint8_t t)
     int8_t dy = (int8_t)(f_y[t] > f_y[who] ? 1 : f_y[t] < f_y[who] ? -1 : 0);
 
     putter = who;
+    take_off_flag(who, APB_CF_HIDDEN);
     apb_check(dice, f_athletics[who], sum(who, 5), apb_battle_shove_tn(who, t), &shot);
     ev.roll = shot;
     emit(APB_EV_SHOVE, who, t, shot.result);
@@ -1168,7 +1193,7 @@ static uint8_t power_can_target(uint8_t who, uint8_t use, uint8_t t, uint8_t x, 
         return (uint8_t)(d2 == 1);
     case APB_TG_FOE:
         if (f_side[t] == f_side[who]) return 0;
-        if (d->adjacent) return (uint8_t)(d2 == 1);
+        if (d->adjacent || has_flag(t, APB_CF_HIDDEN)) return (uint8_t)(d2 == 1);
         return in_sight(x, y, f_x[t], f_y[t], who);
     }
     return 0;
@@ -1222,13 +1247,14 @@ static uint8_t power_square_ok(uint8_t who, uint8_t use, uint8_t x, uint8_t y, u
             if (apb_tile_blocks_sight(tiles[cy][cx])) return 0;
         }
         at = who_is_at(sx, sy);
-        return (uint8_t)((at == APB_NOBODY || at == who) && cost_of(who, tiles[sy][sx]) != 0);
+        return (uint8_t)((at == APB_NOBODY || at == who) && cost_of(who, tiles[sy][sx]) != 0
+                         && tiles[sy][sx] != APB_TILE_WALL);        /* not even phased */
     }
     /* A burst's centre or a field's middle: a square in sight. */
     if (apb_tile_blocks_sight(tiles[sy][sx]) || !in_sight(x, y, sx, sy, who)) return 0;
     if (d->shape == APB_SH_BURST) {
-        /* Not where its blast would catch you. */
-        return (uint8_t)(dist(x, y, sx, sy) > burst_area(tier));
+        /* Not where its blast would catch you (a cloud may). */
+        return (uint8_t)(d->element == APB_NO_TYPE || dist(x, y, sx, sy) > burst_area(tier));
     }
     if (d->shape == APB_SH_FIELD) {
         return (uint8_t)(tiles[sy][sx] == APB_TILE_OPEN || tiles[sy][sx] == APB_TILE_ROUGH);
@@ -1419,9 +1445,11 @@ static void use_power(uint8_t who, uint8_t use, uint8_t t, uint8_t sx, uint8_t s
     ev.cond = p_id[who][use];
     if (report) report(&ev);
     bonus = (int16_t)(sum(who, 5) + sum(who, 6) + sum(who, 8));
-    if (d->shape == APB_SH_BOLT || d->shape == APB_SH_HEX || d->shape == APB_SH_BURST
+    if (d->shape == APB_SH_BOLT || d->shape == APB_SH_HEX
+        || (d->shape == APB_SH_BURST && d->element != APB_NO_TYPE)
         || (d->shape == APB_SH_SHIFT && d->target == APB_TG_FOE)) {
-        /* An attack roll: Focused and the like are used up by it. */
+        /* An attack roll: Focused and the like are used up by it, and it gives you away. */
+        take_off_flag(who, APB_CF_HIDDEN);
         for (i = 0; i < APB_COND_SLOTS; ++i) {
             if (c_id[who][i] && apb_conds[c_id[who][i]].next) take_off(who, i);
         }
@@ -1433,6 +1461,16 @@ static void use_power(uint8_t who, uint8_t use, uint8_t t, uint8_t sx, uint8_t s
         power_hits(who, use, t, roll, bonus);
         break;
     case APB_SH_BURST:
+        if (d->element == APB_NO_TYPE) {
+            /* A cloud (Smoke): no roll; its condition on your side in it, you too. */
+            for (i = 0; i < count; ++i) {
+                if (f_state[i] == APB_IN_FIGHT && f_side[i] == f_side[who]
+                    && apb_in_area((int8_t)(f_x[i] - cx), (int8_t)(f_y[i] - cy), burst_area(tier))) {
+                    put_on_tier(i, d->cond, tier);
+                }
+            }
+            break;
+        }
         roll = apb_d100(dice);
         for (i = 0; i < count; ++i) {
             if (f_state[i] != APB_IN_FIGHT) continue;
@@ -1493,6 +1531,9 @@ static void use_power(uint8_t who, uint8_t use, uint8_t t, uint8_t sx, uint8_t s
 
 /* ------------------------------------------------------------- the foes */
 
+static uint8_t wild;                    /* lashing out (confused): anyone but itself */
+static uint8_t only = APB_NOBODY;       /* taunted: only whoever taunted it */
+
 static uint8_t nearest(uint8_t who, uint8_t x, uint8_t y, uint8_t attackable)
 {
     uint8_t i;
@@ -1501,7 +1542,8 @@ static uint8_t nearest(uint8_t who, uint8_t x, uint8_t y, uint8_t attackable)
     uint8_t d;
 
     for (i = 0; i < count; ++i) {
-        if (f_state[i] != APB_IN_FIGHT || f_side[i] == f_side[who]) continue;
+        if (f_state[i] != APB_IN_FIGHT || i == who || (!wild && f_side[i] == f_side[who])) continue;
+        if (only != APB_NOBODY && i != only) continue;
         if (attackable && !apb_battle_can_attack(who, i, x, y)) continue;
         d = dist(x, y, f_x[i], f_y[i]);
         if (d < best_d) {
@@ -1531,7 +1573,7 @@ static uint8_t better(uint8_t x, uint8_t y)
     return (uint8_t)(cost_to[y][x] < cost_to[plan_y][plan_x]);
 }
 
-static void plan(uint8_t who)
+static void plan_from(uint8_t who)
 {
     uint8_t x;
     uint8_t y;
@@ -1575,6 +1617,37 @@ static void plan(uint8_t who)
         }
     }
     plan_target = nearest(who, plan_x, plan_y, 1);
+}
+
+static uint8_t forced;          /* the plan is an attack on its taunter: no powers */
+
+/* Taunted, it goes for whoever taunted it if it can get at them this turn; if it can't,
+ * it's free (docs/turn.md, The harder conditions). */
+static void plan(uint8_t who)
+{
+    only = wild ? APB_NOBODY : taunter(who);
+    plan_from(who);
+    forced = (uint8_t)(only != APB_NOBODY && plan_target != APB_NOBODY);
+    if (only != APB_NOBODY && !forced) {
+        only = APB_NOBODY;
+        plan_from(who);
+    }
+    only = APB_NOBODY;
+}
+
+/* Can `who` attack t this turn, from anywhere it can walk to? */
+static uint8_t can_get_at(uint8_t who, uint8_t t)
+{
+    uint8_t x;
+    uint8_t y;
+
+    reach(who);
+    for (y = 0; y < map_h; ++y) {
+        for (x = 0; x < map_w; ++x) {
+            if (cost_to[y][x] != 0xFF && apb_battle_can_attack(who, t, x, y)) return 1;
+        }
+    }
+    return 0;
 }
 
 /* ------------------------------------------------- the computer's powers */
@@ -1741,8 +1814,9 @@ static void plan_power(uint8_t who)
                 }
                 break;
             case 4:
-                /* A blast that catches two foes or more, and none of your side. */
-                if (d->shape != APB_SH_BURST) break;
+                /* A blast that catches two foes or more, and none of your side (not a
+                 * cloud: Smoke is the player's to use). */
+                if (d->shape != APB_SH_BURST || d->element == APB_NO_TYPE) break;
                 if (d->target == APB_TG_AROUND) {
                     if (blast_count(who, plan_x, plan_y, burst_area(tier), 1) < 2) break;
                     plan_kind = APB_ACT_POWER;
@@ -1853,13 +1927,34 @@ static void guard(uint8_t who)
     emit(APB_EV_GUARD, who, APB_NOBODY, 0);
 }
 
+/* The computer's plan: a taunted fighter that can get at its taunter only attacks. */
+static void plan_all(uint8_t who)
+{
+    plan(who);
+    plan_kind = APB_ACT_ATTACK;
+    plan_blink = 0;
+    if (!forced) plan_power(who);
+}
+
+/* Confused, lashing out: the nearest fighter, friend or foe, walked to and attacked. */
+static void lash(uint8_t who)
+{
+    wild = 1;
+    plan(who);
+    wild = 0;
+    move_to(who, plan_x, plan_y);
+    if (f_state[who] == APB_IN_FIGHT && plan_target != APB_NOBODY
+        && apb_battle_can_attack(who, plan_target, f_x[who], f_y[who])) {
+        attack(who, plan_target);
+    }
+}
+
 static void foe_turn(uint8_t who)
 {
     uint8_t px;
     uint8_t py;
 
-    plan(who);
-    plan_power(who);
+    plan_all(who);
     if (plan_blink) use_power(who, (uint8_t)(plan_blink - 1), APB_NOBODY, plan_x, plan_y);
     else move_to(who, plan_x, plan_y);
     if (f_state[who] != APB_IN_FIGHT) return;
@@ -1886,8 +1981,7 @@ void apb_battle_quick(uint8_t who, apb_action *out)
 {
     memset(out, 0, sizeof(*out));
     if (who >= count) return;
-    plan(who);
-    plan_power(who);
+    plan_all(who);
     out->move_x = plan_x;
     out->move_y = plan_y;
     out->dash_x = plan_x;
@@ -1907,6 +2001,11 @@ void apb_battle_quick(uint8_t who, apb_action *out)
         out->target = plan_target;
     } else if (f_behavior[who] == APB_AI_GUARD) {
         out->kind = APB_ACT_GUARD;
+    }
+    if (acted_first) {
+        /* Acted already this turn: only the move is left. */
+        out->kind = APB_ACT_DONE;
+        out->target = 0;
     }
 }
 
@@ -1936,8 +2035,9 @@ static void advance(void)
 }
 
 /* The start of a turn (docs/turn.md): guarding ends; the ground; conditions tick; standing
- * up. Returns 1 if the turn goes on, 0 if a condition took it (or the fighter's out). Not
- * again when a turn put off with Wait comes round. */
+ * up; a confused fighter's roll. Returns 1 if the turn goes on, 0 if a condition took it
+ * (or the fighter's out), 2 if it lashes out (confused). Not again when a turn put off
+ * with Wait comes round. */
 static uint8_t begin_turn(uint8_t who)
 {
     uint8_t k;
@@ -1985,6 +2085,20 @@ static uint8_t begin_turn(uint8_t who)
         s = apb_battle_speed(who);
         move_left[who] = (uint8_t)(s - (s + 1) / 2);
         emit(APB_EV_STAND, who, APB_NOBODY, move_left[who]);
+    }
+    for (k = 0; k < APB_COND_SLOTS; ++k) {
+        cond = c_id[who][k];
+        if (!cond || !(apb_conds[cond].flags & APB_CF_AT_RANDOM)) continue;
+        /* Confused: d100, 01-25 the turn's lost, 26-50 it lashes out, 51-100 it's free. */
+        shot.roll = apb_d100(dice);
+        shot.total = shot.roll;
+        shot.tn = 0;
+        shot.result = APB_FAIL;
+        ev.roll = shot;
+        s = (uint8_t)(shot.roll <= 25 ? 0 : shot.roll <= 50 ? 1 : 2);
+        emit_c(APB_EV_RANDOM, who, APB_NOBODY, s, cond);
+        if (s < 2) return (uint8_t)(s ? 2 : 0);
+        break;
     }
     return 1;
 }
@@ -2045,6 +2159,10 @@ uint8_t apb_battle_next(void)
             if (!begun) {
                 begun = 1;
                 on = begin_turn(who);
+                if (on == 2) {
+                    lash(who);
+                    on = 0;
+                }
                 if (!on) {
                     end_turn(who);
                     advance();
@@ -2056,7 +2174,8 @@ uint8_t apb_battle_next(void)
             continue;
         }
         on = begin_turn(who);
-        if (on && f_state[who] == APB_IN_FIGHT) foe_turn(who);
+        if (on == 2) lash(who);
+        else if (on && f_state[who] == APB_IN_FIGHT) foe_turn(who);
         end_turn(who);
         advance();
     }
@@ -2089,6 +2208,7 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
     uint8_t i;
     uint8_t ox;
     uint8_t oy;
+    uint8_t must;
 
     if (result != APB_BATTLE_ON || who >= count || order[next] != who || !begun) return 0;
     if (acted_first && a->kind != APB_ACT_DONE) return 0;     /* acted: only the move is left */
@@ -2141,6 +2261,13 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
     case APB_ACT_DONE:
         break;
     default:
+        ok = 0;
+    }
+    /* Taunted: if you can get at whoever taunted you this turn, your action is aimed at them. */
+    must = acted_first ? APB_NOBODY : taunter(who);
+    if (ok && must != APB_NOBODY && can_get_at(who, must)
+        && !(t == must && (a->kind == APB_ACT_ATTACK || a->kind == APB_ACT_SHOVE
+                           || (a->kind == APB_ACT_POWER && apb_powers[p_id[who][a->use]].target == APB_TG_FOE)))) {
         ok = 0;
     }
     if (!ok) return 0;

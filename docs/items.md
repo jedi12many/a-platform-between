@@ -163,10 +163,10 @@ and an element, at will or with charges; its tier comes from its rank. Many put 
 | | Ground slam | Burst + kinetic, centred on you (you're not hit), 1 charge | stunned |
 | | *Shockwave* | *Ground slam's alternative, being tried: the same, but* | *staggered* |
 | **Rogue** | Blink | Shift, yourself, 2 charges: your move, not your action | displaced |
-| | Smoke | Field + mind (mist: cover), 2 charges | fog: hidden |
+| | Smoke | Burst, no element (a cloud: you and your side in it, no roll), 1 charge | hidden |
 | | Dirty trick | Hex + mind, at will | blinded, 1 round |
 | | Snare | Hex + cold, 2 charges | slowed; entangled from tier 3 |
-| | Vanish | yourself, until you attack, 1 charge | hidden |
+| | Vanish | Ward, yourself, until you attack, 1 charge | hidden |
 | **Tinker** | Arc shot | Bolt + energy, at will | |
 | | Force field | Ward on yourself or an ally, 2 charges | barrier |
 | | Barricade | Field + kinetic (a wall), 1 charge | in cover, behind it |

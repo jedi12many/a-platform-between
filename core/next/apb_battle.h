@@ -114,7 +114,9 @@ enum {
     APB_EV_MEND,              /* actor's power heals target value                      */
     APB_EV_FIELD,             /* the square x, y becomes tile value (actor's field), or
                                  goes back to it (actor APB_NOBODY)                    */
-    APB_EV_SHIFT              /* actor is shifted to x, y                              */
+    APB_EV_SHIFT,             /* actor is shifted to x, y                              */
+    APB_EV_RANDOM             /* actor rolled for cond (confused): roll; value 0 loses
+                                 the turn, 1 lashes out, 2 acts as it chooses          */
 };
 
 typedef struct {
@@ -155,13 +157,17 @@ enum {
     APB_CF_FLY          = 0x0100,
     APB_CF_FIRST        = 0x0200,
     APB_CF_TIERED       = 0x0400,
+    APB_CF_MUST_ATTACK  = 0x0800,   /* aims at whoever put it on, if it can (taunted) */
+    APB_CF_HIDDEN       = 0x1000,   /* not aimed at from beyond 1 square; ends on attacking */
+    APB_CF_AT_RANDOM    = 0x2000,   /* d100 at its turn's start: lose it, lash out, or free */
+    APB_CF_PHASED       = 0x4000,   /* no weapons on it or by it; through walls */
     APB_CF_DEFINED      = 0x8000
 };
 
 typedef struct {
     uint16_t flags;
     uint8_t rounds;           /* 0: no countdown                                   */
-    uint8_t shake_tn;         /* + the putter's Resist; 0: can't be shaken off     */
+    uint8_t shake_tn;         /* less the level gap; 0: can't be shaken off        */
     uint8_t opposite, then;   /* condition ids, or 0                               */
     int8_t speed, dodge, armor, ward, soak, rolls, attacks, melee, next, shake;
     uint8_t heal, barrier;

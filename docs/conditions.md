@@ -266,7 +266,7 @@ Most powers either do damage or put on a condition; many do both. The class list
 | Class | Power: condition |
 |---|---|
 | Warden | Shield wall: shielded. Shove: knocked down (a crit). Taunt: taunted. Ground slam: stunned (or Shockwave: staggered, being tried) |
-| Rogue | Blink: displaced. Smoke: a field of fog (hidden). Dirty trick: blinded, 1 round. Snare: slowed; entangled from tier 3. Vanish: hidden |
+| Rogue | Blink: displaced. Smoke: a cloud (hidden). Dirty trick: blinded, 1 round. Snare: slowed; entangled from tier 3. Vanish: hidden |
 | Tinker | Force field: barrier. Barricade: in cover. Shock mine: stunned. Scan: marked |
 | Channeler | Ice wall: chilled; frozen from tier 5. Fire wall, Fireball: on fire. Shield: warded. Mind spike: confused |
 | Medic | Patch up: ends bleeding. Adrenaline: hasted. Stim: stimmed, then exhausted. Sedate: asleep |

@@ -103,16 +103,16 @@ coats, ids 9-14). Change a scenario there, `make site`, and the page follows.
 The same scenarios, played in a modern page instead of on the train: no story, no Boarding
 Pass, no Travel Stamp, no C64 screen, and **by rules v1** ([turn.md](turn.md): the rules
 lab's movement, conditions and powers), where the train still plays v0. More scenarios
-(R-01 to R-17) are there only, to try v1: fire to cross, a ledge to shove foes
+(R-01 to R-20) are there only, to try v1: fire to cross, a ledge to shove foes
 off, poisoned bites, chilling shots, flying over pits, running with Dash; and powers: a
 Channeler's fire and ice, a Medic beside a Warden, a Tinker's barricade and shock mine, a
-Rogue's blink and snare, a Warden's bull rush. It's a tool in
+Rogue's blink and snare, a Warden's bull rush; hiding, confusion and taunts. It's a tool in
 the **studio**, beside the art desk:
 
     make studio            then open http://localhost:8064/arena/
 
 - **The intro** lists only what needs playing now, a few at a time (`PLAYING` in
-  `tools/arena/scenarios.py`: R-16, R-17, R-13, R-14 and R-15 this round); any other opens by
+  `tools/arena/scenarios.py`: R-18, R-19, R-20, R-13 and R-14 this round); any other opens by
   its link (`arena/#scenario=R-02`). The chosen one shows what we want tested and what to
   watch for, both sides' cards (worked out by the rules, not typed in), and what a thousand
   fights on the computer say. Enter starts the fight.
@@ -238,6 +238,9 @@ shoves or dashes):
 | R-15 Above their level | | 44% | 58% if the foes have no powers: a level 6 Warden, five levels up (10 either way), with an iron sword and a chain coat; their hexes need 60, and still cost him 14 points |
 | R-16 Level 4, the old gear | | 52% | A-05's fight at level 4: 12% at level 1 |
 | R-17 Level 5, the new gear | | 80% | the next level, and the next tier of gear: a step, not a cliff |
+| R-18 Out of sight | | 34% | the computer doesn't hide (Vanish only with nobody to shoot, Smoke never): what hiding is worth is for the player to find |
+| R-19 Mind spike | | 55% | 47% without it: confused, the guard and the rats lose turns and bite each other |
+| R-20 Taunt | | 69% | 84% if the gunner can't taunt: it costs 15 points; the computer's Warden doesn't taunt the guards (20 health is under its "worth a hex") |
 
 From R-07 on, both sides use their powers as [turn.md](turn.md#how-the-computer-uses-powers)
 says. Soak is strong against swarms: a Soak equal to a foe's damage

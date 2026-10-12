@@ -3,8 +3,8 @@
 #
 # rounds:   how many of its bearer's turns it lasts (counted down at the end of each, but
 #           not the turn it was put on), or - (until something ends it)
-# shake:    N, rolled at the end of its bearer's turn: d100 + its Resist (2 x its level)
-#           against N + the Resist of whoever put it on (docs/turn.md); or -: it can't be
+# shake:    N, rolled at the end of its bearer's turn: d100 against N, less twice the levels
+#           its bearer is above whoever put it on (docs/turn.md); or -: it can't be
 # opposite: the condition it cancels when it's put on (and that cancels it), or -
 # then:     what it becomes when its rounds run out, or -
 # tag:      a short name for the battle screen
@@ -28,6 +28,10 @@
 #   fly            crosses pits, and rough ground costs 1; falls if it ends over a pit
 #   first          acts first in the order of play
 #   race=RACE      one of that race's two traits: always on
+#   must_attack    must aim its action at whoever put it on, if it can get at them this turn
+#   hidden         can't be aimed at from more than 1 square away; ends when it attacks
+#   at_random      at the start of its turn, d100: 01-25 loses it, 26-50 lashes out, else free
+#   phased         weapons don't touch it, and it can't attack with one; walks through walls
 #   tiered         its numbers are for tier 1: put on by a power or an item of tier N, they're N
 #                  times as much (docs/turn.md, Powers in play)
 #
@@ -68,6 +72,10 @@
 34    WEIGHTLESS      3      -             -         -          FLT   "Weightless"       fly melee=-10
 35    HEXED           3      -             -         -          HEX   "Hexed"            attacks=-10 tiered
 36    STAGGERED       1      -             -         -          STAG  "Staggered"        next=-20 tiered
+37    TAUNTED         2      -             -         -          TNT   "Taunted"          must_attack
+38    HIDDEN          3      -             -         -          HID   "Hidden"           hidden
+39    CONFUSED        2      50            -         -          CONF  "Confused"         at_random
+40    PHASED          2      -             -         -          PHAS  "Phased"           phased
 # The races' traits (docs/races.md): always on.
 64    LUCKY           -      -             -         -          LCK   "Lucky"            rolls=5 race=HUMAN
 65    STEADY          -      -             -         -          STDY  "Steady"           shake=10 race=HUMAN

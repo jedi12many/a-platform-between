@@ -213,3 +213,28 @@ def mend(tier):
 
 def shift_reach(tier):
     return tier + 2
+
+
+# ------------------------------------------------- the harder conditions (docs/turn.md)
+
+CONFUSED_TURNS = ["loses the turn", "lashes out", "acts as it chooses"]
+
+
+def confused(roll):
+    """A confused fighter's d100 at the start of its turn: 01-25 it loses the turn, 26-50 it
+    lashes out (walks to the nearest fighter, friend or foe, and attacks), 51-100 it acts
+    as it chooses."""
+    return CONFUSED_TURNS[0 if roll <= 25 else 1 if roll <= 50 else 2]
+
+
+def can_aim(distance, hidden):
+    """Whether a fighter can be aimed at (a weapon attack, a Shove, a power on it) from that
+    many squares away: a hidden one, only from next to it."""
+    return distance <= 1 or not hidden
+
+
+def weapon_touches(attacker_phased, target_phased, a_power=False):
+    """A weapon touches neither a phased fighter nor anyone, in a phased fighter's hands; an
+    attack that's a power (a focus, a ghost's touch) does."""
+    return a_power or not (attacker_phased or target_phased)
+

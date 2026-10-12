@@ -205,7 +205,8 @@ def load(root=ROOT):
 # rules lab (core/next/) uses them yet.
 MAX_CONDITION_ID = 127
 CONDITION_FLAGS = ["speed0", "dodge0", "lose_turn", "down", "ends_when_hit", "ends_on_heal",
-                   "no_powers", "no_heal", "fly", "first", "tiered"]
+                   "no_powers", "no_heal", "fly", "first", "tiered", "must_attack", "hidden",
+                   "at_random", "phased"]
 CONDITION_NUMBERS = ["speed", "dodge", "armor", "ward", "soak", "rolls", "attacks", "melee",
                      "next", "shake", "heal", "barrier"]
 
