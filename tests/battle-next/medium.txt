@@ -1,0 +1,51 @@
+# The harder conditions (docs/turn.md): taunted, confused, phased (and hidden.txt).
+# Bram (Warden) taunts a; b taunts Kestrel back; Sable (Channeler) mind-spikes b and c,
+# who roll each turn for what they do. c, a ghost, is phased for good: it walks through
+# the wall, weapons pass through it and its touch (a power) doesn't pass through anything.
+seed 5
+map
+############
+#@....#..c.#
+#@....#.a..#
+#@....#..b.#
+#..........#
+############
+end
+traveler 4542T0000A0105APR5DFA26000000001H60M8A5V5020180615T 5
+traveler 4PB794AR084102VANND8CJT000000000E64M4A3N50202G1FKWP 10
+traveler 5624RA000CC1026S69QSNAG000000030264MMABZ5020300JAEC 12
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 40 10  2 10  5  0  5 30  4  0  0  0  0 255 0  0
+foe b 40 10  2 10  5  0  4 30  4  1  0  0  0 255 1  0
+foe c 30 10  2 10  5  0  4 30  4  0  1  4  0 255 0  0
+trait 5 PHASED
+power 0 TAUNT 20
+power 1 VANISH 20
+power 1 SMOKE 20
+power 2 MIND_SPIKE 20
+power 2 FIREBOLT 20
+power 4 TAUNT 20
+# Round 1: Kestrel walks up beside the gap and shoots a; Sable mind-spikes b; Bram
+# taunts a.
+act 7 4 0 3
+act 3 4 7 4 0 0 0
+act 6 4 7 3 0 0 0
+# Round 2: b taunted Kestrel, so she can't shoot a (refused), only b. Sable mind-spikes
+# c. Bram hits a first, then steps back: a, still taunted, leaves Kestrel's side (her
+# free attack) to get at him.
+act 7 4 0 3
+act 7 4 0 4
+act 3 4 7 5 0 0 0
+first 0 3
+act 4 4 4 0
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q

@@ -381,9 +381,62 @@ LAB += [
 ]
 
 
+
+# The harder conditions (docs/turn.md): taunted, hidden, confused.
+LAB += [
+    {"title": "Out of sight",
+     "issue": "A new Rogue with Vanish (hidden: nobody can aim at you from more than a square "
+              "away, until you attack) and Smoke (a cloud: you and anyone of yours in it, "
+              "hidden), Blink and Snare, against two scrap gunners.",
+     "watch": "Whether hiding from shooters is fun or too strong, and whether giving yourself "
+              "away when you shoot feels fair.",
+     "cls": "ROGUE", "level": 1, "weapon": "SCRAP_PISTOL", "armor": None,
+     "powers": [["VANISH", 10], ["SMOKE", 10], ["BLINK", 10], ["SNARE", 10]],
+     "foes": ["SCRAP_GUNNER", "SCRAP_GUNNER"],
+     "map": ["############",
+             "#....+.....#",
+             "#@........a#",
+             "#....+....b#",
+             "#..........#",
+             "############"]},
+    {"title": "Mind spike",
+     "issue": "A new Channeler whose Mind spike now confuses (each turn, d100: 01-25 it loses "
+              "the turn, 26-50 it lashes out at the nearest fighter, friend or foe, 51-100 "
+              "it's free), with Firebolt, Ice wall and Shield, against a rust-guard and two "
+              "ash rats.",
+     "watch": "Whether confusion feels worth a charge, and whether foes hitting each other "
+              "is fun or too random.",
+     "cls": "CHANNELER", "level": 1, "weapon": "EMBER_WAND", "armor": None,
+     "powers": [["MIND_SPIKE", 10], ["FIREBOLT", 10], ["ICE_WALL", 10], ["SHIELD", 10]],
+     "foes": ["RUST_GUARD", "ASH_RAT", "ASH_RAT"],
+     "map": ["############",
+             "#..........#",
+             "#@........a#",
+             "#.........b#",
+             "#.........c#",
+             "############"]},
+    {"title": "Taunt",
+     "issue": "A new Warden with Taunt (a hex: whoever it lands on must aim at him while it "
+              "can get at him) and a new Channeler, against two rust-guards and a scrap "
+              "gunner who can taunt too.",
+     "watch": "Whether pulling the guards off the Channeler works, and how being taunted "
+              "yourself feels (you must hit the taunter if you can reach them).",
+     "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+     "powers": [["TAUNT", 10], ["SHIELD_WALL", 10], ["BULL_RUSH", 10], ["SECOND_WIND", 10]],
+     "allies": [{"cls": "CHANNELER", "level": 1, "weapon": "EMBER_WAND", "armor": None,
+                 "powers": [["FIREBOLT", 10], ["MIND_SPIKE", 10], ["SHIELD", 10]]}],
+     "foes": ["RUST_GUARD", "RUST_GUARD", {"foe": "SCRAP_GUNNER", "powers": [["TAUNT", 10]]}],
+     "map": ["############",
+             "#..........#",
+             "#@........a#",
+             "#@........b#",
+             "#.........c#",
+             "############"]},
+]
+
 # What the arena lists now: only what needs playing this round of tests, a few at a time
 # (the rest stay, by their codes, for links and the tests: #scenario=R-02 still opens).
-PLAYING = ["R-16", "R-17", "R-13", "R-14", "R-15"]
+PLAYING = ["R-18", "R-19", "R-20", "R-13", "R-14"]
 
 
 def foe_name(f):
@@ -568,7 +621,7 @@ def powers():
              "mend": "heals 5 x tier", "field": "a line of tier + 2 squares for 3 turns",
              "shift": "moves tier + 2 squares in a line"}
     riders = {"fire": "burns its square", "cold": "chills", "kinetic": "pushes a square",
-              "energy": "ignores Soak", "mind": "against Resolve"}
+              "energy": "ignores Soak", "mind": "against 50, less the level gap"}
     out = {}
     for p in arena.POWERS.values():
         shape = shapes[p["shape"]]
@@ -579,6 +632,8 @@ def powers():
                         "mind": ": mist (cover)", "energy": ": lightning"}[el]
         elif el and shape in ("bolt", "burst", "hex"):
             said.append(riders[el])
+        elif shape == "burst":
+            said[0] = "a cloud: no roll, on you and your side in it"
         if p["cond"]:
             said.append(arena.CONDS[p["cond"]]["display"].lower())
         out[p["id"]] = {"name": p["name"], "display": p["display"], "shape": shape, "element": el,
@@ -593,7 +648,11 @@ def conditions():
     words = {"speed0": "can't move", "dodge0": "Dodge 0", "lose_turn": "loses its turn",
              "down": "knocked down: standing takes half its Speed", "ends_when_hit": "ends when hit",
              "ends_on_heal": "ends when healed", "no_powers": "no powers", "no_heal": "no healing",
-             "fly": "flies", "first": "acts first"}
+             "fly": "flies", "first": "acts first",
+             "must_attack": "must attack whoever taunted it, if it can get at them",
+             "hidden": "can't be aimed at from more than a square away; ends when it attacks",
+             "at_random": "each turn, d100: 01-25 loses it, 26-50 attacks the nearest fighter, friend or foe",
+             "phased": "weapons pass through it, and it can't use one; walks through walls"}
     out = {}
     for c in arena.CONDS.values():
         e, said = c["effects"], []

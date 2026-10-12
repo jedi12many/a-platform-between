@@ -1,0 +1,52 @@
+# Hidden (docs/turn.md, The harder conditions), and phased weapons. Kestrel (Rogue)
+# vanishes: b, a shooter, can't aim at her from afar, so it shoots Sable; she gives
+# herself away when she shoots. Then Smoke on Sable and Bram: hidden too. g, a ghost
+# (phased for good): Kestrel's shots and Bram's blade can't touch it, Sable's Firebolt can.
+seed 9
+map
+############
+#@.........#
+#@.......b.#
+#@.........#
+#...g......#
+############
+end
+traveler 4542T0000A0105APR5DFA26000000001H60M8A5V5020180615T 5
+traveler 4PB794AR084102VANND8CJT000000000E64M4A3N50202G1FKWP 10
+traveler 5624RA000CC1026S69QSNAG000000030264MMABZ5020300JAEC 12
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe b 60 10  2 10  5  0  4 30  4  1  0  0  0 255 1  0
+foe g 30 10  2 10  5  0  4 30  4  0  1  4  0 255 2  0
+trait 4 PHASED
+power 1 VANISH 20
+power 1 SMOKE 20
+power 2 FIREBOLT 20
+# Round 1: Kestrel walks out to 5,2 and vanishes; Sable and Bram wait their turns out.
+# b can't aim at Kestrel, the nearest, from afar.
+act 5 2 7 1 0 0 0
+act 1 3 4 0
+act 1 1 4 0
+# Round 2: Kestrel shoots b, and is seen; Sable and Bram wait.
+act 5 2 0 3
+act 1 3 4 0
+act 1 1 4 0
+# Round 3: Kestrel steps back to 2,2 and smokes 1,2: she, Sable and Bram are hidden.
+act 2 2 7 0 1 2 1
+act 1 3 4 0
+act 1 1 4 0
+# Round 4: g's a ghost: Kestrel's shot can't touch it (refused), nor Bram's blade from
+# beside it (refused); Sable's Firebolt can.
+act 2 2 0 4
+act 2 2 4 0
+act 1 3 7 4 0 0 0
+act 3 3 0 4
+act 3 3 4 0
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q
+act q

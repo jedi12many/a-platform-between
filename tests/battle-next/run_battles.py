@@ -149,6 +149,7 @@ def recheck(name, path, log):
         r = re.match(r"  (\d+) (?:tries to flee|shoves \d+|tries to shake off (\w+)): "
                      r"(\d+)\+(-?\d+)=(-?\d+) vs (\d+): (\w+)$", line)
         t = re.match(r"  (\d+) takes (\d+) from (\w+) \[soak (\d+)([A-Z ]*)\]$", line)
+        c = re.match(r"  (\d+) is (\w+): (\d+), (.+)$", line)
         u = re.match(r"  (\d+) uses (\w+) \(tier (\d+)\)", line)
         h = re.match(r"  (\d+)'s (\w+) on (\d+): (\d+)\+(-?\d+)=(-?\d+) vs (\d+): (\w+), (\d+) damage "
                      r"\[soak (\d+)([A-Z ]*)\]$", line)
@@ -220,6 +221,17 @@ def recheck(name, path, log):
             can = {turn.CONDS[cond]["shake"] - turn.level_gap(lv[int(bearer)], p) for p in lv + [0]} if cond else set()
             if cond and int(tn) not in can:
                 fail(f"{name}: {line.strip()}: {cond} is shaken off against one of {sorted(can)}")
+        elif c and c.group(2) in turn.CONDS:
+            # Confused: a d100 at the start of its turn, read off the table.
+            last = None
+            rolls += 1
+            if int(c.group(3)) != next(dice):
+                fail(f"{name}: {line.strip()}: the roll doesn't follow the dice")
+                return rolls
+            if not turn.CONDS[c.group(2)]["effects"].get("at_random"):
+                fail(f"{name}: {line.strip()}: {c.group(2)} doesn't roll for the turn")
+            elif turn.confused(int(c.group(3))) != c.group(4):
+                fail(f"{name}: {line.strip()}: the table says it {turn.confused(int(c.group(3)))}")
         elif t and t.group(3) in turn.CONDS:
             f, dmg, cond, soak, tags = t.groups()
             n, kind = turn.CONDS[cond]["effects"]["dot"]
@@ -358,7 +370,20 @@ def fuzz(count):
         if code or "runtime error" in err or "Sanitizer" in err:
             fail(f"random battle {i}: exit {code}\n{err[-1500:]}")
             continue
-        for x, y in re.findall(r"(?:steps|is pushed|is shifted) to (\d+),(\d+)", out):
+        # Where each walk ends, each push and each shift: never in a wall (a phased
+        # fighter walks through them, but doesn't stop in one).
+        ends = []
+        walking = None
+        for line in out.splitlines() + [""]:
+            m = re.match(r"  (\d+) steps to (\d+),(\d+)$", line)
+            if m:
+                walking = (m.group(2), m.group(3))
+                continue
+            if walking:
+                ends.append(walking)
+                walking = None
+            ends += re.findall(r"(?:is pushed|is shifted) to (\d+),(\d+)", line)
+        for x, y in ends:
             if rows[int(y)][int(x)] == "#":
                 fail(f"random battle {i}: someone stood in a wall at {x},{y}")
         m = re.search(r"the fight is (\w+)", out)

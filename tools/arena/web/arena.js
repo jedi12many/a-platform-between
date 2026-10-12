@@ -542,6 +542,10 @@ async function act(kind, target, dx, dy, use) {
                    dx === undefined ? 0 : dx, dy === undefined ? 0 : dy, use === undefined ? 0 : use,
                    fight.blink || 0);
   if (r.refused) {
+    if ((me().conds || []).some(function (cr) { return condOf(cr[0]).name === "TAUNTED"; })) {
+      toast("Taunted: while you can get at whoever taunted you, your action must be aimed at them.");
+      return;
+    }
     toast(kind === ACT.flee ? "No way out from here: flee from an exit, or next to no one."
           : kind === ACT.dash ? "Can't dash there from here."
           : kind === ACT.power ? "That power can't go there from here." : "That can't be done from here.");
@@ -890,6 +894,16 @@ async function show1(e) {
   case "shake":
     log([el("span", null, name(e.actor) + " tries to shake off " + c.display.toLowerCase() + ": "),
          el("span", "roll", rolled(e)), el("span", null, e.result >= 2 ? ", and does." : ", and can't.")]);
+    break;
+  case "random":
+    s = fight.shown[e.actor];
+    floater(s.x, s.y + 0.35, ["dazed", "lashes out", "clear"][e.value] || "", "#e8c547");
+    log([el("span", null, name(e.actor) + " is " + c.display.toLowerCase() + ": "),
+         el("span", "roll", "d100 " + e.roll),
+         el("span", null, [", and loses the turn (01-25).", ", and lashes out at the nearest, friend or foe (26-50).",
+                           ", and acts as it chooses (51-100)."][e.value] || ".")],
+        fight.st.fighters[e.actor].side === 0 ? "bad" : "good");
+    await wait(300);
     break;
   case "stand":
     log(name(e.actor) + " stands up (" + e.value + " squares of move left).");

@@ -17,7 +17,8 @@ import registry  # noqa: E402
 FLAGS = {"speed0": "APB_CF_SPEED0", "dodge0": "APB_CF_DODGE0", "lose_turn": "APB_CF_LOSE_TURN",
          "down": "APB_CF_DOWN", "ends_when_hit": "APB_CF_ENDS_HIT", "ends_on_heal": "APB_CF_ENDS_HEAL",
          "no_powers": "APB_CF_NO_POWERS", "no_heal": "APB_CF_NO_HEAL", "fly": "APB_CF_FLY",
-         "first": "APB_CF_FIRST", "tiered": "APB_CF_TIERED"}
+         "first": "APB_CF_FIRST", "tiered": "APB_CF_TIERED", "must_attack": "APB_CF_MUST_ATTACK",
+         "hidden": "APB_CF_HIDDEN", "at_random": "APB_CF_AT_RANDOM", "phased": "APB_CF_PHASED"}
 NUMBERS = ["speed", "dodge", "armor", "ward", "soak", "rolls", "attacks", "melee", "next", "shake"]
 
 

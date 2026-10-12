@@ -99,9 +99,9 @@ static void put(const char *fmt, ...)
 static const char *const event_kinds[] = {
     "turn", "move", "attack", "down", "hazard", "guard", "wait", "flee", "gone", "end", "free",
     "cond_on", "cond_off", "immune", "tick", "heal", "skip", "shake", "stand", "dash", "shove",
-    "push", "slam", "fall", "thorns", "absorb", "power", "hit", "mend", "field", "shift"
+    "push", "slam", "fall", "thorns", "absorb", "power", "hit", "mend", "field", "shift", "random"
 };
-#define EVENT_KINDS 31
+#define EVENT_KINDS 32
 
 static void on_event(const apb_event *e)
 {
@@ -110,7 +110,7 @@ static void on_event(const apb_event *e)
         e->kind < EVENT_KINDS ? event_kinds[e->kind] : "?", e->actor, e->target, e->x, e->y,
         e->value, e->cond);
     if (e->kind == APB_EV_ATTACK || e->kind == APB_EV_FLEE || e->kind == APB_EV_SHAKE
-        || e->kind == APB_EV_SHOVE || e->kind == APB_EV_HIT) {
+        || e->kind == APB_EV_SHOVE || e->kind == APB_EV_HIT || e->kind == APB_EV_RANDOM) {
         put(",\"roll\":%u,\"total\":%d,\"tn\":%d,\"result\":%u", e->roll.roll, e->roll.total,
             e->roll.tn, e->roll.result);
     }
