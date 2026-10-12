@@ -138,8 +138,11 @@ the **studio**, beside the art desk:
   single target goes off at once; with several, aim as for an attack; one that goes on a
   square (a burst, a field, a blink) lights where it can go, and shows what it would touch
   (the blast, the wall's line) under the cursor. **Blink is your move**: pick its square
-  first (before walking), then act from there; Esc undoes it. Each card lists its fighter's powers
-  (hover for tier, roll and what each does).
+  first (before walking), then act from there; Esc undoes it. Each card lists its fighter's powers.
+  **Hover a power** (its button, or on a card; or Tab to it) for its rule at its tier: the
+  roll and what it's against, the damage, the area, the rider, its condition and what that
+  does, the charges left ([turn.md](turn.md#powers-in-play) worked out for that power). A
+  power you can't use now stays hoverable, greyed, and says why when pressed.
 - **Either order** ([turn.md](turn.md#actions)): attack, shove, guard or use a power before
   you've moved, and it happens from where you stand; the turn goes on, the other actions
   greyed out ("You've acted"), so you can still walk or blink, and Enter ends it.

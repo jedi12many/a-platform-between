@@ -296,8 +296,8 @@ function card(s, f, i, live) {
       var pd = powerOf(p[0]), sp = el("span", "pw" + (p[2] === 0 ? " spent" : ""),
         (live && f.side === 0 ? (k + 1) + " " : "") + pd.display +
         (p[2] >= 0 ? " " + p[2] + "/" + (pd.uses || 0) : ""));
-      sp.title = pd.display + " (tier " + p[3] + ", rolls " + p[4] + "): " + pd.what +
-        (p[2] < 0 ? "; at will" : "; " + p[2] + " left this fight");
+      sp.tabIndex = 0;
+      ruleOn(sp, p);
       pl.append(sp);
     });
     c.append(pl);
@@ -1282,6 +1282,106 @@ function buttons() {
   return [];
 }
 
+/* A power's rule, at its tier and roll (docs/turn.md, Powers in play): what the hover card
+ * says. p is a fighter's power: [id, rank, charges left (-1: at will), tier, roll]. */
+function powerRule(p) {
+  var pd = powerOf(p[0]), t = p[3], r = p[4], area = t >= 6 ? 2 : 1, dmg = 5 * t;
+  var side = 2 * area + 1, el0 = pd.element, lines = [], rolls = true, c;
+  var vs = "d100 + " + r + " against 50 + its Dodge + Ward";
+  var vsMind = "d100 + " + r + " against 50";
+  var tn = " (+20 in cover; less the level gap)";
+  switch (pd.shape) {
+  case "bolt":
+    lines.push("A foe in sight: " + (el0 === "mind" ? vsMind : vs) + tn + ". Damage " + dmg +
+               ", as a weapon's (margin, crits, glancing hits).");
+    break;
+  case "burst":
+    if (!el0) {
+      rolls = false;
+      lines.push("A cloud on a square in sight (" + side + "×" + side + "): no roll; on you and your side in it.");
+    } else {
+      lines.push((pd.target === "around" ? "Everyone round you (" + side + "×" + side + ", not you)"
+                  : "A square in sight, not so near that you're caught: everyone in the " + side + "×" + side +
+                    " round it, friend or foe") + ": one roll, " + (el0 === "mind" ? vsMind : vs) + tn +
+                 " for each. Damage " + dmg + ".");
+    }
+    break;
+  case "hex":
+    lines.push("A foe in sight: " + vsMind + tn + ". Damage " + Math.floor((dmg + 1) / 2) +
+               ", and hexed: −" + 10 * t + " to its attacks for 3 rounds.");
+    break;
+  case "ward":
+    rolls = false;
+    lines.push((pd.target === "self" ? "On yourself" : "On you or a traveler next to you") + ": no roll.");
+    break;
+  case "mend":
+    rolls = false;
+    lines.push("Heals " + dmg + (pd.target === "self" ? ", yourself" : ", you or a traveler next to you") + ": no roll.");
+    break;
+  case "field":
+    rolls = false;
+    lines.push("A line of " + (t + 2) + " squares through a square in sight, across the line from you, for 3 of your turns: " +
+               ({ fire: "fire, a hazard (" + dmg + " fire to whoever enters or starts a turn in it)",
+                  energy: "lightning, a hazard (" + dmg + " energy to whoever enters or starts a turn in it)",
+                  cold: "ice (rough ground: costs 2)", kinetic: "stone (a wall)",
+                  mind: "mist (cover: +20 against shots and powers)" }[el0] || "?") + ". Not on anyone's square.");
+    break;
+  case "shift":
+    if (pd.target === "square") {
+      rolls = false;
+      lines.push("Your move, not your action: straight to a square up to " + (t + 2) +
+                 " away (8 ways), through nothing that blocks sight; no free attacks. Then act from there.");
+    } else {
+      lines.push("A foe next to you: " + vs + tn + ". It's pushed " + (t + 2) +
+                 " squares away (walls, pits and hazards as a Shove's push).");
+    }
+    break;
+  }
+  if (el0 && (pd.shape === "bolt" || pd.shape === "burst" || pd.shape === "hex")) {
+    lines.push({ fire: "Fire: a hit burns its square (" + dmg + ") till the end of your next turn.",
+                 cold: "Cold: a hit chills (Speed −1, 2 rounds).", kinetic: "Kinetic: a hit pushes a square.",
+                 energy: "Energy: ignores Soak.", mind: "Mind: against 50, not Ward." }[el0]);
+  }
+  if (pd.cond) {
+    c = condOf(pd.cond);
+    lines.push((rolls ? "On a hit: " : "Condition: ") + c.display.toLowerCase() +
+               (c.tiered ? " at tier " + t : "") + " (" + c.what + ").");
+  }
+  lines.push((p[2] < 0 ? "At will." : p[2] + " of " + (pd.uses || 0) + " charge" + (pd.uses === 1 ? "" : "s") +
+              " left this fight.") +
+             (pd.target === "square" && pd.shape === "shift" ? "" : " Using it is your action."));
+  return { title: pd.display + " · tier " + t + (rolls ? " · rolls " + r : ""), lines: lines };
+}
+
+/* The hover card: a power's rule, beside whatever it's about. */
+function showRule(anchor, p) {
+  var card = $("rule"), rule = powerRule(p), box;
+  if (!card) {
+    card = el("div", "rule-card");
+    card.id = "rule";
+    card.setAttribute("role", "tooltip");
+    document.body.append(card);
+  }
+  card.textContent = "";
+  card.append(el("strong", null, rule.title));
+  rule.lines.forEach(function (l) { card.append(el("p", null, l)); });
+  card.hidden = false;
+  box = anchor.getBoundingClientRect();
+  card.style.left = Math.max(8, Math.min(window.innerWidth - card.offsetWidth - 8, box.left)) + "px";
+  card.style.top = (box.top - card.offsetHeight - 8 >= 8 ? box.top - card.offsetHeight - 8 : box.bottom + 8) + "px";
+}
+
+function hideRule() {
+  if ($("rule")) $("rule").hidden = true;
+}
+
+function ruleOn(node, p) {
+  node.addEventListener("mouseenter", function () { showRule(node, p); });
+  node.addEventListener("focus", function () { showRule(node, p); });
+  node.addEventListener("mouseleave", hideRule);
+  node.addEventListener("blur", hideRule);
+}
+
 /* A button for each of the traveler's powers: 1-4. */
 function powerButtons() {
   var f = me();
@@ -1293,12 +1393,13 @@ function powerButtons() {
             : blink && moved() ? "Blink is your move: before you walk" : "";
     return [String(k + 1), pd.display + (blink ? " (move" + (p[2] >= 0 ? ", " + p[2] : "") + ")"
             : p[2] >= 0 ? " (" + p[2] + ")" : ""), function () { usePower(k); },
-            !!off, off, false, "power"];
+            !!off, off, false, "power", p];
   });
 }
 
 function actions() {
   var bar = $("actions");
+  hideRule();
   bar.textContent = "";
   buttons().forEach(function (b) {
     if (b[0] === "gap") { bar.append(el("span", "gap")); return; }
@@ -1312,11 +1413,19 @@ function actions() {
     var btn = el("button", b[5] ? "primary" : null), k = el("kbd", null, b[0]);
     btn.type = "button";
     btn.append(k, document.createTextNode(b[1]));
-    btn.disabled = !!b[3];
-    if (b[3] && b[4]) btn.title = b[4];
+    if (b[6] === "power") {
+      /* Never disabled, so its rule shows on hover: greyed, and saying why when pressed. */
+      btn.classList.add("power");
+      if (b[3]) btn.classList.add("off");
+      btn.setAttribute("aria-disabled", String(!!b[3]));
+      ruleOn(btn, b[7]);
+      btn.onclick = b[3] ? function () { toast(b[4]); } : b[2];
+    } else {
+      btn.disabled = !!b[3];
+      if (b[3] && b[4]) btn.title = b[4];
+      btn.onclick = b[2];
+    }
     if (b[6] === "toggle") btn.setAttribute("aria-pressed", String(b[1].indexOf("on") > 0));
-    if (b[6] === "power") btn.classList.add("power");
-    btn.onclick = b[2];
     btn.dataset.key = b[0];
     bar.append(btn);
   });

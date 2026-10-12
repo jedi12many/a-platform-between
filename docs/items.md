@@ -64,20 +64,24 @@ the realm; the numbers never change ([translation.md](translation.md)).
 
 ### Shapes
 
+The rules for each shape in a fight, a power's or an item's, are [turn.md](turn.md#powers-in-play)'s;
+in short:
+
 | Shape | Roll | What it does |
 |---|---|---|
-| **Bolt** | attack, against Ward | one target in sight; damage **5 × tier**, as a weapon's |
-| **Burst** | attack, against Ward | Area 1 (Area 2 from tier 6): every combatant in it, rolled once, as in [combat.md](combat.md#area-attacks); damage 5 × tier |
-| **Ward** | none | you or an ally in sight: **+10 × tier** to Ward, or to Armor (the item says which), for 3 rounds |
-| **Field** | none | a line of up to **tier + 2** squares in sight, each touching the last, for 3 rounds: what the squares become depends on the element (below) |
-| **Mend** | none | you or an ally next to you: heal **5 × tier** |
-| **Hex** | attack, against Ward | one target in sight: **−10 × tier** to its attacks for 3 rounds, and the element's rider |
-| **Shift** | against Ward if unwilling | move yourself, or one target in sight, up to **tier + 2** squares in a straight line; not through walls |
-| **Sense** | none | outside fights: + 10 × tier to one check to find, read or understand something |
+| **Bolt** | against 50 + Dodge + Ward | one foe in sight; damage **5 × tier**, as a weapon's |
+| **Burst** | against 50 + Dodge + Ward, once for all | a square in sight (not so near that you're in it), or round you: everyone in Area 1 (Area 2 from tier 6), friend or foe; damage 5 × tier. With no element it's a **cloud**: no roll, no damage, its condition on you and your side in it |
+| **Hex** | against **50**, not Ward | one foe in sight: half a bolt's damage (5 × tier ÷ 2, rounded up), and **hexed**: −10 × tier to its attacks for 3 rounds |
+| **Ward** | none | you, or a traveler next to you: its condition, at its tier (shielded: Armor +10 × tier; warded: Ward +10 × tier) |
+| **Mend** | none | you, or a traveler next to you: heals **5 × tier**, and its condition |
+| **Field** | none | a line of **tier + 2** squares through a square in sight, across the line from you, for 3 of your turns: what the squares become depends on the element (below). Not on anyone's square |
+| **Shift** | yourself: none; a foe: against 50 + Dodge + Ward | yourself (Blink): **your move, not your action**, straight up to tier + 2 squares, through nothing that blocks sight; a foe next to you: pushed tier + 2 squares away, as a Shove's push |
+| **Sense** | none | outside fights: + 10 × tier to one check to find, read or understand something (none built yet) |
 
-The attack roll is the item's skill: **Channel** for a focus (wand, staff, holy symbol),
-**Ranged** for a gun or a thrown grenade, **Melee** for a weapon. Margin, crits and
-glancing hits work as for any attack.
+Every TN, as every roll's, is less the level gap, and +20 in cover. An item's roll is its
+skill: **Channel** for a focus (wand, staff, holy symbol), **Ranged** for a gun or a thrown
+grenade, **Melee** for a weapon. A power's is half its class's stat plus its rank. Margin,
+crits and glancing hits work as for any attack.
 
 ### Elements
 
@@ -86,16 +90,16 @@ bolt and an ice shard feel different without either needing a page of rules:
 
 | Element | Bolt, Burst, Hex rider | A Field of it becomes |
 |---|---|---|
-| **fire** | the target's square burns (a fire square) until the end of the next round | **fire**: hurts anyone who enters it or starts a turn in it, 5 × tier, once a turn; Soak counts |
-| **cold** | the target's Speed −2 on its next turn | **ice**: rough ground (costs 2 to enter) |
+| **fire** | the target's square burns (5 × tier, a hazard) till the end of your next turn | **fire**: a hazard, 5 × tier to anyone who enters it or starts a turn in it, and its condition; Soak counts |
+| **cold** | the target is **chilled** (Speed −1, 2 rounds) | **ice**: rough ground (costs 2 to enter) |
 | **kinetic** | the target is pushed 1 square away from you | **stone**: wall (blocks movement and sight) |
 | **energy** | ignores the target's Soak | **lightning**: as fire, energy damage |
 | **mind** | against 50 (less the level gap) instead of Ward | **mist**: cover (+20 to TN against ranged attacks and powers) |
 
-A **field** goes only on open ground or rough ground, never on a combatant, and goes back
-to what it was after 3 rounds (the end of its maker's third turn after making it). Foes
-can walk through a fire wall; they just pay for it. At the table, put a d6 on each square,
-showing the rounds left.
+A **field** goes only on open ground or rough ground, never on a fighter, and goes back
+to what it was at the end of its maker's third turn after making it. Foes can walk
+through a fire wall; they just pay for it. At the table, put a d6 on each square, showing
+the turns left.
 
 ## Powers
 
@@ -157,33 +161,36 @@ and an element, at will or with charges; its tier comes from its rank. Many put 
 | Class | Power | Effect | Condition |
 |---|---|---|---|
 | **Warden** | Second wind | Mend, yourself only, 1 charge | regenerating |
-| | Shield wall | Ward (Armor) on an ally next to you, 2 charges | shielded |
-| | Shove | Shift + kinetic, a foe next to you, at will | knocked down (a crit) |
+| | Shield wall | Ward, you or an ally next to you, 2 charges | shielded |
+| | Bull rush | Shift + kinetic, a foe next to you, 2 charges | |
 | | Taunt | Hex + mind, 2 charges | taunted |
-| | Ground slam | Burst + kinetic, centred on you (you're not hit), 1 charge | stunned |
-| | *Shockwave* | *Ground slam's alternative, being tried: the same, but* | *staggered* |
-| **Rogue** | Blink | Shift, yourself, 2 charges: your move, not your action | displaced |
-| | Smoke | Burst, no element (a cloud: you and your side in it, no roll), 1 charge | hidden |
-| | Dirty trick | Hex + mind, at will | blinded, 1 round |
-| | Snare | Hex + cold, 2 charges | slowed; entangled from tier 3 |
-| | Vanish | Ward, yourself, until you attack, 1 charge | hidden |
+| | Ground slam | Burst + kinetic, round you (you're not hit), 1 charge | stunned |
+| | Shockwave | Burst + kinetic, round you, 1 charge: *Ground slam's alternative, being tried* | staggered |
+| **Rogue** | Blink | Shift, yourself, 2 charges: your move, not your action | |
+| | Smoke | Burst, no element (a cloud), on a square, 1 charge | hidden |
+| | Dirty trick | Hex + mind, at will | blinded |
+| | Snare | Hex + cold, 2 charges | slowed |
+| | Vanish | Ward, yourself, 1 charge | hidden |
 | **Tinker** | Arc shot | Bolt + energy, at will | |
-| | Force field | Ward on yourself or an ally, 2 charges | barrier |
-| | Barricade | Field + kinetic (a wall), 1 charge | in cover, behind it |
-| | Shock mine | Burst + energy, 1 charge | stunned |
-| | Scan | Sense | marked |
+| | Force field | Ward, you or an ally next to you, 2 charges | barrier |
+| | Barricade | Field + kinetic (a wall), 1 charge | |
+| | Shock mine | Burst + energy, on a square, 1 charge | stunned |
 | **Channeler** | Firebolt | Bolt + fire, at will | |
-| | Ice wall | Field + cold, 2 charges | chilled; frozen from tier 5 |
+| | Ice wall | Field + cold (rough ground), 2 charges | |
 | | Fire wall | Field + fire, 1 charge | on fire |
-| | Shield | Ward (Ward), yourself, 2 charges | warded |
-| | Fireball | Burst + fire, 1 charge | on fire |
+| | Shield | Ward, yourself, 2 charges | warded |
+| | Fireball | Burst + fire, on a square, 1 charge | on fire |
 | | Mind spike | Hex + mind, 2 charges | confused |
-| **Medic** | Patch up | Mend, 3 charges | ends bleeding |
-| | Adrenaline | Shift, an ally in sight (they move), 2 charges | hasted |
-| | Stim | an ally next to you, 2 charges | stimmed, then exhausted |
+| **Medic** | Patch up | Mend, you or an ally next to you, 3 charges (ends bleeding: it ends when healed) | |
+| | Adrenaline | Ward, you or an ally next to you, 2 charges | hasted |
+| | Stim | Ward, you or an ally next to you, 2 charges | stimmed, then exhausted |
 | | Sedate | Hex + mind, 2 charges | asleep |
-| | Diagnose | Sense | |
-| **Any class** | Out of Time (from level 20) | anchors items: below | |
+| **Any class** | Out of Time (from level 20) | anchors items: below (not built yet) | |
+
+These are `registry/powers.txt`'s, and `make test-rules-next` holds this table to it (a
+power's shape, element, charges and condition). **Still to come**, as the lists grow:
+Scan (Tinker: marked) and Diagnose (Medic), the Sense shape; Blink leaving you
+**displaced**; Snare **entangling** from tier 3; Ice wall **freezing** from tier 5.
 
 ## Out of Time
 
