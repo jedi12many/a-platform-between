@@ -15,10 +15,10 @@ attacks and damage, sight, the foes' rules, fleeing) is as [combat.md](combat.md
    tick: damage each turn, then healing each turn. If you're knocked down, you stand up
    (it takes half your Speed). If a condition takes your turn (stunned, asleep, paralyzed,
    frozen), the turn goes straight to step 4.
-2. **Move**, up to your Speed; or, instead of walking, **Blink** (a power that shifts
-   you to a square: see *Powers in play*).
-3. **One action**: Attack, Shove, Dash, Guard, Wait (only before you've moved, once a
-   round), Flee, or Done. Swapping gear is free, any time on your turn
+2. **Your move action**: walk up to your Speed; or, instead of walking, **Blink** (a
+   power that shifts you to a square: see *Powers in play*). You can stay put.
+3. **Your standard action**: one of the actions below (Attack, a power, Shove, Dash,
+   Guard, Wait, Flee, or Done). Swapping gear is free, any time on your turn
    ([items.md](items.md#swapping)).
 4. **It ends.** Your timed conditions count down a round (not one put on this turn), and
    each that has run out ends, becoming what it turns into, if anything. Then roll to
@@ -55,6 +55,15 @@ irradiated), **poison gas** (no damage type, poisoned); a plain hazard is 5 kine
 nothing more. Each hazard square hits you once in a move, however you cross it.
 
 ## Actions
+
+**A turn is one move action and one standard action, in that order; swapping gear is
+free.** That's all a player has to track, at the table or on the C64:
+
+| Kind | What it is |
+|---|---|
+| **Move action** | walk up to your Speed (standing up, if you're knocked down, takes half of it), or **Blink** |
+| **Standard action** | **Attack**; **a power** (but Blink, which is a move); **Shove**; **Dash** (a second move, in place of acting); **Guard**; **Wait** (only before you've moved, once a round); **Flee**; **Done** |
+| **Free** | **swap gear** from your pack ([items.md](items.md#swapping)), any time on your turn |
 
 | Action | What it does |
 |---|---|
@@ -267,6 +276,9 @@ Decided for now, to come back to after more playtests:
   mends mattering between fights as well as in them.
 
 ## Still open
+
+- Whether the standard action may come before the move action (shoot, then step back):
+  for now the move comes first, as the battle screen asks for it.
 
 - **Phased** (through walls, untouchable), **hidden**, **spreading**, **at random**,
   **must attack**: the medium effects, with the powers that need them (Taunt, Smoke,
