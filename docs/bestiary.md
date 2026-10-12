@@ -12,21 +12,23 @@ here never changes a Departure that has shipped.
 ## What a foe is measured against
 
 A traveler, as the arena's quick builder makes one (a sensible build, not the best), with
-gear a tier up every 5 levels:
+gear a tier up every 5 levels, by rules v1 ([turn.md](turn.md#levels-and-gear): the level
+counts in each roll as the gap between the fighters, so it isn't in these numbers):
 
 | Level | Health | Attack | TN to hit them (weapons) | TN (powers) | Weapon damage |
 |---|---|---|---|---|---|
-| 1 | 29 | 62 | 64-74 | 64 | 5 |
-| 5 | 37 | 72-78 | 74-84 | 64 | 10 |
-| 10 | 47 | 85-91 | 84-94 | 64 | 15 |
-| 20 | 68 | 92-102 | 104-114 | 64-70 | 25 |
-| 40 | 110 | 92-102 | 148-154 | 68-70 | 45 |
-| 100 | 235 | 100 | 150-160 | 70 | 45 |
+| 1 | 29 | 62 | 64-74 | 64-67 | 5-9 |
+| 5 | 37 | 72-78 | 74-79 | 64-67 | 8-12 |
+| 10 | 47 | 85-91 | 79-84 | 64-68 | 11-15 |
+| 20 | 68 | 92-102 | 89-95 | 64-70 | 17-22 |
+| 40 | 107-113 | 92-102 | 113-115 | 64-70 | 29-34 |
+| 70 | 173-175 | 92-102 | 115-118 | 68-70 | 29-34 |
+| 100 | 235 | 100-102 | 115-120 | 70 | 29-34 |
 
-Two things stand out, and the foes have to be built round them until the rules change:
-travelers have **no Ward** of their own (only what items and powers give), so a foe's
-powers hit far more easily than its weapons; and past level 40, **gear has topped out**
-(tier 9) while health keeps rising.
+Two things stand out, and the foes are built round them: travelers have **no Ward** of
+their own (only what items and powers give), so a foe's powers hit far more easily than its
+weapons; and past level 40 a traveler grows only in health: their skills have levelled
+off and their **gear has topped out** (tier 9).
 
 ## A standard foe
 
@@ -36,23 +38,48 @@ left. The Fare's rust-guard against a new Warden is the model (82% in the arena)
 
 | Level | Health | Attack | Damage | Armor | Ward | Soak | Grace |
 |---|---|---|---|---|---|---|---|
-| 1 | 20 | 45 | 6 | 20 | 10 | 1 | 20-50 |
-| 5 | 40 | 55 | 8 | 30 | 15 | 2 | 20-50 |
-| 10 | 60 | 65 | 10 | 40 | 20 | 3 | 30-60 |
-| 20 | 100 | 85 | 14 | 60 | 30 | 4 | 30-60 |
-| 40 | 180 | 120 | 22 | 80 | 40 | 6 | 40-70 |
-| 70 | 280 | 130 | 30 | 90 | 60 | 8 | 40-70 |
-| 100 | 380 | 140 | 38 | 90 | 80 | 10 | 50-80 |
+| 1 | 26 | 45 | 6 | 20 | 10 | 1 | 20-50 |
+| 5 | 46 | 55 | 7 | 30 | 15 | 1 | 20-50 |
+| 10 | 54 | 58 | 9 | 45 | 20 | 2 | 30-60 |
+| 20 | 92 | 68 | 14 | 50 | 25 | 2 | 30-60 |
+| 40 | 149 | 88 | 23 | 50 | 25 | 3 | 40-70 |
+| 70 | 156 | 97 | 35 | 50 | 25 | 3 | 40-70 |
+| 100 | 144 | 90 | 47 | 60 | 30 | 4 | 50-80 |
 
-The reasoning, so it can be redone when the rules move:
+The reasoning, so it can be redone when the rules move: first from the travelers' numbers,
+then fitted in the arena (`python3 tools/arena/standard.py --fit`, which fights a traveler of
+each class against the table's foe of their own level, a thousand times each, and moves
+health, then Attack, until the five classes average 4 wins in 5):
 
-- **Health**: three or four of a same-level traveler's hits.
-- **Attack**: hits the band's Warden a little over half the time (attack ≈ their TN − 40).
+- **Health**: what the arena's fit says: three to six of a same-level traveler's hits.
+- **Attack**: hits the band's Warden a little over half the time (attack ≈ their TN − 30).
+- **Armor**: a same-level traveler's attack hits it about as often at every level (their
+  Attack + 15 − 50 − its Dodge), and stops rising when theirs does.
 - **Damage**: about a fifth of a same-level traveler's health a hit.
 - **Ward**: **never 0**: half its Armor for a thing of flesh or metal, but **equal to its
   Armor for a brute** (see below); its Armor or more for anything magical. A foe that really has no defense against powers says so with a
   **weakness** instead (printed, and fair).
 - **Speed**: 4, as a traveler's; Grace sets its place in the order and its Dodge (÷ 5).
+- **Level**: on the card. The level gap does the rest, so a foe's numbers needn't chase a
+  traveler's level, and every number stays in a byte.
+
+Measured by rules v1 (`tools/arena/standard.py`, a thousand fights each, on the arena's
+open floor): won % and health left.
+
+| Level | Warden | Rogue | Tinker | Channeler | Medic | Average |
+|---|---|---|---|---|---|---|
+| 1 | 82% (47%) | 85% (56%) | 70% (47%) | 95% (66%) | 70% (47%) | 80% |
+| 5 | 73% (38%) | 88% (47%) | 72% (39%) | 95% (56%) | 72% (39%) | 80% |
+| 10 | 73% (37%) | 89% (48%) | 73% (39%) | 98% (60%) | 73% (39%) | 81% |
+| 20 | 66% (31%) | 87% (42%) | 76% (34%) | 94% (45%) | 76% (34%) | 80% |
+| 40 | 63% (28%) | 91% (41%) | 80% (36%) | 96% (45%) | 80% (36%) | 82% |
+| 70 | 55% (24%) | 84% (33%) | 79% (30%) | 93% (40%) | 79% (30%) | 78% |
+| 100 | 70% (32%) | 82% (37%) | 78% (34%) | 98% (49%) | 78% (34%) | 81% |
+
+Fair on average at every level; but shooters (the Channeler, the Rogue) do better than the
+Warden in the open, as the arena found before (*Distance is half of it*, below). The
+registry's level 1 foes (the rust-guard and the rest) aren't changed by this: they're
+roles of the level 1 row, and they change, if at all, with the playtests.
 
 ## Roles
 

@@ -90,7 +90,7 @@ bolt and an ice shard feel different without either needing a page of rules:
 | **cold** | the target's Speed −2 on its next turn | **ice**: rough ground (costs 2 to enter) |
 | **kinetic** | the target is pushed 1 square away from you | **stone**: wall (blocks movement and sight) |
 | **energy** | ignores the target's Soak | **lightning**: as fire, energy damage |
-| **mind** | against Resist (twice the level) instead of Ward | **mist**: cover (+20 to TN against ranged attacks and powers) |
+| **mind** | against 50 (less the level gap) instead of Ward | **mist**: cover (+20 to TN against ranged attacks and powers) |
 
 A **field** goes only on open ground or rough ground, never on a combatant, and goes back
 to what it was after 3 rounds (the end of its maker's third turn after making it). Foes

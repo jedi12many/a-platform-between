@@ -71,7 +71,7 @@ static uint8_t c_left[APB_FIGHTERS_MAX][APB_COND_SLOTS];   /* rounds left; 0: no
 static uint8_t c_fresh[APB_FIGHTERS_MAX][APB_COND_SLOTS];  /* put on this turn            */
 static uint8_t c_tier[APB_FIGHTERS_MAX][APB_COND_SLOTS];   /* a tiered one's tier         */
 static uint8_t c_barrier[APB_FIGHTERS_MAX];                /* a barrier's damage left     */
-static uint8_t c_from[APB_FIGHTERS_MAX][APB_COND_SLOTS];   /* the Resist of who put it on */
+static uint8_t c_from[APB_FIGHTERS_MAX][APB_COND_SLOTS];   /* the level of who put it on  */
 static uint8_t putter = APB_NOBODY;    /* who's putting conditions on now (none: a hazard) */
 
 /* Powers: what each fighter holds in this fight. */
@@ -303,15 +303,17 @@ static void take_off_flag(uint8_t who, uint16_t flag)
     }
 }
 
-/* Resist (docs/turn.md): twice the level. What a condition's shaking off is against. */
-static uint8_t resist(uint8_t who)
+/* The level gap (docs/turn.md, Levels and gear): twice the levels a is above b (below:
+ * negative). Every roll's TN against a fighter is that much lower for the roller; a
+ * hazard's or a scenario's condition is level 0's. */
+static uint8_t level_of(uint8_t who)
 {
-    return (uint8_t)(f_level[who] > 100 ? 200 : 2 * f_level[who]);
+    return (uint8_t)(who < count ? (f_level[who] > 100 ? 100 : f_level[who]) : 0);
 }
 
-static uint8_t putter_resist(void)
+static int16_t gap(uint8_t a, uint8_t b)
 {
-    return putter < count ? resist(putter) : 0;
+    return (int16_t)(2 * ((int16_t)level_of(a) - (int16_t)level_of(b)));
 }
 
 static void put_on(uint8_t who, uint8_t cond)
@@ -343,7 +345,7 @@ static void put_on_tier(uint8_t who, uint8_t cond, uint8_t tier)
             /* The same one again: the longer time counts. */
             if (c_left[who][k] && d->rounds > c_left[who][k]) c_left[who][k] = d->rounds;
             if (tier > c_tier[who][k]) c_tier[who][k] = tier;
-            if (putter_resist() > c_from[who][k]) c_from[who][k] = putter_resist();
+            if (level_of(putter) > c_from[who][k]) c_from[who][k] = level_of(putter);
             if (d->barrier) c_barrier[who] = (uint8_t)(d->barrier * c_tier[who][k]);
             return;
         }
@@ -363,7 +365,7 @@ static void put_on_tier(uint8_t who, uint8_t cond, uint8_t tier)
     c_id[who][slot] = cond;
     c_left[who][slot] = d->rounds;
     c_tier[who][slot] = (uint8_t)((d->flags & APB_CF_TIERED) ? tier : 1);
-    c_from[who][slot] = putter_resist();
+    c_from[who][slot] = level_of(putter);
     c_fresh[who][slot] = (uint8_t)(who == acting);     /* not counted the turn it went on */
     if (d->barrier) c_barrier[who] = (uint8_t)(d->barrier * c_tier[who][slot]);
     emit_c(APB_EV_COND_ON, who, APB_NOBODY, d->rounds, cond);
@@ -532,11 +534,6 @@ uint8_t apb_gear_armor_v1(uint8_t tier)
     return (uint8_t)(tier ? 5 + 5 * tier : 0);
 }
 
-uint8_t apb_level_bonus_v1(uint8_t level)
-{
-    return (uint8_t)(level > 1 ? 2 * (level > 100 ? 99 : level - 1) : 0);
-}
-
 void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon_item)
 {
     uint8_t arch = APB_ARCH_MELEE;
@@ -550,7 +547,7 @@ void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon
     out->health_max = apb_health_max(ch);
     out->health = out->health_max;
     out->grace = ch->stat[APB_GRACE];
-    out->dodge = (uint8_t)(apb_dodge(ch) + apb_level_bonus_v1(ch->level));
+    out->dodge = apb_dodge(ch);
     out->armor = apb_gear_armor_v1((uint8_t)(apb_armor(ch) / 10));
     out->speed = apb_speed_v1(ch->stat[APB_GRACE], (uint8_t)(apb_armor(ch) / 10));
     out->athletics = apb_skill(ch, APB_SK_ATHLETICS);
@@ -574,9 +571,6 @@ void apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon
     out->on_hit = 0;
     out->power_stat = ch->cls < APB_CLASS_COUNT ? ch->stat[apb_class_bonus[ch->cls]] : 0;
     out->level = ch->level;
-    /* Twice the level above 1 (docs/turn.md): kept to a byte. */
-    out->attack = (uint8_t)(out->attack + apb_level_bonus_v1(ch->level) > 255
-                            ? 255 : out->attack + apb_level_bonus_v1(ch->level));
 }
 
 /* Who goes first: First (Early) before anyone; then highest Grace; travelers before foes
@@ -767,12 +761,12 @@ int16_t apb_battle_tn(uint8_t a, uint8_t t)
     if (f_ranged[a] && tiles[f_y[t]][f_x[t]] == APB_TILE_COVER) {
         bonus = (int16_t)(bonus + APB_COVER_BONUS);
     }
-    return apb_hit_tn(apb_battle_dodge(t), defense, bonus, 0);
+    return (int16_t)(apb_hit_tn(apb_battle_dodge(t), defense, bonus, 0) - gap(a, t));
 }
 
-int16_t apb_battle_shove_tn(uint8_t t)
+int16_t apb_battle_shove_tn(uint8_t a, uint8_t t)
 {
-    return apb_hit_tn(apb_battle_dodge(t), apb_battle_armor(t), 0, 0);
+    return (int16_t)(apb_hit_tn(apb_battle_dodge(t), apb_battle_armor(t), 0, 0) - gap(a, t));
 }
 
 /* ------------------------------------------------------------- outcomes */
@@ -1046,7 +1040,7 @@ static void shove(uint8_t who, uint8_t t)
     int8_t dy = (int8_t)(f_y[t] > f_y[who] ? 1 : f_y[t] < f_y[who] ? -1 : 0);
 
     putter = who;
-    apb_check(dice, f_athletics[who], sum(who, 5), apb_battle_shove_tn(t), &shot);
+    apb_check(dice, f_athletics[who], sum(who, 5), apb_battle_shove_tn(who, t), &shot);
     ev.roll = shot;
     emit(APB_EV_SHOVE, who, t, shot.result);
     if (shot.result == APB_FAIL) return;
@@ -1140,14 +1134,14 @@ static uint8_t usable(uint8_t who, uint8_t use)
                      && !has_flag(who, APB_CF_NO_POWERS));
 }
 
-/* A power's TN against t (docs/turn.md): Ward and Dodge; a hex's, or a mind power's, its
- * Resist alone; and cover. */
-static int16_t power_tn(uint8_t t, const apb_power_def *d)
+/* A power's TN against t (docs/turn.md): Ward and Dodge; a hex's, or a mind power's, 50
+ * alone; and cover; less the level gap, as every roll's. */
+static int16_t power_tn(uint8_t who, uint8_t t, const apb_power_def *d)
 {
     int16_t bonus = tiles[f_y[t]][f_x[t]] == APB_TILE_COVER ? APB_COVER_BONUS : 0;
 
-    if (d->shape == APB_SH_HEX || d->element == APB_DMG_MIND) return apb_hit_tn(0, resist(t), bonus, 0);
-    return apb_hit_tn(apb_battle_dodge(t), apb_battle_ward(t), bonus, 0);
+    if (d->shape == APB_SH_HEX || d->element == APB_DMG_MIND) return (int16_t)(apb_hit_tn(0, 0, bonus, 0) - gap(who, t));
+    return (int16_t)(apb_hit_tn(apb_battle_dodge(t), apb_battle_ward(t), bonus, 0) - gap(who, t));
 }
 
 static uint8_t burst_area(uint8_t tier)
@@ -1191,7 +1185,7 @@ uint8_t apb_battle_power_targets(uint8_t who, uint8_t use, uint8_t x, uint8_t y,
         if (!power_can_target(who, use, i, x, y)) continue;
         targets[n] = i;
         tns[n] = (sh == APB_SH_BOLT || sh == APB_SH_HEX || sh == APB_SH_SHIFT)
-                 ? power_tn(i, &apb_powers[p_id[who][use]]) : 0;
+                 ? power_tn(who, i, &apb_powers[p_id[who][use]]) : 0;
         ++n;
     }
     return n;
@@ -1354,7 +1348,7 @@ static uint8_t power_hits(uint8_t who, uint8_t use, uint8_t t, uint8_t roll, int
 
     shot.roll = roll;
     shot.total = (int16_t)(roll + apb_battle_power_rating(who, use) + bonus);
-    shot.tn = power_tn(t, d);
+    shot.tn = power_tn(who, t, d);
     shot.result = apb_resolve(roll, shot.total, shot.tn);
     if (d->shape == APB_SH_BOLT || d->shape == APB_SH_BURST || d->shape == APB_SH_HEX) {
         /* A hex hurts too, half a bolt's (5 x tier, halved, rounded up). */
@@ -2020,9 +2014,10 @@ static void end_turn(uint8_t who)
         if (!cond) continue;
         d = &apb_conds[cond];
         if (!d->shake_tn) continue;
-        /* d100 + Resist against its number + the Resist of whoever put it on. */
+        /* d100 against its number, less the level gap to whoever put it on. */
         bonus = (int16_t)(sum(who, 9) + sum(who, 5));
-        apb_check(dice, resist(who), bonus, (int16_t)(d->shake_tn + c_from[who][k]), &shot);
+        apb_check(dice, 0, bonus, (int16_t)(d->shake_tn - 2 * ((int16_t)level_of(who) - (int16_t)c_from[who][k])),
+                  &shot);
         ev.roll = shot;
         emit_c(APB_EV_SHAKE, who, APB_NOBODY, shot.result, cond);
         if (shot.result >= APB_SUCCESS) take_off(who, k);

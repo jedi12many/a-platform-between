@@ -141,7 +141,7 @@ def check_pack():
     before, taken = out["open"]["st"]["fighters"][0], out["taken"]["st"]["fighters"][0]
     unworn = out["unworn"]["st"]["fighters"][0]
     want = {"item": take, "weapon": turn.gear_damage(item["tier"]), "ranged": 1, "power": 0,
-            "type": item["damage"], "attack": arena.rating(ch, "RANGED") + turn.level_bonus(ch["level"]),
+            "type": item["damage"], "attack": arena.rating(ch, "RANGED"),
             "stat_bonus": 0}
     got = {k: taken[k] for k in want}
     if got != want:

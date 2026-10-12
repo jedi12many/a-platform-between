@@ -229,12 +229,11 @@ uint8_t apb_battle_add(const apb_fighter *f);
 uint8_t apb_battle_count(void);
 void    apb_battle_fighter(uint8_t who, apb_fighter *out);
 void    apb_fighter_from(apb_fighter *out, const apb_character *ch, uint16_t weapon_item);
-/* Rules v1's gear and levels (docs/turn.md, Levels and gear): a weapon of tier T deals
- * 2 + 3T (5, 8, 11...), armor of tier T is 5 + 5T (10, 15, 20...); a traveler adds twice
- * their level above 1 to their attack and their Dodge. */
+/* Rules v1's gear (docs/turn.md, Levels and gear): a weapon of tier T deals 2 + 3T (5, 8,
+ * 11...), armor of tier T is 5 + 5T (10, 15, 20...). Levels count in each roll, as the
+ * gap between the two fighters' (apb_battle_tn). */
 uint8_t apb_gear_damage_v1(uint8_t tier);
 uint8_t apb_gear_armor_v1(uint8_t tier);
-uint8_t apb_level_bonus_v1(uint8_t level);
 #ifdef APB_ARENA
 void    apb_battle_rearm(uint8_t who, const apb_fighter *f);
 #endif
@@ -282,6 +281,6 @@ void    apb_battle_dash_map(uint8_t who, uint8_t x, uint8_t y,
 uint8_t apb_battle_can_attack(uint8_t who, uint8_t target, uint8_t from_x, uint8_t from_y);
 uint8_t apb_battle_can_shove(uint8_t who, uint8_t target, uint8_t from_x, uint8_t from_y);
 int16_t apb_battle_tn(uint8_t attacker, uint8_t target);
-int16_t apb_battle_shove_tn(uint8_t target);
+int16_t apb_battle_shove_tn(uint8_t shover, uint8_t target);
 
 #endif

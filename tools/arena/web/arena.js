@@ -273,7 +273,7 @@ function card(s, f, i, live) {
   if (frac <= 0.25) hp.classList.add("low"); else if (frac <= 0.5) hp.classList.add("mid");
   [["Attack", f.attack, f.attack], ["Armor", f.armor, f.armor_now], ["Ward", f.ward, f.ward_now],
    ["Dodge", f.dodge, f.dodge_now], ["Soak", f.soak, f.soak_now], ["Speed", f.speed, f.speed_now],
-   ["Resist", 2 * f.level, 2 * f.level]].forEach(function (p) {
+   ["Level", f.level, f.level]].forEach(function (p) {
     var sp = el("span", null, p[0] + " "), now = p[2] === undefined ? p[1] : p[2];
     var b = el("b", now > p[1] ? "up" : now < p[1] ? "down" : null, String(now));
     if (now !== p[1]) b.title = "Without its conditions: " + p[1];
