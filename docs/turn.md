@@ -205,6 +205,20 @@ and coat go up a tier: four levels of nothing, then a cliff. Now: 12%, 52% at le
 level 1 foes but grew past a byte at high levels: a level 100 traveler's TN would have
 been about 318. The gap keeps every number as small as two equals make it.)
 
+## After a fight
+
+**If one traveler is standing, everyone survives.** When a fight ends with any traveler
+still on their feet (won, or fled with anyone out), the whole party comes through it:
+every traveler, those who went down too, is **back at full health**, and their conditions
+end (a race's traits stay). Only when **every** traveler is down is the fight lost, as
+[combat.md](combat.md#ending-a-fight) has it: back to the Waystation, Debt up, and the
+story's `lost:` branch.
+
+For now, every fight survived ends at full health: there's no health carried from fight
+to fight, no rests and no bandaging to keep track of, at the table or on the C64. A power's
+charges still last the Departure. Whether health should carry over again (with rests and
+healing between fights) comes back with longer Departures; it's in *To revisit*.
+
 ## Races in play
 
 A traveler's race puts on its two traits ([races.md](races.md#traits)): Lucky (+5 to every
@@ -245,8 +259,12 @@ Decided for now, to come back to after more playtests:
   doesn't make Grace and the like worth more than the rest.
 - **Class against class.** At every level the standard foe is fair on average (80%), but
   on the arena's open floor a Channeler wins 93-98% and a Warden 55-82%: shooters get free
-  rounds while a melee foe crosses ([bestiary.md](bestiary.md)). A Departure's map decides
-  it; whether the classes need evening out is for the playtests.
+  rounds while a melee foe crosses ([bestiary.md](bestiary.md)). **Decided, for now:** left
+  as it is; a Departure's map decides it (cover, corners, close quarters).
+
+- **Health between fights.** For now, full after every fight survived (*After a fight*).
+  Longer Departures may want it to carry over, with rests, healing items and the Medic's
+  mends mattering between fights as well as in them.
 
 ## Still open
 

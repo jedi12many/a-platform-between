@@ -13,7 +13,7 @@ the foe card:
 
 | Number | For a character | Notes |
 |---|---|---|
-| **Health** | 10 + Grit ÷ 4 + 2 per level | carries over between fights in a Departure; full again at the Waystation |
+| **Health** | 10 + Grit ÷ 4 + 2 per level | carries over between fights in a Departure; full again at the Waystation (rules v1: full again after every fight survived, [turn.md](turn.md#after-a-fight)) |
 | **Dodge** | Grace ÷ 5 (0–20) | you're harder to hit; lost when you can't move (pinned, knocked down) |
 | **Armor** | 10 × the tier of the armor you wear (0–90) | stops weapons |
 | **Ward** | from powers and items that grant it | stops powers |
@@ -228,7 +228,9 @@ happened since a player's last turn ([party-play.md](party-play.md)).
 - Powers and their costs (with the power registry), opposed rolls at high level, and
   limits on stacking buffs: later, after playtests.
 - Bandaging a traveler who's down, as in *Pool of Radiance*, so a fight with a party
-  isn't over for whoever falls first: with party support.
+  isn't over for whoever falls first: with party support. (Rules v1 settles it more
+  simply: if one traveler is standing at the end, everyone is back at full health,
+  [turn.md](turn.md#after-a-fight).)
 - Companions fight with the same numbers; how they're recruited is still an open
   question in [rules-v0.md](rules-v0.md). (An Echo never joins a fight by itself: Echoes
   are story only, [echoes.md](echoes.md#story-not-rules). A story can still bring an
