@@ -638,7 +638,8 @@ def powers():
             said.append(arena.CONDS[p["cond"]]["display"].lower())
         out[p["id"]] = {"name": p["name"], "display": p["display"], "shape": shape, "element": el,
                         "uses": p["uses"], "target": arena.registry.TARGETS[p["target"]],
-                        "near": p["near"], "what": "; ".join(said)}
+                        "near": p["near"], "what": "; ".join(said),
+                        "cond": arena.CONDS[p["cond"]]["id"] if p["cond"] else 0}
     return out
 
 
@@ -652,7 +653,8 @@ def conditions():
              "must_attack": "must attack whoever taunted it, if it can get at them",
              "hidden": "can't be aimed at from more than a square away; ends when it attacks",
              "at_random": "each turn, d100: 01-25 loses it, 26-50 attacks the nearest fighter, friend or foe",
-             "phased": "weapons pass through it, and it can't use one; walks through walls"}
+             "phased": "weapons pass through it, and it can't use one; walks through walls",
+             "tiered": "its numbers times the tier that put it on"}
     out = {}
     for c in arena.CONDS.values():
         e, said = c["effects"], []
@@ -678,12 +680,14 @@ def conditions():
                 said.append(f"{v:+d} to its next attack")
             else:
                 said.append(f"{k.capitalize()} {v:+d}")
+        if c["then"]:
+            said.append("then " + arena.CONDS[c["then"]]["display"].lower())
         if c["rounds"]:
             said.append(f"{c['rounds']} round{'s' * (c['rounds'] > 1)}")
         if c["shake"]:
             said.append(f"shake off: {c['shake']}, 2 less for each level you're above whoever put it on")
         out[c["id"]] = {"name": c["name"], "tag": c["tag"], "display": c["display"],
-                        "what": "; ".join(said), "trait": "race" in e}
+                        "what": "; ".join(said), "trait": "race" in e, "tiered": bool(e.get("tiered"))}
     return out
 
 

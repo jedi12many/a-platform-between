@@ -180,6 +180,15 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--dim); font-weight: 600; }
 .gear.powers .pw.spent { color: var(--dim); text-decoration: line-through; }
 .actions button.power { border-color: #5b4a80; }
 .actions button.power kbd { color: #c9a7ff; }
+.actions button.power.off { opacity: .38; cursor: help; }
+.gear.powers .pw:focus-visible { outline: 1px solid #c9a7ff; outline-offset: 2px; }
+
+/* A power's rule, on hovering it (or focusing it). */
+.rule-card { position: fixed; z-index: 50; max-width: 360px; padding: 10px 12px;
+  background: var(--panel-2); border: 1px solid #5b4a80; border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0,0,0,.5); pointer-events: none; font-size: 13px; }
+.rule-card strong { display: block; color: #c9a7ff; margin-bottom: 4px; }
+.rule-card p { margin: 4px 0 0; }
 
 /* In the site's Arena tab, the site's tabs take the studio's place. */
 .framed nav.studio { display: none; }

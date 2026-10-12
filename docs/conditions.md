@@ -265,11 +265,11 @@ Most powers either do damage or put on a condition; many do both. The class list
 
 | Class | Power: condition |
 |---|---|
-| Warden | Shield wall: shielded. Shove: knocked down (a crit). Taunt: taunted. Ground slam: stunned (or Shockwave: staggered, being tried) |
-| Rogue | Blink: displaced. Smoke: a cloud (hidden). Dirty trick: blinded, 1 round. Snare: slowed; entangled from tier 3. Vanish: hidden |
-| Tinker | Force field: barrier. Barricade: in cover. Shock mine: stunned. Scan: marked |
-| Channeler | Ice wall: chilled; frozen from tier 5. Fire wall, Fireball: on fire. Shield: warded. Mind spike: confused |
-| Medic | Patch up: ends bleeding. Adrenaline: hasted. Stim: stimmed, then exhausted. Sedate: asleep |
+| Warden | Second wind: regenerating. Shield wall: shielded. Taunt: taunted. Ground slam: stunned (or Shockwave: staggered, being tried). (A Shove's crit, anyone's: knocked down) |
+| Rogue | Smoke: a cloud (hidden). Dirty trick: blinded. Snare: slowed. Vanish: hidden. (To come: Blink, displaced; Snare, entangled from tier 3) |
+| Tinker | Force field: barrier. Shock mine: stunned. (Barricade's wall is cover behind it; to come: Scan, marked) |
+| Channeler | Fire wall, Fireball: on fire. Shield: warded. Mind spike: confused. Any cold hit: chilled. (To come: Ice wall, frozen from tier 5) |
+| Medic | Patch up: ends bleeding (as any healing). Adrenaline: hasted. Stim: stimmed, then exhausted. Sedate: asleep |
 
 And new ones the catalogue opens up: **Rewind** and **Stop** (time), **Silence**, **Bless**,
 **Curse**, **EMP** (shorted), **Hack** (later), **Phase** (phased), **Mark** (marked),

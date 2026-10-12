@@ -13,6 +13,9 @@
 //                                         square the page offers, then an attack from there
 //   node native.cjs URL first CODE SEED   the first turn: an attack (A) from where the
 //                                         traveler stands, then a step, then Enter
+//   node native.cjs URL rules CODE        the first turn: each power button hovered, then
+//                                         the first power on the traveler's card: the
+//                                         rule card's text each time
 //   node native.cjs URL shove CODE SEED KEYS   the first turn: KEYS (arrows: R L U D) to
 //                                         move, then a Shove of the first foe in reach
 //   node native.cjs URL shot CODE PATH    a screenshot of the first turn
@@ -127,6 +130,21 @@ async function main() {
                                window.arena.state().fight.me !== 0, null, { timeout: 30000 }).catch(() => {});
     await page.waitForFunction(() => ["turn", "end"].includes(window.arena.state().mode), null, { timeout: 30000 });
     out.after = await state();
+  } else if (what === "rules") {
+    out.powers = await page.evaluate(() => { const f = window.arena.state().fight; return f.st.fighters[f.me].powers; });
+    out.cards = [];
+    const ruleText = () => page.evaluate(() => {
+      const r = document.getElementById("rule");
+      return r && !r.hidden ? r.innerText : null;
+    });
+    for (let k = 1; k <= out.powers.length; ++k) {
+      await page.hover(`#actions button[data-key="${k}"]`);
+      out.cards.push(await ruleText());
+    }
+    await page.mouse.move(2, 2);
+    out.gone = await ruleText();
+    await page.hover("#cards .card .gear.powers .pw");
+    out.chip = await ruleText();
   } else if (what === "shove") {
     const keys = { R: "ArrowRight", L: "ArrowLeft", U: "ArrowUp", D: "ArrowDown" };
     for (const k of process.argv[6]) await page.keyboard.press(keys[k]);

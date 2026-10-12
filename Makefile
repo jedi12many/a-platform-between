@@ -663,6 +663,7 @@ build/turn-check: tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_
 
 test-rules-next: build/battle-next build/battle-next.asan build/battle-next.sim build/turn-check
 	python3 tests/battle-next/run_battles.py
+	python3 tools/rules/check_power_docs.py
 
 build/battle: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)

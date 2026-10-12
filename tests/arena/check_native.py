@@ -239,6 +239,41 @@ def check_first():
            f"second action), and they step to {end['x']},{end['y']}")
 
 
+def check_rules():
+    """R-07: hovering each of the Channeler's powers (keys 1-4, and on her card) shows its
+    rule at its tier and roll, as docs/turn.md says; moving away hides it."""
+    out = page("rules", "R-07")
+    if not out:
+        return
+    cards, pw = out["cards"], out["powers"]
+    by_id = {p["id"]: p for p in scenarios.arena.POWERS.values()}
+    want = {"FIREBOLT": ["Damage {d}", "Fire: a hit burns", "At will"],
+            "FIREBALL": ["3×3", "Damage {d}", "on fire", "1 of 1 charge left"],
+            "ICE_WALL": ["A line of {n} squares", "ice (rough ground"],
+            "SHIELD": ["On yourself: no roll", "warded"]}
+    bad = []
+    for k, p in enumerate(pw):
+        name = by_id[p[0]]["name"]
+        text = cards[k] or ""
+        tier, rating = p[3], p[4]
+        if not text.startswith(f"{by_id[p[0]]['display']} · tier {tier}"):
+            bad.append(f"key {k + 1}: the card starts '{text[:40]}'")
+        if name in ("FIREBOLT", "FIREBALL") and f"rolls {rating}" not in text:
+            bad.append(f"{name}: the card doesn't say it rolls {rating}")
+        for w in want.get(name, []):
+            if w.format(d=5 * tier, n=tier + 2) not in text:
+                bad.append(f"{name}: the card doesn't say '{w.format(d=5 * tier, n=tier + 2)}'")
+    if out["gone"]:
+        bad.append("the card stays up after the mouse leaves")
+    if not out["chip"] or not out["chip"].startswith(by_id[pw[0][0]]["display"]):
+        bad.append(f"the card's first power shows {out['chip']!r} on hover")
+    if bad:
+        fail("power rules on hover: " + "; ".join(bad))
+    else:
+        ok("power rules on hover: each of the Channeler's four powers (button and card) shows its "
+           "rule at its tier and roll, and goes when the mouse does")
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -298,6 +333,7 @@ def main():
         check_powers()
         check_blink()
         check_first()
+        check_rules()
     finally:
         server.terminate()
         server.wait()
