@@ -3,7 +3,7 @@ rules v1: a traveler of level L of each class against one standard foe of level 
 thousand fights each.
 
     python3 tools/arena/standard.py                    the table in docs/bestiary.md
-    python3 tools/arena/standard.py --fit              and the attack and health that
+    python3 tools/arena/standard.py --fit              and the health, then the attack, that
                                                        would make each level fair
     python3 tools/arena/standard.py --upto 40          only the rows up to level 40
 
@@ -91,30 +91,24 @@ def measure(foe):
 
 
 def fit(foe):
-    """The attack, then the health, that bring the five classes' average to about 4 wins
-    in 5: attack in steps of 5, health in steps of a tenth (a byte at most)."""
+    """The health, then the attack, that bring the five classes' average to about 4 wins
+    in 5: health first (in tenths, a byte at most), as a foe that dies too soon can't be
+    made fair by hitting harder; then attack in steps of 5."""
     f = dict(foe)
     avg = lambda f: sum(w for w, _ in measure(f).values()) / len(CLASSES)
-    a = avg(f)
-    step = -5 if a < WIN else 5
-    while 0 < f["attack"] + step < 255:
-        g = dict(f, attack=f["attack"] + step)
-        b = avg(g)
-        if (step > 0 and b < WIN) or (step < 0 and b > WIN):
-            if abs(b - WIN) < abs(a - WIN):
-                f, a = g, b
-            break
-        f, a = g, b
-    tenth = max(1, foe["health"] // 10)
-    step = -tenth if a < WIN else tenth
-    while 0 < f["health"] + step <= 255:
-        g = dict(f, health=f["health"] + step)
-        b = avg(g)
-        if (step > 0 and b < WIN) or (step < 0 and b > WIN):
-            if abs(b - WIN) < abs(a - WIN):
-                f, a = g, b
-            break
-        f, a = g, b
+
+    def walk(f, a, key, step, top):
+        step = step if a > WIN else -step
+        while 0 < f[key] + step <= top:
+            g = dict(f, **{key: f[key] + step})
+            b = avg(g)
+            if (step > 0 and b < WIN) or (step < 0 and b > WIN):
+                return (g, b) if abs(b - WIN) < abs(a - WIN) else (f, a)
+            f, a = g, b
+        return f, a
+
+    f, a = walk(f, avg(f), "health", max(1, foe["health"] // 10), 255)
+    f, a = walk(f, a, "attack", 5, 255)
     return f, round(a)
 
 

@@ -74,15 +74,14 @@ and gear that need them; **changes sides** waits until it's clearly worth it.
 - **Put on by an attack.** An attack, a power or a hazard that carries a condition puts it
   on whoever it hits. (Whether a glancing hit does too is still open.)
 - **Some must be resisted first.** A condition put on by a power may name a defense:
-  a hex's roll beats 50 + the target's Resist (twice its level); a bolt's or a burst's,
-  its Ward, as any power's does. A hit is a hit; there's no second roll.
+  a hex's roll beats 50, less the level gap ([turn.md](turn.md#levels-and-gear)); a
+  bolt's or a burst's, its Ward, as any power's does. A hit is a hit; there's no second roll.
 - **Wearing off.** A condition with rounds ends at the end of your turn when they run out;
   count them down at the end of each of your turns.
 - **Shaking it off.** At the end of your turn, roll once for each condition that can be
-  shaken off: **d100 + your Resist (twice your level), against its number + the Resist of
-  whoever put it on** ([turn.md](turn.md#conditions-in-play)). Success, it's gone. (Its
-  number is 50 for a normal one: two fighters of a level shake each other's off half the
-  time.)
+  shaken off: **d100 against its number, less 2 for each level you're above whoever put
+  it on** ([turn.md](turn.md#conditions-in-play)). Success, it's gone. (Its number is 50
+  for a normal one: two fighters of a level shake each other's off half the time.)
 - **Ending on a trigger.** Some end when something happens: asleep ends when you're hit,
   soaked when you're set on fire (and the fire goes out), hidden when you attack.
 - **The same condition twice doesn't stack.** The stronger counts, and the longer time.

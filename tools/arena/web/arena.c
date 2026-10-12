@@ -402,7 +402,7 @@ const char *ar_shoves(unsigned who, unsigned x, unsigned y)
     for (i = 0; i < apb_battle_count(); ++i) {
         if (apb_battle_can_shove((uint8_t)who, i, (uint8_t)x, (uint8_t)y)) {
             put(n++ ? ",{" : "{");
-            put("\"who\":%u,\"tn\":%d}", i, apb_battle_shove_tn(i));
+            put("\"who\":%u,\"tn\":%d}", i, apb_battle_shove_tn((uint8_t)who, i));
         }
     }
     put("]}");

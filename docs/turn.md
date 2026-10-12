@@ -104,16 +104,12 @@ need them):
 a glancing hit too; a hazard on whoever it hits; a race's two traits are on from the start,
 always; a scenario or a story can put one on as a fight begins.
 
-**Resist** is **twice your level** (a foe's level is on its card), and it's the defense
-against conditions, so a level counts for a lot against them and no stat does. A traveler
-of level 6 has Resist 12; a level 1 rust-guard, 2. Items and traits add to it
-(the Human's Steady: +10 to shake off).
-
-**Shaking one off.** At the end of your turn: **d100 + your Resist + your shake-off
-bonuses + your roll bonuses, against the condition's number + the Resist of whoever put it
-on** (a hazard of the map's: 0). A success or a crit ends it; a cost doesn't. Two fighters
-of the same level shake each other's off as easily at level 1 as at 50; a level above
-theirs, and it's easier.
+**Shaking one off.** At the end of your turn: **d100 + your shake-off bonuses + your roll
+bonuses, against the condition's number, less the level gap**: 2 for each level you're
+above whoever put it on (2 more for each below; a hazard of the map's is level 0). A
+success or a crit ends it; a cost doesn't. Two fighters of the same level shake each
+other's off as easily at level 1 as at 50; a level makes the defense against conditions,
+and no stat does (the Human's Steady: +10 to shake off).
 
 **The same one twice** doesn't stack: the longer time counts. **Opposites cancel**: on fire
 and soaked, hasted and slowed, blessed and cursed; the new one goes on and the old one ends.
@@ -133,8 +129,8 @@ the arena; at each Departure's, in the game). Using one is your turn's action.
   Might) **+ its rank**, as a skill is half a stat plus its training; plus your roll and
   attack bonuses. A new power's rank is 2 × your level (at least 10).
 - **Its TN** is 50 + Dodge + **Ward**, + 20 in cover, as any power's is; a **hex**'s, or
-  any **mind** power's, is **50 + the target's Resist** (twice its level), + 20 in cover: a
-  condition is resisted by level, not by a stat.
+  any **mind** power's, is **50**, + 20 in cover; and, as every roll's, less the level gap
+  (*Levels and gear*): a condition is resisted by level, not by a stat.
 
 | Shape | Target | What it does |
 |---|---|---|
@@ -149,7 +145,7 @@ the arena; at each Departure's, in the game). Using one is your turn's action.
 A hit (Bolt, Burst, Hex) also puts on the power's **condition** at its tier, and its
 element's **rider**: **fire** burns the target's square till the end of your next turn
 (5 × tier, a hazard); **cold** chills it; **kinetic** pushes it a square; **energy**
-ignores its Soak; **mind** is against Resist. **Silenced** stops all of it.
+ignores its Soak; **mind** is against 50, not Ward. **Silenced** stops all of it.
 
 A **foe** can hold powers too (a scenario or a Departure gives them): its card has no class
 stat, so a foe's power rolls its **Attack**, and its rank sets only the tier.
@@ -182,11 +178,13 @@ and a player can read a foe.
 
 ## Levels and gear
 
-**Your level counts twice.** A traveler adds **2 × their level above 1** to their attack
-rolls and to their **Dodge** (so to every TN against them), and their **Resist** is 2 ×
-their level (*Conditions in play*). A level 5 traveler: +8 to attack and Dodge, Resist 10.
-A foe's card already has its level's numbers ([bestiary.md](bestiary.md)), so a foe adds
-nothing but its Resist.
+**The level gap.** Every roll against a fighter (an attack, a power, a shove) has its TN
+lowered by **2 for each level the roller is above them**, and raised by 2 for each level
+below; shaking off a condition, the same against whoever put it on. A level 5 traveler
+against level 1 rust-guards: 8 easier to hit them, 8 harder for them to hit back. Two of a
+level cancel out, at level 1 or at 100, so the numbers stay small (a byte, on the C64) and
+the bestiary's foes needn't chase the travelers ([bestiary.md](bestiary.md)). Every foe's
+card has its level.
 
 **Gear steps more gently.** A weapon of tier T deals **2 + 3T** (5, 8, 11, 14...), and
 armor of tier T is **Armor 5 + 5T** (10, 15, 20...), where rules v0 had 5T and 10T: the
@@ -201,7 +199,11 @@ and coat go up a tier: four levels of nothing, then a cliff. Now: 12%, 52% at le
 | A Warden vs two rust-guards | Level 1 | 3 | 4 | 5 | 7 | 9 | 12 |
 |---|---|---|---|---|---|---|---|
 | Rules v0's levels and gear | 12% | 23% | 30% | 80% | 88% | 93% | 100% |
-| Rules v1 (both) | 12% | 33% | 52% | 80% | 93% | 98% | 100% |
+| Rules v1 (gentler gear, the level gap) | 12% | 33% | 52% | 80% | 93% | 98% | 100% |
+
+(First built as a bonus of 2 a level for travelers, which came out the same against these
+level 1 foes but grew past a byte at high levels: a level 100 traveler's TN would have
+been about 318. The gap keeps every number as small as two equals make it.)
 
 ## Races in play
 
@@ -236,15 +238,15 @@ Decided for now, to come back to after more playtests:
   R-13 (Ground slam) is 39% and R-14 (Shockwave) 27%. By a pit, the push into it is what
   wins, and the two come out the same (66%).
 
-- **Resist per level.** Resist is twice the level, the same scale as a power's rank, so
-  equals stay equal at every level. Measured at 3× and 5× too: a level 6 Warden's hexers
-  need 62, 68 or 80 to land, but R-15 hardly moves (38%, 38%, 40%): what their hexes cost
-  him is their damage and the slow, not how often they land. Stats may add to Ward later,
-  if it doesn't make Grace and the like worth more than the rest.
-
-- **The bestiary by level** was worked out for rules v0's levels and gear: its table
-  (Attack about 2 a level, Armor 2½) should be measured again against travelers with
-  their level bonus and v1's gear, foe by foe, as the bestiary's own method says.
+- **How much a level is worth.** 2 a level, the same scale as a power's rank. Measured
+  at 3× and 5× too (as Resist, before the gap): a level 6 Warden's hexers needed 62, 68 or
+  80 to land, but R-15 hardly moved (38%, 38%, 40%): what their hexes cost him is their
+  damage and the slow, not how often they land. Stats may add to Ward later, if it
+  doesn't make Grace and the like worth more than the rest.
+- **Class against class.** At every level the standard foe is fair on average (80%), but
+  on the arena's open floor a Channeler wins 93-98% and a Warden 55-82%: shooters get free
+  rounds while a melee foe crosses ([bestiary.md](bestiary.md)). A Departure's map decides
+  it; whether the classes need evening out is for the playtests.
 
 ## Still open
 

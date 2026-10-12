@@ -215,7 +215,7 @@ shoves or dashes):
 |---|---|---|---|
 | A-01 A fair fight | 82% | 89% | the Salvaged Warden's Plated (Armor +10) |
 | A-05 Two of them | 5% | 12% | Plated |
-| A-06 Level 4: still a wall | 12% | 52% | Plated, and a level counts twice (+6 at level 4) |
+| A-06 Level 4: still a wall | 12% | 52% | Plated, and three levels above the guards (6 either way) |
 | A-07 Level 5: new gear | 61% | 80% | v1's gentler tier (8 damage, Armor 15), and +8 for the levels |
 | A-08 The swarm (4 rats) | 43% | 76% | Plated: the rats' 2s mostly miss |
 | A-10 Shooters in a pair | 44% | 62% | |
@@ -227,12 +227,12 @@ shoves or dashes):
 | R-07 Fire and ice | | 99% | 99% without powers: Rooted's Soak 2 stops a rat's 2 |
 | R-08 Patch them up | | 91% | 80% without the Medic's powers |
 | R-09 Hold the line | | 9% | 0% without: a Tinker alone against two gunners and a guard |
-| R-10 Blink and snare | | 74% | 49% without; hexes against Resist (52 at level 1) |
+| R-10 Blink and snare | | 74% | 49% without; hexes against 50 between equals |
 | R-11 Bull rush | | 91% | 14% without; Bull rush alone 84% (the pit), Ground slam 66%, Shield wall 26%, Second wind 23% |
 | R-12 They have powers too | | 20% | 29% if the foes have none: the gunner's Snare costs you 9 points |
 | R-13 Ground slam, no pit | | 39% | 4% without powers; the slam alone 29% |
 | R-14 Shockwave, no pit | | 27% | 4% without powers; Shockwave alone 17% |
-| R-15 Above their level | | 45% | 58% if the foes have no powers: a level 6 Warden (Resist 12, +10 to attack and Dodge) with an iron sword and a chain coat; their hexes need 62, and still cost him 13 points |
+| R-15 Above their level | | 44% | 58% if the foes have no powers: a level 6 Warden, five levels up (10 either way), with an iron sword and a chain coat; their hexes need 60, and still cost him 14 points |
 | R-16 Level 4, the old gear | | 52% | A-05's fight at level 4: 12% at level 1 |
 | R-17 Level 5, the new gear | | 80% | the next level, and the next tier of gear: a step, not a cliff |
 

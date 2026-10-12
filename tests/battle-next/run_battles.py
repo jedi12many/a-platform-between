@@ -76,7 +76,8 @@ def fighters(path):
 def attacks(path):
     """Each traveler's Attack by rules v1, from its Passport: its fighting skill's rating
     (half the stat + training: melee, ranged or a focus's Channel, by what it holds) and
-    twice its level above 1 (docs/turn.md, Levels and gear). {fighter: attack}."""
+    nothing for the level, which counts in each roll as the gap (docs/turn.md, Levels and
+    gear). {fighter: attack}."""
     skills = turn.REG["skills"]
     out, who = {}, 0
     for line in open(path):
@@ -87,8 +88,7 @@ def attacks(path):
             arch = it["archetype"] if it and it["tier"] else 0
             s = skills["RANGED" if arch == 1 else "CHANNEL" if arch == 4 else "MELEE"]
             stat = turn.registry.STATS.index(s["stat"].lower()) if isinstance(s["stat"], str) else s["stat"]
-            out[who] = min(255, ch["stats"][stat] // 2 + ch["training"].get(s["id"], 0)
-                           + turn.level_bonus(ch["level"]))
+            out[who] = min(255, ch["stats"][stat] // 2 + ch["training"].get(s["id"], 0))
             who += 1
         elif w and w[0] == "foe":
             who += 1
@@ -105,19 +105,6 @@ def levels(path):
             out.append(passport.decode(w[1])["level"])
         elif w and w[0] == "foe":
             out.append(int(w[w.index("level") + 1]) if "level" in w else 1)
-    return out
-
-
-def resists(path):
-    """Every Resist a condition can be put on with (docs/turn.md): twice each fighter's
-    level (a foe's from its line, else 1), and 0 for a hazard's or the scenario's."""
-    out = {0}
-    for line in open(path):
-        w = line.split()
-        if w and w[0] == "traveler":
-            out.add(2 * passport.decode(w[1])["level"])
-        elif w and w[0] == "foe":
-            out.add(2 * (int(w[w.index("level") + 1]) if "level" in w else 1))
     return out
 
 
@@ -142,7 +129,6 @@ def recheck(name, path, log):
     seed = int(next(line.split()[1] for line in open(path) if line.startswith("seed")))
     dice = combat.d100s(seed)
     who = fighters(path)
-    resists_ = resists(path)
     lv = levels(path)
     for line in log.splitlines():
         m = re.match(r"(\d+): traveler at \d+,\d+, health \d+, attack (\d+),", line)
@@ -187,8 +173,8 @@ def recheck(name, path, log):
                 fail(f"{name}: {line.strip()}: the rules say {RESULTS[combat.resolve(roll, total, tn)]}")
             p = turn.POWERS[pw]
             if (registry_shape(p) == "hex" or p["element"] == 4) \
-                    and tn not in (turn.resist_tn(lv[tgt]), turn.resist_tn(lv[tgt], True)):
-                fail(f"{name}: {line.strip()}: a hex is against Resist: 50 + {turn.resist(lv[tgt])}")
+                    and tn not in (turn.hex_tn(lv[att], lv[tgt]), turn.hex_tn(lv[att], lv[tgt], True)):
+                fail(f"{name}: {line.strip()}: a hex is against {turn.hex_tn(lv[att], lv[tgt])}: 50, less the level gap")
             want = 0
             if registry_shape(p) in ("bolt", "burst", "hex"):
                 kind = p["element"]
@@ -223,16 +209,17 @@ def recheck(name, path, log):
         elif r:
             last = None
             rolls += 1
-            _, cond, roll, _, total, tn, result = r.groups()
+            bearer, cond, roll, _, total, tn, result = r.groups()
             if int(roll) != next(dice):
                 fail(f"{name}: {line.strip()}: the roll doesn't follow the dice")
                 return rolls
             if RESULTS[combat.resolve(int(roll), int(total), int(tn))] != result:
                 fail(f"{name}: {line.strip()}: wrong result")
-            # Against its number + the Resist of whoever put it on (a fighter's, or 0).
-            if cond and int(tn) - turn.CONDS[cond]["shake"] not in resists_:
-                fail(f"{name}: {line.strip()}: {cond} is shaken off against "
-                     f"{turn.CONDS[cond]['shake']} + a Resist ({sorted(resists_)})")
+            # Against its number, less the level gap to whoever put it on (a fighter, or a
+            # hazard's level 0).
+            can = {turn.CONDS[cond]["shake"] - turn.level_gap(lv[int(bearer)], p) for p in lv + [0]} if cond else set()
+            if cond and int(tn) not in can:
+                fail(f"{name}: {line.strip()}: {cond} is shaken off against one of {sorted(can)}")
         elif t and t.group(3) in turn.CONDS:
             f, dmg, cond, soak, tags = t.groups()
             n, kind = turn.CONDS[cond]["effects"]["dot"]

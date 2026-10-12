@@ -327,13 +327,14 @@ LAB += [
 ]
 
 
-# Resist (docs/turn.md): twice the level. A hex lands against 50 + it, and a condition is
-# shaken off with it, against its number + the Resist of whoever put it on.
+# The level gap (docs/turn.md): every roll against a fighter is 2 easier for each level
+# the roller is above it, 2 harder for each below; shaking off, the same against whoever
+# put the condition on.
 LAB += [
     {"title": "Above their level",
-     "issue": "A level 6 Warden (Resist 12) against two level 1 scrap gunners who snare and "
-              "throw dirty tricks (they need 62 to land a hex on him, and he shakes them off "
-              "more easily than they put them on) and a rust-guard.",
+     "issue": "A level 6 Warden against two level 1 scrap gunners who snare and throw dirty "
+              "tricks, and a rust-guard: five levels up, so their hexes need 60, not 50, and he "
+              "shakes them off 10 more easily.",
      "watch": "Whether a higher level feels like it protects you from tricks, and whether "
               "the foes' hexes still matter.",
      "cls": "WARDEN", "level": 6, "weapon": "IRON_SWORD", "armor": "CHAIN_COAT",
@@ -353,7 +354,7 @@ LAB += [
 # gear, and at level 5, on its next.
 LAB += [
     {"title": "Level 4, the old gear",
-     "issue": "A level 4 Warden (+6 to attack and Dodge for the levels) with the rusted sabre "
+     "issue": "A level 4 Warden (three levels above the guards: 6 easier to hit them, 6 harder to be hit) with the rusted sabre "
               "and padded coat, against two rust-guards.",
      "watch": "Whether level 4 feels stronger than level 1 (A-05 is the same fight at level 1), "
               "and then play R-17: the next level, with the next gear.",
@@ -366,7 +367,7 @@ LAB += [
              "#..........#",
              "############"]},
     {"title": "Level 5, the new gear",
-     "issue": "A level 5 Warden (+8 for the levels) with an iron sword (8 damage) and a chain "
+     "issue": "A level 5 Warden (four levels up: 8 either way) with an iron sword (8 damage) and a chain "
               "coat (Armor 15), against the same two rust-guards.",
      "watch": "Whether the new gear is a welcome step rather than a cliff after R-16.",
      "cls": "WARDEN", "level": 5, "weapon": "IRON_SWORD", "armor": "CHAIN_COAT",
@@ -621,7 +622,7 @@ def conditions():
         if c["rounds"]:
             said.append(f"{c['rounds']} round{'s' * (c['rounds'] > 1)}")
         if c["shake"]:
-            said.append(f"shake off: Resist against {c['shake']} + whoever put it on's Resist")
+            said.append(f"shake off: {c['shake']}, 2 less for each level you're above whoever put it on")
         out[c["id"]] = {"name": c["name"], "tag": c["tag"], "display": c["display"],
                         "what": "; ".join(said), "trait": "race" in e}
     return out

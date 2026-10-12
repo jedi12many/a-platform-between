@@ -189,20 +189,17 @@ def gear_armor(tier):
     return 5 + 5 * tier if tier else 0
 
 
-def level_bonus(level):
-    """A traveler's attack and Dodge in rules v1: + twice the level above 1."""
-    return 2 * (min(level, 100) - 1) if level > 1 else 0
+def level_gap(roller, target):
+    """The level gap (docs/turn.md, Levels and gear): twice the levels the roller is above
+    the target (below: negative). Every roll's TN against a fighter is that much lower;
+    a condition is shaken off against its number, less twice the levels its bearer is
+    above whoever put it on (a hazard's: level 0)."""
+    return 2 * (min(roller, 100) - min(target, 100))
 
 
-def resist(level):
-    """Resist: twice the level (docs/turn.md). A hex, or a mind power, rolls against 50 +
-    it; a condition is shaken off with it, against the condition's number + the Resist of
-    whoever put it on."""
-    return 2 * min(level, 100)
-
-
-def resist_tn(level, cover=False):
-    return 50 + resist(level) + (20 if cover else 0)
+def hex_tn(roller, target, cover=False):
+    """A hex's, or any mind power's: 50, + 20 in cover, less the level gap."""
+    return 50 + (20 if cover else 0) - level_gap(roller, target)
 
 
 def hex_damage(tier):

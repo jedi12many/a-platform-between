@@ -31,7 +31,7 @@ round 1: 3's turn (speed 4)
   3 attacks 1: 95+30=125 vs 69: success, 9 damage [soak 0 PLT KNT]
 round 2: 0's turn (speed 6)
   0 uses SNARE (tier 2) at 3,2
-  0's SNARE on 2: 54+62=116 vs 52: success, 11 damage [soak 0]
+  0's SNARE on 2: 54+62=116 vs 50: success, 11 damage [soak 0]
   2 is HEXED (3 rounds)
   2 is SLOWED (2 rounds)
   2 is CHILLED (2 rounds)
@@ -44,7 +44,7 @@ round 2: 3's turn (speed 4)
   3 attacks 1: 53+30=83 vs 69: success, 5 damage [soak 0 PLT KNT]
 round 3: 0's turn (speed 6)
   0 uses DIRTY_TRICK (tier 2) at 5,3
-  0's DIRTY_TRICK on 3: 5+62=67 vs 52: success, 6 damage [soak 0]
+  0's DIRTY_TRICK on 3: 5+62=67 vs 50: success, 6 damage [soak 0]
   3 is HEXED (3 rounds)
   3 is BLINDED (2 rounds)
 round 3: 1's turn (speed 5)
