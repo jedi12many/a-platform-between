@@ -213,6 +213,32 @@ def check_blink():
            "and she still shoots from there")
 
 
+def check_first():
+    """R-05: the first traveler attacks from where they stand, and the turn goes on: a step, then
+    Enter ends it (docs/turn.md, Actions: either order)."""
+    out = page("first", "R-05", "4")
+    if not out:
+        return
+    me = out["me"]
+    start = out["turn"]["st"]["fighters"][me]
+    mid = out["acted"]["st"]["fighters"][me]
+    end = out["after"]["st"]["fighters"][me]
+    shots = [line for line in out["acted"]["log"] if " → " in line]
+    labels = [b for b in out["acted"]["buttons"] if b]
+    if not out["targets"]:
+        fail("the first traveler has nobody to attack from where they start in R-05")
+    elif out["acted"]["mode"] != "turn" or not out["flag"] or not shots:
+        fail(f"attacking first: the page went to {out['acted']['mode']}, acted {out['flag']}, log {shots[:2]}")
+    elif (mid["x"], mid["y"]) != (start["x"], start["y"]) or any(l.startswith("Attack") for l in labels):
+        fail(f"after attacking first they are at {mid['x']},{mid['y']} (was {start['x']},{start['y']}), "
+             f"buttons {labels}")
+    elif (end["x"], end["y"]) != (out["plan"]["x"], out["plan"]["y"]) or (end["x"], end["y"]) == (start["x"], start["y"]):
+        fail(f"then a step to {out['plan']}: they are at {end['x']},{end['y']}")
+    else:
+        ok(f"either order: the traveler attacks from {start['x']},{start['y']}, the turn goes on (no "
+           f"second action), and they step to {end['x']},{end['y']}")
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -271,6 +297,7 @@ def main():
         check_shove()
         check_powers()
         check_blink()
+        check_first()
     finally:
         server.terminate()
         server.wait()

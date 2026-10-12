@@ -20,6 +20,10 @@ attacks and damage, sight, the foes' rules, fleeing) is as [combat.md](combat.md
 3. **Your standard action**: one of the actions below (Attack, a power, Shove, Dash,
    Guard, Wait, Flee, or Done). Swapping gear is free, any time on your turn
    ([items.md](items.md#swapping)).
+
+   Steps 2 and 3 come **in either order**: an Attack, a power, a Shove or Guard can come
+   first, from where you stand, and then you move (shoot, then step back). Dash, Wait and
+   Flee can't: each ends the turn.
 4. **It ends.** Your timed conditions count down a round (not one put on this turn), and
    each that has run out ends, becoming what it turns into, if anything. Then roll to
    shake off each condition that can be shaken off.
@@ -56,8 +60,11 @@ nothing more. Each hazard square hits you once in a move, however you cross it.
 
 ## Actions
 
-**A turn is one move action and one standard action, in that order; swapping gear is
-free.** That's all a player has to track, at the table or on the C64:
+**A turn is one move action and one standard action, in either order; swapping gear is
+free.** That's all a player has to track, at the table or on the C64. Act first (an
+Attack, a power, a Shove or Guard, from where you stand), and the move is still yours;
+move first, and your action ends the turn. Dash, Wait and Flee can't come first: each
+ends the turn. The computer's fighters move first.
 
 | Kind | What it is |
 |---|---|
@@ -258,9 +265,6 @@ Decided for now, to come back to after more playtests:
   it; whether the classes need evening out is for the playtests.
 
 ## Still open
-
-- Whether the standard action may come before the move action (shoot, then step back):
-  for now the move comes first, as the battle screen asks for it.
 
 - **Phased** (through walls, untouchable), **hidden**, **spreading**, **at random**,
   **must attack**: the medium effects, with the powers that need them (Taunt, Smoke,

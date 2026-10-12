@@ -23,6 +23,8 @@
  *                                        square DX, DY); BLINK: power BLINK - 1 takes them
  *                                        to X, Y instead of walking
  *   act q                                a traveler's turn on quick
+ *   first KIND TARGET [DX DY [USE]]      the action before the move, from where the traveler
+ *                                        stands (as act's); the next act is the move, KIND 0
  *
  * Every attack's line ends with the target's Soak and its conditions' tags, so
  * run_battles.py can work the damage out again.
@@ -336,7 +338,7 @@ int main(int argc, char **argv)
             } else {
                 apb_battle_put((uint8_t)v[0], c);
             }
-        } else if (strcmp(word, "act") == 0) {
+        } else if (strcmp(word, "act") == 0 || strcmp(word, "first") == 0) {
             if (!started) {
                 apb_battle_start(surprise);
                 started = 1;
@@ -349,9 +351,12 @@ int main(int argc, char **argv)
                 if (act.move_use) printf(" %u %u %u %u", act.dash_x, act.dash_y, act.use, act.move_use);
                 printf(")\n");
             } else {
-                v[4] = v[5] = v[6] = v[7] = 0;
-                sscanf(line, "%*s %d %d %d %d %d %d %d %d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6],
-                       &v[7]);
+                v[0] = v[1] = v[4] = v[5] = v[6] = v[7] = 0;
+                if (word[0] == 'f')         /* first: no move, so its numbers start at KIND */
+                    sscanf(line, "%*s %d %d %d %d %d", &v[2], &v[3], &v[4], &v[5], &v[6]);
+                else
+                    sscanf(line, "%*s %d %d %d %d %d %d %d %d", &v[0], &v[1], &v[2], &v[3], &v[4], &v[5],
+                           &v[6], &v[7]);
                 act.move_x = (uint8_t)v[0];
                 act.move_y = (uint8_t)v[1];
                 act.kind = (uint8_t)v[2];
@@ -361,7 +366,8 @@ int main(int argc, char **argv)
                 act.use = (uint8_t)v[6];
                 act.move_use = (uint8_t)v[7];
             }
-            if (!apb_battle_act(who, &act)) printf("  (not allowed: %s)\n", line);
+            if (!(word[0] == 'f' ? apb_battle_act_first(who, &act) : apb_battle_act(who, &act)))
+                printf("  (not allowed: %s)\n", line);
         }
     }
     fclose(in);

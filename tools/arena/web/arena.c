@@ -27,6 +27,9 @@
  *                             or by Blink, power blink - 1, if blink isn't 0), then
  *                             APB_ACT_* (a Dash on to dx, dy; power `use` on target, or the
  *                             square dx, dy)
+ *   ar_act_first(who, kind, target, dx, dy, use)   the action before the move, from where
+ *                             `who` stands (an attack, a Shove, Guard, a power not Blink);
+ *                             the turn goes on, and ar_act with APB_ACT_DONE moves and ends it
  *   ar_quick(who)             the turn the computer would play for `who`
  *   ar_equip(who, slot, item) gear from the pack: slot 0 the hand (0: bare-handed), slot 1
  *                             the body (0: no armor)
@@ -430,6 +433,27 @@ const char *ar_act(unsigned who, unsigned kind, unsigned x, unsigned y, unsigned
         return json;
     }
     return end_reply(APB_NOBODY);
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *ar_act_first(unsigned who, unsigned kind, unsigned target, unsigned dx, unsigned dy,
+                         unsigned use)
+{
+    apb_action a;
+
+    a.move_x = a.move_y = a.move_use = 0;
+    a.kind = (uint8_t)kind;
+    a.target = (uint8_t)target;
+    a.dash_x = (uint8_t)dx;
+    a.dash_y = (uint8_t)dy;
+    a.use = (uint8_t)use;
+    begin_reply();
+    if (!apb_battle_act_first((uint8_t)who, &a)) {
+        used = 0;
+        put("{\"refused\":true}");
+        return json;
+    }
+    return end_reply((uint8_t)who);
 }
 
 EMSCRIPTEN_KEEPALIVE

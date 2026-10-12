@@ -651,10 +651,12 @@ build/battle-next.asan: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEX
 # The rules lab's tests: reviewed battles, every roll and every number re-worked from the
 # Python reference, random battles under the sanitizers (tests/battle-next/run_battles.py).
 # The lab's engine is near the 6502 test harness's 62 KB with its runner: built for size
-# (-Os) with a 1 KB stack (the runner keeps its buffers static), it has room. At the freeze it'll be split, as
+# (-Os) with a 1 KB stack (the runner keeps its buffers static), and without the core's
+# Echo and translation code, which it never calls, it has room. At the freeze it'll be split, as
 # the C64's overlays and the cartridge's assets split v0's.
-build/battle-next.sim: tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
-	$(CL65) -t sim6502 -Os -Wl -D,__STACKSIZE__=0x0400 $(NEXT_INC) -o $@ tests/battle-next/battle.c $(NEXT_SRC) $(CORE_SRC)
+NEXT_SIM_CORE := $(filter-out core/src/translate.c core/src/echo.c,$(CORE_SRC))
+build/battle-next.sim: tests/battle-next/battle.c $(NEXT_SRC) $(NEXT_SIM_CORE) $(NEXT_HDR) | build
+	$(CL65) -t sim6502 -Os -Wl -D,__STACKSIZE__=0x0400 $(NEXT_INC) -o $@ tests/battle-next/battle.c $(NEXT_SRC) $(NEXT_SIM_CORE)
 
 build/turn-check: tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC)
