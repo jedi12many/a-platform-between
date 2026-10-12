@@ -352,7 +352,7 @@ Commands start with `~`. Several can share a line: `~ give KEYCARD ~ set alarm`.
 |---|---|
 | `~ give KEYCARD` / `~ take KEYCARD` | add or remove an item |
 | `~ xp 10` | award experience |
-| `~ heal 10` / `~ heal full` | restore health (it carries from fight to fight in a Departure) |
+| `~ heal 10` / `~ heal full` | restore health (it carries from fight to fight in a Departure; by rules v1, once ported, every fight survived ends at full health anyway, [turn.md](turn.md#after-a-fight)) |
 | `~ debt - 500` / `~ debt + 500` / `~ debt = 50000` | change Debt *(official only)* |
 
 **Rewards pay once.** Each `~ xp`, `~ give` and `~ debt` command pays the first time the
