@@ -271,6 +271,10 @@ uint8_t apb_battle_round(void);
 uint8_t apb_battle_result(void);
 uint8_t apb_battle_next(void);
 uint8_t apb_battle_act(uint8_t who, const apb_action *a);
+/* The standard action first, from where who stands (docs/turn.md, Actions): an attack, a
+ * power (not Blink), a Shove or Guard; then apb_battle_act with APB_ACT_DONE moves and
+ * ends the turn. 0 if it isn't allowed. */
+uint8_t apb_battle_act_first(uint8_t who, const apb_action *a);
 void    apb_battle_quick(uint8_t who, apb_action *out);
 
 uint8_t apb_battle_can_reach(uint8_t who, uint8_t x, uint8_t y);

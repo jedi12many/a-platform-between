@@ -387,6 +387,7 @@ function beginTurn(who) {
   f = me();
   fight.plan = { x: f.x, y: f.y };
   fight.blink = 0;
+  fight.acted = false;
   fight.reach = call("ar_reach", who).reach;
   aimFrom();
   setMode("turn");
@@ -525,10 +526,21 @@ function moved() {
   return fight.plan.x !== f.x || fight.plan.y !== f.y;
 }
 
+/* The standard action may come before the move (docs/turn.md, Actions): an attack, a
+ * Shove, Guard or a power, before you've walked, is done from where you stand, and the
+ * turn goes on so you can still move (Enter ends it). After a move it ends the turn. */
+function firstKind(kind) {
+  return kind === ACT.attack || kind === ACT.shove || kind === ACT.guard || kind === ACT.power;
+}
+
 async function act(kind, target, dx, dy, use) {
-  var r = call("ar_act", fight.me, kind, fight.plan.x, fight.plan.y, target === undefined ? 0 : target,
-               dx === undefined ? 0 : dx, dy === undefined ? 0 : dy, use === undefined ? 0 : use,
-               fight.blink || 0);
+  var first = !fight.acted && !moved() && !fight.blink && firstKind(kind), r;
+  if (fight.acted && kind !== ACT.done) { toast("You've acted: move, then Enter to end your turn."); return; }
+  r = first ? call("ar_act_first", fight.me, kind, target === undefined ? 0 : target, dx === undefined ? 0 : dx,
+                   dy === undefined ? 0 : dy, use === undefined ? 0 : use)
+            : call("ar_act", fight.me, kind, fight.plan.x, fight.plan.y, target === undefined ? 0 : target,
+                   dx === undefined ? 0 : dx, dy === undefined ? 0 : dy, use === undefined ? 0 : use,
+                   fight.blink || 0);
   if (r.refused) {
     toast(kind === ACT.flee ? "No way out from here: flee from an exit, or next to no one."
           : kind === ACT.dash ? "Can't dash there from here."
@@ -539,11 +551,22 @@ async function act(kind, target, dx, dy, use) {
   await play(r.events);
   settle(r);
   if (r.result !== 0) return finish(r.result);
+  if (first && r.whose === fight.me && me().state === 0) {
+    /* Acted: the move is still to come. */
+    fight.acted = true;
+    fight.plan = { x: me().x, y: me().y };
+    fight.reach = call("ar_reach", fight.me).reach;
+    aimFrom();
+    setMode("turn");
+    if (auto) setTimeout(quick, fast ? 60 : 300);
+    return;
+  }
   advance();
 }
 
 function quick() {
   if (mode !== "turn") return;
+  if (fight.acted) return act(ACT.done, 0);       /* acted already: end where you stand */
   var q = call("ar_quick", fight.me);
   fight.plan = { x: q.x, y: q.y };
   fight.blink = q.blink;
@@ -1184,6 +1207,17 @@ function buttons() {
     return [["↑ ↓", "Choose a scenario", function () { pick(1); }, false, "", false, "hint"],
             ["Enter", "Start the fight", start, false, "", true]];
   case "turn":
+    if (fight.acted) {
+      return [["Arrows", "You've acted: move (or click a lit square)", null, false, "", false, "hint"]]
+        .concat(powerButtons()).concat([
+              ["P", "Pack", openPack],
+              ["Esc", fight.blink ? "Undo blink" : "Undo move", undoMove, !moved(), "You haven't moved"],
+              ["Enter", "End turn", function () { act(ACT.done, 0); }, false, "", true],
+              ["gap"],
+              ["T", auto ? "Auto: on" : "Auto: off", toggleAuto, false, "", false, "toggle"],
+              ["Z", fast ? "Fast: on" : "Fast: off", toggleFast, false, "", false, "toggle"],
+              ["X", "Leave", leave]]);
+    }
     return [["Arrows", "Move (or click a lit square)", null, false, "", false, "hint"],
             ["A", t > 1 ? "Attack…" : "Attack", attack, !t, "Nobody in reach from here", true],
             ["S", sh > 1 ? "Shove…" : "Shove", shove, !sh, "Nobody next to you to shove"],
@@ -1240,6 +1274,7 @@ function powerButtons() {
   return (f.powers || []).map(function (p, k) {
     var pd = powerOf(p[0]), blink = isBlink(pd);
     var off = p[2] === 0 ? "No charges left this fight"
+            : !blink && fight.acted ? "You've acted this turn"
             : blink && fight.blink ? "You've blinked this turn"
             : blink && moved() ? "Blink is your move: before you walk" : "";
     return [String(k + 1), pd.display + (blink ? " (move" + (p[2] >= 0 ? ", " + p[2] : "") + ")"
@@ -1437,6 +1472,8 @@ async function boot() {
   rules.ar_targets = M.cwrap("ar_targets", "string", ["number", "number", "number"]);
   rules.ar_act = M.cwrap("ar_act", "string", ["number", "number", "number", "number", "number", "number", "number", "number",
                                               "number"]);
+  rules.ar_act_first = M.cwrap("ar_act_first", "string", ["number", "number", "number", "number", "number",
+                                                          "number"]);
   rules.ar_power = M.cwrap("ar_power", "string", ["number", "number", "number", "number"]);
   rules.ar_dash = M.cwrap("ar_dash", "string", ["number", "number", "number"]);
   rules.ar_shoves = M.cwrap("ar_shoves", "string", ["number", "number", "number"]);

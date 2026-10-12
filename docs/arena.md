@@ -140,6 +140,9 @@ the **studio**, beside the art desk:
   (the blast, the wall's line) under the cursor. **Blink is your move**: pick its square
   first (before walking), then act from there; Esc undoes it. Each card lists its fighter's powers
   (hover for tier, roll and what each does).
+- **Either order** ([turn.md](turn.md#actions)): attack, shove, guard or use a power before
+  you've moved, and it happens from where you stand; the turn goes on, the other actions
+  greyed out ("You've acted"), so you can still walk or blink, and Enter ends it.
 - **Auto** (T) plays your turns as quick does, powers and all
   ([turn.md](turn.md#how-the-computer-uses-powers)); **Fast** (Z) speeds up what's shown.
 - **The end** shows how it went (rounds, health left, damage each way, how often you hit,

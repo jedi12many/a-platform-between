@@ -1,0 +1,42 @@
+0: traveler at 2,2, health 23, attack 62, speed 6, TN to hit 72 [soak 0 ERLY SML]
+1: traveler at 1,4, health 28, attack 62, speed 5, TN to hit 69 [soak 0 PLT KNT]
+2: foe a at 3,2, health 30, speed 4
+3: foe b at 2,4, health 30, speed 4
+0 has BLINK at rank 20 (tier 2, rolls 62)
+round 1: 0's turn (speed 6)
+  (not allowed: first 6 0 6 2)
+  (not allowed: first 7 0 4 1 0)
+  0 attacks 2: 77+62=139 vs 62: crit, 24 damage [soak 0]
+  (not allowed: first 0 2)
+  (not allowed: act 6 1 0 2)
+  2 gets a free attack on 0
+  2 attacks 0: 44+30=74 vs 72: crit, 8 damage [soak 0 ERLY SML]
+  0 steps to 3,1
+  0 steps to 4,1
+  0 steps to 5,1
+  0 steps to 6,1
+round 1: 1's turn (speed 5)
+  1 shoves 3: 43+42=85 vs 62: success
+  3 is pushed to 3,4
+  1 steps to 2,3
+round 1: 2's turn (speed 4)
+  2 attacks 1: 21+30=51 vs 69: cost, 2 damage [soak 0 PLT KNT]
+round 1: 3's turn (speed 4)
+  3 attacks 1: 70+30=100 vs 69: success, 7 damage [soak 0 PLT KNT]
+round 2: 0's turn (speed 6)
+  (quick: act 6 1 0 2)
+  0 attacks 2: 40+62=102 vs 62: success, 9 damage [soak 0]
+  2 is down
+round 2: 1's turn (speed 5)
+  (quick: act 2 3 0 3)
+  1 attacks 3: 8+62=70 vs 62: success, 9 damage [soak 0]
+round 2: 3's turn (speed 4)
+  3 attacks 1: 62+30=92 vs 69: success, 6 damage [soak 0 PLT KNT]
+round 3: 0's turn (speed 6)
+  (quick: act 6 1 0 3)
+  0 attacks 3: 55+62=117 vs 62: crit, 20 damage [soak 0]
+round 3: 1's turn (speed 5)
+  (quick: act 2 3 0 3)
+  1 attacks 3: 12+62=74 vs 62: success, 10 damage [soak 0]
+  3 is down
+the fight is won

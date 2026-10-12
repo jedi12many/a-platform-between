@@ -24,6 +24,8 @@ static uint8_t order[APB_FIGHTERS_MAX];   /* this round's: Wait moves you back  
 static uint8_t round_no;
 static uint8_t next;
 static uint8_t begun;
+static uint8_t acted_first;     /* the traveler whose turn it is acted before moving */
+static uint8_t acting_first;    /* ... and is doing it now (apb_battle_act_first) */
 static uint8_t surprise;
 static uint8_t result;
 static apb_rng *dice;
@@ -1924,6 +1926,7 @@ static uint8_t turn_of(void)
 static void advance(void)
 {
     begun = 0;
+    acted_first = 0;
     if (++next >= count) {
         next = 0;
         if (round_no < 255) ++round_no;
@@ -2060,6 +2063,25 @@ uint8_t apb_battle_next(void)
     return APB_NOBODY;
 }
 
+/* The standard action before the move (docs/turn.md, Actions: either order): an attack,
+ * a power (not Blink: that's a move), a Shove or Guard, from where you stand. The turn
+ * goes on: the next apb_battle_act is the move, with APB_ACT_DONE. */
+uint8_t apb_battle_act_first(uint8_t who, const apb_action *a)
+{
+    apb_action here;
+
+    if (a->kind != APB_ACT_ATTACK && a->kind != APB_ACT_SHOVE && a->kind != APB_ACT_POWER
+        && a->kind != APB_ACT_GUARD) return 0;
+    here = *a;
+    here.move_x = f_x[who];
+    here.move_y = f_y[who];
+    here.move_use = 0;
+    acting_first = 1;
+    who = apb_battle_act(who, &here);
+    acting_first = 0;
+    return who;
+}
+
 uint8_t apb_battle_act(uint8_t who, const apb_action *a)
 {
     uint8_t ok = 1;
@@ -2069,6 +2091,7 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
     uint8_t oy;
 
     if (result != APB_BATTLE_ON || who >= count || order[next] != who || !begun) return 0;
+    if (acted_first && a->kind != APB_ACT_DONE) return 0;     /* acted: only the move is left */
     if (a->move_use) {
         /* Blink is a move: from where you stand, instead of walking. */
         i = (uint8_t)(a->move_use - 1);
@@ -2128,6 +2151,17 @@ uint8_t apb_battle_act(uint8_t who, const apb_action *a)
         for (i = next; i + 1 < count; ++i) order[i] = order[i + 1];
         order[count - 1] = who;
         begun = 0;
+        return 1;
+    }
+    if (acting_first) {
+        /* The action now, from where you stand; the move is still to come. */
+        acting_first = 0;
+        acted_first = 1;
+        if (a->kind == APB_ACT_ATTACK) attack(who, t);
+        else if (a->kind == APB_ACT_GUARD) guard(who);
+        else if (a->kind == APB_ACT_SHOVE) shove(who, t);
+        else use_power(who, a->use, t, a->dash_x, a->dash_y);
+        check_end();
         return 1;
     }
     if (a->move_use) {

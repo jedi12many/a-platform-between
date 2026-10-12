@@ -1,0 +1,34 @@
+# Either order (docs/turn.md, Actions): the standard action may come before the move.
+# Kestrel shoots a from where she stands, then walks away (a's free attack as she goes);
+# Bram shoves b first, then steps up. Refused: a second action, a move that's an action,
+# a Dash or a Blink first.
+seed 23
+map
+##########
+#........#
+#.@a.....#
+#........#
+#@b......#
+##########
+end
+traveler 4PB794AR084102VANND8CJT000000000E64M4A3N50202G1FKWP 10
+traveler 4542T0000A0105APR5DFA26000000001H60M8A5V5020180615T 5
+#   L HP GR DG AR WD SK SP AT WP RG PW TY AR WK BH CW
+foe a 30 10  2 10  5  0  4 30  4  0  0  0  0 255 0  0
+foe b 30 10  2 10  5  0  4 30  4  0  0  0  0 255 0  0
+power 0 BLINK 20
+# Kestrel: Dash and Blink can't come first; then she shoots a, and a second shot is
+# refused, and so is a move that carries an action; she walks to 6,1 and ends her turn.
+first 6 0 6 2
+first 7 0 4 1 0
+first 0 2
+first 0 2
+act 6 1 0 2
+act 6 1 4 0
+# Bram shoves b east, then walks to 2,3.
+first 5 3
+act 2 3 4 0
+act q
+act q
+act q
+act q
