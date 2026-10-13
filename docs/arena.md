@@ -33,6 +33,7 @@ count (of the last foe), as a table.
 | `foe NAME [x COUNT]` | a foe from `registry/foes.txt` |
 | `sweep level 1-10` / `sweep count 1-6` | a run for each |
 | `map`, rows, `end` | the battle map ([combat.md](combat.md#the-battle-map)); `@` and `a`-`z` where fighters start. Without one, a 12 x 8 open floor, travelers down the left, foes down the right |
+| `map NAME` | one of the arena's maps (`MAPS` in `tools/arena/arena.py`): `small` (that 12 x 8 floor), `big` (16 x 8, walled, open) or `ruins` (16 x 8, walled, with cover and hazards). `--map NAME` on the command line. 16 x 8 is the largest the battle screen shows whole (the cartridge's view is 20 x 8 squares; the engine takes 16 x 10) |
 
 ### The quick builder
 
@@ -236,14 +237,18 @@ shoves or dashes):
 | R-10 Blink and snare | | 74% | 49% without; hexes against 50 between equals |
 | R-11 Bull rush | | 91% | 14% without; Bull rush alone 84% (the pit), Ground slam 66%, Shield wall 26%, Second wind 23% |
 | R-12 They have powers too | | 20% | 29% if the foes have none: the gunner's Snare costs you 9 points |
-| R-13 Ground slam, no pit | | 39% | 4% without powers; the slam alone 29% |
-| R-14 Shockwave, no pit | | 27% | 4% without powers; Shockwave alone 17% |
+| R-13 Ground slam, no pit | | 35% | in the ruins (16 x 8: cover, spikes): 10% without powers; the slam alone 36% |
+| R-14 Shockwave, no pit | | 17% | the ruins too: Shockwave alone 23% |
 | R-15 Above their level | | 44% | 58% if the foes have no powers: a level 6 Warden, five levels up (10 either way), with an iron sword and a chain coat; their hexes need 60, and still cost him 14 points |
 | R-16 Level 4, the old gear | | 52% | A-05's fight at level 4: 12% at level 1 |
 | R-17 Level 5, the new gear | | 80% | the next level, and the next tier of gear: a step, not a cliff |
-| R-18 Out of sight | | 34% | the computer doesn't hide (Vanish only with nobody to shoot, Smoke never): what hiding is worth is for the player to find |
-| R-19 Mind spike | | 55% | 47% without it: confused, the guard and the rats lose turns and bite each other |
-| R-20 Taunt | | 69% | 84% if the gunner can't taunt: it costs 15 points; the computer's Warden doesn't taunt the guards (20 health is under its "worth a hex") |
+| R-18 Out of sight | | 34% | 16 x 8, cover and a line of fire: the computer neither hides nor moves (it snares and shoots from where it starts, as do the gunners), so the room is for the player; what hiding is worth is theirs to find |
+| R-19 Mind spike | | 59% | 16 x 8, fire and cover, a guard and three rats: 69% *without* it: the computer trades a 5-damage Firebolt for a 3-damage spike, and a confused foe next to the Channeler lashes out at her as often as at its friends |
+| R-20 Taunt | | 69% | 16 x 8, cover and spikes, three guards and a gunner: 32% if the gunner can't taunt: across the bigger room it taunts (3 damage) where it would shoot (6), and helps you |
+
+R-13, R-14 and R-18 to R-20 are on the arena's largest maps (16 x 8) since this round,
+with cover and hazards: the small rooms (12 x 6) let a rat cross in a turn, and hid what
+cover, fire and spikes do.
 
 From R-07 on, both sides use their powers as [turn.md](turn.md#how-the-computer-uses-powers)
 says. Soak is strong against swarms: a Soak equal to a foe's damage

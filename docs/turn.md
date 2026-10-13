@@ -292,11 +292,11 @@ Decided for now, to come back to after more playtests:
   pit or a cliff on a map be for higher-level fights (or a fall be damage and a turn to
   climb out, at low levels).
 - **Ground slam or Shockwave.** A stun for everyone round you, for one charge, may be too
-  strong: on an open floor a new Warden's slam alone takes two rust-guards and a rat from
-  4% to 29%. Shockwave is the alternative being tried: the same burst, but **staggered**
-  (−20 × tier to each one's next attack) instead of stunned: 17%. With all four powers,
-  R-13 (Ground slam) is 39% and R-14 (Shockwave) 27%. By a pit, the push into it is what
-  wins, and the two come out the same (66%).
+  strong: in the ruins (the arena's 16 × 8, cover and spikes) a new Warden's slam alone
+  takes two rust-guards and a rat from 10% to 36%. Shockwave is the alternative being
+  tried: the same burst, but **staggered** (−20 × tier to each one's next attack) instead
+  of stunned: 23%. With all four powers, R-13 (Ground slam) is 35% and R-14 (Shockwave)
+  17%. By a pit, the push into it is what wins, and the two come out the same (66%).
 
 - **How much a level is worth.** 2 a level, the same scale as a power's rank. Measured
   at 3× and 5× too (as Resist, before the gap): a level 6 Warden's hexers needed 62, 68 or
