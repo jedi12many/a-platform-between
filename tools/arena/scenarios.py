@@ -298,24 +298,28 @@ LAB += [
 ]
 
 
-# Two ways of slamming (docs/turn.md, To revisit): the same Warden on an open floor, no
-# pit to push into, with Ground slam (stuns) or Shockwave (staggers), to feel which.
-OPEN_FLOOR = ["############",
-              "#..........#",
-              "#@........a#",
-              "#.........b#",
-              "#.........c#",
-              "############"]
+# Two ways of slamming (docs/turn.md, To revisit): the same Warden in the ruins (the
+# arena's 16 x 8: cover, and spikes to push foes onto), no pit, with Ground slam (stuns)
+# or Shockwave (staggers), to feel which.
+RUINS = ["################",
+         "#.....+....^^..#",
+         "#.....+.......a#",
+         "#@......^^....b#",
+         "#.......^^....c#",
+         "#....+.........#",
+         "#....+...+.....#",
+         "################"]
 LAB += [
     {"title": "Ground slam, no pit",
-     "issue": "A new Warden against two rust-guards and an ash rat on an open floor, with "
+     "issue": "A new Warden against two rust-guards and an ash rat in the ruins (cover, and "
+              "spikes: 5 damage to whoever steps on them or is knocked onto them), with "
               "Ground slam (everyone round you hit, stunned: they lose their next turn), "
               "Bull rush, Shield wall and Second wind.",
      "watch": "Whether a stun for everyone round you is too much for one charge. Play R-14 "
               "next: the same fight with Shockwave instead.",
      "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
      "powers": [["BULL_RUSH", 10], ["GROUND_SLAM", 10], ["SHIELD_WALL", 10], ["SECOND_WIND", 10]],
-     "foes": ["RUST_GUARD", "RUST_GUARD", "ASH_RAT"], "map": OPEN_FLOOR},
+     "foes": ["RUST_GUARD", "RUST_GUARD", "ASH_RAT"], "map": RUINS},
     {"title": "Shockwave, no pit",
      "issue": "The same fight as R-13, but the slam is Shockwave: everyone round you hit and "
               "staggered (-20 to their next attack) instead of stunned.",
@@ -323,7 +327,7 @@ LAB += [
               "the Warden had.",
      "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
      "powers": [["BULL_RUSH", 10], ["SHOCKWAVE", 10], ["SHIELD_WALL", 10], ["SECOND_WIND", 10]],
-     "foes": ["RUST_GUARD", "RUST_GUARD", "ASH_RAT"], "map": OPEN_FLOOR},
+     "foes": ["RUST_GUARD", "RUST_GUARD", "ASH_RAT"], "map": RUINS},
 ]
 
 
@@ -387,51 +391,58 @@ LAB += [
     {"title": "Out of sight",
      "issue": "A new Rogue with Vanish (hidden: nobody can aim at you from more than a square "
               "away, until you attack) and Smoke (a cloud: you and anyone of yours in it, "
-              "hidden), Blink and Snare, against two scrap gunners.",
+              "hidden), Blink and Snare, against two scrap gunners, across a hall with cover "
+              "and a line of fire down the middle.",
      "watch": "Whether hiding from shooters is fun or too strong, and whether giving yourself "
               "away when you shoot feels fair.",
      "cls": "ROGUE", "level": 1, "weapon": "SCRAP_PISTOL", "armor": None,
      "powers": [["VANISH", 10], ["SMOKE", 10], ["BLINK", 10], ["SNARE", 10]],
-     "foes": ["SCRAP_GUNNER", "SCRAP_GUNNER"],
-     "map": ["############",
-             "#....+.....#",
-             "#@........a#",
-             "#....+....b#",
-             "#..........#",
-             "############"]},
+     "foes": ["SCRAP_GUNNER", "SCRAP_GUNNER"], "hazard": [5, "fire", "ON_FIRE"],
+     "map": ["################",
+             "#...+.....+....#",
+             "#...+..^..+..a.#",
+             "#@.....^.......#",
+             "#......^.......#",
+             "#...+..^..+..b.#",
+             "#...+.....+....#",
+             "################"]},
     {"title": "Mind spike",
      "issue": "A new Channeler whose Mind spike now confuses (each turn, d100: 01-25 it loses "
               "the turn, 26-50 it lashes out at the nearest fighter, friend or foe, 51-100 "
-              "it's free), with Firebolt, Ice wall and Shield, against a rust-guard and two "
-              "ash rats.",
+              "it's free), with Firebolt, Ice wall and Shield, against a rust-guard and three "
+              "ash rats, with fire between you and cover on your side.",
      "watch": "Whether confusion feels worth a charge, and whether foes hitting each other "
               "is fun or too random.",
      "cls": "CHANNELER", "level": 1, "weapon": "EMBER_WAND", "armor": None,
      "powers": [["MIND_SPIKE", 10], ["FIREBOLT", 10], ["ICE_WALL", 10], ["SHIELD", 10]],
-     "foes": ["RUST_GUARD", "ASH_RAT", "ASH_RAT"],
-     "map": ["############",
-             "#..........#",
-             "#@........a#",
-             "#.........b#",
-             "#.........c#",
-             "############"]},
+     "foes": ["RUST_GUARD", "ASH_RAT", "ASH_RAT", "ASH_RAT"], "hazard": [5, "fire", "ON_FIRE"],
+     "map": ["################",
+             "#.........^^...#",
+             "#....+....^^..a#",
+             "#@...+........b#",
+             "#....+....^^..c#",
+             "#.........^^..d#",
+             "#..............#",
+             "################"]},
     {"title": "Taunt",
      "issue": "A new Warden with Taunt (a hex: whoever it lands on must aim at him while it "
-              "can get at him) and a new Channeler, against two rust-guards and a scrap "
-              "gunner who can taunt too.",
+              "can get at him) and a new Channeler, against three rust-guards and a scrap "
+              "gunner who can taunt too, in a hall with cover and a line of spikes.",
      "watch": "Whether pulling the guards off the Channeler works, and how being taunted "
               "yourself feels (you must hit the taunter if you can reach them).",
      "cls": "WARDEN", "level": 1, "weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
      "powers": [["TAUNT", 10], ["SHIELD_WALL", 10], ["BULL_RUSH", 10], ["SECOND_WIND", 10]],
      "allies": [{"cls": "CHANNELER", "level": 1, "weapon": "EMBER_WAND", "armor": None,
                  "powers": [["FIREBOLT", 10], ["MIND_SPIKE", 10], ["SHIELD", 10]]}],
-     "foes": ["RUST_GUARD", "RUST_GUARD", {"foe": "SCRAP_GUNNER", "powers": [["TAUNT", 10]]}],
-     "map": ["############",
-             "#..........#",
-             "#@........a#",
-             "#@........b#",
-             "#.........c#",
-             "############"]},
+     "foes": ["RUST_GUARD", "RUST_GUARD", "RUST_GUARD", {"foe": "SCRAP_GUNNER", "powers": [["TAUNT", 10]]}],
+     "map": ["################",
+             "#.....+....^...#",
+             "#@....+....^..a#",
+             "#@.........^..b#",
+             "#.....+.......c#",
+             "#.....+..+....d#",
+             "#..............#",
+             "################"]},
 ]
 
 # What the arena lists now: only what needs playing this round of tests, a few at a time

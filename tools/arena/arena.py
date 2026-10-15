@@ -7,6 +7,7 @@ rules balance.
     python3 tools/arena/arena.py "Warden 3" "Channeler 3" vs "ASH_RAT x4" --sweep level 1-10
     python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --show 0     (one fight, blow by blow)
     python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --rules next  (rules v1: docs/turn.md)
+    python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --rules next --map ruins
 
 A matchup file is lines (# starts a comment):
 
@@ -26,6 +27,9 @@ A matchup file is lines (# starts a comment):
     sweep count FIRST-LAST           the last foe line's count, one run each
     map                              then rows (docs/combat.md), then: end; @ and a-z for
                                      where travelers and foes start (else they line up)
+    map NAME                         one of MAPS below: small (12 x 8, open: the default),
+                                     big (16 x 8, walled, open) or ruins (16 x 8, walled,
+                                     with cover and hazards); --map NAME on the command line
 
 A traveler is built by the quick builder (build), the rules' own way: point-buy, then a
 level-up at a time.
@@ -51,6 +55,24 @@ ARENA = os.path.join(ROOT, "build", "arena")
 ARENA_NEXT = os.path.join(ROOT, "build", "arena-next")
 CONDS = registry.load_conditions(races=REG["races"])
 POWERS = registry.load_powers(classes=REG["classes"], conditions=CONDS)
+
+# ------------------------------------------------------------------------ maps
+# The largest map the battle screen shows whole is 16 x 8 (the cartridge's view: 20 x 8
+# squares; the engine takes 16 x 10). Travelers line up down the left, foes down the right,
+# on the open squares.
+MAPS = {
+    "small": ["." * 12] * 8,
+    "big": ["#" * 16] + ["#" + "." * 14 + "#"] * 6 + ["#" * 16],
+    "ruins": ["################",
+              "#.....+....^^..#",
+              "#.....+........#",
+              "#.......^^.....#",
+              "#.......^^.....#",
+              "#....+.........#",
+              "#....+...+.....#",
+              "################"],
+}
+
 
 # ------------------------------------------------------------------------ the quick builder
 # What each class puts first: its stats (point-buy fills them in order, to 70), the skill
@@ -213,6 +235,8 @@ class Matchup:
                 self.set_hazard(w[1:])
             elif k == "sweep":
                 self.set_sweep(w[1], w[2])
+            elif k == "map" and len(w) > 1:
+                self.set_map(w[1])
             elif k == "map":
                 self.map = []
                 for row in lines:
@@ -248,6 +272,11 @@ class Matchup:
             raise SystemExit("arena: hazard DAMAGE TYPE COND (TYPE kinetic.. or none, COND or -)")
         self.hazard = (int(w[0]), None if w[1] == "none" else w[1], None if w[2] == "-" else w[2].upper())
 
+    def set_map(self, name):
+        if name not in MAPS:
+            raise SystemExit(f"arena: no map '{name}' ({', '.join(MAPS)})")
+        self.map = list(MAPS[name])
+
     def set_sweep(self, what, span):
         if what not in ("level", "count"):
             raise SystemExit("arena: sweep level or sweep count")
@@ -256,7 +285,7 @@ class Matchup:
 
     def file(self):
         """The fights, as build/arena reads them."""
-        rows = self.map or ["." * 12] * 8
+        rows = self.map or MAPS["small"]
         h, w = len(rows), max(len(r) for r in rows)
         out = [f"fights {self.fights}", f"seed {self.seed}", f"rounds {self.rounds}", f"map {w} {h}"]
         out += [r.ljust(w, ".") for r in rows]
@@ -271,10 +300,10 @@ class Matchup:
         foes = [f[0] for f in self.foes for _ in range(f[1])]
         if len(self.travelers) + len(foes) > 8:
             raise SystemExit("arena: 8 fighters at most (the battle engine's limit)")
-        lefts = self.line_up(len(self.travelers), 1, h) if not starts else starts
+        lefts = self.line_up(len(self.travelers), 1, rows) if not starts else starts
         foe_starts = [(x, y) for c, x, y in sorted((c, x, y) for y, r in enumerate(rows)
                                                     for x, c in enumerate(r) if c.islower())]
-        rights = foe_starts if len(foe_starts) >= len(foes) else self.line_up(len(foes), w - 2, h)
+        rights = foe_starts if len(foe_starts) >= len(foes) else self.line_up(len(foes), w - 2, rows)
         if len(lefts) < len(self.travelers):
             raise SystemExit("arena: the map hasn't an @ for every traveler")
         for t, (x, y) in zip(self.travelers, lefts):
@@ -289,11 +318,13 @@ class Matchup:
         return "\n".join(out) + "\n", foes
 
     @staticmethod
-    def line_up(n, x, h):
-        """n squares down column x, spread out round the middle."""
+    def line_up(n, x, rows):
+        """n open squares down column x, spread out round the middle."""
+        free = [y for y, r in enumerate(rows) if x < len(r) and r[x] == "."]
+        h = len(free)
         top = max(0, (h - 2 * n + 1) // 2)
-        ys = [top + 2 * i for i in range(n)] if 2 * n - 1 <= h else list(range(n))
-        return [(x, y) for y in ys]
+        ys = [top + 2 * i for i in range(n)] if 2 * n - 1 <= h else list(range(min(n, h)))
+        return [(x, free[y]) for y in ys]
 
 
 # ------------------------------------------------------------------------ fighting
@@ -379,7 +410,7 @@ def main(argv):
         return 2
     args = argv[1:]
     opts = {}
-    for k in ("--fights", "--sweep", "--show", "--seed", "--rules"):
+    for k in ("--fights", "--sweep", "--show", "--seed", "--rules", "--map"):
         if k in args:
             i = args.index(k)
             n = 3 if k == "--sweep" else 2
@@ -405,6 +436,8 @@ def main(argv):
         m.set_sweep(*opts["--sweep"])
     if "--rules" in opts:
         m.set_rules(opts["--rules"][0])
+    if "--map" in opts:
+        m.set_map(opts["--map"][0])
     if not m.travelers or not m.foes:
         raise SystemExit("arena: a fight needs travelers and foes")
     if not os.path.exists(ARENA_NEXT if m.rules == "next" else ARENA):
