@@ -52,12 +52,19 @@ async function main() {
       const x = window.arena.explore(), s = window.arena.state();
       return { mode: s.mode, room: x.room, x: x.x, y: x.y, cleared: x.cleared, lost: x.lost, pack: x.pack,
                map: s.fight && s.fight.st.map, fighters: s.fight && s.fight.st.fighters.map((f) => [f.side, f.x, f.y]),
-               doors: x.f.rooms[x.room].doors, buttons: window.arena.buttons(),
+               doors: x.f.rooms[x.room].doors, buttons: window.arena.buttons(), px: x.px, py: x.py,
+               grid: window.arena.grid(),
                side: document.getElementById("cards").innerText };
     });
     await page.goto(url + "#explore=" + code);
     await until("explore");
     out.start = await X();
+    /* Holding a key walks smoothly: a third of a second, and you're between squares. */
+    await page.keyboard.down("ArrowLeft");
+    await page.waitForTimeout(330);
+    out.held = await X();
+    await page.keyboard.up("ArrowLeft");
+    await page.waitForTimeout(100);
     const door = Object.values(out.start.doors)[0];
     await page.evaluate(([x, y]) => window.arena.walkTo(x, y), door);
     await page.waitForFunction((r) => window.arena.explore().room !== r, out.start.room, { timeout: 20000 });
@@ -66,6 +73,8 @@ async function main() {
     if (out.next.mode !== "explore") {
       await until("turn");
       out.fight = await X();
+      await page.waitForTimeout(700);
+      out.gridUp = await page.evaluate(() => window.arena.grid());
       await page.keyboard.press("z");
       await page.keyboard.press("t");
       await page.waitForFunction(() => ["explore", "lost"].includes(window.arena.state().mode), null, { timeout: 120000 });

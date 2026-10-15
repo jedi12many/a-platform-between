@@ -291,6 +291,12 @@ def check_explore():
     bad = []
     if start["room"] != floor["start"] or start["map"] != want["rows"]:
         bad.append(f"the start room is {start['room']}, not the reference's {floor['start']} as it draws it")
+    held = out["held"]
+    if start["grid"] != 0 or held["grid"] != 0:
+        bad.append(f"the grid shows while exploring ({start['grid']}, {held['grid']})")
+    if not (start["px"] - 2.2 < held["px"] < start["px"] - 0.3) or held["px"] == round(held["px"]):
+        bad.append(f"holding left a third of a second took you from {start['px']} to {held['px']}, "
+                   f"not smoothly about 1.5 squares (4.5 a second)")
     door = [d for d, _, _ in rooms.DIRS if d in want["doors"]][0]
     there = floor["rooms"][rooms.neighbour(floor["start"], door)]
     if nxt["room"] != there["i"]:
@@ -299,6 +305,8 @@ def check_explore():
         f = out.get("fight") or {}
         if f.get("map") != there["rows"]:
             bad.append("the fight isn't on the room's own map")
+        elif out.get("gridUp") != 1:
+            bad.append(f"the grid isn't up once the fight's begun ({out.get('gridUp')})")
         elif sorted(p[1:] for p in f["fighters"][1:]) != sorted([e["x"], e["y"]] for e in there["foes"]):
             bad.append(f"the foes stand at {f['fighters'][1:]}, not where the floor put them")
         after = out.get("after") or {}
@@ -311,8 +319,9 @@ def check_explore():
     if bad:
         fail("explore: " + "; ".join(bad))
     else:
-        ok(f"explore: yard 48213's floor 1 as the reference builds it; through the door, room "
-           f"{there['i'] + 1}" + (f"'s fight on its own map ({len(there['foes'])} foe), then walking again"
+        ok(f"explore: yard 48213's floor 1 as the reference builds it, walked smoothly with no grid "
+           f"(a key held a third of a second: {start['px'] - held['px']:.2f} squares); through the door, room "
+           f"{there['i'] + 1}" + (f"'s fight on its own map ({len(there['foes'])} foe), the grid up, then walking again"
                                   if there["foes"] else ", walked into"))
 
 

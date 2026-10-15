@@ -172,6 +172,14 @@ if (typeof module !== "undefined") module.exports = ROOMS;
 var X = null;            /* the descent: yard, floor, the floor's rooms, where you are */
 var ROOMDATA = null;     /* rooms.json: the travelers and the foes */
 var MAPCH = { 0: ".", 1: "#", 2: "O", 3: "~", 4: "+", 5: "^", 6: "=", 7: ">" };
+var SPEED = 4.5;         /* squares a second, walking */
+var BODY = 0.3;          /* half a figure's footprint, in squares */
+var held = {};           /* the walking keys held down: their steps */
+
+/* Standing at square (x, y), drawn there too (a door, a floor's start, after a fight). */
+function at(x, y) {
+  X.x = x; X.y = y; X.px = x; X.py = y; X.path = null;
+}
 
 function exploreLoad() {
   return fetch("rooms.json").then(function (r) { return r.json(); }).then(function (d) { ROOMDATA = d; });
@@ -215,8 +223,8 @@ function exploreFloor(n) {
   X.cleared = {}; X.taken = {}; X.seen = {};
   X.room = X.f.start;
   var r = X.f.rooms[X.room], d = r.doors[Object.keys(r.doors)[0]];
-  X.x = 7; X.y = 3;
-  if (!walkable(r, X.x, X.y)) { var p = inside(r, d); X.x = p[0]; X.y = p[1]; }
+  at(7, 3);
+  if (!walkable(r, 7, 3)) { var p = inside(r, d); at(p[0], p[1]); }
   show("fight");
   $("log").textContent = "";
   log("Yard " + X.yard + ", floor " + n + ". You come down into the dark.", "round");
@@ -265,6 +273,7 @@ function exploreView() {
   }));
   fight = { explore: true, st: { map: r.rows.slice(), fighters: all }, whose: -1, me: 0, effects: [], floaters: [],
             targets: [], shown: all.map(function (f) { return { x: f.x, y: f.y, health: 1, state: 0, alpha: 1, flash: 0 }; }) };
+  fight.shown[0].x = X.px; fight.shown[0].y = X.py;     /* where you're drawn: between squares, walking */
   S = { code: "E13", title: "Explore", native: { figures: [t.figure].concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
         names: [t.name].concat(fs.map(function (f) { return ROOMDATA.foes[f.name].name; })) } };
   $("where").textContent = "Yard " + X.yard + " · floor " + X.floor + " · room " + (r.i + 1);
@@ -301,18 +310,77 @@ function powerByName(n) {
   return id ? POWERS[id].display : n;
 }
 
-/* A step (or a walk to a square clicked). */
-function exploreStep(dx, dy) {
-  if (mode !== "explore") return;
-  var r = roomOf(), nx = X.x + dx, ny = X.y + dy, t;
-  if (!walkable(r, nx, ny)) {
-    t = nx >= 0 && ny >= 0 && nx < ROOMS.W && ny < ROOMS.H ? Number(r.rows[ny][nx]) : 1;
-    if (t === 5) toast("You won't walk into that: go round.");
-    else if (t === 2) toast("A pit: go round.");
+/* Walking (docs/rooms.md, Exploring): smooth, while a key's held, a figure's footprint
+ * sliding along walls and nudged round corners, so a doorway is easy to find. You're "on"
+ * the square under your middle: that's where a door, a crate or the stairs take effect,
+ * and where you stand when a fight starts. */
+function fits(px, py) {
+  var r = roomOf(), x0 = Math.floor(px + 0.5 - BODY), x1 = Math.floor(px + 0.5 + BODY - 1e-6);
+  var y0 = Math.floor(py + 0.5 - BODY), y1 = Math.floor(py + 0.5 + BODY - 1e-6), x, y;
+  for (y = y0; y <= y1; ++y) for (x = x0; x <= x1; ++x) if (!walkable(r, x, y)) return false;
+  return true;
+}
+
+/* Move by (dx, dy) along one axis; blocked, slide toward the middle of the way through. */
+function slide(dx, dy) {
+  var c;
+  if (fits(X.px + dx, X.py + dy)) { X.px += dx; X.py += dy; return true; }
+  if (dx) {
+    c = Math.round(X.py);
+    if (Math.abs(X.py - c) < 0.45 && fits(X.px + dx, c)) {
+      X.py += Math.sign(c - X.py) * Math.min(Math.abs(dx), Math.abs(c - X.py));
+      return true;
+    }
+  } else if (dy) {
+    c = Math.round(X.px);
+    if (Math.abs(X.px - c) < 0.45 && fits(c, X.py + dy)) {
+      X.px += Math.sign(c - X.px) * Math.min(Math.abs(dy), Math.abs(c - X.px));
+      return true;
+    }
+  }
+  return false;
+}
+
+/* Each frame while exploring (arena.js's frame calls it). */
+function exploreTick(now) {
+  var dt = Math.min(0.05, X.t ? (now - X.t) / 1000 : 0), dx = 0, dy = 0, sp, t, d, before = X.room;
+  X.t = now;
+  if (mode !== "explore" || !fight || !fight.explore) return;
+  Object.keys(held).forEach(function (k) { dx += held[k][0]; dy += held[k][1]; });
+  dx = Math.sign(dx); dy = Math.sign(dy);
+  sp = SPEED * dt;
+  if (dx || dy) {
+    X.path = null;
+    if (dx && dy) sp *= Math.SQRT1_2;
+    if (dx) slide(dx * sp, 0);
+    if (dy) slide(0, dy * sp);
+  } else if (X.path && X.path.length) {
+    /* A walk to a square clicked: glide from square to square along the way found. */
+    t = X.path[0];
+    d = Math.hypot(t[0] - X.px, t[1] - X.py);
+    if (d <= sp) { X.px = t[0]; X.py = t[1]; X.path.shift(); }
+    else { X.px += (t[0] - X.px) / d * sp; X.py += (t[1] - X.py) / d * sp; }
+  } else {
     return;
   }
-  X.x = nx; X.y = ny;
-  arrive();
+  fight.shown[0].x = X.px; fight.shown[0].y = X.py;
+  t = [Math.floor(X.px + 0.5), Math.floor(X.py + 0.5)];
+  if (t[0] !== X.x || t[1] !== X.y) {
+    X.x = t[0]; X.y = t[1];
+    fight.st.fighters[0].x = X.x; fight.st.fighters[0].y = X.y;
+    arrive();
+    if (X.room !== before) held = {};                   /* a new room: let go, look about */
+  }
+}
+
+/* The walking keys: down and up (arena.js's keys hand them over while exploring). */
+function exploreHold(e, step) {
+  e.preventDefault();
+  held[e.code || e.key] = step;
+}
+if (typeof document !== "undefined") {
+  document.addEventListener("keyup", function (e) { delete held[e.code || e.key]; });
+  window.addEventListener("blur", function () { held = {}; });
 }
 
 /* What happens where you've stepped: a door, a crate, the stairs. */
@@ -324,7 +392,8 @@ function arrive() {
     there = X.f.rooms[n];
     var p = inside(there, there.doors[ROOMS.BACK[d]]);
     X.from = { room: r.i, x: r.doors[d][0], y: r.doors[d][1], back: inside(r, r.doors[d]) };
-    X.room = n; X.x = p[0]; X.y = p[1];
+    X.room = n;
+    at(p[0], p[1]);
     return exploreEnter(r.i);
   }
   if (r.cache && !X.taken[r.i] && r.cache.x === X.x && r.cache.y === X.y) {
@@ -332,15 +401,16 @@ function arrive() {
     var id = ROOMDATA.cache[r.cache.item];
     if (X.pack.indexOf(id) < 0 && X.pack.length < 6) X.pack.push(id);
     log("In the crate: " + itemOf(id).display + ". It's in your pack (P in a fight).", "good");
+    exploreSide();
   }
   if (r.stairs && r.stairs[0] === X.x && r.stairs[1] === X.y && !foesIn(r).length) {
     log("Down the stairs.", "round");
+    held = {};
     return exploreFloor(X.floor + 1);
   }
-  exploreView();
 }
 
-/* The way to a clicked square (breadth-first, 8 ways), walked a step at a time. */
+/* The way to a clicked square (breadth-first, 8 ways), glided along (exploreTick). */
 function exploreTo(tx, ty) {
   var r = roomOf(), prev = {}, todo = [[X.x, X.y]], k = X.x + "," + X.y, p, dx, dy, nx, ny, path = [];
   prev[k] = null;
@@ -356,13 +426,7 @@ function exploreTo(tx, ty) {
   }
   if (prev[tx + "," + ty] === undefined) { toast("You can't get there from here."); return; }
   for (p = [tx, ty]; p && !(p[0] === X.x && p[1] === X.y); p = prev[p[0] + "," + p[1]]) path.unshift(p);
-  (function walk() {
-    if (!path.length || mode !== "explore") return;
-    var s = path.shift(), before = X.room;
-    X.x = s[0]; X.y = s[1];
-    arrive();
-    if (X.room === before && mode === "explore") setTimeout(walk, 70);
-  })();
+  X.path = [[X.x, X.y]].concat(path);                   /* from the middle of your square first */
 }
 
 /* A room's fight: the battle engine's, on the room's map (docs/rooms.md, Exploring). */
@@ -384,7 +448,12 @@ function exploreFight() {
         explore: true, lab: { won: "?", rounds: "?" },
         native: { spec: lines.join("\n") + "\n", figures: [t.figure].concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
                   names: names, pack: X.pack.slice(), skills: t.skills } };
+  held = {};
   newFight();
+  /* Everyone to their squares, and the grid comes up (docs/rooms.md, Exploring). */
+  fight.gridFrom = performance.now();
+  fight.shown[0].x = X.px; fight.shown[0].y = X.py;
+  tween(fight.shown[0], X.x, X.y, 220);
   resize();
   cards();
   advance();
@@ -396,11 +465,12 @@ function exploreAfter(result) {
   X.pack = fight.pack.slice();
   if (result === 1) {
     X.cleared[r.i] = 1;
-    X.x = me0.x; X.y = me0.y;
-    if (!walkable(r, X.x, X.y)) { var p = inside(r, r.doors[Object.keys(r.doors)[0]]); X.x = p[0]; X.y = p[1]; }
+    at(me0.x, me0.y);
+    if (!walkable(r, X.x, X.y)) { var p = inside(r, r.doors[Object.keys(r.doors)[0]]); at(p[0], p[1]); }
     log("The room is yours. You catch your breath: full health again.", "good");
   } else if (result === 3 && X.from) {
-    X.room = X.from.room; X.x = X.from.back[0]; X.y = X.from.back[1];
+    X.room = X.from.room;
+    at(X.from.back[0], X.from.back[1]);
     log("You get back out the way you came.", "round");
   } else {
     X.lost = true;
@@ -416,7 +486,7 @@ function exploreButtons() {
             ["N", "A new yard", function () { exploreStart(X.cls, 1 + Math.floor(Math.random() * 65535)); }],
             ["Esc", "Back to the scenarios", intro]];
   }
-  return [["Arrows", "Walk (numpad: 8 ways; or click a square)", null, false, "", false, "hint"],
+  return [["Arrows", "Walk: hold them down (numpad: 8 ways), or click a square", null, false, "", false, "hint"],
           ["N", "A new yard", function () { exploreStart(X.cls, 1 + Math.floor(Math.random() * 65535)); }],
           ["gap"],
           ["X", "Leave", intro]];
