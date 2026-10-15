@@ -119,7 +119,8 @@ the **studio**, beside the art desk:
   fights on the computer say. Enter starts the fight.
 - **Explore the yards** (E13, first in the list) is the prototype of exploring rooms
   ([rooms.md](rooms.md)): pick a class and a yard, then walk a floor of nine rooms overhead,
-  one room to a screen (arrows, the keypad, or click a square). Coming into a room with
+  one room to a screen: hold the arrows or the keypad and you glide, or click a square;
+  there's no grid until a fight, when it comes up and everyone settles onto a square. Coming into a room with
   foes in it starts the fight there, on the room's own map; won, you walk on; fled, you're
   back where you came from; lost, the descent ends. Crates put gear in your pack, and the
   stairs, once cleared, go a floor deeper. A link opens it: `arena/#explore=48213:rogue`.

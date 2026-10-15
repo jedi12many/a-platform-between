@@ -38,14 +38,19 @@ door draws the next one in its place: **flip-screen**, one room to a screen, as 
 
 ## Exploring
 
-- **Walking is free.** With no foes in the room, a step is a key press (8 ways), or click a
-  square to walk there; no turns, no Speed. Out of a fight you don't walk into a pit or a
-  hazard: you go round (the floor is built so you always can). Rough ground and cover are
-  just ground.
+- **Walking is free, and smooth.** With no foes in the room you walk while a key (or the
+  joystick) is held, 8 ways, about 4½ squares a second, gliding between squares; or click a
+  square to walk there. No turns, no Speed. Your footprint (just over half a square) slides
+  along walls, and is nudged round a corner into a doorway, so you needn't line up. Out of
+  a fight you don't walk into a pit or a hazard: you go round (the floor is built so you
+  always can). Rough ground and cover are just ground.
+- **No grid while you walk.** The room is drawn without the tiles' seams; you're "on" the
+  square under your middle, and that's where a door, a crate or the stairs take you.
 - **Doors.** Step onto a door and you're in the next room, one square inside its matching
   door.
 - **Coming into a room with foes in it starts a fight**, at once, on that room's map: you
-  where you came in, the foes where they stand. It's the battle engine's ordinary fight:
+  where you came in, the foes where they stand. Everyone settles onto their squares and
+  **the grid comes up** (over half a second): the fight is on squares again. It's the battle engine's ordinary fight:
   rules v1 ([turn.md](turn.md)), every action, power and condition.
   - **Won:** the room is clear for good, and you're where the fight left you, at full health
     (*After a fight*, [turn.md](turn.md#after-a-fight)).
@@ -119,8 +124,16 @@ every foe reachable.
   from the yard whenever they're needed, so only what's cleared and taken is kept (a
   byte a room).
 - **Drawing:** the view's 32 columns of the room, the floor's map in the 8 to its right
-  (a character a room); the figures are the battle screen's sprites. A step is a sprite
-  moving 16 pixels; a door redraws the view.
+  (a character a room); the figures are the battle screen's sprites, so walking smoothly
+  is a sprite moving a pixel or two a frame, nothing redrawn; a door redraws the view.
+- **The grid** is two copies of the tiles' characters, with and without their seams (2 KB
+  each, in the same asset): walking shows the seamless copy, and a fight switches the view's
+  character set to the other, one write to `$D018` at the split; the screen itself isn't
+  touched. (Or the seams fade in over a few frames by colour: the seam's colour is one of
+  the multicolour registers, shared by every tile, stepped from the floor's grey to its own.)
+- **Where you are** is kept in pixels while walking (a byte each way, the room being 256
+  x 128 pixels at 16 a square), and the square is the pixel position over 16; collisions
+  look up the tiles under the footprint's corners.
 - **Authored rooms:** a Departure writes its rooms in Quest Script as it writes battle
   maps, with doors naming the room they lead to and things to act on (open, look, take,
   a check); generated floors are for Sidings like the Deep Yards.
@@ -133,4 +146,11 @@ every foe reachable.
   rather than every fight starting as you come in; and sneaking past.
 - **Things to act on:** locks, levers, traps, a body to search: what a room's squares can
   hold beyond a cache.
-- **Bigger places:** rooms wider than the screen, scrolling, for towns and the open.
+- **Bigger places:** a floor as one area bigger than the screen, scrolling under you, a
+  fight taking the 16 x 8 squares round you. The C64 can: its fine scroll registers, a
+  character's shift at a time, as games with a panel below scroll eight ways. Sideways is
+  easy (the scroll register set above our split); up and down moves the bad lines our
+  cycle-counted split is timed against, so the split's code and its timing tests would be
+  reworked; and colour RAM can't be double-buffered, so the tiles would share its colour or
+  the game would move 640 bytes of it each character's scroll. A prototype in the browser
+  first, to feel it against flip-screen.

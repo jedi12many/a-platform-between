@@ -55,11 +55,16 @@ function paint(ctx, rows, colourOf, wide) {
   }
 }
 
-function tileSprite(name) {
-  var key = "tile:" + name, t = ART.tiles, e = t.entries[name], c;
+/* A tile; seamless: without the faint seam on its right and bottom edges, so a room seen
+ * while exploring shows no grid (docs/rooms.md): its last column and row are the ones
+ * beside them again. On the C64 that's a second copy of the tiles' characters. */
+function tileSprite(name, seamless) {
+  var key = "tile:" + name + (seamless ? ":seamless" : ""), t = ART.tiles, e = t.entries[name], c, rows;
   if (sprites[key]) return sprites[key];
   c = canvas(SQ, SQ);
-  paint(c.getContext("2d"), e.rows, function (d) {
+  rows = !seamless ? e.rows : e.rows.slice(0, -1).map(function (r) { return r.slice(0, -1) + r[r.length - 2]; });
+  if (seamless) rows.push(rows[rows.length - 1]);
+  paint(c.getContext("2d"), rows, function (d) {
     return d === "k" ? t.background : d === "d" ? t.shared[0] : d === "g" ? t.shared[1]
       : ART.colours.indexOf(e.option);
   }, 2);
@@ -1048,6 +1053,12 @@ function tag(x, y, text, colour) {
   ctx.fillText(text, cx, y * SQ - 4);
 }
 
+/* How much of the grid shows, 0..1. */
+function gridShown(now) {
+  if (!fight || fight.explore) return 0;
+  return fight.gridFrom ? Math.min(1, ((now || performance.now()) - fight.gridFrom) / 450) : 1;
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   if (!fight || $("fight").hidden) return;
@@ -1058,12 +1069,20 @@ function frame(now) {
   ctx.setTransform(view.scale, 0, 0, view.scale, view.ox, view.oy);
   ctx.imageSmoothingEnabled = false;
 
+  /* The grid: none while exploring; coming up as a fight from exploring starts. */
+  var grid = gridShown(now), tile;
   for (y = 0; y < map.length; ++y) {
     for (x = 0; x < map[y].length; ++x) {
-      ctx.drawImage(tileSprite(ART.tiles.order[Number(map[y][x])] || "open"), x * SQ, y * SQ);
+      tile = ART.tiles.order[Number(map[y][x])] || "open";
+      if (grid < 1) ctx.drawImage(tileSprite(tile, true), x * SQ, y * SQ);
+      if (grid > 0) {
+        ctx.globalAlpha = grid;
+        ctx.drawImage(tileSprite(tile), x * SQ, y * SQ);
+        ctx.globalAlpha = 1;
+      }
     }
   }
-  if (fight.explore) exploreDraw();                     /* the stairs, a crate */
+  if (fight.explore) { exploreTick(now); exploreDraw(); }   /* walking; the stairs, a crate */
   /* Where the traveler can go, and where they'll stand. */
   if (mode === "turn" || mode === "aim") {
     ctx.fillStyle = "rgba(111,179,255,.16)";
@@ -1500,8 +1519,7 @@ function onKey(e) {
     return;
   }
   if (mode === "explore" && step) {
-    e.preventDefault();
-    exploreStep(step[0], step[1]);
+    exploreHold(e, step);
     return;
   }
   if (mode === "turn" && step) {
@@ -1648,6 +1666,7 @@ async function boot() {
     state: function () { return { mode: mode, fight: fight, S: S, auto: auto, fast: fast }; },
     explore: function () { return X; },
     walkTo: function (x, y) { exploreTo(x, y); },
+    grid: function () { return gridShown(); },
     seed: function (n) { fixedSeed = n; },
     buttons: function () { return buttons().map(function (b) { return b[1]; }); }
   };
