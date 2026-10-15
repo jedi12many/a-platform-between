@@ -16,6 +16,9 @@
 //   node native.cjs URL rules CODE        the first turn: each power button hovered, then
 //                                         the first power on the traveler's card: the
 //                                         rule card's text each time
+//   node native.cjs URL explore YARD:CLASS   explore (rooms.js): the start room, a walk
+//                                         through its first door, and that room's fight
+//                                         on Auto (fast) if it has one, back to walking
 //   node native.cjs URL shove CODE SEED KEYS   the first turn: KEYS (arrows: R L U D) to
 //                                         move, then a Shove of the first foe in reach
 //   node native.cjs URL shot CODE PATH    a screenshot of the first turn
@@ -43,6 +46,35 @@ async function main() {
                                                 m, { timeout: ms || 20000 });
   const seeded = ["fight", "dash", "shove", "power", "blink", "first"].includes(what);
   const hash = "#scenario=" + code + (seeded ? "&seed=" + arg : "");
+  if (what === "explore") {
+    const out = { errors };
+    const X = () => page.evaluate(() => {
+      const x = window.arena.explore(), s = window.arena.state();
+      return { mode: s.mode, room: x.room, x: x.x, y: x.y, cleared: x.cleared, lost: x.lost, pack: x.pack,
+               map: s.fight && s.fight.st.map, fighters: s.fight && s.fight.st.fighters.map((f) => [f.side, f.x, f.y]),
+               doors: x.f.rooms[x.room].doors, buttons: window.arena.buttons(),
+               side: document.getElementById("cards").innerText };
+    });
+    await page.goto(url + "#explore=" + code);
+    await until("explore");
+    out.start = await X();
+    const door = Object.values(out.start.doors)[0];
+    await page.evaluate(([x, y]) => window.arena.walkTo(x, y), door);
+    await page.waitForFunction((r) => window.arena.explore().room !== r, out.start.room, { timeout: 20000 });
+    await page.waitForTimeout(400);
+    out.next = await X();
+    if (out.next.mode !== "explore") {
+      await until("turn");
+      out.fight = await X();
+      await page.keyboard.press("z");
+      await page.keyboard.press("t");
+      await page.waitForFunction(() => ["explore", "lost"].includes(window.arena.state().mode), null, { timeout: 120000 });
+      out.after = await X();
+    }
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
   await page.goto(url + hash);
   await until("intro");
   const out = { intro: await state() };

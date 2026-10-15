@@ -80,10 +80,10 @@ def check_start(code, s):
         return
     if "Start the fight" not in out["intro"]["buttons"]:
         fail(f"{code}: the intro has no Start button")
-    want_list = scenarios.PLAYING + ([] if code in scenarios.PLAYING else [code])
+    want_list = ["E13"] + scenarios.PLAYING + ([] if code in scenarios.PLAYING else [code])
     if out["intro"]["listed"] != want_list:
         fail(f"{code}: the intro lists {out['intro']['listed']}, not the scenarios to play now "
-             f"{scenarios.PLAYING} (and the one linked)")
+             f"{scenarios.PLAYING} (and the one linked), after exploring")
     st = out["turn"]["st"]
     sides = [f["side"] for f in st["fighters"]]
     team = 1 + len(s.get("allies", []))
@@ -274,6 +274,48 @@ def check_rules():
            "rule at its tier and roll, and goes when the mouse does")
 
 
+def check_explore():
+    """Exploring (docs/rooms.md): yard 48213's first floor, a Warden. The start room is the
+    reference's (tools/rooms/rooms.py); through its first door is the next room, and if it
+    holds foes the fight starts at once on that room's map, the foes where the floor put
+    them; on Auto it ends, and you're walking again with the room cleared (or the descent
+    over)."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "rooms"))
+    import rooms
+    out = page("explore", "48213:warden")
+    if not out:
+        return
+    floor = rooms.build(48213, 1)
+    start, nxt = out["start"], out["next"]
+    want = floor["rooms"][floor["start"]]
+    bad = []
+    if start["room"] != floor["start"] or start["map"] != want["rows"]:
+        bad.append(f"the start room is {start['room']}, not the reference's {floor['start']} as it draws it")
+    door = [d for d, _, _ in rooms.DIRS if d in want["doors"]][0]
+    there = floor["rooms"][rooms.neighbour(floor["start"], door)]
+    if nxt["room"] != there["i"]:
+        bad.append(f"through the {door} door is room {nxt['room']}, not {there['i']}")
+    if there["foes"]:
+        f = out.get("fight") or {}
+        if f.get("map") != there["rows"]:
+            bad.append("the fight isn't on the room's own map")
+        elif sorted(p[1:] for p in f["fighters"][1:]) != sorted([e["x"], e["y"]] for e in there["foes"]):
+            bad.append(f"the foes stand at {f['fighters'][1:]}, not where the floor put them")
+        after = out.get("after") or {}
+        if after.get("mode") == "explore" and str(there["i"]) not in after.get("cleared", {}):
+            bad.append("won, but the room isn't cleared")
+        if after.get("mode") not in ("explore", "lost"):
+            bad.append(f"after the fight the page is in {after.get('mode')}")
+    if out["errors"]:
+        bad.append(f"the page threw {out['errors'][:2]}")
+    if bad:
+        fail("explore: " + "; ".join(bad))
+    else:
+        ok(f"explore: yard 48213's floor 1 as the reference builds it; through the door, room "
+           f"{there['i'] + 1}" + (f"'s fight on its own map ({len(there['foes'])} foe), then walking again"
+                                  if there["foes"] else ", walked into"))
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -334,6 +376,7 @@ def main():
         check_blink()
         check_first()
         check_rules()
+        check_explore()
     finally:
         server.terminate()
         server.wait()

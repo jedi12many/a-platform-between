@@ -192,3 +192,18 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--dim); font-weight: 600; }
 
 /* In the site's Arena tab, the site's tabs take the studio's place. */
 .framed nav.studio { display: none; }
+
+/* Exploring (rooms.js, docs/rooms.md): the class to take, and the floor's map. */
+.brief .classes { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
+.brief label { display: inline-flex; align-items: center; gap: 8px; margin-right: 12px; color: var(--dim); }
+.brief input[type="number"] { width: 7em; font: inherit; color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.floormap { display: grid; grid-template-columns: repeat(3, 44px); grid-auto-rows: 28px; gap: 6px; margin: 6px 0 12px; }
+.floormap .fm { border: 1px dashed var(--line); border-radius: 3px; display: flex; align-items: center;
+  justify-content: center; color: var(--accent); font-size: 12px; }
+.floormap .fm.seen { border: 2px solid #5a5a68; background: var(--panel); }
+.floormap .fm.here { border-color: var(--ally); box-shadow: 0 0 0 1px var(--ally) inset; }
+.floormap .fm.door-N { border-top-style: dotted; }
+.floormap .fm.door-S { border-bottom-style: dotted; }
+.floormap .fm.door-E { border-right-style: dotted; }
+.floormap .fm.door-W { border-left-style: dotted; }

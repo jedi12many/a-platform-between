@@ -115,7 +115,9 @@ the border flashing red as the minutes run out, and white at the meltdown.
 map) over the story log, the party and the dice log ([frames.md](frames.md)), with a
 simpler battle view: 32-pixel squares and flat tiles.
 
-**E13: rooms.** Scenes as rooms the party walks round, acting on what's in reach.
+**E13: rooms.** Scenes as rooms the party walks round, acting on what's in reach: overhead,
+one room to a screen, a fight where you stand ([rooms.md](rooms.md): the design, and a
+prototype in the studio's arena).
 
 **E14: the party.** Up to four travelers. On a real C64 they're the player's own four, by
 rule: original hardware is offline, so there's no multiplayer budget on it.

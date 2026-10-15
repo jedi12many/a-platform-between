@@ -67,7 +67,7 @@ Until E14, the party frame shows the one traveler.
 ## Milestones
 
 - **E12 Frames (done):** the framed screen on every machine, with the simpler battle view.
-- **E13 Rooms:** a scene can be a room the party walks round, acting on things in reach
+- **E13 Rooms** ([rooms.md](rooms.md), prototyped in the studio's arena): a scene can be a room the party walks round, acting on things in reach
   (open, pick a lock, look, take) instead of choosing from a menu.
 - **E14 The party:** up to four of the player's own travelers board together; each keeps
   their Passport, and the trip's stamp lands on each.
