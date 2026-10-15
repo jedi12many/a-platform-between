@@ -156,7 +156,9 @@ the scenarios to play by hand now (`PLAYING` in `tools/arena/scenarios.py`; `doc
 `python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --sweep level 1-10`): use it to
 balance the rules.
 `make studio` serves the studio: the art desk (http://localhost:8064/) and the native arena
-(http://localhost:8064/arena/, `docs/arena.md`, by rules v1; `make test-arena-web` plays it
+(http://localhost:8064/arena/, `docs/arena.md`, by rules v1; with the prototype of exploring rooms
+overhead, `docs/rooms.md`, its floors built by `tools/rooms/rooms.py` and `tools/arena/web/rooms.js`
+alike; `make test-arena-web` plays it
 in headless Chromium).
 
 **Rules v1 is in the rules lab** (`docs/turn.md`): movement (Speed 5-7, paths, hazards on

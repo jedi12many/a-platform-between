@@ -117,6 +117,12 @@ the **studio**, beside the art desk:
   its link (`arena/#scenario=R-02`). The chosen one shows what we want tested and what to
   watch for, both sides' cards (worked out by the rules, not typed in), and what a thousand
   fights on the computer say. Enter starts the fight.
+- **Explore the yards** (E13, first in the list) is the prototype of exploring rooms
+  ([rooms.md](rooms.md)): pick a class and a yard, then walk a floor of nine rooms overhead,
+  one room to a screen (arrows, the keypad, or click a square). Coming into a room with
+  foes in it starts the fight there, on the room's own map; won, you walk on; fled, you're
+  back where you came from; lost, the descent ends. Crates put gear in your pack, and the
+  stairs, once cleared, go a floor deeper. A link opens it: `arena/#explore=48213:rogue`.
 - **The fight** is the battle map at whatever size the window is, drawn from the game's art
   (`content/art/`) with every pixel crisp. Your turn shows where you can go. Pick a square
   with the arrows (or the keypad's digits for diagonals) or by clicking a lit one. Foes in

@@ -176,7 +176,8 @@ function setMode(m) {
   $("pack").hidden = m !== "pack";
   $("end").hidden = m !== "end";
   actions();
-  if (fight) cards();
+  if (fight && fight.explore) exploreSide();
+  else if (fight) cards();
 }
 
 /* The intro: the list, and the chosen scenario's brief. */
@@ -186,9 +187,22 @@ function intro() {
   $("where").textContent = "";
   var list = $("scenario-list");
   list.textContent = "";
+  if (ROOMDATA) {
+    /* Exploring (rooms.js, docs/rooms.md): a prototype, above the scenarios. */
+    var eli = el("li"), eb = el("button");
+    list.append(el("li", "group", "Explore (prototype)"));
+    eb.type = "button";
+    eb.append(el("span", "code", "E13"), el("span", "t", "Explore the yards"),
+              el("span", "who", "rooms, overhead; fights where you stand"));
+    eb.setAttribute("aria-current", String(picked === -1));
+    eb.onclick = function () { picked = -1; intro(); };
+    eli.append(eb);
+    list.append(eli);
+  }
   shown().forEach(function (i, k, all) {
     var s = SCENARIOS[i], li = el("li"), b = el("button");
-    if (k === 0 || !!SCENARIOS[all[k - 1]].play !== !!s.play) {
+    if (i < 0) return;
+    if (k === 0 || all[k - 1] < 0 || !!SCENARIOS[all[k - 1]].play !== !!s.play) {
       list.append(el("li", "group", s.play ? "To play now" : "Opened by its link"));
     }
     b.type = "button";
@@ -200,7 +214,8 @@ function intro() {
     li.append(b);
     list.append(li);
   });
-  brief(SCENARIOS[picked]);
+  if (picked === -1) exploreBrief();
+  else brief(SCENARIOS[picked]);
   setMode("intro");
 }
 
@@ -683,6 +698,7 @@ function swap(slot, item) {
 /* ----------------------------------------------------------------- the end */
 
 function finish(result) {
+  if (S.explore) return exploreAfter(result);           /* a room's fight: back to walking */
   var won = result === 1, title = $("end-title"), body = $("end-body");
   var f = fight.st.fighters[0], a = S.lab;
   fight.whose = -1;
@@ -1047,6 +1063,7 @@ function frame(now) {
       ctx.drawImage(tileSprite(ART.tiles.order[Number(map[y][x])] || "open"), x * SQ, y * SQ);
     }
   }
+  if (fight.explore) exploreDraw();                     /* the stairs, a crate */
   /* Where the traveler can go, and where they'll stand. */
   if (mode === "turn" || mode === "aim") {
     ctx.fillStyle = "rgba(111,179,255,.16)";
@@ -1214,6 +1231,7 @@ function frame(now) {
 
 /* Each: [key label, text, what it does, disabled?, why it's disabled, primary?] */
 function buttons() {
+  if (mode === "explore" || mode === "lost") return exploreButtons();
   var t = fight && fight.targets ? fight.targets.length : 0;
   var sh = fight && fight.shoves ? fight.shoves.length : 0;
   switch (mode) {
@@ -1454,6 +1472,7 @@ function cycle(d) {
 function shown() {
   var out = [];
   SCENARIOS.forEach(function (s, i) { if (s.play || i === picked) out.push(i); });
+  if (ROOMDATA) out.unshift(-1);                /* exploring, first */
   return out;
 }
 
@@ -1476,7 +1495,13 @@ function onKey(e) {
   if (mode === "intro") {
     if (k === "ArrowDown") { pick(1); e.preventDefault(); }
     else if (k === "ArrowUp") { pick(-1); e.preventDefault(); }
+    else if (k === "Enter" && picked === -1) { e.preventDefault(); exploreStart(exploreBrief.cls || "WARDEN", Number($("yard").value) & 0xFFFF); }
     else if (k === "Enter") { e.preventDefault(); start(); }
+    return;
+  }
+  if (mode === "explore" && step) {
+    e.preventDefault();
+    exploreStep(step[0], step[1]);
     return;
   }
   if (mode === "turn" && step) {
@@ -1520,6 +1545,7 @@ function onClick(e) {
   if (!fight) return;
   var sq = squareAt(e.offsetX, e.offsetY), who, t;
   if (!sq) return;
+  if (mode === "explore") { exploreTo(sq.x, sq.y); return; }
   if (mode === "cast") {
     if (canCast(sq.x, sq.y)) castAt(sq.x, sq.y);
     else toast("It can't go there.");
@@ -1580,6 +1606,7 @@ async function boot() {
     });
   }));
   ART = got[0];
+  await exploreLoad().catch(function () { ROOMDATA = null; });
   SCENARIOS = got[3].concat(got[1]);                  /* the rules lab's first: they're new */
   ITEMS = got[2];
   CONDS = got[4];
@@ -1614,9 +1641,13 @@ async function boot() {
   var m = /scenario=([AR]-\d+)/.exec(location.hash);
   if (m) picked = Math.max(0, SCENARIOS.findIndex(function (s) { return s.code === m[1]; }));
   intro();
+  var ex = /explore=(\d+)(?::(\w+))?/.exec(location.hash);      /* #explore=YARD[:CLASS] */
+  if (ex && ROOMDATA) exploreStart((ex[2] || "WARDEN").toUpperCase(), Number(ex[1]) & 0xFFFF);
   requestAnimationFrame(frame);
   window.arena = {                                                  /* for tests */
     state: function () { return { mode: mode, fight: fight, S: S, auto: auto, fast: fast }; },
+    explore: function () { return X; },
+    walkTo: function (x, y) { exploreTo(x, y); },
     seed: function (n) { fixedSeed = n; },
     buttons: function () { return buttons().map(function (b) { return b[1]; }); }
   };

@@ -712,6 +712,41 @@ def measured(s, rules="v0"):
             "health_left": round(100 * sm["fighters"][0]["left"] / sm["fighters"][0]["health"])}
 
 
+# Exploring (docs/rooms.md): a level-1 traveler of each class, with four of its powers,
+# walks a floor of rooms; its fights are built from the rooms (tools/arena/web/rooms.js).
+ROOM_TRAVELERS = {
+    "WARDEN": {"weapon": "RUSTED_SABRE", "armor": "PADDED_COAT",
+               "powers": [["BULL_RUSH", 10], ["SHIELD_WALL", 10], ["TAUNT", 10], ["SECOND_WIND", 10]]},
+    "ROGUE": {"weapon": "SCRAP_PISTOL", "armor": None,
+              "powers": [["BLINK", 10], ["SNARE", 10], ["VANISH", 10], ["SMOKE", 10]]},
+    "TINKER": {"weapon": "ARC_PISTOL", "armor": None,
+               "powers": [["ARC_SHOT", 10], ["FORCE_FIELD", 10], ["BARRICADE", 10], ["SHOCK_MINE", 10]]},
+    "CHANNELER": {"weapon": "EMBER_WAND", "armor": None,
+                  "powers": [["FIREBOLT", 10], ["FIREBALL", 10], ["ICE_WALL", 10], ["MIND_SPIKE", 10]]},
+    "MEDIC": {"weapon": "SCRAP_PISTOL", "armor": None,
+              "powers": [["PATCH_UP", 10], ["STIM", 10], ["ADRENALINE", 10], ["SEDATE", 10]]},
+}
+
+
+def rooms():
+    """What the arena's explore mode needs: each class's traveler (Passport, weapon, figure,
+    powers) and each foe of the rooms' pool (its line for the battle engine, less the
+    square, its figure and name)."""
+    sys.path.insert(0, os.path.join(arena.ROOT, "tools", "rooms"))
+    import rooms as gen
+    travelers = {}
+    for cls, t in ROOM_TRAVELERS.items():
+        s = dict(t, cls=cls, level=1)
+        ch = traveler(s)
+        travelers[cls] = {"name": arena.REG["classes"][cls]["display"], "passport": arena.passport.encode(ch),
+                          "weapon": item_id(t["weapon"]), "figure": arena.DEFAULT_RACE[cls],
+                          "powers": t["powers"],
+                          "skills": {k: arena.rating(ch, k.upper()) for k in ("melee", "ranged", "channel", "athletics")}}
+    foes = {name: {"line": arena.foe_line(name, 0, 0).split(" ", 3)[3], "figure": name,
+                   "name": arena.REG["foes"][name]["display"]} for name in gen.POOL}
+    return {"travelers": travelers, "foes": foes, "cache": {n: item_id(n) for n in gen.CACHE}}
+
+
 def main(argv):
     if len(argv) != 2:
         print(__doc__)
@@ -760,6 +795,8 @@ def main(argv):
         json.dump(conditions(), f, indent=1)
     with open(os.path.join(out, "powers.json"), "w") as f:
         json.dump(powers(), f, indent=1)
+    with open(os.path.join(out, "rooms.json"), "w") as f:
+        json.dump(rooms(), f, indent=1)
     print(f"arena: {len(data)} scenarios and {len(lab)} of the rules lab's in {out}")
     return 0
 

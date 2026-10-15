@@ -449,7 +449,7 @@ build/modern/deep-yards/DEPOT: content/sidings/deep-yards/deep-yards.qs $(YARDS_
 ARENA_N := 01 02 03 04 05 06 07 08 09 10
 ARENA_DEPARTURES := $(foreach n,$(ARENA_N),build/modern/arena-$(n)/DEPOT)
 
-build/arena-play/scenarios.json: tools/arena/scenarios.py tools/arena/arena.py build/arena build/arena-next \
+build/arena-play/scenarios.json: tools/arena/scenarios.py tools/arena/arena.py tools/rooms/rooms.py build/arena build/arena-next \
                                  registry/*.txt
 	python3 tools/arena/scenarios.py build/arena-play
 	mkdir -p build/arena-play/pictures
@@ -531,10 +531,11 @@ build/arena-web/rules.js: tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC) $(NEXT
 
 build/arena-web/index.html: build/arena-web/rules.js build/arena-play/scenarios.json \
                             tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css \
-                            tools/arena/web/art_json.py content/art/*.txt
-	cp tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css build/arena-web/
+                            tools/arena/web/rooms.js tools/arena/web/art_json.py content/art/*.txt
+	cp tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css \
+	    tools/arena/web/rooms.js build/arena-web/
 	cp build/arena-play/scenarios.json build/arena-play/lab.json build/arena-play/items.json \
-	    build/arena-play/conditions.json build/arena-play/powers.json build/arena-web/
+	    build/arena-play/conditions.json build/arena-play/powers.json build/arena-play/rooms.json build/arena-web/
 	python3 tools/arena/web/art_json.py build/arena-web/art.json
 
 arena-web: build/arena-web/index.html
@@ -553,6 +554,7 @@ artdesk:
 # rules say, and fights played on quick end as the battle engine says
 # (tests/arena/check_native.py).
 test-arena-web: build/arena-web/index.html
+	python3 tests/rooms/check_rooms.py
 	NODE_PATH=$$(npm root -g) python3 tests/arena/check_native.py
 
 # The art desk in headless Chromium, on a copy of the art: files come back untouched, each
