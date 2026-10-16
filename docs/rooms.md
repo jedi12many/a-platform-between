@@ -300,7 +300,8 @@ them is a fight on open ground. Things that block are terrain (cover, wall).
   stand-in host. And whether a party of four needs harder floors (the danger counts the
   floor and the depth, not the party).
 - **Being seen.** Foes that notice you across the room (a check against your Stealth),
-  rather than every fight starting as you come in; and sneaking past.
+  rather than every fight starting as you come in; and sneaking past. Proposed, with
+  floors that are one open area instead of rooms: [open-floors.md](open-floors.md).
 - **Things to act on:** locks, levers, traps, a body to search: what a room's squares can
   hold beyond a cache.
 - **Scrolling or flip-screen:** prototyped both (*Scrolling, to compare*); the C64's cost
