@@ -36,80 +36,70 @@ happens, and the view goes to whoever's turn it is, even if that's a foe you can
 Foes don't start a fight because you came through a door: they start it when they **see
 you**. And you might see them first.
 
-### Group checks
+### The rule: the sneak sets the TN, the spotter rolls
 
-A check the whole party makes together (sneaking past, spotting a band; later climbing,
-fording, keeping quiet in a camp) is a **group check**, so the worst of you doesn't sink
-it every time, and a clumsy party still drags on a skilled one:
+One rule, whichever way round, travelers or foes:
 
-> **The best of you makes the check. First, each of the others rolls the same check
-> against the same TN: each success takes 10 off the best's TN, each failure puts 10 on.**
+> **Whoever is looking rolls: d100 + their Notice. The TN is set by whoever might be
+> seen: 50 + their Stealth if they're sneaking (or hiding, or standing still in cover),
+> or 80 (Easy) if they aren't; + the modifiers below.**
 
-- A success at a cost (within 20 under) counts neither way; a natural 01 puts 20 on; a
-  crit takes 20 off.
-- The best's roll, against the TN as the others left it, is the party's result, read as
-  the core roll reads it (success, success at a cost, fail).
-- On your own, it's just your roll.
+- **Notice** is a foe's **Sense**; a traveler's **Wits** or **Intuition**, whichever is
+  better (one of you has a feeling).
+- **Stealth** is the Stealth skill; a foe's **Stealth** number (*Foes' numbers*).
+- A band of foes is one looker (its best Sense) and one TN (its best Stealth): bands
+  don't straggle; parties do (*Groups*).
 
-*For example*, sneaking, TN 100. The best sneak has Stealth 70; the others 45, 30, 25.
-They roll first: 45 + 62 = 107, a success (−10); 30 + 40 = 70, a fail (+10); 25 + 81 =
-106, a success (−10). The best rolls against TN 90: d100 + 70 beats it on 21 or more, 80
-times in 100 (it was 70 against 100). Had all three failed, TN 130: 40 in 100.
-
-It's a few rolls at a table, all against one number. (The numbers, 10 a helper, want
-trying in the arena.)
-
-### Walking up
-
-When you come into a band's **sight** (within its range, a clear line between: see
-*Lines of sight*) and you're not sneaking, the **band** rolls to notice you:
-
-> **d100 + the band's Sense, against TN 80 (Easy), + whatever's against it.**
-
-| Against the band (raises its TN) | |
+| Modifiers (on the TN) | |
 |---|---|
 | Night, or a dark floor | +20 |
 | Distance: per full 4 squares past the first 4 | +10 |
 | The line passes through cover, or a cluster's edge | +20 |
-| The party in cover | +10 |
-| **For** the band (lowers its TN) | |
-| The band is alert (it heard something, or a fight's been near) | −20 |
-| The party's carrying a light, in the dark | −20 |
+| Whoever might be seen is in cover | +10 |
+| The looker is alert (it heard something, or a fight's been near) | −20 |
+| Whoever might be seen is carrying a light, in the dark | −20 |
 
-- **Success:** they've seen you. The fight starts (*Where the fight is*). If you hadn't
-  seen them, they act first: the first round is theirs (an **ambush**).
-- **Success at a cost** (within 20 under): they **heard** something. The band turns
-  toward you and is **alert** from now on.
-- **Fail:** they didn't, yet.
+Read as the core roll reads it:
 
-### Sneaking
+- **Success:** seen. If it's a band seeing you, the fight starts (*Where the fight is*);
+  if you hadn't seen them, the first round is theirs (an **ambush**). If it's you seeing
+  them, they're **shown** (on the view and the minimap), marked as not having seen you.
+- **Success at a cost** (within 20 under): **heard**. A band turns toward you and is
+  **alert** from now on; you get a mark on the minimap where the sound came from.
+- **Fail:** not seen, yet.
 
-**Sneaking** (a toggle: S; half speed) turns it round: the **party** makes a group check
-of **Stealth**:
+Each side checks when the other comes into its **sight** (within its range, a clear line
+between: *Lines of sight*), and again each time the gap closes by **4 squares**, so a
+careful approach is a few rolls, not one a step. Adjacent, you're seen whatever the roll.
 
-> **Group check of Stealth, against TN = 50 + the band's Sense, with the table above
-> turned round** (night, distance and cover take off the party's TN; an alert band and a
-> light in the dark put on it).
+Having spotted a band that hasn't seen you, you choose: **sneak past** (S: half speed;
+they keep checking, against your Stealth), **go round**, **talk** (if they parley:
+rooms.md's *Talk*), or **ambush**: walk up and attack; if they still haven't seen you when
+you start it, the first round is yours.
 
-- **Success:** they don't see you.
-- **Success at a cost:** they **heard** something: the band turns toward you and is
-  alert.
-- **Fail:** they've seen you: the fight starts, an ambush if you hadn't seen them.
+### Groups
 
-Either way, a band checks again only when you come **4 squares closer** than its last
-check, so a careful approach is a few rolls, not one a step; adjacent, they see you
-whatever the roll.
+A party is a group, and the worst of you mustn't sink it every time, yet a clumsy party
+should still drag on a skilled one. So:
 
-### You seeing them
+- **A group sets a TN** (sneaking past a band): 50 + its **best** Stealth. Each of the
+  others rolls Stealth against Normal (100): each success puts 10 **on** the TN (harder to
+  see you), each failure takes 10 **off**.
+- **A group makes a roll** (spotting a band): the **best** of you rolls. First, each of the
+  others rolls the same check against the same TN: each success takes 10 off the best's
+  TN, each failure puts 10 on.
+- Either way, a success at a cost counts neither way; a natural 01 counts 20 against; a
+  crit 20 for. On your own, it's just your number or your roll.
 
-At the same moment, the party makes a group check to **spot** the band: each traveler's
-**Wits** or **Intuition**, whichever is better (one of you has a feeling), against TN = 50
-+ the band's **Stealth**, with the walking-up table turned round. If you spot them first:
+*For example*, sneaking past a band with Sense 30, at night (+20), 10 squares off (+10):
+TN = 50 + 70 (the best sneak) + 30 = 150. The others, Stealth 45, 30 and 25, roll against
+100: 45 + 62 = 107, a success (+10); 30 + 40 = 70, a fail (−10); 25 + 81 = 106 (+10): TN
+160. The band rolls d100 + 30, 130 at most: it neither sees nor hears you. Later, by day
+and 4 squares off, past a band with Sense 60: TN = 50 + 70 + 10 (the same helpers) = 130.
+It sees you on 71 or more (30 in 100), and hears you on 51 to 70 (20 in 100).
 
-- They're **shown** (on the view and the minimap), marked as not having seen you.
-- You choose: **sneak past** (sneak: they keep checking), **go round**, **talk** (if they
-  parley: rooms.md's *Talk*), or **ambush**: walk up and attack; if they still haven't
-  seen you when you start it, the first round is yours.
+Every check is a roll against one number, from one short list: it plays at a table. (The
+10 a helper, and the TNs, want trying in the arena.)
 
 ### Lines of sight
 
@@ -127,8 +117,8 @@ appended as columns, so no id changes): **Sense** (noticing, like Wits) and **St
 its attack − 10, Stealth = its Grace. An ash rat (Grace 50) is hard to spot; a
 maintenance drone (attack 40) has Sense 30, 6 squares.
 
-It plays at a table: a roll (or a group check) a band when you come into its sight, again
-each time you come 4 squares closer, modifiers from one short list.
+It plays at a table: a roll each way when you come into each other's sight, again each
+time the gap closes by 4 squares, modifiers from one short list.
 
 ## Where the fight is
 
@@ -162,8 +152,8 @@ each time you come 4 squares closer, modifiers from one short list.
 
 ## Building it, in order
 
-1. **The rules:** group checks, and being seen (walking up, sneaking, spotting, their
-   modifiers, sight lines, Sense and Stealth for foes) in the rules lab, with a Python reference and tests, as rules v1's movement was
+1. **The rules:** seeing and being seen (the looker rolls, the sneak sets the TN; groups;
+   the modifiers; sight lines; Sense and Stealth for foes) in the rules lab, with a Python reference and tests, as rules v1's movement was
    ([turn.md](turn.md)); reviewed cases of approaches seen and missed.
 2. **Open floors** in the generator (`tools/rooms/rooms.py` and `rooms.js` alike): clusters,
    one region, places, encounters; the floor's size a parameter; `check_rooms.py` holds
