@@ -529,7 +529,22 @@ build/arena-web/rules.js: tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC) $(NEXT
 	@mkdir -p build/arena-web
 	$(EMCC) $(ARENA_WEB_FLAGS) $(NEXT_INC) -DAPB_ARENA -o $@ tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC)
 
-build/arena-web/index.html: build/arena-web/rules.js build/arena-play/scenarios.json \
+# Talk while exploring (docs/rooms.md, Talk): the story VM and the v0 rules, playing the
+# talk Departure (content/sidings/yards-talk/), waiting on the page with Asyncify.
+STORY_WEB_FLAGS := -O2 -sASYNCIFY -sALLOW_MEMORY_GROWTH -sMODULARIZE -sEXPORT_NAME=ArenaStory \
+                   -sEXPORTED_RUNTIME_METHODS=ccall,UTF8ToString,HEAP32 \
+                   -sEXPORTED_FUNCTIONS=_st_start,_st_error,_st_pack,_st_pack_now,_malloc,_free
+
+build/talk/DEPOT: content/sidings/yards-talk/yards-talk.qs $(wildcard tools/qsc/*.py)
+	@mkdir -p build/talk
+	python3 tools/qsc/qsc.py build $< -o build/talk.apd --split build/talk
+
+build/arena-web/story.js: tools/arena/web/story.c build/talk/DEPOT $(VM_SRC) $(VM_HDR) $(CORE_SRC) $(CORE_HDR)
+	@mkdir -p build/arena-web
+	$(EMCC) $(STORY_WEB_FLAGS) $(INC) -o $@ tools/arena/web/story.c $(VM_SRC) $(CORE_SRC) \
+	    --embed-file build/talk@/talk --exclude-file '*.apd'
+
+build/arena-web/index.html: build/arena-web/rules.js build/arena-web/story.js build/arena-play/scenarios.json \
                             tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css \
                             tools/arena/web/rooms.js tools/arena/web/art_json.py content/art/*.txt
 	cp tools/arena/web/index.html tools/arena/web/arena.js tools/arena/web/arena.css \

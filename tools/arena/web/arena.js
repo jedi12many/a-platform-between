@@ -1266,7 +1266,7 @@ function frame(now) {
 
 /* Each: [key label, text, what it does, disabled?, why it's disabled, primary?] */
 function buttons() {
-  if (mode === "explore" || mode === "lost") return exploreButtons();
+  if (mode === "explore" || mode === "lost" || mode === "talk") return exploreButtons();
   var t = fight && fight.targets ? fight.targets.length : 0;
   var sh = fight && fight.shoves ? fight.shoves.length : 0;
   switch (mode) {
@@ -1542,6 +1542,11 @@ function onKey(e) {
     exploreHold(e, step);
     return;
   }
+  if (mode === "talk") {
+    if (/^[1-9]$/.test(k) && TALK && TALK.answer) { e.preventDefault(); TALK.answer(Number(k) - 1); }
+    else if ((k === "Enter" || k === " ") && TALK && TALK.reading && TALK.answer) { e.preventDefault(); TALK.answer(0); }
+    return;
+  }
   if (mode === "turn" && step) {
     e.preventDefault();
     f = fight.plan;
@@ -1584,6 +1589,7 @@ function onClick(e) {
   var sq = squareAt(e.offsetX, e.offsetY), who, t;
   if (!sq) return;
   if (mode === "explore") { exploreTo(sq.x, sq.y); return; }
+  if (mode === "talk") return;
   if (mode === "cast") {
     if (canCast(sq.x, sq.y)) castAt(sq.x, sq.y);
     else toast("It can't go there.");
@@ -1687,6 +1693,8 @@ async function boot() {
     state: function () { return { mode: mode, fight: fight, S: S, auto: auto, fast: fast }; },
     explore: function () { return X; },
     walkTo: function (x, y) { exploreTo(x, y); },
+    talk: function () { return talkState(); },
+    say: function (k) { if (TALK && TALK.answer) TALK.answer(k); },
     grid: function () { return gridShown(); },
     seed: function (n) { fixedSeed = n; },
     buttons: function () { return buttons().map(function (b) { return b[1]; }); }

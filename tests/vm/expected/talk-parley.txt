@@ -1,0 +1,72 @@
+=== Talk
+  1) @1
+  2) @2
+  3) @3
+  4) @4
+  5) @5
+  6) @6
+  7) @7
+  8) @8
+  9) @end
+> 1
+  1) @trader
+  2) @courier
+  3) @ASH_RAT
+  4) @SCRAP_GUNNER
+  5) @RUST_GUARD
+  6) @MAINT_DRONE
+> 3
+=== Parleys
+Ash rats, a whole family of them, the size of dogs and the colour of a cold fire. They've seen you. They're deciding whether you're food.
+  1) Shout them down
+  2) Edge round them quietly
+  3) Fight
+> 1
+[check PRESENCE: 68+35=103 vs 100: success]
+You roar. The rats scatter into the pipes and don't come back.
+  1) @leave
+> 1
+  1) @1
+  2) @2
+  3) @3
+  4) @4
+  5) @5
+  6) @6
+  7) @7
+  8) @8
+  9) @end
+> 3
+  1) @trader
+  2) @courier
+  3) @ASH_RAT
+  4) @SCRAP_GUNNER
+  5) @RUST_GUARD
+  6) @MAINT_DRONE
+> 5
+Rust-guards at their posts, the way they've stood for a hundred years. One lifts a lantern. "Shift words," it grinds. "Or leave the yard."
+  1) Look at the guard post
+  2) Bluff: "Inspection."
+  3) Fight
+> 1
+[check Lore: 18+22=40 vs 100: fail]
+Rust. And under the rust, more rust.
+  1) Bluff: "Inspection."
+  2) Fight
+> 1
+[check Persuade: 80+17=97 vs 120: fail]
+"There has not been an inspection in one hundred and four years."
+  1) @fight
+> 1
+  1) @1
+  2) @2
+  3) @3
+  4) @4
+  5) @5
+  6) @6
+  7) @7
+  8) @8
+  9) @end
+> 9
+The yards go quiet behind you.
+[receipt: departure 1001, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

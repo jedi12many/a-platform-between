@@ -207,3 +207,20 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--dim); font-weight: 600; }
 .floormap .fm.door-S { border-bottom-style: dotted; }
 .floormap .fm.door-E { border-right-style: dotted; }
 .floormap .fm.door-W { border-left-style: dotted; }
+
+/* Talk (rooms.js): over the bottom of the board, the story's words and the choices. */
+.talk { position: absolute; left: 12px; right: 12px; bottom: 12px; max-height: 62%; display: flex;
+        flex-direction: column; gap: 8px; padding: 14px 16px; background: rgba(14, 14, 20, .94);
+        border: 1px solid #3a3a4a; border-radius: 8px; box-shadow: 0 8px 30px rgba(0, 0, 0, .5); }
+.talk[hidden] { display: none; }
+.talk h2 { margin: 0; font-size: 14px; letter-spacing: .04em; color: #e8c547; }
+#talk-lines { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.45; }
+#talk-lines p { margin: 0; }
+#talk-lines .said { color: #8fb8ff; }
+#talk-lines .roll { font-size: 13px; color: #b9b9c9; font-variant-numeric: tabular-nums; }
+#talk-lines .roll.good { color: #8fd18f; } #talk-lines .roll.bad { color: #ff8f8f; }
+#talk-choices { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+#talk-choices button { width: 100%; text-align: left; font: inherit; font-size: 14px; padding: 6px 10px;
+                       background: #1d1d28; color: #e6e4dc; border: 1px solid #34344a; border-radius: 5px; cursor: pointer; }
+#talk-choices button:hover, #talk-choices button:focus-visible { border-color: #e8c547; }
+#talk-choices kbd { display: inline-block; min-width: 1.4em; color: #e8c547; }

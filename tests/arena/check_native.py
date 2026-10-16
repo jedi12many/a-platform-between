@@ -413,6 +413,52 @@ def check_party():
            f"in room {there['i'] + 1}'s fight they stand fanned out round the leader as the reference says")
 
 
+def check_talk():
+    """Talk while exploring (docs/rooms.md, Talk): the story VM playing
+    content/sidings/yards-talk/. Yard 14: Vell's camp is beside where you arrive; the page
+    offers to talk, clicking her opens her words and choices as the script has them, a
+    question gets its answer, Move on ends it and you walk again. Yard 2: through the first
+    door, ash rats who talk first; the parley's check is rolled and shown, and its end is
+    the story's: a failure starts the fight, a success clears the room."""
+    out = page("talk", "-")
+    if not out:
+        return
+    bad = []
+    if "Talk to Vell" not in out["before"]["buttons"] or not out["before"]["waiting"]:
+        bad.append(f"arriving beside Vell, the buttons are {out['before']['buttons']}")
+    vell = out["vell"]
+    if (vell["mode"], vell["who"]) != ("talk", "Vell") or not vell["lines"] or not vell["lines"][0].startswith("A camp"):
+        bad.append(f"clicking Vell: {vell['mode']}, {vell['who']!r}, {vell['lines'][:1]}")
+    if vell["choices"] != ["What have you got?", "What's on this floor?", "Seen anyone else down here?", "Move on"]:
+        bad.append(f"Vell's choices are {vell['choices']}")
+    if not any(line.startswith('"Rats on the first floors') for line in out["rumour"]["lines"]):
+        bad.append("asking what's on the floor didn't get the rumour")
+    after = out["after"]
+    if after["mode"] != "explore" or after["open"] or not after["waiting"]:
+        bad.append(f"after Move on: {after['mode']}, the panel {'open' if after['open'] else 'shut'}")
+    parley = out["parley"]
+    if parley["mode"] != "talk" or not parley["who"].startswith("Ash rat") or "Shout them down" not in parley["choices"]:
+        bad.append(f"the ash rats' room: {parley['mode']}, {parley['who']!r}, {parley['choices']}")
+    rolls = [line for line in out["shout"]["lines"] if line.startswith("Presence check: rolled")]
+    then = out["then"]
+    if len(rolls) != 1:
+        bad.append(f"shouting, the check shown is {rolls}")
+    else:
+        failed = rolls[0].endswith(": fail.")
+        if failed and then["mode"] != "turn":
+            bad.append(f"the shout failed, and then the page is in {then['mode']}, not the fight")
+        if not failed and (then["mode"] != "explore" or not then["cleared"]):
+            bad.append(f"the shout worked, and then the page is in {then['mode']}, cleared {then['cleared']}")
+    if out["errors"]:
+        bad.append(f"the page threw {out['errors'][:2]}")
+    if bad:
+        fail("talk: " + "; ".join(bad))
+    else:
+        ok(f"talk: Vell beside the start, her words and choices as the script has them, a question "
+           f"answered and back to walking; the ash rats talk first, the shout rolled ({rolls[0]}) and "
+           f"the story's ending kept ({then['mode']})")
+
+
 def check_looks():
     """The looks while exploring (docs/rooms.md, Looks; docs/art.md): yard 48213's start
     room in each look (and by floor: floor 1 is the forest). Every square is drawn with a
@@ -525,6 +571,7 @@ def main():
         check_scroll()
         check_party()
         check_looks()
+        check_talk()
     finally:
         server.terminate()
         server.wait()

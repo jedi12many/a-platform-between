@@ -159,7 +159,64 @@ var ROOMS = (function () {
       rooms.push({ i: i, depth: depth[i], kind: kind, rows: tiles.map(function (row) { return row.join(""); }),
                    doors: ds, stairs: here ? here.slice() : null, foes: foes, cache: cache });
     }
+    people(yard, floor, rooms);
     return { yard: yard, floor: floor, start: start, stairs: stairs, rooms: rooms };
+  }
+
+  /* Where someone stands in a room (docs/rooms.md, People): the open square nearest
+   * (8, 3), counting 8 ways, then the topmost, then the leftmost; reachable from the first
+   * door; not a door, the stairs, a foe's or the cache's square, or (7, 3); and not in the
+   * way: with someone there, every door, the stairs, the cache and every foe still reached. */
+  function spot(room) {
+    var tiles = room.rows.map(function (row) { return row.split("").map(Number); }), order = [], x, y, k, clear;
+    var first = room.doors[DIRS.map(function (q) { return q[0]; }).filter(function (d) { return room.doors[d]; })[0]];
+    var got = reach(tiles, first[0], first[1]);
+    var must = Object.keys(room.doors).map(function (d) { return room.doors[d]; })
+      .concat(room.foes.map(function (f) { return [f.x, f.y]; }))
+      .concat(room.stairs ? [room.stairs] : []).concat(room.cache ? [[room.cache.x, room.cache.y]] : []);
+    function taken(px, py) {
+      return (px === 7 && py === 3) || (room.stairs && room.stairs[0] === px && room.stairs[1] === py) ||
+        (room.cache && room.cache.x === px && room.cache.y === py) ||
+        room.foes.some(function (f) { return f.x === px && f.y === py; });
+    }
+    for (y = 0; y < H; ++y) {
+      for (x = 0; x < W; ++x) {
+        if (tiles[y][x] === 0 && got[x + "," + y] && !taken(x, y)) order.push([Math.max(Math.abs(x - 8), Math.abs(y - 3)), y, x]);
+      }
+    }
+    order.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1] || a[2] - b[2]; });
+    for (k = 0; k < order.length; ++k) {
+      x = order[k][2]; y = order[k][1];
+      tiles[y][x] = 1;
+      clear = reach(tiles, first[0], first[1]);
+      tiles[y][x] = 0;
+      if (must.every(function (m) { return clear[m[0] + "," + m[1]]; })) return [x, y];
+    }
+    return null;
+  }
+
+  /* Who's in the rooms besides foes (docs/rooms.md, People): Vell's camp, the courier Pell
+   * on floors 2 and 3, and which fights start with a parley; without the rooms' dice. */
+  function people(yard, floor, rooms) {
+    var empty, vell, rest, pell, at;
+    rooms.forEach(function (room) {
+      room.talk = null;
+      room.parley = room.kind === "fight" && mix((yard ^ 0x7A1C) & 0xFFFF, floor * 16 + room.i) % 3 === 0;
+    });
+    empty = rooms.filter(function (r) { return r.kind === "empty"; });
+    vell = empty.length ? empty.reduce(function (a, b) { return b.depth < a.depth ? b : a; })
+      : rooms.filter(function (r) { return r.kind === "start"; })[0];
+    at = spot(vell);
+    if (at) vell.talk = { who: "trader", x: at[0], y: at[1] };
+    if (floor === 2 || floor === 3) {
+      rest = empty.filter(function (r) { return r !== vell; });
+      if (!rest.length) rest = rooms.filter(function (r) { return r.kind === "cache"; });
+      if (rest.length) {
+        pell = rest.reduce(function (a, b) { return b.depth > a.depth ? b : a; });
+        at = spot(pell);
+        if (at) pell.talk = { who: "courier", x: at[0], y: at[1] };
+      }
+    }
   }
 
   /* Where a party stands when a fight starts (docs/rooms.md, The party): the leader where
@@ -270,10 +327,13 @@ function exploreBrief() {
   b.textContent = "";
   b.append(el("p", "code", "Prototype · E13"), el("h2", null, "Explore the yards"),
            el("p", null, "Walk a floor of nine rooms, seen from overhead, one room to a screen (docs/rooms.md). " +
-              "Coming into a room with foes in it starts a fight on that room's own map. Caches hold gear for your " +
-              "pack; the stairs, once their guards are down, take you a floor deeper."),
+              "Coming into a room with foes in it starts a fight on that room's own map, unless they talk first. " +
+              "Caches hold gear for your pack; the stairs, once their guards are down, take you a floor deeper."),
+           el("p", null, "People: Vell trades gear from a camp on every floor, and someone is lost on the floors " +
+              "below. What they say, and what you say back, is a Quest Script played by the game's own story VM; " +
+              "the leader's checks are rolled by the rules, and the story remembers the whole descent."),
            el("p", "watch", "What to watch: whether walking between fights feels good, whether fights on the " +
-              "rooms' maps play well, and how the floors build up."));
+              "rooms' maps play well, how the floors build up, and whether talking feels like a real way round a fight."));
   /* The party: up to four, in the order picked (marching order: the first leads). */
   Object.keys(ROOMDATA.travelers).forEach(function (c) {
     var t = ROOMDATA.travelers[c], k = party.indexOf(c), btn = el("button", null, (k >= 0 ? (k + 1) + " " : "") + t.name);
@@ -319,14 +379,15 @@ function exploreBrief() {
 function exploreStart(party, yard, scroll, look) {
   party = partyOf(party);
   X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll,
-        look: LOOKS.indexOf(look) >= 0 ? look : "" };
+        look: LOOKS.indexOf(look) >= 0 ? look : "", pell: "" };
+  storyBoard();
   exploreFloor(1);
 }
 
 function exploreFloor(n) {
   X.floor = n;
   X.f = ROOMS.build(X.yard, n);
-  X.cleared = {}; X.taken = {}; X.seen = {};
+  X.cleared = {}; X.taken = {}; X.seen = {}; X.parleyed = {};
   X.room = X.f.start;
   X.settle = false;
   if (X.scroll) {
@@ -399,6 +460,7 @@ function walkable(r, x, y) {
   if (x < 0 || y < 0 || x >= ROOMS.W || y >= ROOMS.H) return false;
   var t = Number(r.rows[y][x]);
   if (t === 1 || t === 2 || t === 5) return false;
+  if (npcIn(r) && r.talk.x === x && r.talk.y === y) return false;
   return !foesIn(r).some(function (f) { return f.x === x && f.y === y; });
 }
 
@@ -427,7 +489,7 @@ function exploreEnter(from) {
       X.path = null;
       return exploreSide();
     }
-    return exploreFight();
+    return exploreMeet();
   }
   if (r.kind === "cache" && !X.taken[r.i]) log("Room " + (r.i + 1) + ": a crate, still shut.");
   else if (r.stairs) log("Room " + (r.i + 1) + ": the stairs down.");
@@ -496,6 +558,9 @@ function exploreSide() {
   c.append(
            el("p", "note", r.stairs ? (foesIn(r).length ? "The stairs, guarded." : "The stairs: step on them to go down.")
              : r.kind === "cache" && !X.taken[r.i] ? "A crate: step on it to open it." : "Doors lead on: step onto one."));
+  var who = npcIn(r);
+  if (who) c.append(el("p", "note", who.name + (who.who === "trader" ? "'s camp" : ", lost") + ": walk up and press T, or click them, to talk."));
+  if (X.pell === "follows") c.append(el("p", "note", "Pell is following you. Vell's camp is somewhere on every floor."));
 }
 
 function powerByName(n) {
@@ -567,7 +632,7 @@ function exploreTick(now) {
     trailOn();
     showParty();
   }
-  if (X.scroll && camStep(dt) && X.settle && !X.walkIn) { X.settle = false; return exploreFight(); }
+  if (X.scroll && camStep(dt) && X.settle && !X.walkIn) { X.settle = false; return exploreMeet(); }
   if (X.settle) return;
   Object.keys(held).forEach(function (k) { dx += held[k][0]; dy += held[k][1]; });
   dx = Math.sign(dx); dy = Math.sign(dy);
@@ -584,6 +649,7 @@ function exploreTick(now) {
     if (d <= sp) { X.px = t[0]; X.py = t[1]; X.path.shift(); }
     else { X.px += (t[0] - X.px) / d * sp; X.py += (t[1] - X.py) / d * sp; }
   } else {
+    if (X.talkAfter) { X.talkAfter = false; if (nearNpc()) talkTo(nearNpc()); }
     return;
   }
   trailOn();
@@ -603,6 +669,7 @@ function exploreTick(now) {
     }
     arrive();
     if (X.room !== before) held = {};                   /* a new room: let go, look about */
+    if (mode === "explore" && !!nearNpc() !== !!X.near) { X.near = nearNpc(); actions(); }
   }
 }
 
@@ -645,11 +712,18 @@ function arrive() {
 
 /* The way to a clicked square (breadth-first, 8 ways), glided along (exploreTick). */
 function exploreTo(tx, ty) {
-  var prev = {}, todo = [[X.x, X.y]], k = X.x + "," + X.y, p, dx, dy, nx, ny, path = [];
+  var prev = {}, todo = [[X.x, X.y]], k = X.x + "," + X.y, p, dx, dy, nx, ny, path = [], who = npcAt(tx, ty);
   if (X.settle) return;
+  X.talkAfter = false;
+  if (who) {
+    /* Someone to talk to: next to them already, talk; or walk up to them first. */
+    if (Math.max(Math.abs(X.x - tx), Math.abs(X.y - ty)) <= 1) return talkTo(who);
+    X.talkAfter = true;
+  }
   prev[k] = null;
   while (todo.length) {
     p = todo.shift();
+    if (who && Math.max(Math.abs(p[0] - tx), Math.abs(p[1] - ty)) <= 1) { tx = p[0]; ty = p[1]; break; }
     if (p[0] === tx && p[1] === ty) break;
     for (dy = -1; dy <= 1; ++dy) for (dx = -1; dx <= 1; ++dx) {
       nx = p[0] + dx; ny = p[1] + dy;
@@ -661,6 +735,217 @@ function exploreTo(tx, ty) {
   if (prev[tx + "," + ty] === undefined) { toast("You can't get there from here."); return; }
   for (p = [tx, ty]; p && !(p[0] === X.x && p[1] === X.y); p = prev[p[0] + "," + p[1]]) path.unshift(p);
   X.path = [[X.x, X.y]].concat(path);                   /* from the middle of your square first */
+}
+
+/* ------------------------------------------------------------------ talk */
+
+/* Talk (docs/rooms.md, Talk): the people in the rooms, and parleys, are a Departure in
+ * Quest Script (content/sidings/yards-talk/), played by the game's own story VM
+ * (story.js, tools/arena/web/story.c). The leader boards it at the top of a descent; it
+ * waits at a menu for the page (every label @...) between conversations, so it remembers
+ * the descent; a menu of one @ label is a signal back (@fight, @leave, @join, @gone,
+ * @stay). Checks are rolled for the leader by the rules (v0, as the story VM is). */
+var NPC = { trader: { name: "Vell", figure: "GLASSFOLK" }, courier: { name: "Pell", figure: "HUMAN" } };
+var TALK = null;            /* the story now: {want, run, park, labels, now: {who, signals, done}} */
+var CHECKED = ["fail", "cost", "success", "crit"];
+
+/* Board the leader (a new descent). One story at a time: the last descent's is told to
+ * end first (its @end), and only then is this one boarded. */
+var STORY = { M: null, loading: false, want: null };
+
+function storyBoard() {
+  if (typeof ArenaStory === "undefined") return;
+  STORY.want = { passport: ROOMDATA.travelers[X.party[0]].passport, yard: X.yard };
+  storyNext();
+}
+
+function storyNext() {
+  var t = TALK, M = STORY.M, want = STORY.want;
+  if (!M) {
+    if (STORY.loading) return;
+    STORY.loading = true;
+    ArenaStory({
+      onText: function (text) { if (TALK && TALK.now) talkLine(text); },
+      onCheck: function (rating, roll, total, tn, result) {
+        if (TALK && TALK.now) {
+          talkLine(rating + " check: rolled " + roll + ", " + total + " against " + tn + ": " + CHECKED[result] + ".",
+                   "roll " + (result >= 2 ? "good" : result === 1 ? "" : "bad"));
+        }
+      },
+      onError: function (msg) { log("The story stopped: " + msg, "bad"); },
+      onMenu: storyMenu
+    }).then(function (m) { STORY.M = m; storyNext(); });
+    return;
+  }
+  if (t) {
+    if (t.want !== want && t.park && !t.now) {          /* waiting: end it; this one boards after */
+      var park = t.park;
+      t.park = null;
+      park(t.labels.indexOf("@end"));
+    }
+    return;
+  }
+  t = TALK = { want: want, park: null, labels: null, now: null };
+  t.run = M.ccall("st_start", "number", ["string", "number"], [want.passport, want.yard], { async: true })
+    .then(function (r) {
+      if (r === 2) log("The story couldn't start: " + M.ccall("st_error", "string", [], []), "bad");
+      if (TALK === t) TALK = null;
+      if (STORY.want !== t.want) storyNext();
+    });
+}
+
+/* A menu from the story: the page's own (@...), or the player's. */
+function storyMenu(labels) {
+  var t = TALK;
+  if (labels.every(function (l) { return l.charAt(0) === "@"; })) {
+    if (labels.indexOf("@end") >= 0) {                  /* waiting: a conversation is over */
+      if (t.now) talkDone();
+      return new Promise(function (res) {
+        t.park = res; t.labels = labels;
+        if (t.want !== STORY.want) storyNext();         /* a new descent began meanwhile */
+      });
+    }
+    if (labels.length === 1) { if (t.now) t.now.signals.push(labels[0].slice(1)); return 0; }
+    return Math.max(0, labels.indexOf("@" + (t.now ? t.now.who : "")));
+  }
+  return new Promise(function (res) { talkChoices(labels, res); });
+}
+
+/* Someone in room r to talk to, if they're still there: {who, name, figure}. */
+function npcIn(r) {
+  if (!r || !r.talk) return null;
+  if (r.talk.who === "courier" && X.pell) return null;  /* following, or gone */
+  return { who: r.talk.who, name: NPC[r.talk.who].name, figure: NPC[r.talk.who].figure, room: r };
+}
+
+function npcAt(x, y) {
+  var i = X.scroll ? roomAt(x, y) : X.room, r = i >= 0 ? X.f.rooms[i] : null, n = npcIn(r);
+  return n && r.talk.x === x - ox(i) && r.talk.y === y - oy(i) ? n : null;
+}
+
+/* Who's next to the leader to talk to (8 ways). */
+function nearNpc() {
+  var r = roomOf(), n = npcIn(r);
+  if (!n) return null;
+  return Math.max(Math.abs(X.x - ox(r.i) - r.talk.x), Math.abs(X.y - oy(r.i) - r.talk.y)) <= 1 ? n : null;
+}
+
+function talkTo(n) {
+  if (mode !== "explore") return;
+  talk(n.who, n.name, function (sig) {
+    if (n.who === "courier") {
+      if (sig.indexOf("join") >= 0) { X.pell = "follows"; log("Pell follows you, a step behind.", "good"); }
+      if (sig.indexOf("gone") >= 0) { X.pell = "gone"; log("Pell is gone.", "round"); }
+    }
+    if (sig.indexOf("stay") >= 0) { X.pell = "safe"; log("Pell stays at Vell's camp.", "good"); }
+    setMode("explore");
+  });
+}
+
+/* A room with foes: if they talk first (docs/rooms.md, People), a parley, which ends in
+ * the fight or with them letting you by; else the fight. */
+function exploreMeet() {
+  var r = roomOf();
+  if (r.parley && !X.parleyed[r.i] && TALK && TALK.park) {
+    X.parleyed[r.i] = 1;
+    if (!X.scroll) exploreView();
+    held = {};
+    var f = r.foes[0];
+    return talk(f.name, ROOMDATA.foes[f.name].name + (r.foes.length > 1 ? " and the rest" : ""), function (sig) {
+      if (sig.indexOf("leave") >= 0) {
+        X.cleared[r.i] = 1;
+        log("They let you by. Room " + (r.i + 1) + " is clear without a fight.", "good");
+        exploreView();
+      } else {
+        exploreFight();
+      }
+    });
+  }
+  return exploreFight();
+}
+
+/* A conversation: with `who` (the story's @label: trader, courier, or a foe's name), the
+ * panel titled `title`; done(signals) when the story is waiting again. */
+function talk(who, title, done) {
+  var t = TALK, p, k;
+  if (!t || !t.park) { toast("Nobody's listening (the story hasn't started)."); return done([]); }
+  setMode("talk");
+  $("talk").hidden = false;
+  $("talk-who").textContent = title;
+  $("talk-lines").textContent = "";
+  $("talk-choices").textContent = "";
+  /* The pack, into the story's copy of the leader, so `has` and `take` see it. */
+  p = STORY.M._malloc(4 * 6);
+  for (k = 0; k < 6; ++k) STORY.M.HEAP32[(p >> 2) + k] = X.pack[k] || 0;
+  STORY.M._st_pack(p, Math.min(6, X.pack.length));
+  STORY.M._free(p);
+  t.now = { who: who, signals: [], done: done };
+  var park = t.park;
+  t.park = null;
+  park(t.labels.indexOf("@" + Math.min(X.floor, 8)));
+}
+
+function talkLine(text, cls) {
+  var lines = $("talk-lines"), para = el("p", cls || null, text);
+  lines.append(para);
+  lines.scrollTop = lines.scrollHeight;
+}
+
+function talkChoices(labels, answer) {
+  var ol = $("talk-choices");
+  ol.textContent = "";
+  TALK.answer = function (k) {
+    if (k < 0 || k >= labels.length) return;
+    ol.textContent = "";
+    TALK.answer = null;
+    if (!TALK.reading) talkLine("“" + labels[k] + "”", "said");
+    answer(k);
+  };
+  labels.forEach(function (l, k) {
+    var li = el("li"), b = el("button");
+    b.type = "button";
+    b.append(el("kbd", null, String(k + 1)), document.createTextNode(" " + l));
+    b.onclick = function () { if (TALK && TALK.answer) TALK.answer(k); };
+    li.append(b);
+    ol.append(li);
+  });
+  var first = ol.querySelector("button");
+  if (first) first.focus({ preventScroll: true });
+}
+
+/* The story is waiting again: what it gave and took lands in the pack. */
+function talkDone() {
+  var t = TALK, now = t.now, p = STORY.M._malloc(4 * 6), n = STORY.M._st_pack_now(p), after = [], k;
+  for (k = 0; k < n; ++k) after.push(STORY.M.HEAP32[(p >> 2) + k]);
+  STORY.M._free(p);
+  after.filter(function (id) { return X.pack.indexOf(id) < 0; }).forEach(function (id) {
+    log("You get " + itemOf(id).display + ": it's in your pack.", "good");
+  });
+  X.pack.filter(function (id) { return after.indexOf(id) < 0; }).forEach(function (id) {
+    log("You hand over " + itemOf(id).display + ".", "round");
+  });
+  X.pack = after;
+  t.now = null;
+  /* What the story said last stays up until it's read. */
+  var lines = $("talk-lines").children, last = lines[lines.length - 1];
+  if (last && !last.classList.contains("said")) {
+    TALK.reading = true;
+    return talkChoices(["Go on"], function () {
+      TALK.reading = false;
+      $("talk").hidden = true;
+      now.done(now.signals);
+    });
+  }
+  $("talk").hidden = true;
+  now.done(now.signals);
+}
+
+/* For tests: the panel as it stands, and a choice. */
+function talkState() {
+  return { open: !$("talk").hidden, who: $("talk-who").textContent,
+           lines: Array.from($("talk-lines").children).map(function (p) { return p.textContent; }),
+           choices: Array.from($("talk-choices").querySelectorAll("button")).map(function (b) { return b.textContent.replace(/^\d+ /, ""); }),
+           waiting: !!(TALK && TALK.park && !TALK.reading), pell: X && X.pell, pack: X && X.pack };
 }
 
 /* A room's fight: the battle engine's, on the room's map (docs/rooms.md, Exploring). */
@@ -734,22 +1019,43 @@ function exploreButtons() {
             ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll, X.look); }],
             ["Esc", "Back to the scenarios", intro]];
   }
-  return [["Arrows", "Walk: hold them down (numpad: 8 ways), or click a square", null, false, "", false, "hint"],
+  if (mode === "talk") {
+    return [["1-9", "Say something: a number, or click it", null, false, "", false, "hint"]];
+  }
+  var near = nearNpc();
+  return [["Arrows", "Walk: hold them down (numpad: 8 ways), or click a square", null, false, "", false, "hint"]]
+    .concat(near ? [["T", "Talk to " + near.name, function () { talkTo(near); }, false, "", true]] : [])
+    .concat([
           ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll, X.look); }],
           ["V", X.scroll ? "View: scrolling" : "View: one room a screen", function () {
             exploreStart(X.party, X.yard, !X.scroll, X.look);
           }, false, "", false, "toggle"],
           ["gap"],
-          ["X", "Leave", intro]];
+          ["X", "Leave", intro]]);
 }
 
-/* Stairs and crates, drawn over the room's tiles. */
+/* Stairs, crates and people, drawn over the room's tiles; and the courier, following. */
 function exploreDraw() {
   (X.scroll ? X.f.rooms : [roomOf()]).forEach(drawThings);
+  if (X.pell === "follows") {
+    var f = follower(X.party.length);
+    figureAt(NPC.courier.figure, f.x, f.y, f.alpha);
+  }
+}
+
+function figureAt(name, x, y, alpha) {
+  ctx.globalAlpha = alpha === undefined ? 1 : alpha;
+  ctx.fillStyle = "rgba(0,0,0,.35)";
+  ctx.beginPath();
+  ctx.ellipse(x * SQ + 16, y * SQ + 29, 9, 2.5, 0, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.drawImage(figureSprite(name), x * SQ + 3, y * SQ + 8);
+  ctx.globalAlpha = 1;
 }
 
 function drawThings(r) {
-  var x, y, k, x0 = ox(r.i) * SQ, y0 = oy(r.i) * SQ;
+  var x, y, k, x0 = ox(r.i) * SQ, y0 = oy(r.i) * SQ, who = npcIn(r);
+  if (who) figureAt(who.figure, ox(r.i) + r.talk.x, oy(r.i) + r.talk.y);
   if (r.stairs) {
     x = x0 + r.stairs[0] * SQ; y = y0 + r.stairs[1] * SQ;
     ctx.fillStyle = "#0b0b10";

@@ -30,6 +30,12 @@
   <section class="field">
     <canvas id="board" aria-label="The battle map"></canvas>
     <div id="toast" role="status" aria-live="polite"></div>
+    <!-- Talk while exploring (rooms.js, docs/rooms.md): the story VM's text and choices. -->
+    <div id="talk" class="talk" hidden role="dialog" aria-labelledby="talk-who">
+      <h2 id="talk-who"></h2>
+      <div id="talk-lines" aria-live="polite"></div>
+      <ol id="talk-choices"></ol>
+    </div>
   </section>
   <aside class="side">
     <div id="cards"></div>
@@ -62,6 +68,7 @@
 <footer id="actions" class="actions" role="toolbar" aria-label="Actions"></footer>
 
 <script src="rules.js"></script>
+<script src="story.js"></script>
 <script src="rooms.js"></script>
 <script src="arena.js"></script>
 </body>

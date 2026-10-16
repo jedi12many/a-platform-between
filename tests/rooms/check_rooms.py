@@ -3,7 +3,8 @@ Node) must build the same floors as the reference written from the doc
 (tools/rooms/rooms.py), and every floor must keep the doc's promises: every room reached by
 its doors, the stairs in the deepest; in each room, every door, the stairs, every foe and
 the cache reachable on foot (round walls, pits and hazards) from its first door; the start
-room empty.
+room empty; and the people (Vell on every floor, Pell on floors 2 and 3, the parleys) on
+open ground and out of everything's way.
 
     python3 tests/rooms/check_rooms.py [COUNT]
 """
@@ -75,6 +76,21 @@ def promises(f):
         for e in r["foes"]:
             if tiles[e["y"]][e["x"]] not in rooms.STANDS:
                 bad.append(f"room {r['i']}: a foe stands on tile {tiles[e['y']][e['x']]}")
+        # People (docs/rooms.md, People): on open ground, out of everything's way.
+        if r["parley"] and r["kind"] != "fight":
+            bad.append(f"room {r['i']}: a {r['kind']} room talks first")
+        if r["talk"]:
+            t = (r["talk"]["x"], r["talk"]["y"])
+            if tiles[t[1]][t[0]] != rooms.OPEN or t not in got or t in spots or t == (7, 3):
+                bad.append(f"room {r['i']}: {r['talk']['who']} stands at {t}, not free open ground")
+            tiles[t[1]][t[0]] = rooms.WALL
+            if not all(s in rooms.reached(tiles, *first) for s in spots):
+                bad.append(f"room {r['i']}: {r['talk']['who']} at {t} is in the way")
+    who = [r["talk"]["who"] for r in f["rooms"] if r["talk"]]
+    if who.count("trader") != 1:
+        bad.append(f"{who.count('trader')} traders on the floor")
+    if who.count("courier") > (1 if f["floor"] in (2, 3) else 0):
+        bad.append(f"{who.count('courier')} couriers on floor {f['floor']}")
     return bad
 
 
@@ -95,6 +111,10 @@ def main():
             fail(f"yard {y} floor {fl}: {b}")
         for r in want["rooms"]:
             kinds[r["kind"]] = kinds.get(r["kind"], 0) + 1
+            if r["parley"]:
+                kinds["parley"] = kinds.get("parley", 0) + 1
+            if r["talk"]:
+                kinds[r["talk"]["who"]] = kinds.get(r["talk"]["who"], 0) + 1
     print(f"ok   {same} of {len(cases)} floors the same from rooms.js as from the reference, "
           f"each keeping the doc's promises (rooms: " + ", ".join(f"{k} {v}" for k, v in sorted(kinds.items())) + ")")
     # The party's fan-out (docs/rooms.md, The party): the page's as the reference's, from
