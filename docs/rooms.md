@@ -114,7 +114,11 @@ so walking needs a rule: **walking is presentation; destinations are choices.**
 - **The view** is 16 x 8 squares, a fight's size, and follows you: it eases toward you in
   the middle (kept inside the area), stepping a sixteenth of a square at a time, a C64
   pixel, as its fine scroll would. You see into the next room before you're in it, foes
-  and all.
+  and all. **Z** zooms out: 24 x 12, then the whole floor (48 x 24), then back. The page
+  scales the view to fit, so zoomed out the squares are drawn smaller (not on whole
+  pixels: the whole floor is a map to look at, 24 x 12 the one to walk with). The C64's
+  walking engine shows 19 x 12 of its 16-pixel squares ([walk.md](walk.md)), near the
+  middle zoom.
 - **A fight** is still the room's: crossing into a room with foes in it, the view settles
   on the room (squarely, as flip-screen shows it) while you step in off the doorway, and
   then the fight begins there, as before. So the two views differ only in how you get

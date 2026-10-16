@@ -258,9 +258,11 @@ var held = {};           /* the walking keys held down: their steps */
 var GAP = 0.85;          /* squares between travelers in marching order, walking */
 
 /* Scrolling (docs/rooms.md, "Scrolling, to compare"): the floor's nine rooms side by side
- * as one area of 48 x 24 squares, their doors meeting; a 16 x 8 view follows you. Then X.x,
- * X.y, X.px and X.py are the area's; one room a screen, they're the room's. */
-var VIEW_W = 16, VIEW_H = 8;
+ * as one area of 48 x 24 squares, their doors meeting; a view follows you: 16 x 8, a room's
+ * size, or zoomed out (Z) to 24 x 12 or the whole floor. Then X.x, X.y, X.px and X.py are
+ * the area's; one room a screen, they're the room's. */
+var ZOOMS = [[16, 8], [24, 12], [48, 24]], zoom = 0;
+function viewSize() { return ZOOMS[zoom]; }
 function ox(i) { return X.scroll ? (i % ROOMS.COLS) * ROOMS.W : 0; }
 function oy(i) { return X.scroll ? Math.floor(i / ROOMS.COLS) * ROOMS.H : 0; }
 
@@ -485,6 +487,7 @@ function exploreEnter(from) {
       var lx = X.x - ox(r.i), ly = X.y - oy(r.i), inn = inside(r, [lx, ly]);
       X.settle = true;
       X.walkIn = [inn[0] + ox(r.i), inn[1] + oy(r.i)];
+      if (fight.view[0] !== ROOMS.W) { fight.view = [ROOMS.W, ROOMS.H]; resize(); }  /* (zoomed out: in to the room) */
       held = {};
       X.path = null;
       return exploreSide();
@@ -508,7 +511,7 @@ function exploreView() {
   fight = { explore: true, st: { map: X.scroll ? X.area.slice() : r.rows.slice(), fighters: all }, whose: -1, me: 0,
             effects: [], floaters: [], targets: [],
             shown: all.map(function (f) { return { x: f.x, y: f.y, health: 1, state: 0, alpha: 1, flash: 0 }; }) };
-  if (X.scroll) { fight.cam = X.cam; fight.view = [VIEW_W, VIEW_H]; }
+  if (X.scroll) { fight.cam = X.cam; fight.view = viewSize().slice(); }
   dressFight(X.scroll ? null : r);
   showParty();                                          /* where you're drawn: between squares, walking */
   S = { code: "E13", title: "Explore", native: {
@@ -602,8 +605,19 @@ function slide(dx, dy) {
 /* Where the view would be, scrolling: you in its middle, kept inside the area. */
 function camFor() {
   if (!X.scroll) return null;
-  return { x: Math.max(0, Math.min(ROOMS.COLS * ROOMS.W - VIEW_W, X.px + 0.5 - VIEW_W / 2)),
-           y: Math.max(0, Math.min(ROOMS.ROWS * ROOMS.H - VIEW_H, X.py + 0.5 - VIEW_H / 2)) };
+  var w = viewSize()[0], h = viewSize()[1];
+  return { x: Math.max(0, Math.min(ROOMS.COLS * ROOMS.W - w, X.px + 0.5 - w / 2)),
+           y: Math.max(0, Math.min(ROOMS.ROWS * ROOMS.H - h, X.py + 0.5 - h / 2)) };
+}
+
+/* Z: the view zoomed out a step (or back in from the whole floor), straight away. */
+function exploreZoom() {
+  zoom = (zoom + 1) % ZOOMS.length;
+  X.cam = camFor();
+  fight.cam = { x: Math.round(X.cam.x * 16) / 16, y: Math.round(X.cam.y * 16) / 16 };
+  fight.view = viewSize().slice();
+  resize();
+  actions();
 }
 
 /* The view eases toward where it should be, a C64 pixel at a time (1/16 of a square: the
@@ -1029,7 +1043,8 @@ function exploreButtons() {
           ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll, X.look); }],
           ["V", X.scroll ? "View: scrolling" : "View: one room a screen", function () {
             exploreStart(X.party, X.yard, !X.scroll, X.look);
-          }, false, "", false, "toggle"],
+          }, false, "", false, "toggle"]]).concat(X.scroll ? [
+          ["Z", "Zoom: " + viewSize()[0] + " x " + viewSize()[1] + " squares", exploreZoom, false, "", false, "toggle"]] : []).concat([
           ["gap"],
           ["X", "Leave", intro]]);
 }
