@@ -39,8 +39,22 @@ TERRAIN = ["open", "wall", "pit", "rough", "cover", "hazard", "high", "exit"]
 
 # The looks (docs/art.md, Looks): the same terrain redrawn for a place, each a pair of
 # tiles files, tiles32-LOOK and tiles16-LOOK. tiles32 and tiles16 themselves are the
-# yard's, the game's own.
-LOOKS = ["forest", "mountain", "town", "dungeon"]
+# yard's, the game's own. A look can have numbered alternatives (forest2, forest3...),
+# found on disk: a pair of files each, counting up from 2 with no gaps.
+BASE_LOOKS = ["forest", "mountain", "town", "dungeon"]
+
+
+def _alternatives(folder):
+    out = []
+    for base in BASE_LOOKS:
+        n = 2
+        while any(os.path.exists(os.path.join(folder, f"tiles{size}-{base}{n}.txt")) for size in (16, 32)):
+            out.append(f"{base}{n}")
+            n += 1
+    return out
+
+
+LOOKS = BASE_LOOKS + _alternatives(ART)
 
 # What each file holds: its kind of entry, and each kind's size and dots.
 FILES = {
@@ -185,6 +199,12 @@ def check_all(folder=None):
     for name in FILES:
         try:
             load(name, folder)
+        except FileNotFoundError:
+            other = name.replace("tiles16", "tiles32") if "16" in name else name.replace("tiles32", "tiles16")
+            problems.append(f"{name}.txt is missing: a look is a pair, and {other}.txt is here "
+                            f"without it; draw it, or take {other}.txt away"
+                            if name != other and os.path.exists(path_of(other, folder))
+                            else f"{name}.txt is missing")
         except (Problem, OSError) as e:
             problems.append(str(e))
     return problems
