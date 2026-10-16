@@ -84,7 +84,7 @@ So the camera is decided one frame ahead, waits at a cell's edge while the scree
 made, and can't make a step more than once in five frames (enough: walking crosses a
 character every five or six). The copying code, 6,002 bytes a block (each half ends in an
 `RTS`, so a half is a call), five blocks, is written by `gen.s` at the start
-($2800-$A16F), not carried in the program.
+($2800-$9F71), not carried in the program.
 
 ## A frame
 

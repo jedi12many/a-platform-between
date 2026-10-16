@@ -485,8 +485,8 @@ allocate:
 al_first: cpy count
         bne :+
         jmp al_done
-:       cpy #8
-        bne :+
+:       cpy #8                      ; past the first eight: a sprite reused
+        bcc :+
         jmp al_rest
 :       tya                         ; sprite i
         tax
