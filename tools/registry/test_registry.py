@@ -67,5 +67,31 @@ broken("foes.txt", FOE.format("charge").replace("melee", "thrown"), "reach 'thro
 broken("foes.txt", FOE.format("charge").replace(" 6 50", " 0 50", 1), "health 0")
 broken("foes.txt", FOE.format("charge") + FOE.format("shoot"), "append-only")
 
+# Foes' senses (registry/senses.txt): every foe a line, numbers 0..100, only foes.
+check(registry.load_senses()["ASH_RAT"] == {"sense": 20, "stealth": 50}, "senses")
+
+
+def broken_senses(text, expect):
+    tmp = tempfile.mkdtemp()
+    try:
+        for f in os.listdir(registry.ROOT):
+            shutil.copy(os.path.join(registry.ROOT, f), tmp)
+        with open(os.path.join(tmp, "senses.txt"), "w") as f:
+            f.write(text)
+        try:
+            registry.load_senses(tmp)
+            check(False, f"senses.txt: expected an error about '{expect}'")
+        except registry.RegistryError as e:
+            check(expect in str(e) and "senses.txt" in str(e), f"senses.txt: error '{e}' should mention '{expect}'")
+    finally:
+        shutil.rmtree(tmp)
+
+
+ALL_SENSES = "".join(f"{n} 30 30\n" for n in reg["foes"])
+broken_senses(ALL_SENSES.replace("ASH_RAT 30 30\n", ""), "no line for ASH_RAT")
+broken_senses(ALL_SENSES + "GRUE 30 30\n", "'GRUE' isn't a foe")
+broken_senses(ALL_SENSES.replace("ASH_RAT 30 30", "ASH_RAT 130 30"), "sense 130")
+broken_senses(ALL_SENSES + "ASH_RAT 30 30\n", "has a line already")
+
 print(f"registry tests: {failures} failed")
 sys.exit(1 if failures else 0)
