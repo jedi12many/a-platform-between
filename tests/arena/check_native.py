@@ -407,6 +407,34 @@ def check_zoom():
            "kept on the area and on C64 pixels; a room's fight settles at the room's size")
 
 
+def check_minimap():
+    """Exploring, scrolling: the side panel's minimap (docs/rooms.md): the floor at 4 pixels a
+    square; black but where the party's been within 6 squares (at the start, exactly the
+    squares that near), more seen after a walk and nothing seen lost; the view's rectangle
+    drawn where the view is."""
+    out = page("minimap", "48213:warden:scroll")
+    if not out:
+        return
+    bad = []
+    s, w = out["start"], out["walked"]
+    if s["size"] != [48 * 4, 24 * 4]:
+        bad.append(f"the minimap is {s['size']}, not 192 x 96")
+    want = [1 if (x - s["x"]) ** 2 + (y - s["y"]) ** 2 <= 36 else 0 for y in range(24) for x in range(48)]
+    if s["fog"] != want:
+        bad.append(f"at the start {sum(s['fog'] or [])} squares are seen, not the {sum(want)} within 6 of the party")
+    elif not w["fog"] or sum(w["fog"]) <= sum(s["fog"]) or any(a and not b for a, b in zip(s["fog"], w["fog"])):
+        bad.append("walking didn't clear more of the fog (or covered some again)")
+    for v in (s, w):
+        if v["corner"] != [255, 255, 255]:
+            bad.append(f"no rectangle at the view's corner {v['cam']}: {v['corner']}")
+            break
+    if bad:
+        fail("explore, the minimap: " + "; ".join(bad))
+    else:
+        ok(f"explore, the minimap: fog cleared within 6 squares of the party ({sum(s['fog'])} squares at "
+           f"the start, {sum(w['fog'])} after a walk), the view's rectangle where the view is")
+
+
 def check_party():
     """A party of four exploring (docs/rooms.md, The party): walking, the others follow the
     leader in marching order along the leader's trail, a gap apart; coming into a room with
@@ -602,6 +630,7 @@ def main():
         check_explore()
         check_scroll()
         check_zoom()
+        check_minimap()
         check_party()
         check_looks()
         check_talk()

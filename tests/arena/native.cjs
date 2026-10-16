@@ -154,6 +154,29 @@ async function main() {
     await browser.close();
     return;
   }
+  if (what === "minimap") {
+    /* Scrolling: the minimap's fog at the start and after a walk, and the view's rectangle. */
+    const out = { errors };
+    const M = () => page.evaluate(() => {
+      const x = window.arena.explore(), f = window.arena.state().fight, c = document.getElementById("minimap");
+      const at = (px, py) => Array.from(c.getContext("2d").getImageData(px, py, 1, 1).data.slice(0, 3));
+      return { size: c && [c.width, c.height], fog: x.fog ? Array.from(x.fog) : null, x: x.x, y: x.y,
+               cam: f.cam, view: f.view, corner: c && at(Math.round(f.cam.x * 4), Math.round(f.cam.y * 4)) };
+    });
+    await page.goto(url + "#explore=" + code);
+    await until("explore");
+    await page.waitForTimeout(200);
+    out.start = await M();
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(900);
+    await page.keyboard.up("ArrowRight");
+    await page.waitForTimeout(500);
+    out.walked = await M();
+    if (arg) await page.screenshot({ path: arg });
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
   if (what === "explore") {
     const out = { errors };
     const X = () => page.evaluate(() => {

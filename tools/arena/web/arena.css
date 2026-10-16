@@ -207,6 +207,8 @@ h3 { font-size: 13px; margin: 0 0 6px; color: var(--dim); font-weight: 600; }
 .floormap .fm.door-S { border-bottom-style: dotted; }
 .floormap .fm.door-E { border-right-style: dotted; }
 .floormap .fm.door-W { border-left-style: dotted; }
+.minimap { display: block; width: 100%; max-width: 288px; image-rendering: pixelated; margin: 6px 0 12px;
+           border: 1px solid var(--line); border-radius: 3px; background: #000; }
 
 /* Talk (rooms.js): over the bottom of the board, the story's words and the choices. */
 .talk { position: absolute; left: 12px; right: 12px; bottom: 12px; max-height: 62%; display: flex;

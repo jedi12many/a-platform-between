@@ -119,6 +119,10 @@ so walking needs a rule: **walking is presentation; destinations are choices.**
   pixels: the whole floor is a map to look at, 24 x 12 the one to walk with). The C64's
   walking engine shows 19 x 12 of its 16-pixel squares ([walk.md](walk.md)), near the
   middle zoom.
+- **The minimap** (the side panel, in place of the rooms' grid): the whole floor, four
+  pixels a square, black but where the party has been within 6 squares (the fog, cleared
+  by distance, not by room, and kept for the floor); the stairs, crates and foes seen; a
+  rectangle for the view, whatever its zoom; a dot for the party.
 - **A fight** is still the room's: crossing into a room with foes in it, the view settles
   on the room (squarely, as flip-screen shows it) while you step in off the doorway, and
   then the fight begins there, as before. So the two views differ only in how you get
