@@ -122,12 +122,13 @@ up to 12 kinds), copied at the start to $D000, under the I/O, where the VIC sees
   across and 47 down; it's in sight if it's within 8-334 across and 35-246 down (some of
   it inside the 38 x 24).
 - **Sharing out the sprites**: those in sight, sorted down the screen (those level keep
-  their order: the party first), each take the VIC sprite free soonest (the lowest
-  numbered of those), if it's free by their top line. A sprite is free 23 lines below the
-  top of the figure it last showed (its 21 lines and two to set it again). The first eight
+  their order: the party first), each take the next VIC sprite in turn (0 to 7, then
+  round again), if it's free by their top line. A sprite is free 23 lines below the top of
+  the figure it last showed (its 21 lines and two to set it again); since the figures come
+  in order down, the next in turn is always one free soonest. The first eight
   are set at the frame's start; each after reuses a sprite, an **event** at the line the
   figure before it on that sprite ends. A figure with no sprite free in time, or past 26
-  events, is **left out** (counted, not drawn).
+  events, is **left out** (counted, not drawn), and the turn stays.
 
 The loop writes this as a **program** (a page: the first eight sprites' x, y, pointer and
 colour as the VIC has them, then the events, 8 bytes each: line, sprite, x, x's ninth bit,
@@ -135,8 +136,13 @@ y, pointer, colour; at the end which sprites are on, their ninth bits and how ma
 into one of two pages ($BE00, $BF00) while the interrupt carries out the other: shown from
 the next frame. The interrupt (`mux.s`) sets the first eight from code unrolled for each
 page, then raster interrupts at each event's line: each sets every event due by the next
-line and asks for the next one's, or for line 250 again. Its loads have the shown page
-patched in, so nothing is copied.
+line and asks for the next one's, or for line 250 again. The code that writes a program,
+and the events' interrupt that reads one, each have a copy for either page, so nothing is
+copied or patched.
+
+The sort is cheap because the floor's figures come in order down: the party's (four at
+most) are sorted, then merged with them. And a figure is in sight without its pixels
+being looked at when its square is inside the window's edge squares.
 
 
 ## Measured

@@ -86,6 +86,9 @@ hardware, and a demo that proves it. They're ordered by how much they're worth.
 
 ### 2. Many figures, all of them moving
 
+*Begun ([walk.md](walk.md#the-figures), W2): the party in marching order, foes and people
+facing the leader, multiplexed down the screen; animation in eight directions to come.*
+
 - **Seen:** the party walking in marching order, each traveler animated in eight
   directions; foes idling, turning to look; Vell at her stove; Pell following. 24
   figures or more on a screen.

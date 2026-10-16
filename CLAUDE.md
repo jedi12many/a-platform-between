@@ -139,9 +139,10 @@ against. For `cart/`:
   cartridge plays The Fare from `content/` (`tools/cart/departure.py` makes its assets).
   Needs `pip install qrcode opencv-python-headless`. And the walking engine (`cart/walk/`,
   `docs/walk.md`, `make walk`: Plan B's scrolling floor, its own program for now):
-  `tests/walk/run_walk.py` walks yard 48213's first floor to its stairs and holds every
-  frame to `tools/walk/walk.py`, leader, camera and scroller, and every row as the VIC
-  reads it at its bad line; no frame late.
+  `tests/walk/run_walk.py` walks yard 48213's first floor to its stairs (and yard 7602's
+  eighth, a crowd, `build/walk-crowd.prg`) and holds every frame to `tools/walk/walk.py`,
+  leader, camera and scroller, every row as the VIC reads it at its bad line, and every
+  sprite (the party, foes and people, multiplexed) as the VIC starts it; no frame late.
 
 - `make test-art`: the art desk (`tools/artdesk/`, `docs/art.md`) in headless Chromium, on
   a copy of `content/art/`: the art keeps its rules (`tools/art.py`) and the battle
