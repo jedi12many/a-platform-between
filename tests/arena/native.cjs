@@ -119,6 +119,64 @@ async function main() {
     await browser.close();
     return;
   }
+  if (what === "zoom") {
+    /* Scrolling, Z zooms out: the view's size and where it is, each press; then, zoomed out,
+     * across the start room's first door: the view settles on the room as before. */
+    const out = { errors, views: [] };
+    const V = () => page.evaluate(() => {
+      const x = window.arena.explore(), f = window.arena.state().fight;
+      return { view: f.view, cam: f.cam, px: x.px, py: x.py, mode: window.arena.state().mode,
+               button: window.arena.buttons().filter((b) => b && b.indexOf("Zoom") >= 0)[0] || null };
+    });
+    await page.goto(url + "#explore=" + code);
+    await until("explore");
+    out.views.push(await V());
+    for (let k = 0; k < 4; ++k) {
+      await page.keyboard.press("z");
+      await page.waitForTimeout(150);
+      out.views.push(await V());
+      if (arg && k === 1) await page.screenshot({ path: arg });     /* (the whole floor) */
+    }
+    const x0 = await page.evaluate(() => { const x = window.arena.explore(); return { room: x.room, doors: x.f.rooms[x.room].doors }; });
+    const side = Object.keys(x0.doors)[0], door = x0.doors[side];
+    const step = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] }[side];
+    await page.evaluate(([x, y]) => window.arena.walkTo(x, y),
+                        [door[0] + (x0.room % 3) * 16 + step[0], door[1] + Math.floor(x0.room / 3) * 8 + step[1]]);
+    await page.waitForFunction((r) => window.arena.explore().room !== r, x0.room, { timeout: 20000 });
+    await page.waitForTimeout(100);
+    out.settling = await page.evaluate(() => ({ settle: !!window.arena.explore().settle,
+                                                view: window.arena.state().fight.view }));
+    await page.waitForFunction(() => window.arena.state().mode !== "explore" || !window.arena.explore().settle,
+                               null, { timeout: 20000 });
+    out.settled = await page.evaluate(() => ({ mode: window.arena.state().mode, room: window.arena.explore().room,
+                                               map: window.arena.state().fight.st.map }));
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
+  if (what === "minimap") {
+    /* Scrolling: the minimap's fog at the start and after a walk, and the view's rectangle. */
+    const out = { errors };
+    const M = () => page.evaluate(() => {
+      const x = window.arena.explore(), f = window.arena.state().fight, c = document.getElementById("minimap");
+      const at = (px, py) => Array.from(c.getContext("2d").getImageData(px, py, 1, 1).data.slice(0, 3));
+      return { size: c && [c.width, c.height], fog: x.fog ? Array.from(x.fog) : null, x: x.x, y: x.y,
+               cam: f.cam, view: f.view, corner: c && at(Math.round(f.cam.x * 4), Math.round(f.cam.y * 4)) };
+    });
+    await page.goto(url + "#explore=" + code);
+    await until("explore");
+    await page.waitForTimeout(200);
+    out.start = await M();
+    await page.keyboard.down("ArrowRight");
+    await page.waitForTimeout(900);
+    await page.keyboard.up("ArrowRight");
+    await page.waitForTimeout(500);
+    out.walked = await M();
+    if (arg) await page.screenshot({ path: arg });
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
   if (what === "explore") {
     const out = { errors };
     const X = () => page.evaluate(() => {

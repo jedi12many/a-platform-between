@@ -258,9 +258,11 @@ var held = {};           /* the walking keys held down: their steps */
 var GAP = 0.85;          /* squares between travelers in marching order, walking */
 
 /* Scrolling (docs/rooms.md, "Scrolling, to compare"): the floor's nine rooms side by side
- * as one area of 48 x 24 squares, their doors meeting; a 16 x 8 view follows you. Then X.x,
- * X.y, X.px and X.py are the area's; one room a screen, they're the room's. */
-var VIEW_W = 16, VIEW_H = 8;
+ * as one area of 48 x 24 squares, their doors meeting; a view follows you: 16 x 8, a room's
+ * size, or zoomed out (Z) to 24 x 12 or the whole floor. Then X.x, X.y, X.px and X.py are
+ * the area's; one room a screen, they're the room's. */
+var ZOOMS = [[16, 8], [24, 12], [48, 24]], zoom = 0;
+function viewSize() { return ZOOMS[zoom]; }
 function ox(i) { return X.scroll ? (i % ROOMS.COLS) * ROOMS.W : 0; }
 function oy(i) { return X.scroll ? Math.floor(i / ROOMS.COLS) * ROOMS.H : 0; }
 
@@ -282,6 +284,49 @@ function free(x, y) {
 function at(x, y) {
   X.x = x + ox(X.room); X.y = y + oy(X.room); X.px = X.x; X.py = X.y; X.path = null;
   X.trail = [[X.px, X.py]];                             /* the others start at the leader's heels */
+  reveal();
+}
+
+/* The minimap's fog (scrolling): the squares the party has come within SIGHT of, kept for
+ * the floor. Cleared by distance, not by room, so it holds when rooms open into each other. */
+var SIGHT = 6;
+function reveal() {
+  if (!X.scroll) return;
+  var w = ROOMS.COLS * ROOMS.W, h = ROOMS.ROWS * ROOMS.H, x, y;
+  if (!X.fog) X.fog = new Uint8Array(w * h);
+  for (y = Math.max(0, X.y - SIGHT); y <= Math.min(h - 1, X.y + SIGHT); ++y)
+    for (x = Math.max(0, X.x - SIGHT); x <= Math.min(w - 1, X.x + SIGHT); ++x)
+      if ((x - X.x) * (x - X.x) + (y - X.y) * (y - X.y) <= SIGHT * SIGHT) X.fog[y * w + x] = 1;
+}
+
+/* The minimap (scrolling): the floor a few pixels a square, black where it's not been seen;
+ * the stairs, crates and foes seen; the view's rectangle and the party. */
+var MM = 4, MM_COLOUR = ["#3d3d46", "#9a9aa6", "#2a2a9a", "#6b4a1e", "#3f7a3a", "#a83a2e", "#c8c8d0", "#c8b848"];
+function drawMinimap() {
+  var c = $("minimap"), g, w = ROOMS.COLS * ROOMS.W, h = ROOMS.ROWS * ROOMS.H, x, y, cam = fight && fight.cam;
+  if (!c || !X.fog) return;
+  g = c.getContext("2d");
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, c.width, c.height);
+  for (y = 0; y < h; ++y)
+    for (x = 0; x < w; ++x)
+      if (X.fog[y * w + x]) { g.fillStyle = MM_COLOUR[Number(X.area[y][x])] || MM_COLOUR[0]; g.fillRect(x * MM, y * MM, MM, MM); }
+  X.f.rooms.forEach(function (r) {
+    var x0 = ox(r.i), y0 = oy(r.i), seen = function (sx, sy) { return X.fog[(y0 + sy) * w + x0 + sx]; };
+    if (r.stairs && seen(r.stairs[0], r.stairs[1])) { g.fillStyle = "#fff"; g.fillRect((x0 + r.stairs[0]) * MM, (y0 + r.stairs[1]) * MM, MM, MM); }
+    if (r.cache && !X.taken[r.i] && seen(r.cache.x, r.cache.y)) { g.fillStyle = "#e0a030"; g.fillRect((x0 + r.cache.x) * MM, (y0 + r.cache.y) * MM, MM, MM); }
+    foesIn(r).forEach(function (f) {
+      if (seen(f.x, f.y)) { g.fillStyle = "#ff4040"; g.fillRect((x0 + f.x) * MM + 1, (y0 + f.y) * MM + 1, MM - 2, MM - 2); }
+    });
+  });
+  if (cam && fight.view) {
+    g.strokeStyle = "#fff";
+    g.lineWidth = 1;
+    g.strokeRect(Math.round(cam.x * MM) + 0.5, Math.round(cam.y * MM) + 0.5,     /* (on whole pixels: crisp) */
+                 fight.view[0] * MM - 1, fight.view[1] * MM - 1);
+  }
+  g.fillStyle = "#40ff80";
+  g.fillRect(Math.round(X.px * MM) - 1, Math.round(X.py * MM) - 1, MM + 2, MM + 2);
 }
 
 /* Where the k-th in marching order walks: k gaps back along the leader's trail, and how
@@ -388,6 +433,7 @@ function exploreFloor(n) {
   X.floor = n;
   X.f = ROOMS.build(X.yard, n);
   X.cleared = {}; X.taken = {}; X.seen = {}; X.parleyed = {};
+  X.fog = null;
   X.room = X.f.start;
   X.settle = false;
   if (X.scroll) {
@@ -485,6 +531,7 @@ function exploreEnter(from) {
       var lx = X.x - ox(r.i), ly = X.y - oy(r.i), inn = inside(r, [lx, ly]);
       X.settle = true;
       X.walkIn = [inn[0] + ox(r.i), inn[1] + oy(r.i)];
+      if (fight.view[0] !== ROOMS.W) { fight.view = [ROOMS.W, ROOMS.H]; resize(); }  /* (zoomed out: in to the room) */
       held = {};
       X.path = null;
       return exploreSide();
@@ -508,7 +555,7 @@ function exploreView() {
   fight = { explore: true, st: { map: X.scroll ? X.area.slice() : r.rows.slice(), fighters: all }, whose: -1, me: 0,
             effects: [], floaters: [], targets: [],
             shown: all.map(function (f) { return { x: f.x, y: f.y, health: 1, state: 0, alpha: 1, flash: 0 }; }) };
-  if (X.scroll) { fight.cam = X.cam; fight.view = [VIEW_W, VIEW_H]; }
+  if (X.scroll) { fight.cam = X.cam; fight.view = viewSize().slice(); }
   dressFight(X.scroll ? null : r);
   showParty();                                          /* where you're drawn: between squares, walking */
   S = { code: "E13", title: "Explore", native: {
@@ -553,7 +600,15 @@ function exploreSide() {
   });
   cards.push(el("p", "note", "Pack (the party's): " +
                 (X.pack.length ? X.pack.map(function (id) { return itemOf(id).display; }).join(", ") : "empty")));
+  if (X.scroll) {
+    grid = el("canvas", "minimap");
+    grid.id = "minimap";
+    grid.width = ROOMS.COLS * ROOMS.W * MM;
+    grid.height = ROOMS.ROWS * ROOMS.H * MM;
+    grid.title = "The floor: what you've seen, and the view's rectangle";
+  }
   c.append(el("h2", null, "Floor " + X.floor), grid);
+  if (X.scroll) drawMinimap();
   cards.forEach(function (card) { c.append(card); });
   c.append(
            el("p", "note", r.stairs ? (foesIn(r).length ? "The stairs, guarded." : "The stairs: step on them to go down.")
@@ -602,8 +657,19 @@ function slide(dx, dy) {
 /* Where the view would be, scrolling: you in its middle, kept inside the area. */
 function camFor() {
   if (!X.scroll) return null;
-  return { x: Math.max(0, Math.min(ROOMS.COLS * ROOMS.W - VIEW_W, X.px + 0.5 - VIEW_W / 2)),
-           y: Math.max(0, Math.min(ROOMS.ROWS * ROOMS.H - VIEW_H, X.py + 0.5 - VIEW_H / 2)) };
+  var w = viewSize()[0], h = viewSize()[1];
+  return { x: Math.max(0, Math.min(ROOMS.COLS * ROOMS.W - w, X.px + 0.5 - w / 2)),
+           y: Math.max(0, Math.min(ROOMS.ROWS * ROOMS.H - h, X.py + 0.5 - h / 2)) };
+}
+
+/* Z: the view zoomed out a step (or back in from the whole floor), straight away. */
+function exploreZoom() {
+  zoom = (zoom + 1) % ZOOMS.length;
+  X.cam = camFor();
+  fight.cam = { x: Math.round(X.cam.x * 16) / 16, y: Math.round(X.cam.y * 16) / 16 };
+  fight.view = viewSize().slice();
+  resize();
+  actions();
 }
 
 /* The view eases toward where it should be, a C64 pixel at a time (1/16 of a square: the
@@ -632,6 +698,7 @@ function exploreTick(now) {
     trailOn();
     showParty();
   }
+  if (X.scroll) drawMinimap();
   if (X.scroll && camStep(dt) && X.settle && !X.walkIn) { X.settle = false; return exploreMeet(); }
   if (X.settle) return;
   Object.keys(held).forEach(function (k) { dx += held[k][0]; dy += held[k][1]; });
@@ -658,6 +725,7 @@ function exploreTick(now) {
   if (t[0] !== X.x || t[1] !== X.y) {
     back = [X.x - ox(X.room), X.y - oy(X.room)];
     X.x = t[0]; X.y = t[1];
+    reveal();
     fight.st.fighters[0].x = X.x; fight.st.fighters[0].y = X.y;
     i = X.scroll ? roomAt(X.x, X.y) : X.room;
     if (i !== X.room) {
@@ -1029,7 +1097,8 @@ function exploreButtons() {
           ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll, X.look); }],
           ["V", X.scroll ? "View: scrolling" : "View: one room a screen", function () {
             exploreStart(X.party, X.yard, !X.scroll, X.look);
-          }, false, "", false, "toggle"],
+          }, false, "", false, "toggle"]]).concat(X.scroll ? [
+          ["Z", "Zoom: " + viewSize()[0] + " x " + viewSize()[1] + " squares", exploreZoom, false, "", false, "toggle"]] : []).concat([
           ["gap"],
           ["X", "Leave", intro]]);
 }
