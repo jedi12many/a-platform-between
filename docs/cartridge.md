@@ -437,6 +437,10 @@ rules and battle to the references (below, A4).
 
 ## Milestones
 
+Beyond these: [plan-b.md](plan-b.md), how far the same game could push a stock C64 on a
+Kung Fu Flash 2 and an SD2IEC (a scrolling world, many figures, light, the border, a
+proportional typeface), with what each costs and a demo to prove it.
+
 - **A0, the framework** (done): the cartridge boots, and so does the disk; the engine
   copies itself to RAM; assets are fetched from either; the raster split shows a map of
   tiles over the frames; the story log prints and scrolls.
