@@ -157,6 +157,7 @@ figures_step:
 build:
         lda #0
         sta count
+        jsr window                  ; the view's window, and the sprites' offsets
         ; The party: traveler k at the trail's entry GAP k back, if it's that long.
         ldy #0                      ; k
 @party: sty party_k
@@ -230,9 +231,10 @@ build:
         cpy #PARTY_SIZE
         beq :+
         jmp @party
-:       ; The floor's foes and people: facing the leader. First, the view's window on the
-        ; area: a figure outside it is out of sight (add_figure would say so too, slower).
-        jsr window
+:       lda count                   ; the party's in the list first
+        sta party_n
+        ; The floor's foes and people: facing the leader. Only those inside the view's
+        ; window on the area are in sight.
         ldx head                    ; the leader's x + 9 (x + 8 < theirs: theirs >= this)
         lda trail_xl, x
         clc
@@ -249,13 +251,14 @@ build:
 @floor: cpy fig_end
         bne :+
         jmp sort
-:       lda fig_sx, y               ; first in squares: near the window?
-        cmp sq_x0
-        bcc @skip
+:       lda fig_sx, y               ; in squares: on the window's edge columns, its pixels
+        cmp sq_x0                   ; decide; between them, it's in (the rows looked at
+        bcc @skip                   ; are those from sq_y0 to sq_y1, the same)
+        beq @x_edge
         cmp sq_x1
-        beq :+
-        bcs @skip
-:       lda fig_xl, y               ; then in pixels: x within win_x0 - win_x1?
+        bcc @y
+        bne @skip
+@x_edge: lda fig_xl, y              ; x within win_x0 - win_x1?
         cmp win_x0
         lda fig_xh, y
         sbc win_x0 + 1
@@ -265,7 +268,12 @@ build:
         lda win_x1 + 1
         sbc fig_xh, y
         bcc @skip
-        lda fig_yl, y               ; y within win_y0 - win_y1?
+@y:     lda fig_sy, y
+        cmp sq_y0
+        beq @y_edge
+        cmp sq_y1
+        bne @in
+@y_edge: lda fig_yl, y              ; y within win_y0 - win_y1?
         cmp win_y0
         lda fig_yh, y
         sbc win_y0 + 1
@@ -314,10 +322,13 @@ window:
         lda #0
         sbc wk_cam + 1
         sta off_x + 1
-        lda #SPRITE_DY              ; ...and SPRITE_DY - the camera (a byte: the y is one)
+        lda #SPRITE_DY              ; ...and SPRITE_DY - the camera
         sec
         sbc wk_cam + 2
         sta off_y
+        lda #0
+        sbc wk_cam + 3
+        sta off_y + 1
         ldx #0
         jsr window_axis
         ldx #2
@@ -368,19 +379,12 @@ window_axis:
 ; to the list: its sprite's x (2 bytes), y, pointer and colour.
 add_figure:
         sty zp_wk_i
-        lda zp_wk_a                 ; x - cam + SPRITE_DX
-        sec
-        sbc wk_cam
-        sta zp_wk_a
-        lda zp_wk_a + 1
-        sbc wk_cam + 1
-        sta zp_wk_a + 1
-        lda zp_wk_a
+        lda zp_wk_a                 ; x + SPRITE_DX - cam
         clc
-        adc #SPRITE_DX
+        adc off_x
         sta zp_wk_a
         lda zp_wk_a + 1
-        adc #0
+        adc off_x + 1
         sta zp_wk_a + 1
         bmi @out                    ; (well off to the left)
         lda zp_wk_a                 ; < SPRITE_X_MIN, > SPRITE_X_MAX: out of sight
@@ -393,19 +397,12 @@ add_figure:
         lda #>SPRITE_X_MAX
         sbc zp_wk_a + 1
         bcc @out
-        lda zp_wk_b                 ; y - cam + SPRITE_DY
-        sec
-        sbc wk_cam + 2
-        sta zp_wk_b
-        lda zp_wk_b + 1
-        sbc wk_cam + 3
-        sta zp_wk_b + 1
-        lda zp_wk_b
+        lda zp_wk_b                 ; y + SPRITE_DY - cam
         clc
-        adc #SPRITE_DY
+        adc off_y
         sta zp_wk_b
         lda zp_wk_b + 1
-        adc #0
+        adc off_y + 1
         bne @out                    ; (off the bottom, or above the top: negative)
         lda zp_wk_b
         cmp #SPRITE_Y_MIN
@@ -428,74 +425,117 @@ add_figure:
 @out:   rts
 
 ; ----------------------------------------------------------------------------------------
-; The list sorted down the screen (by y; those level keep their order), into order[].
+; The list sorted down the screen (by y; those level keep their order), into order[]: the
+; party's (the first party_n) sorted into porder[], then merged with the floor's, which
+; came in order down (the party first where they're level).
 sort:
         ldx #0
-@each:  cpx count
-        beq allocate
-        ; insert x after the last of order[0..x) whose y is no more than its own
+@each:  cpx party_n
+        beq merge
+        ; insert x after the last of porder[0..x) whose y is no more than its own
         stx zp_wk_i
         ldy zp_wk_i
 @shift: dey
         bmi @put
-        lda order, y
+        lda porder, y
         tax
         lda list_y, x
         ldx zp_wk_i
         cmp list_y, x
         beq @put                    ; (level: keep the earlier first)
         bcc @put
-        lda order, y                ; theirs is lower: move it along
-        sta order + 1, y
+        lda porder, y               ; theirs is lower: move it along
+        sta porder + 1, y
         jmp @shift
 @put:   iny
         lda zp_wk_i
-        sta order, y
+        sta porder, y
         ldx zp_wk_i
         inx
         jmp @each
 
+merge:  ldx #0                      ; X: the next of porder[]
+        stx out_k
+        ldy party_n                 ; Y: the next of the floor's
+@m:     cpx party_n
+        beq @floors
+        cpy count
+        beq @partys
+        stx zp_wk_i
+        lda porder, x
+        tax
+        lda list_y, x               ; the party's no lower: it first
+        cmp list_y, y
+        beq @p
+        bcc @p
+        tya                         ; the floor's
+        ldx out_k
+        sta order, x
+        inc out_k
+        iny
+        ldx zp_wk_i
+        jmp @m
+@p:     txa
+        ldx out_k
+        sta order, x
+        inc out_k
+        ldx zp_wk_i
+        inx
+        jmp @m
+@floors: cpy count                  ; the rest of the floor's
+        beq @done
+        tya
+        ldx out_k
+        sta order, x
+        inc out_k
+        iny
+        jmp @floors
+@partys: cpx party_n                ; or of the party's
+        beq @done
+        lda porder, x
+        ldy out_k
+        sta order, y
+        inc out_k
+        inx
+        jmp @partys
+@done:  ; (on into allocate)
+
 ; ----------------------------------------------------------------------------------------
-; The sprites shared out (walk.py's allocate): each figure, down the screen, takes the
-; sprite free soonest (the lowest numbered), if it's free by its top line. So the first
-; eight take sprites 0-7 in turn, set at the frame's start; each one after reuses a sprite,
-; an event on the line the last figure it showed ends (they come in that order). Into the
-; program not shown (PROG_A or PROG_B): the stores below have its page patched in.
+; The sprites shared out (walk.py's allocate): each figure, down the screen, takes the next
+; sprite in turn (0-7, then round again: always one free soonest), if it's free by its top
+; line. So the first eight take sprites 0-7, set at the frame's start; each one after
+; reuses a sprite, an event on the line the last figure it showed ends (they come in that
+; order). Into the program not shown (PROG_A or PROG_B): a copy of the code for each.
 allocate:
         lda prog_next
         eor #1
         sta prog_next
-        tax
-        lda prog_page, x
-        ldx #PATCHES - 1            ; the page into each store's address
-:       ldy patch_lo, x
-        sty zp_wk_ptr
-        ldy patch_hi, x
-        sty zp_wk_ptr + 1
-        ldy #0
-        sta (zp_wk_ptr), y
-        dex
-        bpl :-
+        beq alloc_a
+        jmp alloc_b
+
+.macro ALLOC base
+        .local first, rest, out, next, done
         lda #0
         sta left
         sta enable
         sta highs
         sta events
+        sta turn
         ldy #0                      ; i: the figure, in order
-al_first: cpy count
+first:  cpy count
         bne :+
-        jmp al_done
+        jmp done
 :       cpy #8                      ; past the first eight: a sprite reused
         bcc :+
-        jmp al_rest
+        jmp rest
 :       tya                         ; sprite i
         tax
         lda order, y
         tay
         lda list_xl, y
-s_x:    sta PROG_A + P_X, x
+        sta base + P_X, x
         lda list_y, y
-s_y:    sta PROG_A + P_Y, x
+        sta base + P_Y, x
         sta last_y, x
         clc
         adc #REUSE
@@ -503,9 +543,9 @@ s_y:    sta PROG_A + P_Y, x
         lda #$FF                    ; (past the screen: never free again this frame)
 :       sta free, x
         lda list_ptr, y
-s_ptr:  sta PROG_A + P_PTR, x
+        sta base + P_PTR, x
         lda list_col, y
-s_col:  sta PROG_A + P_COLOUR, x
+        sta base + P_COLOUR, x
         lda bit_of, x
         ora enable
         sta enable
@@ -517,30 +557,19 @@ s_col:  sta PROG_A + P_COLOUR, x
 :       inx
         txa
         tay
-        jmp al_first
-al_rest:  sty zp_wk_i
-        ldx #0                      ; the sprite free soonest (the first of those)
-        stx slot
-        lda free
-        ldx #1
-:       cmp free, x
-        bcc :+
-        beq :+
-        lda free, x
-        stx slot
-:       inx
-        cpx #8
-        bne :--
+        jmp first
+rest:   sty zp_wk_i                ; (turn is 0: the first eight came round to it)
         lda order, y
         tay                         ; the figure
-        ldx slot
+        ldx turn
+        stx slot
         lda free, x
         cmp list_y, y               ; free by its top line?
         beq :+
-        bcs al_out
+        bcs out
 :       lda events
         cmp #EVENTS_MAX
-        bcs al_out
+        bcs out
         asl a                       ; its record: P_EVENTS + 8 n
         asl a
         asl a
@@ -552,19 +581,19 @@ al_rest:  sty zp_wk_i
         clc
         adc #SPRITE_LINES
         ldx zp_wk_t
-s_line: sta PROG_A + E_LINE, x
+        sta base + E_LINE, x
         lda slot
-s_spr:  sta PROG_A + E_SPRITE, x
+        sta base + E_SPRITE, x
         lda list_xl, y
-s_ex:   sta PROG_A + E_X, x
+        sta base + E_X, x
         lda list_xh, y
-s_eh:   sta PROG_A + E_X_HIGH, x
+        sta base + E_X_HIGH, x
         lda list_y, y
-s_ey:   sta PROG_A + E_Y, x
+        sta base + E_Y, x
         lda list_ptr, y
-s_ep:   sta PROG_A + E_PTR, x
+        sta base + E_PTR, x
         lda list_col, y
-s_ec:   sta PROG_A + E_COLOUR, x
+        sta base + E_COLOUR, x
         inc events
         ldx slot
         lda list_y, y
@@ -574,18 +603,26 @@ s_ec:   sta PROG_A + E_COLOUR, x
         bcc :+
         lda #$FF
 :       sta free, x
-        jmp al_next
-al_out:   inc left
-al_next:  ldy zp_wk_i
+        inx                         ; the next in turn
+        txa
+        and #7
+        sta turn
+        jmp next
+out:    inc left
+next:   ldy zp_wk_i
         iny
-        jmp al_first
-al_done:  lda enable
-s_en:   sta PROG_A + P_ENABLE
+        jmp first
+done:   lda enable
+        sta base + P_ENABLE
         lda highs
-s_hi:   sta PROG_A + P_X_HIGHS
+        sta base + P_X_HIGHS
         lda events
-s_n:    sta PROG_A + P_COUNT
+        sta base + P_COUNT
         rts
+.endmacro
+
+alloc_a: ALLOC PROG_A
+alloc_b: ALLOC PROG_B
 
 ; The leader's pixel: a = x, b = y (2 bytes each).
 leader_px:
@@ -615,18 +652,6 @@ gap_back:
         .byte GAP * k
         .endrepeat
 bit_of: .byte 1, 2, 4, 8, 16, 32, 64, 128
-prog_page:
-        .byte >PROG_A, >PROG_B
-; The stores allocate writes the program through: their addresses' high bytes.
-patch_lo:
-        .byte <(s_x + 2), <(s_y + 2), <(s_ptr + 2), <(s_col + 2), <(s_line + 2), <(s_spr + 2)
-        .byte <(s_ex + 2), <(s_eh + 2), <(s_ey + 2), <(s_ep + 2), <(s_ec + 2), <(s_en + 2)
-        .byte <(s_hi + 2), <(s_n + 2)
-patch_hi:
-        .byte >(s_x + 2), >(s_y + 2), >(s_ptr + 2), >(s_col + 2), >(s_line + 2), >(s_spr + 2)
-        .byte >(s_ex + 2), >(s_eh + 2), >(s_ey + 2), >(s_ep + 2), >(s_ec + 2), >(s_en + 2)
-        .byte >(s_hi + 2), >(s_n + 2)
-PATCHES = * - patch_hi
 
         .segment "BSS"
 
@@ -647,7 +672,7 @@ last_xh:    .res PARTY_SIZE
 facing:     .res PARTY_SIZE     ; 0 right, 1 left
 party_k:    .res 1
 off_x:      .res 2              ; this frame's SPRITE_DX - the camera's x
-off_y:      .res 1              ; and SPRITE_DY - its y (the low byte)
+off_y:      .res 2              ; and SPRITE_DY - its y
 row_first:  .res SQUARES_Y + 2  ; each row's first figure (they're in order down)
 fig_end:    .res 1              ; the figure past the rows in sight
 win_x0:     .res 2              ; the view's window on the area (window): x0, y0...
@@ -676,9 +701,13 @@ list_y:     .res SHOWN_MAX
 list_ptr:   .res SHOWN_MAX
 list_col:   .res SHOWN_MAX
 order:      .res SHOWN_MAX
+porder:     .res PARTY_SIZE     ; the party's, sorted
+party_n:    .res 1              ; how many of the list are the party's
+out_k:      .res 1              ; merge: the next of order[]
 free:       .res 8              ; the sprites: the line each is free from
 last_y:     .res 8              ; and the top of the last figure each showed
 slot:       .res 1
+turn:       .res 1              ; the next sprite in turn
 enable:     .res 1              ; the program being made: its sprites on...
 highs:      .res 1              ; ...their x's ninth bits...
 events:     .res 1              ; ...how many events

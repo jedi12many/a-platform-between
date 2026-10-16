@@ -336,20 +336,22 @@ def figures(floor, party, cam):
 
 def allocate(shown):
     """The VIC's 8 sprites shared down the screen: each figure, in order down it, takes the
-    sprite free soonest (the lowest numbered of those), if it's free by its top line; a
-    sprite is free REUSE lines below the top of the last figure it showed. A figure that
-    finds none is left out, and so is a reuse past EVENTS_MAX. Returns (sprite, x, y, pointer, colour, line it's set on: None
-    for the first 8, set at the frame's start), and how many were left out."""
-    free, out, left = [0] * 8, [], 0
+    next sprite in turn (0 to 7, then round again), if it's free by its top line; a sprite
+    is free REUSE lines below the top of the last figure it showed. (Since the figures come
+    in order down, the next in turn is always one free soonest.) A figure whose sprite
+    isn't free in time is left out, and so is a reuse past EVENTS_MAX; the turn stays.
+    Returns (sprite, x, y, pointer, colour, line it's set on: None for the first 8, set at
+    the frame's start), and how many were left out."""
+    free, out, left, n, events = [0] * 8, [], 0, 0, 0
     last = [None] * 8
     for px, py, ptr, colour in shown:
-        n = min(range(8), key=lambda i: (free[i], i))
-        events = sum(1 for o in out if o[5] is not None)
         if free[n] > py or (last[n] is not None and events == EVENTS_MAX):
             left += 1
             continue
         out.append((n, px, py, ptr, colour, None if last[n] is None else last[n] + 21))
+        events += last[n] is not None
         last[n], free[n] = py, py + REUSE
+        n = (n + 1) % 8
     return out, left
 
 

@@ -1,5 +1,5 @@
 ; The walking engine's raster interrupt (docs/walk.md, "A frame"). Two kinds (mux.s's
-; irq_kind): an event's, for the sprites (mux_irq), and the frame's, at line 250, under the
+; irq_kind): an event's, for the sprites (mux_a, mux_b), and the frame's, at line 250, under the
 ; screen's 24 rows: a frame begins. It counts it; if the frame loop has finished the last
 ; one (wk_pending), it shows what that one decided: the fine scroll, the screen, the
 ; sprites' program; then it sets the sprites for the frame (sprites_frame); and on a coarse
@@ -14,7 +14,7 @@
         .export irq, nmi, irq_out
         .export wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .export prog_shown
-        .import sprites_frame, mux_irq, irq_kind, prog_next
+        .import sprites_frame, mux_a, mux_b, irq_kind, prog_next
 
         .segment "CODE"
 
@@ -27,7 +27,10 @@ irq:    pha
         sta VIC_IRQ
         lda irq_kind
         beq @frame
-        jmp mux_irq
+        lsr a
+        bcc :+
+        jmp mux_a                   ; 1: program A's event
+:       jmp mux_b                   ; 2: B's
 @frame: inc wk_frame
         bne :+
         inc wk_frame + 1
