@@ -171,9 +171,11 @@ walk_start:
 ; ----------------------------------------------------------------------------------------
 ; The frame loop: each frame, once the interrupt has begun it, the joystick, the walk and
 ; the camera; then what it decided waits for the next frame's interrupt.
-loop:   lda wk_frame
-:       cmp wk_frame
+loop:   lda frame_seen              ; (the frame last handled, not the count now: precopy
+:       cmp wk_frame                ; returns once the next has begun)
         beq :-
+        lda wk_frame
+        sta frame_seen
 wk_awake:
         lda #1
         sta wk_busy
@@ -276,3 +278,7 @@ cell_of:
         lsr zp_wk_t
         ror a
         rts
+
+        .segment "BSS"
+
+frame_seen: .res 1              ; the frame loop's last frame (wk_frame's low byte)
