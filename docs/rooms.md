@@ -62,6 +62,47 @@ door draws the next one in its place: **flip-screen**, one room to a screen, as 
 - **The floor's map** shows the rooms you've seen, the doors between them, and where you
   are.
 
+## The party
+
+Up to four travelers (E14) walk as **one party behind a leader**, as the Gold Box games and
+*Ultima* had it; the explore brief picks them, in **marching order** (the first leads).
+
+- **Following.** Out of fights you steer the leader; the others walk the leader's own trail,
+  each 0.85 of a square behind the one before, so they go where the leader went: round
+  pillars, through doorways, never through a wall. They come out from behind the leader as
+  the trail grows, after a door or a fight.
+- **Fanning out.** When a fight starts, the leader is where they are (one square in off the
+  doorway), and the others, in marching order, take the nearest squares to the leader,
+  found breadth-first from the leader's square, looking N, E, S, W, NE, SE, SW, NW: open
+  ground, rough, cover or high ground with no foe on it, never a door, a wall, a pit or a
+  hazard. The same room and the same leader's square always give the same places, on
+  every machine (`fan_out` in `tools/rooms/rooms.py`; the page's agrees, in
+  `tests/rooms/check_rooms.py`). Then everyone takes their own turns.
+- **After a fight** won, everyone's up again at full health (*After a fight*), and the
+  party gathers on the leader, who walks on from where they stood.
+- **Gear** from crates goes into the party's pack.
+
+### Playing together
+
+Co-op sends choices, never state ([engine-plan.md](engine-plan.md#how-the-network-works)),
+so walking needs a rule: **walking is presentation; destinations are choices.**
+
+- Nothing you do while walking changes the game until the party **arrives** somewhere
+  that matters: through a door, onto a crate or the stairs, into a room with foes. Those
+  arrivals are what goes into the choice stream ("the party goes through room 2's east
+  door"), and what saves and tests record; how the leader walked there is animation.
+- **The leader walks**; the others see the walk sent a few times a second, smoothed, and
+  never trusted by the rules (if it's late or lost, the party just turns up at the next
+  arrival). Anyone can **suggest** a place (a marker on a door or a crate); the party can
+  vote on a "go here" as on any story choice ([party-play.md](party-play.md)).
+- **Played slowly** (a turn a day), walking becomes "go to": a click on a door, a crate or
+  the stairs is the turn.
+- **No one walks alone.** Every player walking their own figure would mean four views (four
+  cameras, scrolling), a race for who steps into a room first, and positions the rules
+  would have to trust. Splitting the party, if ever, is a story's choice.
+- **On a real C64** it's one player and their own four, offline (E14), with the same
+  marching order and fan-out.
+
 ## Scrolling, to compare
 
 *A prototype beside flip-screen, to feel the two; nothing's decided.* The explore brief's
@@ -163,8 +204,10 @@ every foe reachable.
 
 ## Still open
 
-- **More than one traveler** walking (E14): the party moves as one figure out of fights, and
-  spreads out round the door when one starts?
+- **The party's prototype** (*The party*) has followers and the fan-out; still to try:
+  suggestion markers, the choice stream an exploration makes, and two browsers sharing a
+  stand-in host. And whether a party of four needs harder floors (the danger counts the
+  floor and the depth, not the party).
 - **Being seen.** Foes that notice you across the room (a check against your Stealth),
   rather than every fight starting as you come in; and sneaking past.
 - **Things to act on:** locks, levers, traps, a body to search: what a room's squares can

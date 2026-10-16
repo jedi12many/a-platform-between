@@ -174,6 +174,32 @@ def build(yard, floor):
     return {"yard": yard, "floor": floor, "start": start, "stairs": stairs, "rooms": rooms}
 
 
+FAN = [(0, -1), (1, 0), (0, 1), (-1, 0), (1, -1), (1, 1), (-1, 1), (-1, -1)]   # N E S W NE SE SW NW
+
+
+def fan_out(room, lead, n):
+    """Where a party of n stands when a fight starts in this room (docs/rooms.md, The party):
+    the leader at `lead`; the rest, in marching order, on the nearest squares found
+    breadth-first from the leader (N, E, S, W, NE, SE, SW, NW) that are open, rough, cover
+    or high ground with no foe on them."""
+    out, seen, todo = [tuple(lead)], {tuple(lead)}, [tuple(lead)]
+    foes = {(f["x"], f["y"]) for f in room["foes"]}
+    while todo and len(out) < n:
+        x, y = todo.pop(0)
+        for dx, dy in FAN:
+            if len(out) >= n:
+                break
+            nx, ny = x + dx, y + dy
+            if not (0 <= nx < W and 0 <= ny < H) or (nx, ny) in seen:
+                continue
+            seen.add((nx, ny))
+            if int(room["rows"][ny][nx]) not in STANDS or (nx, ny) in foes:
+                continue
+            out.append((nx, ny))
+            todo.append((nx, ny))
+    return [list(p) for p in out]
+
+
 SHOW = {0: ".", 1: "#", 2: "O", 3: "~", 4: "+", 5: "^", 6: "=", 7: ">"}
 
 

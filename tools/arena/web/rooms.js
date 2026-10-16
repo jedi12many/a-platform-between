@@ -162,7 +162,30 @@ var ROOMS = (function () {
     return { yard: yard, floor: floor, start: start, stairs: stairs, rooms: rooms };
   }
 
-  return { build: build, next: next, BACK: BACK, COLS: COLS, ROWS: ROWS, W: W, H: H };
+  /* Where a party stands when a fight starts (docs/rooms.md, The party): the leader where
+   * they are; the rest, in marching order, on the nearest squares to the leader found
+   * breadth-first (N, E, S, W, NE, SE, SW, NW) that are open ground, rough, cover or high
+   * ground with no foe on them (never a door, a wall, a pit or a hazard). */
+  var FAN = [[0, -1], [1, 0], [0, 1], [-1, 0], [1, -1], [1, 1], [-1, 1], [-1, -1]];
+  function fanOut(room, lead, n) {
+    var out = [lead.slice()], seen = {}, todo = [lead.slice()], p, k, nx, ny;
+    seen[lead[0] + "," + lead[1]] = 1;
+    while (todo.length && out.length < n) {
+      p = todo.shift();
+      for (k = 0; k < 8 && out.length < n; ++k) {
+        nx = p[0] + FAN[k][0]; ny = p[1] + FAN[k][1];
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen[nx + "," + ny]) continue;
+        seen[nx + "," + ny] = 1;
+        if (STANDS.indexOf(Number(room.rows[ny][nx])) < 0) continue;
+        if (room.foes.some(function (f) { return f.x === nx && f.y === ny; })) continue;
+        out.push([nx, ny]);
+        todo.push([nx, ny]);
+      }
+    }
+    return out;
+  }
+
+  return { build: build, next: next, fanOut: fanOut, BACK: BACK, COLS: COLS, ROWS: ROWS, W: W, H: H };
 })();
 
 if (typeof module !== "undefined") module.exports = ROOMS;
@@ -175,6 +198,7 @@ var MAPCH = { 0: ".", 1: "#", 2: "O", 3: "~", 4: "+", 5: "^", 6: "=", 7: ">" };
 var SPEED = 4.5;         /* squares a second, walking */
 var BODY = 0.3;          /* half a figure's footprint, in squares */
 var held = {};           /* the walking keys held down: their steps */
+var GAP = 0.85;          /* squares between travelers in marching order, walking */
 
 /* Scrolling (docs/rooms.md, "Scrolling, to compare"): the floor's nine rooms side by side
  * as one area of 48 x 24 squares, their doors meeting; a 16 x 8 view follows you. Then X.x,
@@ -200,6 +224,39 @@ function free(x, y) {
  * start, after a fight). */
 function at(x, y) {
   X.x = x + ox(X.room); X.y = y + oy(X.room); X.px = X.x; X.py = X.y; X.path = null;
+  X.trail = [[X.px, X.py]];                             /* the others start at the leader's heels */
+}
+
+/* Where the k-th in marching order walks: k gaps back along the leader's trail, and how
+ * much of them shows (they come out from behind the leader as the trail grows). */
+function follower(k) {
+  var want = k * GAP, got = 0, i, a, b, d;
+  for (i = X.trail.length - 1; i > 0; --i) {
+    a = X.trail[i]; b = X.trail[i - 1];
+    d = Math.hypot(a[0] - b[0], a[1] - b[1]);
+    if (got + d >= want) {
+      return { x: a[0] + (b[0] - a[0]) * (want - got) / d, y: a[1] + (b[1] - a[1]) * (want - got) / d, alpha: 1 };
+    }
+    got += d;
+  }
+  a = X.trail[0];
+  return { x: a[0], y: a[1], alpha: Math.max(0, Math.min(1, (got - (k - 1) * GAP) / GAP)) };
+}
+
+/* The leader's trail, as they walk: a point every few hundredths of a square, enough of it
+ * for the party. */
+function trailOn() {
+  var last = X.trail[X.trail.length - 1];
+  if (Math.hypot(X.px - last[0], X.py - last[1]) < 0.04) return;
+  X.trail.push([X.px, X.py]);
+  if (X.trail.length > 400) X.trail.splice(0, X.trail.length - 400);
+}
+
+/* The party's classes, in marching order: "WARDEN", "WARDEN,ROGUE" or a list. */
+function partyOf(p) {
+  var list = (Array.isArray(p) ? p : String(p || "WARDEN").split(",")).map(function (c) { return String(c).toUpperCase(); })
+    .filter(function (c, i, all) { return ROOMDATA.travelers[c] && all.indexOf(c) === i; });
+  return (list.length ? list : ["WARDEN"]).slice(0, 4);
 }
 
 function exploreLoad() {
@@ -208,7 +265,8 @@ function exploreLoad() {
 
 /* The intro's brief, for exploring: a class and a yard, then off. */
 function exploreBrief() {
-  var b = $("brief"), row = el("div", "classes"), yard = el("input"), go, cls = exploreBrief.cls || "WARDEN";
+  var b = $("brief"), row = el("div", "classes"), yard = el("input"), go;
+  var party = exploreBrief.party = exploreBrief.party || ["WARDEN", "ROGUE", "CHANNELER", "MEDIC"];
   b.textContent = "";
   b.append(el("p", "code", "Prototype · E13"), el("h2", null, "Explore the yards"),
            el("p", null, "Walk a floor of nine rooms, seen from overhead, one room to a screen (docs/rooms.md). " +
@@ -216,11 +274,16 @@ function exploreBrief() {
               "pack; the stairs, once their guards are down, take you a floor deeper."),
            el("p", "watch", "What to watch: whether walking between fights feels good, whether fights on the " +
               "rooms' maps play well, and how the floors build up."));
+  /* The party: up to four, in the order picked (marching order: the first leads). */
   Object.keys(ROOMDATA.travelers).forEach(function (c) {
-    var t = ROOMDATA.travelers[c], btn = el("button", null, t.name);
+    var t = ROOMDATA.travelers[c], k = party.indexOf(c), btn = el("button", null, (k >= 0 ? (k + 1) + " " : "") + t.name);
     btn.type = "button";
-    btn.setAttribute("aria-pressed", String(c === cls));
-    btn.onclick = function () { exploreBrief.cls = c; exploreBrief(); };
+    btn.setAttribute("aria-pressed", String(k >= 0));
+    btn.onclick = function () {
+      if (k >= 0) { if (party.length > 1) party.splice(k, 1); }
+      else if (party.length < 4) party.push(c);
+      exploreBrief();
+    };
     row.append(btn);
   });
   yard.type = "number"; yard.min = 0; yard.max = 65535; yard.id = "yard";
@@ -237,12 +300,14 @@ function exploreBrief() {
   });
   go = el("button", "primary", "Begin");
   go.type = "button";
-  go.onclick = function () { exploreStart(cls, Number(yard.value) & 0xFFFF, !!exploreBrief.scroll); };
-  b.append(el("h3", null, "Who goes down"), row, el("h3", null, "The view"), views, lab, go);
+  go.onclick = function () { exploreStart(party, Number(yard.value) & 0xFFFF, !!exploreBrief.scroll); };
+  b.append(el("h3", null, "Who goes down"), el("p", "note", "Up to four, in marching order: the first leads, " +
+           "the rest follow; click again to leave one out."), row, el("h3", null, "The view"), views, lab, go);
 }
 
-function exploreStart(cls, yard, scroll) {
-  X = { cls: cls, yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll };
+function exploreStart(party, yard, scroll) {
+  party = partyOf(party);
+  X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll };
   exploreFloor(1);
 }
 
@@ -317,29 +382,40 @@ function exploreEnter(from) {
 
 /* What the board draws while exploring: the room, you, and its foes (as the fight would). */
 function exploreView() {
-  var r = roomOf(), t = ROOMDATA.travelers[X.cls], fs = [], all;
+  var r = roomOf(), fs = [], all, team = X.party.map(function (c) { return ROOMDATA.travelers[c]; });
   /* The foes in view: this room's, or, scrolling, every room's, where they stand in the area. */
   (X.scroll ? X.f.rooms : [r]).forEach(function (room) {
     foesIn(room).forEach(function (f) { fs.push({ name: f.name, x: f.x + ox(room.i), y: f.y + oy(room.i) }); });
   });
-  all = [{ side: 0, state: 0, x: X.x, y: X.y, health: 1, health_max: 1, conds: [] }].concat(fs.map(function (f) {
-    return { side: 1, state: 0, x: f.x, y: f.y, health: 1, health_max: 1, conds: [] };
-  }));
+  all = team.map(function () { return { side: 0, state: 0, x: X.x, y: X.y, health: 1, health_max: 1, conds: [] }; })
+    .concat(fs.map(function (f) { return { side: 1, state: 0, x: f.x, y: f.y, health: 1, health_max: 1, conds: [] }; }));
   fight = { explore: true, st: { map: X.scroll ? X.area.slice() : r.rows.slice(), fighters: all }, whose: -1, me: 0,
             effects: [], floaters: [], targets: [],
             shown: all.map(function (f) { return { x: f.x, y: f.y, health: 1, state: 0, alpha: 1, flash: 0 }; }) };
   if (X.scroll) { fight.cam = X.cam; fight.view = [VIEW_W, VIEW_H]; }
-  fight.shown[0].x = X.px; fight.shown[0].y = X.py;     /* where you're drawn: between squares, walking */
-  S = { code: "E13", title: "Explore", native: { figures: [t.figure].concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
-        names: [t.name].concat(fs.map(function (f) { return ROOMDATA.foes[f.name].name; })) } };
+  showParty();                                          /* where you're drawn: between squares, walking */
+  S = { code: "E13", title: "Explore", native: {
+        figures: team.map(function (t) { return t.figure; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
+        names: team.map(function (t) { return t.name; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].name; })) } };
   $("where").textContent = "Yard " + X.yard + " · floor " + X.floor + " · room " + (r.i + 1);
   resize();
   setMode(X.lost ? "lost" : "explore");
 }
 
+/* The party where it's drawn: the leader, and the rest along the leader's trail. The
+ * followers are drawn behind the leader where they overlap (later in the list, lower down). */
+function showParty() {
+  var k, f;
+  fight.shown[0].x = X.px; fight.shown[0].y = X.py;
+  for (k = 1; k < X.party.length; ++k) {
+    f = follower(k);
+    fight.shown[k].x = f.x; fight.shown[k].y = f.y - 0.001 * k; fight.shown[k].alpha = f.alpha;
+  }
+}
+
 /* The side panel while exploring: the floor's map, who you are, what's here. */
 function exploreSide() {
-  var c = $("cards"), t = ROOMDATA.travelers[X.cls], grid = el("div", "floormap"), r = roomOf(), i, cell, room;
+  var c = $("cards"), grid = el("div", "floormap"), r = roomOf(), i, cell, room, cards = [];
   c.textContent = "";
   for (i = 0; i < 9; ++i) {
     room = X.f.rooms[i];
@@ -352,11 +428,17 @@ function exploreSide() {
     cell.title = X.seen[i] ? "Room " + (i + 1) : "Not seen yet";
     grid.append(cell);
   }
-  var card = el("div", "card traveler");
-  card.append(el("div", "nm", t.name + ", level 1"),
-              el("div", "gear", "Powers: " + t.powers.map(function (p) { return powerByName(p[0]); }).join(", ")),
-              el("div", "gear", "Pack: " + (X.pack.length ? X.pack.map(function (id) { return itemOf(id).display; }).join(", ") : "empty")));
-  c.append(el("h2", null, "Floor " + X.floor), grid, card,
+  X.party.forEach(function (cls, k) {
+    var t = ROOMDATA.travelers[cls], card = el("div", "card traveler");
+    card.append(el("div", "nm", (k + 1) + ". " + t.name + ", level 1" + (k ? "" : " · leads")),
+                el("div", "gear", "Powers: " + t.powers.map(function (p) { return powerByName(p[0]); }).join(", ")));
+    cards.push(card);
+  });
+  cards.push(el("p", "note", "Pack (the party's): " +
+                (X.pack.length ? X.pack.map(function (id) { return itemOf(id).display; }).join(", ") : "empty")));
+  c.append(el("h2", null, "Floor " + X.floor), grid);
+  cards.forEach(function (card) { c.append(card); });
+  c.append(
            el("p", "note", r.stairs ? (foesIn(r).length ? "The stairs, guarded." : "The stairs: step on them to go down.")
              : r.kind === "cache" && !X.taken[r.i] ? "A crate: step on it to open it." : "Doors lead on: step onto one."));
 }
@@ -427,7 +509,8 @@ function exploreTick(now) {
     sp = SPEED * dt;
     if (d <= sp) { X.px = t[0]; X.py = t[1]; X.x = t[0]; X.y = t[1]; X.walkIn = null; }
     else { X.px += (t[0] - X.px) / d * sp; X.py += (t[1] - X.py) / d * sp; }
-    fight.shown[0].x = X.px; fight.shown[0].y = X.py;
+    trailOn();
+    showParty();
   }
   if (X.scroll && camStep(dt) && X.settle && !X.walkIn) { X.settle = false; return exploreFight(); }
   if (X.settle) return;
@@ -448,7 +531,8 @@ function exploreTick(now) {
   } else {
     return;
   }
-  fight.shown[0].x = X.px; fight.shown[0].y = X.py;
+  trailOn();
+  showParty();
   t = [Math.floor(X.px + 0.5), Math.floor(X.py + 0.5)];
   if (t[0] !== X.x || t[1] !== X.y) {
     back = [X.x - ox(X.room), X.y - oy(X.room)];
@@ -526,30 +610,40 @@ function exploreTo(tx, ty) {
 
 /* A room's fight: the battle engine's, on the room's map (docs/rooms.md, Exploring). */
 function exploreFight() {
-  var r = roomOf(), t = ROOMDATA.travelers[X.cls], fs = foesIn(r), names = [t.name], lines;
-  var seen = {};
+  var r = roomOf(), team = X.party.map(function (c) { return ROOMDATA.travelers[c]; }), fs = foesIn(r);
+  var names = team.map(function (t) { return t.name; }), lines, seen = {}, was, fan;
   lines = ["map " + ROOMS.W + " " + ROOMS.H].concat(r.rows.map(function (row) {
     return row.split("").map(function (c) { return MAPCH[c]; }).join("");
   }));
+  /* The party fans out round the leader, in marching order (docs/rooms.md, The party). */
   var lx = X.x - ox(r.i), ly = X.y - oy(r.i);
-  lines.push("traveler " + lx + " " + ly + " " + t.passport + " " + t.weapon);
+  fan = ROOMS.fanOut(r, [lx, ly], team.length);
+  was = team.map(function (t, k) { return [fight.shown[k].x - ox(r.i), fight.shown[k].y - oy(r.i)]; });
+  team.forEach(function (t, k) {
+    var at0 = fan[Math.min(k, fan.length - 1)];
+    lines.push("traveler " + at0[0] + " " + at0[1] + " " + t.passport + " " + t.weapon);
+  });
   fs.forEach(function (f) {
     var fd = ROOMDATA.foes[f.name], same = fs.filter(function (g) { return g.name === f.name; }).length > 1;
     seen[f.name] = (seen[f.name] || 0) + 1;
     lines.push("foe " + f.x + " " + f.y + " " + fd.line + " level " + X.floor);
     names.push(fd.name + (same ? " " + seen[f.name] : ""));
   });
-  t.powers.forEach(function (p) { lines.push("power 0 " + p[0] + " " + p[1]); });
+  team.forEach(function (t, k) { t.powers.forEach(function (p) { lines.push("power " + k + " " + p[0] + " " + p[1]); }); });
   S = { code: "E13-" + X.yard + "-" + X.floor + "-" + (r.i + 1), title: "Floor " + X.floor + ", room " + (r.i + 1),
         explore: true, lab: { won: "?", rounds: "?" },
-        native: { spec: lines.join("\n") + "\n", figures: [t.figure].concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
-                  names: names, pack: X.pack.slice(), skills: t.skills } };
+        native: { spec: lines.join("\n") + "\n",
+                  figures: team.map(function (t) { return t.figure; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
+                  names: names, pack: X.pack.slice(), skills: team[0].skills } };
   held = {};
   newFight();
   /* Everyone to their squares, and the grid comes up (docs/rooms.md, Exploring). */
   fight.gridFrom = performance.now();
-  fight.shown[0].x = X.px - ox(r.i); fight.shown[0].y = X.py - oy(r.i);
-  tween(fight.shown[0], lx, ly, 220);
+  team.forEach(function (t, k) {
+    var s = fight.shown[k], to = fight.st.fighters[k];
+    s.x = was[k][0]; s.y = was[k][1];
+    tween(s, to.x, to.y, 260);
+  });
   resize();
   cards();
   advance();
@@ -560,6 +654,8 @@ function exploreAfter(result) {
   var r = roomOf(), me0 = fight.st.fighters[0];
   X.pack = fight.pack.slice();
   if (result === 1) {
+    /* Everyone's up again (turn.md, After a fight), and the leader leads on from where
+     * they stood. */
     X.cleared[r.i] = 1;
     at(me0.x, me0.y);
     if (!walkable(r, me0.x, me0.y)) { var p = inside(r, r.doors[Object.keys(r.doors)[0]]); at(p[0], p[1]); }
@@ -579,13 +675,13 @@ function exploreButtons() {
   if (mode === "lost") {
     return [["", "The descent ends", null, false, "", false, "hint"],
             ["R", "This floor again", function () { X.lost = false; X.pack = []; exploreFloor(X.floor); }, false, "", true],
-            ["N", "A new yard", function () { exploreStart(X.cls, 1 + Math.floor(Math.random() * 65535), X.scroll); }],
+            ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll); }],
             ["Esc", "Back to the scenarios", intro]];
   }
   return [["Arrows", "Walk: hold them down (numpad: 8 ways), or click a square", null, false, "", false, "hint"],
-          ["N", "A new yard", function () { exploreStart(X.cls, 1 + Math.floor(Math.random() * 65535), X.scroll); }],
+          ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll); }],
           ["V", X.scroll ? "View: scrolling" : "View: one room a screen", function () {
-            exploreStart(X.cls, X.yard, !X.scroll);
+            exploreStart(X.party, X.yard, !X.scroll);
           }, false, "", false, "toggle"],
           ["gap"],
           ["X", "Leave", intro]];

@@ -1530,7 +1530,8 @@ function onKey(e) {
     else if (k === "ArrowUp") { pick(-1); e.preventDefault(); }
     else if (k === "Enter" && picked === -1) {
       e.preventDefault();
-      exploreStart(exploreBrief.cls || "WARDEN", Number($("yard").value) & 0xFFFF, !!exploreBrief.scroll);
+      exploreStart(exploreBrief.party || ["WARDEN", "ROGUE", "CHANNELER", "MEDIC"], Number($("yard").value) & 0xFFFF,
+                   !!exploreBrief.scroll);
     }
     else if (k === "Enter") { e.preventDefault(); start(); }
     return;
@@ -1676,8 +1677,9 @@ async function boot() {
   var m = /scenario=([AR]-\d+)/.exec(location.hash);
   if (m) picked = Math.max(0, SCENARIOS.findIndex(function (s) { return s.code === m[1]; }));
   intro();
-  var ex = /explore=(\d+)(?::(\w+))?(:scroll)?/.exec(location.hash);  /* #explore=YARD[:CLASS[:scroll]] */
-  if (ex && ROOMDATA) exploreStart((ex[2] || "WARDEN").toUpperCase(), Number(ex[1]) & 0xFFFF, !!ex[3]);
+  /* #explore=YARD[:CLASS,CLASS...[:scroll]] */
+  var ex = /explore=(\d+)(?::([\w,]+))?(:scroll)?/.exec(location.hash);
+  if (ex && ROOMDATA) exploreStart(ex[2] || "WARDEN", Number(ex[1]) & 0xFFFF, !!ex[3]);
   requestAnimationFrame(frame);
   window.arena = {                                                  /* for tests */
     state: function () { return { mode: mode, fight: fight, S: S, auto: auto, fast: fast }; },

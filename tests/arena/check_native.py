@@ -375,6 +375,44 @@ def check_scroll():
            + ("'s fight on its own map, you a square in, the grid up, then walking again" if there["foes"] else ""))
 
 
+def check_party():
+    """A party of four exploring (docs/rooms.md, The party): walking, the others follow the
+    leader in marching order along the leader's trail, a gap apart; coming into a room with
+    foes, they fan out round the leader as the reference's fan_out has it."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "rooms"))
+    import rooms
+    out = page("explore", "48213:warden,rogue,channeler,medic")
+    if not out:
+        return
+    floor = rooms.build(48213, 1)
+    mid = out["mid"]
+    bad = []
+    if mid["party"] != ["WARDEN", "ROGUE", "CHANNELER", "MEDIC"]:
+        bad.append(f"the party is {mid['party']}")
+    lead = mid["shown"][0]
+    for k, (x, y, alpha) in enumerate(mid["shown"][1:], 1):
+        d = ((x - lead[0]) ** 2 + (y - lead[1]) ** 2) ** 0.5
+        if alpha < 1 or not (0.3 < d <= k * 0.85 + 0.01):
+            bad.append(f"walking, number {k + 1} is {d:.2f} from the leader (seen {alpha}), not on the trail {k} gaps back")
+    door = [d for d, _, _ in rooms.DIRS if d in floor["rooms"][floor["start"]]["doors"]][0]
+    there = floor["rooms"][rooms.neighbour(floor["start"], door)]
+    f = out.get("fight") or {}
+    if there["foes"]:
+        travelers = [p[1:] for p in f.get("fighters", []) if p[0] == 0]
+        want = rooms.fan_out(there, travelers[0], 4) if travelers else None
+        if travelers != want:
+            bad.append(f"the party stands at {travelers} as the fight begins, not the fan-out {want}")
+        elif (out.get("after") or {}).get("mode") not in ("explore", "lost"):
+            bad.append("the fight didn't end back in walking")
+    if out["errors"]:
+        bad.append(f"the page threw {out['errors'][:2]}")
+    if bad:
+        fail("explore, a party of four: " + "; ".join(bad))
+    else:
+        ok("explore, a party of four: walking, the others follow the leader's trail a gap apart; "
+           f"in room {there['i'] + 1}'s fight they stand fanned out round the leader as the reference says")
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -437,6 +475,7 @@ def main():
         check_rules()
         check_explore()
         check_scroll()
+        check_party()
     finally:
         server.terminate()
         server.wait()
