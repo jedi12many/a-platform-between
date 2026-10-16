@@ -1,0 +1,16 @@
+# A lone sneak, by day, slipping past a band to the far side without being seen (re-checks
+# only every 4 squares nearer).
+seed 9
+light day
+map
+########################
+#@.....................#
+#......................#
+#......................#
+#..........a...........#
+########################
+end
+party sneaking
+traveler 90 40
+band a 20 40 hiding
+path E 6 SE 1 E 8 NE 1 E 5

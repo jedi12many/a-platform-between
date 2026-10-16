@@ -1,8 +1,9 @@
 # Open floors
 
-*A proposal (after [rooms.md](rooms.md)'s scrolling prototype, its zoom and minimap): not
-built yet. For the prototype in the studio's arena first, then the C64's walking engine
-([walk.md](walk.md)).*
+*A proposal (after [rooms.md](rooms.md)'s scrolling prototype, its zoom and minimap). Built
+so far: **being seen**, in the rules lab (`core/next/seeing.c`, its reference
+`tools/rules/seeing.py`, `tests/seeing/`: *Being seen, built*). Still to build: the open
+floors themselves, in the prototype and then on the C64 ([walk.md](walk.md)).*
 
 Scrolling showed the floor works as one place. So the rooms go: a floor is **one open
 area**, walked as now, with walls only where something stands (a clump of trees, rocks, a
@@ -54,7 +55,7 @@ One rule, whichever way round, travelers or foes:
 |---|---|
 | Night, or a dark floor | +20 |
 | Distance: per full 4 squares past the first 4 | +10 |
-| The line passes through cover, or a cluster's edge | +20 |
+| The line passes through cover | +20 |
 | Whoever might be seen is in cover | +10 |
 | The looker is alert (it heard something, or a fight's been near) | −20 |
 | Whoever might be seen is carrying a light, in the dark | −20 |
@@ -94,7 +95,8 @@ should still drag on a skilled one. So:
 *For example*, sneaking past a band with Sense 30, at night (+20), 10 squares off (+10):
 TN = 50 + 70 (the best sneak) + 30 = 150. The others, Stealth 45, 30 and 25, roll against
 100: 45 + 62 = 107, a success (+10); 30 + 40 = 70, a fail (−10); 25 + 81 = 106 (+10): TN
-160. The band rolls d100 + 30, 130 at most: it neither sees nor hears you. Later, by day
+160. The band rolls d100 + 30, 130 at most: only a natural 100 (a crit, whatever the
+total) sees you, 1 in 100; nothing short of it is near enough to hear. Later, by day
 and 4 squares off, past a band with Sense 60: TN = 50 + 70 + 10 (the same helpers) = 130.
 It sees you on 71 or more (30 in 100), and hears you on 51 to 70 (20 in 100).
 
@@ -103,22 +105,64 @@ Every check is a roll against one number, from one short list: it plays at a tab
 
 ### Lines of sight
 
-A line from the middle of the band's square to the middle of each traveler's
-(Bresenham's, square by square, so it's the same on paper and on the C64). A **wall**
-square stops it; **cover** on the way, or a square at a cluster's edge, is the +20
-above. A band's **range** is its Sense / 5 squares (Sense 40: 8 squares), doubled by day
-in the open, halved at night.
+A line from the looker's square to the other's, the battle engine's own (Bresenham's,
+square by square, `in_sight` in `core/next/battle.c`, so being seen and being shot at
+agree): a **wall** on it stops it; a **cover** square on it (not either end) is the +20
+above, once however many. The **distance** is the battle's: the larger of the two gaps,
+across and down. A looker's **range** is its Notice / 5 squares (Notice 40: 8), doubled
+by day, halved at night (rounded down; at least 1).
+
+### Precisely (for the reference and the engine)
+
+- **Where:** the party is where its leader stands; a band where its first foe stands.
+- **Light:** day, dusk or night (a dark floor is night): +0, +10, +20 on the TN.
+- **A band** is one looker (its best Sense) and sets one TN: 50 + its best Stealth if
+  it's **hiding** (lying in wait: the default), 80 if it's **open** (a patrol, a camp).
+- **Checks, each step:** the bands in the floor's order; for each, the party looks (if a
+  check is due), then the band looks back (if one is due). A check is due when the other
+  is in sight and the looker hasn't checked it before, or it's at least 4 squares nearer
+  than at the looker's last check. In sight and next to each other (distance 1 or 0):
+  seen, no roll.
+- **The dice of a check**, in order: the helpers of a sneaking party setting its TN
+  (party order, the best left out); the helpers of a party looking (party order, the
+  best left out); the looker's roll. The best is the first of the highest.
+- **What a result does:** the party's look: success or crit, the band is **spotted**; at a
+  cost, it's **heard** (a mark, no more). The band's look: success or crit, the party is
+  **seen** (the fight, an **ambush** if the band wasn't spotted first); at a cost, the
+  band is **alert** for good (−20 on its later checks' TNs).
 
 ### Foes' numbers
 
-Foes get two new numbers in the bestiary ([registry/foes.txt](../registry/foes.txt),
-appended as columns, so no id changes): **Sense** (noticing, like Wits) and **Stealth**
-(being missed). Until they're set by hand, both come from a foe's other numbers: Sense =
-its attack − 10, Stealth = its Grace. An ash rat (Grace 50) is hard to spot; a
+Foes get two new numbers: **Sense** (noticing, like Wits) and **Stealth** (being
+missed), in [registry/senses.txt](../registry/senses.txt) by name, read only by the rules
+lab (as conditions.txt is), and folded into the bestiary's columns when rules v1 is
+frozen. They were set from a foe's other numbers (Sense = its attack − 10, Stealth = its
+Grace) and are for changing by hand. An ash rat (Grace 50) is hard to spot; a
 maintenance drone (attack 40) has Sense 30, 6 squares.
 
 It plays at a table: a roll each way when you come into each other's sight, again each
 time the gap closes by 4 squares, modifiers from one short list.
+
+### Being seen, built
+
+In the rules lab, as rules v1's turn was: the engine is `core/next/seeing.c`
+(`apb_seeing_step`: a step of the party's leader, every band checked as *Precisely*
+says; the lines, ranges and modifiers on their own too), the reference
+`tools/rules/seeing.py`, written from this page. `make test-rules-next` runs
+`tests/seeing/run_seeing.py`: values worked out by hand from this page (the example
+above among them); reviewed approaches (`tests/seeing/*.txt`, their logs in
+`tests/seeing/expected/`: walking by day, sneaking alone, a hedge between, a band
+that hears and is alert after, a lamp at night, an ambush) from the reference, the
+engine and the 6502 (sim65) alike; and 400 random approaches, the engine's log the
+reference's roll for roll, natively, under the sanitizers and on sim65.
+
+`python3 tools/rules/seeing.py tests/seeing/heard.txt` prints an approach's log.
+
+Learned on the way: **at night a band only rolls once.** Ranges are halved (Sense 50: 5
+squares), and the next check comes 4 squares nearer, at 1, where you're seen without a
+roll; so a band that hears you at night has no second roll for its alertness to help.
+Fine as it is (night favours the sneak), or the re-check distance could shrink with the
+range: for playing.
 
 ## Where the fight is
 
@@ -152,8 +196,9 @@ time the gap closes by 4 squares, modifiers from one short list.
 
 ## Building it, in order
 
-1. **The rules:** seeing and being seen (the looker rolls, the sneak sets the TN; groups;
-   the modifiers; sight lines; Sense and Stealth for foes) in the rules lab, with a Python reference and tests, as rules v1's movement was
+1. **The rules** (built: *Being seen, built*): seeing and being seen (the looker rolls,
+   the sneak sets the TN; groups; the modifiers; sight lines; Sense and Stealth for foes)
+   in the rules lab, with a Python reference and tests, as rules v1's movement was
    ([turn.md](turn.md)); reviewed cases of approaches seen and missed.
 2. **Open floors** in the generator (`tools/rooms/rooms.py` and `rooms.js` alike): clusters,
    one region, places, encounters; the floor's size a parameter; `check_rooms.py` holds

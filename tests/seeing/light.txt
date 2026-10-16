@@ -1,0 +1,15 @@
+# Night, a light carried: -20 on the band's TN (it sees the lamp), though night's +20
+# still counts. Walking, not sneaking.
+seed 1
+light night
+map
+################
+#@.............#
+#............a.#
+################
+end
+party walking light
+traveler 30 30
+traveler 30 30
+band a 60 30 hiding
+path E 11

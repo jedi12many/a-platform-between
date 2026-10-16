@@ -1,0 +1,15 @@
+# A careless party walks at night into a band it can't spot first: the band sees it, an
+# ambush.
+seed 21
+light night
+map
+##############
+#@...........#
+#..........a.#
+##############
+end
+party walking
+traveler 10 10
+traveler 15 5
+band a 70 60 hiding
+path E 9

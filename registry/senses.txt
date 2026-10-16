@@ -1,0 +1,14 @@
+# Foes' senses (docs/open-floors.md, Being seen): read only by the rules lab yet (as
+# conditions.txt is), by NAME, and folded into foes.txt when rules v1 is frozen.
+#
+# sense:   noticing (a traveler's Wits or Intuition); range = sense / 5 squares
+# stealth: not being noticed (the Stealth skill)
+#
+# Set at first from a foe's other numbers (sense = attack - 10, stealth = grace): change
+# them by hand freely.
+#
+# NAME          sense stealth
+RUST_GUARD      35    20
+SCRAP_GUNNER    30    30
+ASH_RAT         20    50
+MAINT_DRONE     30    20

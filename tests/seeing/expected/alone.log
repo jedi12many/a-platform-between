@@ -1,0 +1,14 @@
+light day; the party sneaks
+step 0: the party at 1,1
+  band 1 at 11,4, 10 away: the party looks
+    TN 50 + 40 hiding +10 distance = 100
+    looks: Notice 40 rolls 72 = 112 against 100: success: spotted
+step 2: the party at 3,1
+  band 1 at 11,4, 8 away: band 1 looks
+    TN 50 + 90 sneaking +10 distance = 150
+    looks: Sense 20 rolls 51 = 71 against 150: fail: not yet
+step 6: the party at 7,1
+  band 1 at 11,4, 4 away: band 1 looks
+    TN 50 + 90 sneaking = 140
+    looks: Sense 20 rolls 51 = 71 against 140: fail: not yet
+the end of the way: not seen

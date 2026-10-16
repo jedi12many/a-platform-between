@@ -180,7 +180,11 @@ story VM) stays on v0 in `core/src/battle.c` until v1 is frozen and ported. `mak
 test-rules-next`: reviewed battles in `tests/battle-next/` (the same on sim65; `--update`
 rewrites the logs: read the diff), every roll and damage re-worked by `tools/rules/turn.py`
 and `combat.py`, the engine and `turn.py` agreeing on random fighters, random battles under
-the sanitizers. `make artdesk` serves the art desk alone: figures, effects and tiles,
+the sanitizers. And seeing and being seen (`docs/open-floors.md`: `core/next/seeing.c`, its
+reference `tools/rules/seeing.py`, foes' Sense and Stealth in `registry/senses.txt`):
+`tests/seeing/run_seeing.py` holds reviewed approaches (`tests/seeing/*.txt`) to their logs
+on the engine, the reference and sim65 (`--update` rewrites them from the reference: read
+the diff), and random approaches roll for roll. `make artdesk` serves the art desk alone: figures, effects and tiles,
 drawn under the C64's rules and saved to `content/art/` (`docs/art.md`).
 `make modern` builds the desktop game (`./build/apb-modern build/modern/the-fare`); `make
 web` builds the browser one (serve `build/web/`); `make waystation` builds the website

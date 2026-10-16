@@ -1,0 +1,19 @@
+# Sneaking at dusk toward a hiding band beyond a hedge (cover between: +20); the band's
+# last check catches the party standing in the hedge (+10). One traveler: no helpers. A
+# wall cuts the second band off (a gap in it, but no line through).
+seed 5
+light dusk
+map
+####################
+#@.................#
+#.......+++........#
+#.............a....#
+#########.##########
+#..........b.......#
+####################
+end
+party sneaking
+traveler 55 50
+band a 40 30 hiding
+band b 60 10 hiding
+path E 6 SE 1 E 2 S 1
