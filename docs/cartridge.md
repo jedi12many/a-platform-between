@@ -160,7 +160,9 @@ Each module owns its part; nothing else touches it.
 | $40-$41 | `qr.s`, `qrview.s` | a module's place in the QR code, or a byte of the view's bitmap |
 | $42-$45 | `fight.s`, `fightext.s` (in a fight) | the encounter's record, a foe's name |
 | $46-$4B | the music player (`fe/c64/music.s`, for the cartridge) | its pointers and scratch: only in the interrupt, or with interrupts off |
-| $4C-$8F | free | |
+| $4C-$4F | free | |
+| $50-$6D | the walking engine (`cart/walk/`, [walk.md](walk.md)): its own program | pointers, 16-bit working values, the body's squares, scratch |
+| $6E-$8F | free | |
 | $90-$FF | the KERNAL's, on a disk (while it loads) | |
 
 The interrupt (`split.s`) uses no zero page at all.

@@ -80,7 +80,7 @@ hardware, and a demo that proves it. They're ordered by how much they're worth.
 - **Cost:** the table above. Memory: two 1 KB screens, 2 KB of characters, the floor's
   map (48 x 24 = 1,152 bytes, or 576 at two squares a byte).
 - **Risk:** low. It's the standard method, and it's in many released games.
-- **Proof, B1:** a cartridge that walks yard 48213's floor 1 by joystick, checked
+- **Proof, B1** (built: [walk.md](walk.md)): a program that walks yard 48213's floor 1 by joystick, checked
   against the browser prototype: the same floor (`tools/rooms/rooms.py`), the same speed,
   the same camera. The harness counts every frame's cycles and fails if one runs over.
 

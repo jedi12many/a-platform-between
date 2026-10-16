@@ -53,3 +53,26 @@ zp_t0           = $24
 zp_t1           = $25
 zp_t2           = $26
 zp_t3           = $27
+
+; The walking engine (cart/walk/, docs/walk.md): its own program, so this is its alone.
+; The interrupt uses none of it.
+zp_wk_ptr       = $50           ; 2: a row of the squares, or of a screen being drawn
+zp_wk_out       = $52           ; 2: where generated code or an edge's cells go
+zp_wk_src       = $54           ; 2: an address being written into generated code
+zp_wk_dst       = $56           ; 2: and the other one
+zp_wk_n         = $58           ; 2: a count
+zp_wk_fx        = $5A           ; 2: fits: the body's pixel x...
+zp_wk_fy        = $5C           ; 2: ...and y
+zp_wk_mv        = $5E           ; 2: slide: where the moved axis would be
+zp_wk_a         = $60           ; 2: 16-bit working values
+zp_wk_b         = $62           ; 2
+zp_wk_mx        = $64           ; an edge's character column on the area
+zp_wk_my        = $65           ; and row
+zp_wk_i         = $66           ; a loop's counter
+zp_wk_d         = $67           ; slide: the step, signed
+zp_wk_axis      = $68           ; slide: the axis, 0 (x) or 2 (y)
+zp_wk_x0        = $69           ; fits: the squares under the body
+zp_wk_x1        = $6A
+zp_wk_y0        = $6B
+zp_wk_y1        = $6C
+zp_wk_t         = $6D           ; scratch
