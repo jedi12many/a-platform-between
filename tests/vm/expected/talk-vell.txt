@@ -1,0 +1,48 @@
+=== Talk
+  1) @1
+  2) @2
+  3) @3
+  4) @4
+  5) @5
+  6) @6
+  7) @7
+  8) @8
+  9) @end
+> 1
+  1) @trader
+  2) @courier
+  3) @ASH_RAT
+  4) @SCRAP_GUNNER
+  5) @RUST_GUARD
+  6) @MAINT_DRONE
+> 1
+A camp in the middle of the room: a tarpaulin strung between two signal posts, a stove, and a woman sitting very still on a crate of tinned peaches. She has a ledger on her knee and a crossbow across it.
+"Vell," she says. "I trade. I don't fight, and I don't lend." She looks you over. "First time down? Then here's the first thing free: the stairs are always in the room furthest from where you came in. Something always sits on them."
+  1) What have you got?
+  2) What's on this floor?
+  3) Seen anyone else down here?
+  4) Move on
+> 3
+"A courier went down ahead of you. Young, fast, no sense. Has a satchel of letters for people who aren't down here." She shrugs. "Floor two, maybe."
+  1) What have you got?
+  2) What's on this floor?
+  3) Move on
+> 2
+"Rats on the first floors. They bite, they run, they come back. Shout at them; they hate shouting."
+  1) What have you got?
+  2) What's on this floor?
+  3) Move on
+> 3
+  1) @1
+  2) @2
+  3) @3
+  4) @4
+  5) @5
+  6) @6
+  7) @7
+  8) @8
+  9) @end
+> 9
+The yards go quiet behind you.
+[receipt: departure 1001, complete, xp 0, debt paid 0 added 0, gained, lost, echoes]
+[level 1, xp 0, debt 0]

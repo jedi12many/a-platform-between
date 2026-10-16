@@ -97,3 +97,11 @@ yards-9         content/sidings/deep-yards/deep-yards.qs        2393+10  1,2,q,1
 yards-10        content/sidings/deep-yards/deep-yards.qs        1343+3   1,2,0.1.3.0,2,0.1.3.0,1,2
 yards-11        content/sidings/deep-yards/deep-yards.qs        4516+1   1,2,0.3.3.0,2,0.3.3.0,2,0.3.3.0,1,q,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,1,0.3.3.0,2
 yards-12        content/sidings/deep-yards/deep-yards.qs        52114    1,2,q,2,q,2,q,2,q,q,2,q,q,1,q,q,q,q
+# Talk in the yards (the explore prototype's people, docs/rooms.md, Talk): the page's own
+# menus (@1..@8 the floor, then who) answered by number like any other. Vell met, asked,
+# left; Pell found on floor 2, brought to the camp, where Vell takes them in; a parley with
+# the ash rats (shouted off), then the rust-guards (their post unread, a bluff, a fight).
+# Each ends at the waiting menu's @end.
+talk-vell       content/sidings/yards-talk/yards-talk.qs        5     1,1,3,2,3,9
+talk-pell       content/sidings/yards-talk/yards-talk.qs        5     2,2,3,1,2,1,1,3,9
+talk-parley     content/sidings/yards-talk/yards-talk.qs        5     1,3,1,1,3,5,1,1,1,9

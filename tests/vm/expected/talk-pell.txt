@@ -1,0 +1,72 @@
+=== Talk
+  1) @1
+  2) @2
+  3) @3
+  4) @4
+  5) @5
+  6) @6
+  7) @7
+  8) @8
+  9) @end
+> 2
+  1) @trader
+  2) @courier
+  3) @ASH_RAT
+  4) @SCRAP_GUNNER
+  5) @RUST_GUARD
+  6) @MAINT_DRONE
+> 2
+=== Pell
+Against the wall, half behind a fallen locker, someone in a courier's jacket is trying to look like part of the locker. They're young, scratched, and holding a satchel of letters as if it were the last warm thing in the yards.
+"Don't," they say. "I'm Pell. I'm just lost. The stairs moved."
+  1) Ask about the letters
+  2) Show Pell the way up
+  3) Come with us. There's a camp.
+  4) That satchel. Hand it over.
+  5) Leave them be
+> 3
+Pell gets up so fast the satchel spills. "Yes. Please. I'll be quiet."
+  1) @join
+> 1
+  1) @1
+  2) @2
+  3) @3
+  4) @4
+  5) @5
+  6) @6
+  7) @7
+  8) @8
+  9) @end
+> 2
+  1) @trader
+  2) @courier
+  3) @ASH_RAT
+  4) @SCRAP_GUNNER
+  5) @RUST_GUARD
+  6) @MAINT_DRONE
+> 1
+A camp in the middle of the room: a tarpaulin strung between two signal posts, a stove, and a woman sitting very still on a crate of tinned peaches. She has a ledger on her knee and a crossbow across it.
+"Vell," she says. "I trade. I don't fight, and I don't lend." She looks you over. "First time down? Then here's the first thing free: the stairs are always in the room furthest from where you came in. Something always sits on them."
+The courier behind you sees the stove and makes a small sound, like a kettle.
+"Oh, you found the courier." Vell stands up for the first time. "Sit. Eat. Nobody eats down here unless I say so." The courier sits, and eats, and is asleep before the tin is empty.
+"Kind of you," Vell says to you, which sounds like it costs her.
+The courier wakes long enough to press something into your hands: their own coat, patched at both elbows, chain sewn into the lining. "For the cold," they say, and are gone again.
+  1) @stay
+> 1
+  1) What have you got?
+  2) What's on this floor?
+  3) Move on
+> 3
+  1) @1
+  2) @2
+  3) @3
+  4) @4
+  5) @5
+  6) @6
+  7) @7
+  8) @8
+  9) @end
+> 9
+The yards go quiet behind you.
+[receipt: departure 1001, complete, xp 20, debt paid 0 added 0, gained 14, lost, echoes]
+[level 1, xp 20, debt 0]

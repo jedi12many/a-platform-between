@@ -51,6 +51,7 @@ ARENA_BUILT = os.path.join(os.path.dirname(HERE), "..", "build", "arena-web")
 ARENA_FILES = {"index.html": (ARENA_PAGE, "text/html"), "arena.js": (ARENA_PAGE, "text/javascript"),
                "arena.css": (ARENA_PAGE, "text/css"), "rules.js": (ARENA_BUILT, "text/javascript"),
                "rules.wasm": (ARENA_BUILT, "application/wasm"),
+               "story.js": (ARENA_BUILT, "text/javascript"), "story.wasm": (ARENA_BUILT, "application/wasm"),
                "scenarios.json": (ARENA_BUILT, "application/json"),
                "items.json": (ARENA_BUILT, "application/json"),
                "lab.json": (ARENA_BUILT, "application/json"),

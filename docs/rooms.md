@@ -182,6 +182,68 @@ generator (`tools/arena/web/rooms.js`) must build the same floors from the same 
 (`tests/rooms/check_rooms.py`, on a thousand floors), with every door, the stairs and
 every foe reachable.
 
+## People
+
+Besides foes, a floor has people, placed after its rooms are built and without their dice
+(`people` in `tools/rooms/rooms.py` and `rooms.js`), so the same yard and floor have the
+same people:
+
+- **Vell's camp**, on every floor: in the empty room nearest the start (least depth, then
+  lowest number), or the start room if none is empty. She trades.
+- **Pell**, a lost courier, on floors 2 and 3: in the deepest empty room that isn't Vell's
+  (deepest, then lowest number), or failing that the deepest crate room; none if neither.
+- **Foes who talk first**: a fight room (never the stairs') parleys when
+  `mix(yard XOR 0x7A1C, floor * 16 + room) mod 3 = 0`, about a third of them. The first
+  foe in the room speaks for the rest.
+
+Someone stands on the open square nearest (8, 3), counting 8 ways (then the topmost, then
+the leftmost): reachable from the room's first door; not a door, the stairs, a foe's or the
+crate's square, or (7, 3), where you arrive; and never in the way, so that with them
+standing there every door, the stairs, the crate and every foe can still be reached. They
+block the square they stand on, as a wall does while you walk.
+
+## Talk
+
+What people say is a Departure in Quest Script, `content/sidings/yards-talk/yards-talk.qs`,
+played by the game's own story VM, compiled to WebAssembly for the page
+(`tools/arena/web/story.c`, `build/arena-web/story.js`). One story VM, one language: what a
+playtester reads is what the game will do, checks rolled by the rules for the party's
+leader (rules v0, as the VM is until v1 is ported), items given and taken, and the story's
+flags kept for the whole descent.
+
+The page boards the leader at the top of a descent, and the Departure doesn't end while
+you're down there. Between conversations it **waits at a menu for the page**: a menu
+whose every label starts with `@` is never shown. The page answers it:
+
+1. `wait`: `@1`...`@8`, the floor (8 for any deeper), which sets the story's `floor`; or
+   `@end`, when a new descent begins and this one's story should end.
+2. `who`: `@trader`, `@courier`, or a foe's registry name (`@ASH_RAT`) for a parley.
+
+The conversation is then the player's: its text, checks (shown as rolled) and menus come
+up in a panel over the room; a number or a click answers. When it's done it goes back to
+`wait`, and the page walks again. On the way, a menu of one `@` label is a **signal** to
+the page, which answers it at once and acts when the talk ends:
+
+| Signal | The page |
+|---|---|
+| `@fight` | starts the room's fight |
+| `@leave` | clears the room: the foes go, without a fight |
+| `@join` | Pell follows the party, behind the last of it, floor to floor |
+| `@gone` | Pell leaves the room for good |
+| `@stay` | Pell stays at Vell's camp (and stops following) |
+
+Before each talk the page writes the party's pack into the story's copy of the leader
+(what they hold and wear stays out of it), so `has` and `~ take` see the pack; after it,
+what the story gave or took is the pack. A parley offers what Quest Script asks of a
+roadblock: a way to learn more, answers gated on what you carry or know, a check, and
+always the fight. What happened to Pell comes back: Vell takes them in if you bring them,
+leaves you a gift if you showed them the way, and won't trade if you robbed them (unless
+you talk her round).
+
+This is the prototype's convention, not yet the language's: when rooms come to the game,
+talking to someone in a room wants a proper way into a scene and back (the "tunnel" scenes
+Quest Script plans), and party play wants checks for whoever's talking.
+
 ## Looks
 
 A floor is drawn in a **look** ([art.md](art.md#looks)): the forest, the mountains, a town or
@@ -228,6 +290,10 @@ them is a fight on open ground. Things that block are terrain (cover, wall).
   a check); generated floors are for Sidings like the Deep Yards.
 
 ## Still open
+
+- **Talk** (*Talk*): one speaker for the party (the leader); signals as host menus rather
+  than the language's own; a parley's fight starts as the room's fight always does, not an
+  ambush or a sneak by how the talk went.
 
 - **The party's prototype** (*The party*) has followers and the fan-out; still to try:
   suggestion markers, the choice stream an exploration makes, and two browsers sharing a

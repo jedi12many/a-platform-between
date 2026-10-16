@@ -22,6 +22,8 @@
 //   node native.cjs URL shove CODE SEED KEYS   the first turn: KEYS (arrows: R L U D) to
 //                                         move, then a Shove of the first foe in reach
 //   node native.cjs URL shot CODE PATH    a screenshot of the first turn
+//   node native.cjs URL talk -            talk (docs/rooms.md, Talk): yard 14, Vell beside
+//                                         the start; yard 2, a parley through the first door
 //   node native.cjs URL looks YARD [DIR]  explore in each look (and by floor): the start
 //                                         room's tiles as the board draws them (twice);
 //                                         DIR: a screenshot of each, LOOK.png
@@ -49,6 +51,55 @@ async function main() {
                                                 m, { timeout: ms || 20000 });
   const seeded = ["fight", "dash", "shove", "power", "blink", "first"].includes(what);
   const hash = "#scenario=" + code + (seeded ? "&seed=" + arg : "");
+  if (what === "talk") {
+    const out = { errors };
+    const T = () => page.evaluate(() => Object.assign(window.arena.talk(), { mode: window.arena.state().mode,
+      buttons: window.arena.buttons(), cleared: window.arena.explore().cleared,
+      log: Array.from(document.querySelectorAll("#log li")).map((li) => li.textContent) }));
+    const parked = () => page.waitForFunction(() => window.arena && window.arena.talk().waiting && window.arena.state().mode === "explore",
+                                              null, { timeout: 20000 });
+    const choices = () => page.waitForFunction(() => window.arena.talk().choices.length > 0, null, { timeout: 20000 });
+    const say = async (label) => {
+      const t = await T();
+      const k = t.choices.indexOf(label);
+      if (k < 0) throw new Error("no choice '" + label + "' in " + JSON.stringify(t.choices));
+      await page.keyboard.press(String(k + 1));
+    };
+    /* Vell, next to where you arrive: click her, ask, and leave. */
+    await page.goto(url + "#explore=14:WARDEN");
+    await parked();
+    out.before = await T();
+    await page.evaluate(() => window.arena.walkTo(8, 3));
+    await choices();
+    out.vell = await T();
+    await say("What's on this floor?");
+    await page.waitForFunction(() => window.arena.talk().lines.some((l) => l.indexOf("Rats on the first") >= 0), null, { timeout: 20000 });
+    await choices();
+    out.rumour = await T();
+    await say("Move on");
+    await parked();
+    out.after = await T();
+    /* A parley: through the start room's door, ash rats who talk first; shout. */
+    await page.goto(url + "#explore=2:WARDEN");
+    await page.reload();
+    await parked();
+    const door = await page.evaluate(() => { const x = window.arena.explore(), r = x.f.rooms[x.room];
+                                               return r.doors[Object.keys(r.doors)[0]]; });
+    await page.evaluate((d) => window.arena.walkTo(d[0], d[1]), door);
+    await page.waitForFunction(() => window.arena.state().mode === "talk", null, { timeout: 20000 });
+    await choices();
+    out.parley = await T();
+    await say("Shout them down");
+    await page.waitForFunction(() => window.arena.talk().choices.join() === "Go on", null, { timeout: 20000 });
+    out.shout = await T();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => window.arena.state().mode !== "talk", null, { timeout: 20000 });
+    await page.waitForTimeout(300);
+    out.then = await T();
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
   if (what === "looks") {
     const out = { errors, looks: {} };
     for (const look of ["", "forest", "mountain", "town", "dungeon"]) {
@@ -105,6 +156,14 @@ async function main() {
     await page.waitForFunction(() => window.arena.state().mode !== "explore" || !window.arena.explore().settle,
                                null, { timeout: 20000 });
     out.next = await X();
+    if (out.next.mode === "talk") {
+      /* Foes who talk first (docs/rooms.md, People): this test is for the fight. */
+      await page.waitForFunction(() => window.arena.talk().choices.indexOf("Fight") >= 0, null, { timeout: 20000 });
+      out.parley = await page.evaluate(() => window.arena.talk().who);
+      await page.evaluate(() => window.arena.say(window.arena.talk().choices.indexOf("Fight")));
+      await page.waitForFunction(() => window.arena.state().mode !== "talk", null, { timeout: 20000 });
+      out.next = await X();
+    }
     if (out.next.mode !== "explore") {
       await until("turn");
       out.fight = await X();

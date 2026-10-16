@@ -171,7 +171,57 @@ def build(yard, floor):
                       "doors": {d: list(doors[i][d]) for d in sides},
                       "stairs": list(here_stairs) if here_stairs else None,
                       "foes": foes, "cache": cache})
+    people(yard, floor, rooms)
     return {"yard": yard, "floor": floor, "start": start, "stairs": stairs, "rooms": rooms}
+
+
+def spot(room):
+    """Where someone stands in a room (docs/rooms.md, People): the open square nearest
+    (8, 3), counting 8 ways, then the topmost, then the leftmost; reachable from the
+    room's first door; not a door, the stairs, a foe's or the cache's square, or (7, 3),
+    where you arrive on a floor; and not in the way: with someone standing there, every
+    door, the stairs, the cache and every foe can still be reached from the first door."""
+    tiles = [[int(c) for c in r] for r in room["rows"]]
+    first = room["doors"][[d for d, _, _ in DIRS if d in room["doors"]][0]]
+    got = reached(tiles, *first)
+    taken = {(f["x"], f["y"]) for f in room["foes"]} | {(7, 3)}
+    must = [tuple(p) for p in room["doors"].values()] + [(f["x"], f["y"]) for f in room["foes"]]
+    if room["stairs"]:
+        taken.add(tuple(room["stairs"]))
+        must.append(tuple(room["stairs"]))
+    if room["cache"]:
+        taken.add((room["cache"]["x"], room["cache"]["y"]))
+        must.append((room["cache"]["x"], room["cache"]["y"]))
+    order = sorted((max(abs(x - 8), abs(y - 3)), y, x) for y in range(H) for x in range(W)
+                   if tiles[y][x] == OPEN and (x, y) in got and (x, y) not in taken)
+    for _, y, x in order:
+        tiles[y][x] = WALL
+        clear = reached(tiles, *first)
+        tiles[y][x] = OPEN
+        if all(m in clear for m in must):
+            return [x, y]
+    return None
+
+
+def people(yard, floor, rooms):
+    """Who's in the rooms besides foes (docs/rooms.md, People): Vell's camp, the courier
+    Pell on floors 2 and 3, and which fights start with a parley. Decided after the rooms
+    are built, without their dice: the same yard and floor, the same people."""
+    for room in rooms:
+        room["talk"] = None
+        room["parley"] = room["kind"] == "fight" and mix((yard ^ 0x7A1C) & 0xFFFF, floor * 16 + room["i"]) % 3 == 0
+    empty = [r for r in rooms if r["kind"] == "empty"]
+    vell = min(empty, key=lambda r: (r["depth"], r["i"])) if empty else rooms[[r["kind"] for r in rooms].index("start")]
+    at = spot(vell)
+    if at:
+        vell["talk"] = {"who": "trader", "x": at[0], "y": at[1]}
+    if floor in (2, 3):
+        rest = [r for r in empty if r is not vell] or [r for r in rooms if r["kind"] == "cache"]
+        if rest:
+            pell = max(rest, key=lambda r: (r["depth"], -r["i"]))
+            at = spot(pell)
+            if at:
+                pell["talk"] = {"who": "courier", "x": at[0], "y": at[1]}
 
 
 FAN = [(0, -1), (1, 0), (0, 1), (-1, 0), (1, -1), (1, 1), (-1, 1), (-1, -1)]   # N E S W NE SE SW NW
@@ -213,8 +263,11 @@ def show(f):
             rows[room["cache"]["y"]][room["cache"]["x"]] = "$"
         if room["stairs"]:
             rows[room["stairs"][1]][room["stairs"][0]] = "S"
+        if room["talk"]:
+            rows[room["talk"]["y"]][room["talk"]["x"]] = "V" if room["talk"]["who"] == "trader" else "P"
         out.append(f"room {room['i']} ({room['kind']}, depth {room['depth']}): "
-                   + ", ".join(f["name"] for f in room["foes"]) + (f" {room['cache']['item']}" if room["cache"] else ""))
+                   + ", ".join(f["name"] for f in room["foes"]) + (f" {room['cache']['item']}" if room["cache"] else "")
+                   + (" (they talk first)" if room["parley"] else ""))
         out += ["  " + "".join(r) for r in rows]
     return "\n".join(out)
 
