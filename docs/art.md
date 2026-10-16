@@ -97,6 +97,14 @@ the cursor), so a tiles16 file holds at most **21** tiles: `art.py` refuses more
 `battlegfx.py --looks` builds each look's characters to prove they fit. The first pass at
 the four looks was drawn by a program as starting points: redraw them freely in the desk.
 
+**Alternatives** are numbered: `forest2`, `forest3`, a whole look drawn again, each a pair
+(`tiles32-forest2.txt` and `tiles16-forest2.txt`), counting up from 2 with no gaps.
+`art.py` finds them on disk and holds them to the same rules (and says so when a pair is
+missing its other half); the desk and the arena list them beside the four. A figure can be
+drawn again the same way, as a new entry in `figures.txt` named after the race or foe with
+a number (`HUMAN2`, `RUST_GUARD2`): the builds draw only the figure named exactly, so an
+alternative waits there to be picked, and costs the cartridge nothing until it is.
+
 ## What the build adds
 
 Some of what the game shows isn't drawn but made from the art, the same way every time
