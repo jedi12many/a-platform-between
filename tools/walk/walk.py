@@ -22,6 +22,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
 sys.path.insert(0, os.path.join(HERE, "..", "rooms"))
 import art  # noqa: E402
+import battlegfx  # noqa: E402
 import rooms  # noqa: E402
 
 LOOKS = ["forest", "mountain", "town", "dungeon"]
@@ -47,7 +48,22 @@ NUDGE = 7                       # round a corner: within 7 pixels of the way thr
 UP, DOWN, LEFT, RIGHT, FIRE = 1, 2, 4, 8, 16
 
 # The scroller's stages (docs/walk.md, "The scroller").
-IDLE, SHIFTED, COLOURED = 0, 1, 2
+IDLE, HALF, SHIFTED, SHADED, COLOURED = 0, 1, 2, 3, 4
+
+# The figures (docs/walk.md, "The figures"): the party, in marching order (the explore
+# prototype's four, by their races), and the floor's foes and people, as sprites.
+PARTY = ["SALVAGED", "CHRONOMITE", "RAD_DRYAD", "GLASSFOLK"]   # Warden, Rogue, Channeler, Medic
+PEOPLE = {"trader": "GLASSFOLK", "courier": "HUMAN"}
+KINDS_MAX, FIGURES_MAX = 12, 32
+GAP = 9                         # trail entries between travelers in marching order (~13 pixels)
+TRAIL = 32                      # the leader's trail kept
+SHAPE_POINTER = 0x40            # shape s is at $D000 + 64 s: the VIC's pointer $40 + s
+SPRITE_DX, SPRITE_DY = 27, 47   # a figure's sprite, from its square's pixel less the camera
+SPRITE_X_MIN, SPRITE_X_MAX = 8, 334
+SPRITE_Y_MIN, SPRITE_Y_MAX = 35, 246
+REUSE = 23                      # a sprite reused: the next one at least 23 lines below
+EVENTS_MAX = 26                 # reuses a frame (the C64's program has room for no more)
+SPRITE_MC1, SPRITE_MC2 = 0, 15  # black (the outline), light grey: as the cartridge sets them
 
 
 def dress_hash(yard, floor, room, x, y):
@@ -90,6 +106,22 @@ class Floor:
                         name = base
                     blocked = t in (WALL, PIT, HAZARD) or (x, y) in standing
                     self.squares[oy + y][ox + x] = names.index(name) | (BLOCKED if blocked else 0)
+        # The figures: the party's kinds first, then each foe and person's.
+        self.kinds = list(PARTY)
+        self.figures = []
+        for r in self.f["rooms"]:
+            ox, oy = (r["i"] % rooms.COLS) * rooms.W, (r["i"] // rooms.COLS) * rooms.H
+            who = [(e["x"], e["y"], e["name"]) for e in r["foes"]]
+            if r.get("talk"):
+                who.append((r["talk"]["x"], r["talk"]["y"], PEOPLE[r["talk"]["who"]]))
+            for x, y, name in who:
+                if name not in self.kinds:
+                    self.kinds.append(name)
+                self.figures.append((ox + x, oy + y, self.kinds.index(name)))
+        # Kept in order down the area (those level in the rooms' order), so the engine
+        # looks at only the rows in sight.
+        self.figures.sort(key=lambda f: f[1])
+        assert len(self.kinds) <= KINDS_MAX and len(self.figures) <= FIGURES_MAX
         # Where you start: the start room's (7, 3), as the prototype puts you, or its door.
         s = self.f["start"]
         sx, sy = (s % rooms.COLS) * rooms.W + 7, (s // rooms.COLS) * rooms.H + 3
@@ -123,6 +155,20 @@ class Floor:
                         out.append(b)
         return bytes(out)
 
+    def shapes(self):
+        """Each kind's sprite shapes, the cartridge's (battlegfx.py --cart16: the body with
+        its outline drawn in): 2 k as drawn (facing right), 2 k + 1 mirrored (left); and
+        each kind's own colour."""
+        data = battlegfx.build16()
+        order = battlegfx.RACES + ["STRANGER"] + battlegfx.FOES
+        out, colours = bytearray(), []
+        for name in self.kinds:
+            n = order.index(name)
+            body = data[2176 + 128 * n:2176 + 128 * n + 64]
+            out += body + mirrored(body)
+            colours.append(data[4224 + n])
+        return bytes(out), colours
+
     def asset(self):
         """What the C64 is given (docs/walk.md, "The floor's asset"):
 
@@ -131,15 +177,43 @@ class Floor:
             4      each tile's colour RAM value (32)
             36     where you start: square x, square y (2)
             38     the squares, 48 x 24, a row at a time (1152)
-            1190   the characters, 8 bytes each, 0 blank then 4 a tile (8 + 32 a tile)"""
+            1190   the party's kinds, in marching order (4)
+            1194   how many kinds (1), then each one's colour (12)
+            1207   how many figures (1), then each one's square x, y and kind (32 x 3), in order
+                   down
+            1304   the characters, 8 bytes each, 0 blank then 4 a tile (8 + 32 a tile)
+            2048   the sprite shapes, 64 bytes each: kind k's 2 k (facing right), 2 k + 1 (left)"""
         out = bytearray([self.art.background, *self.art.shared, len(self.art.entries)])
         cols = [e.colour | 8 for e in self.art.entries]
         out += bytes(cols + [0] * (32 - len(cols)))
         out += bytes(self.start)
         for row in self.squares:
             out += bytes(row)
+        shapes, colours = self.shapes()
+        out += bytes(range(len(PARTY)))
+        out += bytes([len(self.kinds)] + colours + [0] * (KINDS_MAX - len(colours)))
+        figs = bytearray([len(self.figures)])
+        for x, y, k in self.figures:
+            figs += bytes([x, y, k])
+        out += figs + bytes(1 + 3 * FIGURES_MAX - len(figs))
+        assert len(out) == 1304
         out += self.charset()
+        assert len(out) <= 2048
+        out += bytes(2048 - len(out)) + shapes
         return bytes(out)
+
+
+def mirrored(shape):
+    """A multicolour sprite facing the other way: its 12 pairs of bits reversed, each pair
+    kept."""
+    out = bytearray()
+    for y in range(21):
+        bits = shape[3 * y] << 16 | shape[3 * y + 1] << 8 | shape[3 * y + 2]
+        flip = 0
+        for i in range(12):
+            flip = flip << 2 | (bits >> (2 * i)) & 3
+        out += bytes([flip >> 16, (flip >> 8) & 255, flip & 255])
+    return bytes(out) + bytes(64 - len(out))
 
 
 # ------------------------------------------------------------------ walking
@@ -207,26 +281,109 @@ def clamp_cell(v, cell):
     return max(cell * 8, min(cell * 8 + 7, v))
 
 
+class Party:
+    """The party as it's drawn (docs/walk.md, "The figures"): the leader's trail, how many
+    frames they've moved, whether they moved this one, and where each traveler was last
+    drawn and which way they face."""
+
+    def __init__(self, pos):
+        self.trail = [(pos[0] >> 4, pos[1] >> 4)]
+        self.steps, self.moved = 0, False
+        self.last_x = [pos[0] >> 4] * len(PARTY)
+        self.left = [False] * len(PARTY)
+
+    def step(self, pos):
+        at = (pos[0] >> 4, pos[1] >> 4)
+        self.moved = at != self.trail[-1]
+        if self.moved:
+            self.trail = (self.trail + [at])[-TRAIL:]
+            self.steps = (self.steps + 1) & 255
+
+
+def figures(floor, party, cam):
+    """The frame's figures as sprites: the party (each traveler GAP trail entries behind
+    the one before, not drawn until the trail is that long), then the floor's foes and
+    people; those in sight, with their shapes and colours, sorted down the screen and
+    given the VIC's sprites (allocate). Changes party: who faces which way."""
+    shapes = len(floor.kinds)
+    _, colours = floor.shapes()
+    figs = []
+    lead_x = party.trail[-1][0]
+    for k in range(len(PARTY)):
+        if len(party.trail) <= GAP * k:
+            continue
+        x, y = party.trail[-1 - GAP * k]
+        if x < party.last_x[k]:
+            party.left[k] = True
+        elif x > party.last_x[k]:
+            party.left[k] = False
+        party.last_x[k] = x
+        if party.moved and (party.steps + 4 * k) & 8:
+            y -= 1                                  # a step's bob
+        figs.append((x, y, 2 * k + party.left[k], colours[k]))
+    for sx, sy, kind in floor.figures:
+        x, y = sx * 16, sy * 16
+        figs.append((x, y, 2 * kind + (lead_x + 8 < x), colours[kind]))
+    shown = []
+    for x, y, shape, colour in figs:
+        px, py = x - cam[0] + SPRITE_DX, y - cam[1] + SPRITE_DY
+        if SPRITE_X_MIN <= px <= SPRITE_X_MAX and SPRITE_Y_MIN <= py <= SPRITE_Y_MAX:
+            shown.append((px, py, SHAPE_POINTER + shape, colour))
+    assert shapes * 2 <= 32
+    shown.sort(key=lambda f: f[1])                  # (stable: party first, then the floor's)
+    return allocate(shown)
+
+
+def allocate(shown):
+    """The VIC's 8 sprites shared down the screen: each figure, in order down it, takes the
+    next sprite in turn (0 to 7, then round again), if it's free by its top line; a sprite
+    is free REUSE lines below the top of the last figure it showed. (Since the figures come
+    in order down, the next in turn is always one free soonest.) A figure whose sprite
+    isn't free in time is left out, and so is a reuse past EVENTS_MAX; the turn stays.
+    Returns (sprite, x, y, pointer, colour, line it's set on: None for the first 8, set at
+    the frame's start), and how many were left out."""
+    free, out, left, n, events = [0] * 8, [], 0, 0, 0
+    last = [None] * 8
+    for px, py, ptr, colour in shown:
+        if free[n] > py or (last[n] is not None and events == EVENTS_MAX):
+            left += 1
+            continue
+        out.append((n, px, py, ptr, colour, None if last[n] is None else last[n] + 21))
+        events += last[n] is not None
+        last[n], free[n] = py, py + REUSE
+        n = (n + 1) % 8
+    return out, left
+
+
 def play(floor, sticks):
     """Each frame from the first shown: (leader x, leader y in sixteenths, camera x, camera y,
-    the scroller's stage). sticks[n] is the joystick as frame n's main loop reads it; the
-    camera it decides is shown from frame n + 1 (docs/walk.md, "A frame")."""
+    the scroller's stage, the figures as sprites and how many were left out). sticks[n] is
+    the joystick as frame n's main loop reads it; what it decides is shown from frame n + 1
+    (docs/walk.md, "A frame")."""
     pos = [floor.start[0] * 16 * SUB, floor.start[1] * 16 * SUB]
     cam = list(target(pos))
+    party = Party(pos)
     stage, dirs, out = IDLE, (0, 0), []
     for stick in sticks:
-        out.append((pos[0], pos[1], cam[0], cam[1], stage))
+        out.append((pos[0], pos[1], cam[0], cam[1], stage, figures(floor, party, cam)))
         walk(floor, pos, stick)
+        party.step(pos)
         want = target(pos)
         nxt = [ease(cam[0], want[0]), ease(cam[1], want[1])]
         if stage == IDLE:
             d = tuple((nxt[i] >> 3) - (cam[i] >> 3) for i in range(2))
             d = tuple(max(-1, min(1, v)) for v in d)
             if d != (0, 0):
-                dirs, stage = d, SHIFTED                # the screen shifted into the back buffer
+                dirs, stage = d, HALF                   # the screen's top half shifted
+            nxt = [clamp_cell(nxt[i], cam[i] >> 3) for i in range(2)]
+        elif stage == HALF:
+            stage = SHIFTED                             # its bottom half, and the edges
             nxt = [clamp_cell(nxt[i], cam[i] >> 3) for i in range(2)]
         elif stage == SHIFTED:
-            stage = COLOURED                            # the colours shifted; swap next
+            stage = SHADED                              # the shadow's first half shifted
+            nxt = [clamp_cell(nxt[i], cam[i] >> 3) for i in range(2)]
+        elif stage == SHADED:
+            stage = COLOURED                            # the rest, its edges; swap next
             nxt = [clamp_cell(nxt[i], (cam[i] >> 3) + dirs[i]) for i in range(2)]
         else:
             stage = IDLE                                # the swap frame: nothing heavy
