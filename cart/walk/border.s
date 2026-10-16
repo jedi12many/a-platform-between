@@ -34,7 +34,7 @@
         .export top_near0, top_far_0
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .import prog_next, prog_shown, irq_kind, irq_out, world_frame, floor
-        .import first_event
+        .import first_event, blast_rest
 
         .segment "HIGH"
 
@@ -219,8 +219,7 @@ bottom_below:
         lda #0
         sta wk_swap
         cli
-        jsr BLAST
-        jsr BLAST + SECOND_HALF
+        jsr blast_rest              ; (from the first row the frame loop hasn't: colours.s)
 @out:   jmp irq_out
 
 ; ----------------------------------------------------------------------------------------

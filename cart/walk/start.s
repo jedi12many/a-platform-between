@@ -13,6 +13,7 @@
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .import edge_mode, edge_base, wk_ncx, wk_ncy, draw_all, maps_build
         .import figures_init, figures_step, prog_next, prog_shown, view_d011, screen_b
+        .import precopy
         .import irq_kind
         .import __BSS_RUN__, __BSS_SIZE__, __HIGH_LOAD__, __HIGH_RUN__, __HIGH_SIZE__
         .import __DATA_RUN__, __DATA_SIZE__
@@ -188,7 +189,10 @@ wk_done:
         lda #0
         sta wk_busy
         cli
-        jmp loop
+        lda wk_swap                 ; a step's swap at the next bottom: its colours copied
+        beq :+                      ; behind the raster meanwhile (colours.s)
+        jsr precopy
+:       jmp loop
 
 ; The look: its colours, and its characters at WALK_CHARS (2 KB from the floor's).
 look_in:
