@@ -67,6 +67,7 @@ def meta():
         "palette": [list(c) for c in PALETTE],
         "colours": art.COLOURS,
         "terrain": art.TERRAIN,
+        "looks": art.LOOKS,
         "files": {name: {kind: {"w": w, "h": h, "dots": dots}
                          for kind, (w, h, dots) in kinds.items()}
                   for name, kinds in art.FILES.items()},

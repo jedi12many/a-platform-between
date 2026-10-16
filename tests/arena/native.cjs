@@ -22,6 +22,9 @@
 //   node native.cjs URL shove CODE SEED KEYS   the first turn: KEYS (arrows: R L U D) to
 //                                         move, then a Shove of the first foe in reach
 //   node native.cjs URL shot CODE PATH    a screenshot of the first turn
+//   node native.cjs URL looks YARD [DIR]  explore in each look (and by floor): the start
+//                                         room's tiles as the board draws them (twice);
+//                                         DIR: a screenshot of each, LOOK.png
 //
 // Prints one line of JSON, and anything the page threw.
 "use strict";
@@ -46,6 +49,25 @@ async function main() {
                                                 m, { timeout: ms || 20000 });
   const seeded = ["fight", "dash", "shove", "power", "blink", "first"].includes(what);
   const hash = "#scenario=" + code + (seeded ? "&seed=" + arg : "");
+  if (what === "looks") {
+    const out = { errors, looks: {} };
+    for (const look of ["", "forest", "mountain", "town", "dungeon"]) {
+      const p = await browser.newPage({ viewport: { width: 1400, height: 860 } });
+      p.on("pageerror", (e) => errors.push(e.message));
+      await p.goto(url + "#explore=" + code + ":WARDEN" + (look ? ":look=" + look : ""));
+      await p.waitForFunction(() => window.arena && window.arena.state().mode === "explore", null, { timeout: 20000 });
+      out.looks[look || "by floor"] = await p.evaluate(() => {
+        const f = window.arena.state().fight, x = window.arena.explore(), r = x.f.rooms[x.room];
+        const tiles = () => f.st.map.map((row, y) => row.split("").map((t, x) => f.dress(x, y, Number(t))));
+        return { look: f.look, room: r, tiles: tiles(), again: tiles() };
+      });
+      if (arg) await p.screenshot({ path: arg + "/" + (look || "by-floor") + ".png" });
+      await p.close();
+    }
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
   if (what === "explore") {
     const out = { errors };
     const X = () => page.evaluate(() => {

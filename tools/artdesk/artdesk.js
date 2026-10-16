@@ -13,6 +13,21 @@
 
 const FILE_TITLES = { figures: "Figures", effects: "Effects", tiles32: "Tiles 32",
                       tiles16: "Tiles 16" };
+
+// The looks (docs/art.md, Looks): the tiles come in a set per place, tiles32-forest and so
+// on; tiles32 and tiles16 themselves are the yard's. The Tiles buttons open the look chosen.
+function tileFile(size, look = state.look) { return `tiles${size}` + (look ? `-${look}` : ""); }
+function lookName(look) { return look ? look[0].toUpperCase() + look.slice(1) : "Yard"; }
+function titleOf(name) {
+  const [base, look] = name.split("-");
+  return FILE_TITLES[base] + (look ? ` (${lookName(look)})` : "");
+}
+function isSmall(name) { return name.startsWith("tiles16"); }
+// The terrain a tile redraws, if it's a variant (open2), as tools/art.py's variant_of.
+function variantOf(name) {
+  const base = name.replace(/[0-9]+$/, "");
+  return base !== name && META.terrain.includes(base) ? base : null;
+}
 const DOT_NAMES = {
   ".": "see-through", "a": "shared 1", "b": "shared 2", "c": "own", "#": "on",
   "k": "background", "d": "shared 1", "g": "shared 2", "o": "own",
@@ -23,7 +38,7 @@ const PREVIEW_EFFECT = { hires: 1, multi: 3 };  // white, cyan: as the battle sc
 
 let META = null;
 const files = {};                    // name -> {comments, header: [[key, ...values]], entries, dirty}
-const state = { file: "figures", index: 0, dot: 1, tool: "pen", undo: {}, redo: {} };
+const state = { file: "figures", look: "", index: 0, dot: 1, tool: "pen", undo: {}, redo: {} };
 
 // ------------------------------------------------------------------ the files
 
@@ -348,10 +363,26 @@ function el(tag, attrs, ...kids) {
 
 function drawFiles() {
   const nav = document.getElementById("files");
-  nav.replaceChildren(...Object.keys(FILE_TITLES).map((name) => el("button", {
-    type: "button", "data-file": name, "aria-pressed": String(name === state.file),
-    class: files[name].dirty ? "dirty" : "", text: FILE_TITLES[name],
-    on: { click: () => { state.file = name; state.index = 0; drawAll(); } } })));
+  const buttons = Object.keys(FILE_TITLES).map((base) => {
+    const name = base.startsWith("tiles") ? tileFile(base.slice(5)) : base;
+    return el("button", {
+      type: "button", "data-file": base, "aria-pressed": String(name === state.file),
+      class: files[name].dirty ? "dirty" : "", text: FILE_TITLES[base],
+      on: { click: () => { state.file = name; state.index = 0; drawAll(); } } });
+  });
+  // The look the tiles are for: a dot on one with changes not saved.
+  const look = el("select", { "data-look": "", title: "Which look's tiles (docs/art.md, Looks)",
+    on: { change: (ev) => {
+      state.look = ev.target.value;
+      if (state.file.startsWith("tiles")) { state.file = tileFile(state.file.slice(5, 7)); state.index = 0; }
+      drawAll();
+    } } });
+  [""].concat(META.looks).forEach((l) => {
+    const dirty = files[tileFile(32, l)].dirty || files[tileFile(16, l)].dirty;
+    look.append(el("option", { value: l, text: lookName(l) + (dirty ? " \u2022" : "") }));
+  });
+  look.value = state.look;
+  nav.replaceChildren(...buttons, el("label", { class: "look" }, el("span", { text: "Look" }), look));
 }
 
 function thumb(fileName, e) {
@@ -369,7 +400,7 @@ function drawList() {
   const list = document.getElementById("entry-list");
   list.replaceChildren(...f.entries.map((e, i) => {
     let tag = "";
-    if (e.kind === "tile") tag = i < 8 ? "terrain" : "scenery";
+    if (e.kind === "tile") tag = i < 8 ? "terrain" : variantOf(e.name) ? "variant" : "scenery";
     if (e.kind === "effect") tag = e.option;
     return el("li", { "data-name": e.name, "aria-selected": String(i === state.index),
                       on: { click: () => { state.index = i; drawAll(); } } },
@@ -396,8 +427,10 @@ function drawList() {
       needs.textContent = "Every race and foe has its figure.";
     }
   } else if (state.file.startsWith("tiles")) {
-    needs.textContent = "The first eight are the rules' terrain. Tiles after them are " +
-      "scenery, for rooms to come: kept and checked, not yet in the game.";
+    needs.textContent = "The first eight are the rules' terrain. After them, a tile named " +
+      "like one with a number (open2) is a variant of it, picked square by square; any " +
+      "other is scenery, now and then on open ground. Both are drawn while exploring " +
+      "(the arena's E13), not yet in the game.";
   }
 }
 
@@ -420,7 +453,7 @@ function drawHeader() {
       "Shared 2 itself)"
     : state.file === "tiles16" ? "every tile's colours (the cartridge sets these itself, in " +
       "cart/screen.s: change them there too)" : "every tile's colours";
-  box.replaceChildren(el("h2", { text: `${FILE_TITLES[state.file]}: ${what}` }), ...rows);
+  box.replaceChildren(el("h2", { text: `${titleOf(state.file)}: ${what}` }), ...rows);
 }
 
 function drawDots() {
@@ -487,11 +520,11 @@ function drawTile(ctx, fileName, t, rows, x, y, s, own) {
 function previewFigure(e) {
   const out = [];
   // The C version: 32-pixel squares, the body and its hires outline over it.
-  const floor32 = tileRows("tiles32", "open");
+  const floor32 = tileRows(tileFile(32), "open");
   let c = canvasOf(64, 32, 3);
   let ctx = c.getContext("2d");
-  drawTile(ctx, "tiles32", floor32, null, 0, 0, 3);
-  drawTile(ctx, "tiles32", floor32, null, 32, 0, 3);
+  drawTile(ctx, tileFile(32), floor32, null, 0, 0, 3);
+  drawTile(ctx, tileFile(32), floor32, null, 32, 0, 3);
   const colours = colourMap("figures", e, false);
   const black = { "#": 0, ".": null };
   paintRows(ctx, e.rows, colours, true, 4, 6, 3);
@@ -502,10 +535,10 @@ function previewFigure(e) {
   out.push(el("figure", {}, el("figcaption", { text: "The C version (C64, desktop, browser): " +
     "standing, and down" }), c));
   // The cartridge: 16-pixel squares, the outline drawn in, Shared 1 black.
-  const floor16 = tileRows("tiles16", "open");
+  const floor16 = tileRows(tileFile(16), "open");
   c = canvasOf(64, 32, 3);
   ctx = c.getContext("2d");
-  for (let y = 0; y < 2; y++) for (let x = 0; x < 4; x++) drawTile(ctx, "tiles16", floor16, null, x * 16, y * 16, 3);
+  for (let y = 0; y < 2; y++) for (let x = 0; x < 4; x++) drawTile(ctx, tileFile(16), floor16, null, x * 16, y * 16, 3);
   const cart = colourMap("figures", e, true);                // on squares (1, 1) and (3, 1)
   paintRows(ctx, outlined(e.rows), cart, true, 16 + FIGURE_DX, 16 + FIGURE_DY, 3);
   paintRows(ctx, outlined(fallen(e.rows)), cart, true, 48 + FIGURE_DX, 16 + FIGURE_DY, 3);
@@ -515,7 +548,7 @@ function previewFigure(e) {
 
 function previewTile(e) {
   const out = [];
-  const small = state.file === "tiles16";
+  const small = isSmall(state.file);
   const w = small ? 16 : 32;
   const s = small ? 4 : 2;
   let c = canvasOf(w * 3, w * 3, small ? 2 : 1);
@@ -533,10 +566,10 @@ function previewTile(e) {
 }
 
 function previewEffect(e) {
-  const floor32 = tileRows("tiles32", "open");
+  const floor32 = tileRows(tileFile(32), "open");
   const c = canvasOf(32, 32, 4);
   const ctx = c.getContext("2d");
-  drawTile(ctx, "tiles32", floor32, null, 0, 0, 4);
+  drawTile(ctx, tileFile(32), floor32, null, 0, 0, 4);
   paintRows(ctx, e.rows, colourMap("effects", e, false), isMulti(e), 4, 6, 4);
   return [el("figure", {}, el("figcaption", { text: "On a square (the C version's)" }), c)];
 }
@@ -946,7 +979,7 @@ if (window.top !== window) document.documentElement.classList.add("framed");
     document.getElementById("save").title = "Download the changed files, to send in (Ctrl+S)";
   }
   META = await (await fetch("meta.json")).json();
-  for (const name of Object.keys(FILE_TITLES)) await load(name);
+  for (const name of Object.keys(META.files)) await load(name);
   state.dot = 1;
   drawAll();
   status("Ready.", "");

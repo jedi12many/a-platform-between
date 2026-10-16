@@ -182,6 +182,28 @@ generator (`tools/arena/web/rooms.js`) must build the same floors from the same 
 (`tests/rooms/check_rooms.py`, on a thousand floors), with every door, the stairs and
 every foe reachable.
 
+## Looks
+
+A floor is drawn in a **look** ([art.md](art.md#looks)): the forest, the mountains, a town or
+a dungeon, the same terrain redrawn as that place. The look decides nothing: a wall is a
+wall in a wood or a cellar. In the prototype the floors go forest, mountain, town, dungeon
+and round again as you go down, or the brief's **The look** picks one for every floor
+(`#explore=YARD:CLASS:look=town`); a Departure or a Siding would name its own.
+
+Each square's tile is picked by a hash of where it is, so a room looks the same every time
+it's drawn, in a fight too, and two players see the same room:
+
+    n = ((floor * 9 + room) * 8 + y) * 16 + x
+    h = top byte of ((n XOR (yard << 4)) * 0x9E3779B1), 32 bits      (0-255)
+
+- **Scenery** on open ground with no foe, stairs or crate on it, when `h < 16` (one square
+  in sixteen): the look's scenery tile `h mod` their number.
+- Otherwise a **variant** of the square's terrain (`open2`, `open3`) when the look has any
+  and `h mod 8 = 0`: variant `(h / 8) mod` their number; else the terrain's own tile.
+
+Scenery is drawn, not stood on differently: you walk through mushrooms, and a fight on
+them is a fight on open ground. Things that block are terrain (cover, wall).
+
 ## On the C64 (later)
 
 - **Memory:** a room is 128 tiles (64 bytes, two to a byte); a floor's nine are built again
@@ -198,6 +220,9 @@ every foe reachable.
 - **Where you are** is kept in pixels while walking (a byte each way, the room being 256
   x 128 pixels at 16 a square), and the square is the pixel position over 16; collisions
   look up the tiles under the footprint's corners.
+- **A look** is an asset: its tiles' characters (`battlegfx.py`'s `look16`: 12 a tile, so
+  21 tiles at most, the eight terrain first) and its three shared colours, written to
+  `$D021`-`$D023` when the floor is fetched; each square's colour RAM is its tile's own.
 - **Authored rooms:** a Departure writes its rooms in Quest Script as it writes battle
   maps, with doors naming the room they lead to and things to act on (open, look, take,
   a check); generated floors are for Sidings like the Deep Yards.

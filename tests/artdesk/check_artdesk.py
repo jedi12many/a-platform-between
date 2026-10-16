@@ -9,7 +9,10 @@
    figure trimmed or squeezed to size, and pasted into one) lands in the file exactly as
    worked out here from the file's own text, and nothing else changes; the result is one
    tools/art.py accepts, and the graphics still build from it.
-4. The server writes nothing that breaks a rule, and nothing but the art files.
+4. The server writes nothing that breaks a rule (a look with more tiles than the
+   cartridge holds), and nothing but the art files.
+5. The looks (tiles32-forest...): chosen in the desk, edited there alone; each fits the
+   cartridge's characters (battlegfx.py --looks).
 """
 
 import json
@@ -69,7 +72,7 @@ def builds(folder):
     out = tempfile.mkdtemp()
     env = dict(os.environ, APB_ART=folder)
     p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "battlegfx.py"),
-                        os.path.join(out, "b.bgfx"), "--cart16", os.path.join(out, "t16")],
+                        os.path.join(out, "b.bgfx"), "--cart16", os.path.join(out, "t16"), "--looks"],
                        capture_output=True, text=True, env=env)
     shutil.rmtree(out)
     return p.returncode == 0, p.stdout + p.stderr
@@ -192,6 +195,14 @@ def run(folder):
          lambda t: t.replace(figure("ENFORCER", "red", range(2, 14))(""),
                              figure("ENFORCER", "red", squeezed)("")),
          "art pasted into a figure, squeezed: 14 columns into 12")
+    # A look's tile (docs/art.md, Looks): the forest chosen, a dot of a variant painted;
+    # the yard's tiles untouched.
+    yard16 = read(folder, "tiles16")
+    edit("paint", ["tiles16-forest", "open2", 4, 1, 1], "tiles16-forest",
+         lambda t: with_dot(t, "tiles16-forest", "open2", 1, 1, "o"),
+         "a look's tile painted (the forest's open2, 1,1: its own colour), and only that")
+    if read(folder, "tiles16") != yard16:
+        fail("painting the forest's tiles changed the yard's")
     # Flips and shifts that cancel out.
     edit("flip", ["tiles32", "hazard"], "tiles32", lambda t: t,
          "flipped twice, shifted right and back: the file as it was")
@@ -211,6 +222,14 @@ def run(folder):
         fail(f"a tiles file without its wall was written, or not refused for it: {code} {said}")
     else:
         ok(f"a file that breaks a rule isn't written: {said}")
+    many = read(folder, "tiles16-town").rstrip("\n") + "".join(
+        f"\n\ntile extra{k} black\n" + "\n".join(["kkkkkkkd"] * 15 + ["dddddddd"])
+        for k in range(art.TILES16_MOST + 1 - len(art.load("tiles16-town", folder).entries))) + "\n"
+    code, said = put("tiles16-town.txt", many)
+    if code != 400 or "room for" not in said:
+        fail(f"a look with more tiles than the cartridge holds wasn't refused: {code} {said}")
+    else:
+        ok(f"a look too big for the cartridge isn't written: {said}")
     code, said = put("../../Makefile", "x")
     code2, _ = put("notes.txt", "x")
     if code != 403 or code2 != 403:
