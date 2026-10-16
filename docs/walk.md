@@ -147,21 +147,24 @@ being looked at when its square is inside the window's edge squares.
 
 ## Measured
 
-On the harness's model of the C64 (its bad lines taking 40 cycles each; no sprites yet),
-over a walk of 1,467 frames (the script's knocks into walls and corners, then a walk
-through the floor's doors to its stairs, 136 coarse steps):
+On the harness's model of the C64 (its bad lines taking 40 cycles each, each sprite
+showing on a line 2), over two walks: yard 48213's first floor (1,467 frames: the script's
+knocks into walls and corners, then through the floor's doors to its stairs, 136 coarse
+steps) and yard 7602's eighth, the crowd (1,726 frames, 215 coarse steps):
 
-| | Cycles |
-|---|---|
-| A PAL frame | 19,656 |
-| Its 25 bad lines | 1,000 |
-| The busiest frame loop (a shift and its edges) | 13,471 |
-| The busiest interrupt (a swap and the colours) | 8,243 |
-| Late frames | 0 |
+| | The first floor | The crowd |
+|---|---|---|
+| A PAL frame | 19,656 | 19,656 |
+| Its 25 bad lines | 1,000 | 1,000 |
+| Sprites shown | 7,589, up to 7 a frame | 16,115, up to 14 a frame |
+| Left out | 0 | 42 |
+| The busiest frame loop | 11,545 | 15,373 |
+| The busiest interrupt (a swap and the colours) | 8,817 | 8,776 |
+| Late frames | 0 | 0 |
 
-The busiest loop and the busiest interrupt never share a frame (the interrupt's copy comes
-in the swap's frame, whose loop rests), so the costliest frame has about 5,000 cycles to
-spare: room for W2's sprites, which the harness will count too.
+The tightest frame is the swap's: the interrupt's colour copy, then a whole frame loop
+(walking, the camera, the figures) after it. With 12 figures in sight its loop is done by
+line 236 of the 250 it has.
 
 ## Tested
 
