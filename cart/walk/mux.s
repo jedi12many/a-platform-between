@@ -9,9 +9,10 @@
         .include "hw.inc"
         .include "zp.inc"
         .include "walk.inc"
+        .include "irq.inc"
 
-        .export world_frame, first_event, mux_a, mux_b, irq_kind, bottom_line
-        .import irq_out, bottom, prog_shown, view_d011, screen_b, top_spare
+        .export world_frame, first_event, mux_a, mux_b, bottom_line
+        .import irq_out, bottom, bottom_irq, prog_shown, view_d011, screen_b, top_spare
         .import top_near0, top_far_0
 
         .segment "HIGH"
@@ -109,11 +110,15 @@ world_frame:
         jmp :-
 @done:  lda slots_now
         sta slots_were
-        lda prog_shown
-        asl a
-        clc
-        adc #KIND_A
-        sta ev_kind
+        lda prog_shown              ; the events' handler: program A's or B's
+        lsr a
+        lda #<mux_a_irq
+        ldx #>mux_a_irq
+        bcc :+
+        lda #<mux_b_irq
+        ldx #>mux_b_irq
+:       sta ev_irq
+        stx ev_irq + 1
         lda #P_EVENTS
         sta ev_off
         rts
@@ -159,15 +164,16 @@ five:   .byte 0, 5, 10, 15, 20, 25, 30, 35
 first_event:
         ldx ev_left
         beq @none
-        lda ev_kind
-        sta irq_kind
+        lda ev_irq
+        sta TRAMPOLINE + 1
+        lda ev_irq + 1
+        sta TRAMPOLINE + 2
         lda VIC_RASTER
         clc
         adc #1
         cmp first_line
         bcc :+
-        lda ev_kind                 ; due now
-        cmp #KIND_A
+        lda prog_shown              ; due now
         bne @nb
         jmp mux_a
 @nb:    jmp mux_b
@@ -179,8 +185,7 @@ first_event:
 ; The bottom's interrupt asked for: at BOTTOM_LINE, a line sooner when ys is 6; if the
 ; raster's already there, the bottom now.
 to_bottom:
-        lda #KIND_BOTTOM
-        sta irq_kind
+        NEXT bottom_irq
         jsr bottom_line
         sta VIC_RASTER
         sec
@@ -201,8 +206,8 @@ bottom_line:
         rts
 
 ; ----------------------------------------------------------------------------------------
-; mux_a, mux_b: an event's interrupt, program A's or B's (irq.s comes here when irq_kind is
-; KIND_A or KIND_B): every event due by the next line set, then the next one's line asked
+; mux_a, mux_b: an event's interrupt, program A's or B's (mux_a_irq, mux_b_irq the way in
+; from the vector): every event due by the next line set, then the next one's line asked
 ; for (or the bottom's).
 ;   Before:  A, X and Y pushed; the interrupt acknowledged.
 .macro MUX base
@@ -248,7 +253,11 @@ one:    ldx ev_off
 last:   jmp to_bottom
 .endmacro
 
+mux_a_irq:
+        ENTER
 mux_a:  MUX PROG_A
+mux_b_irq:
+        ENTER
 mux_b:  MUX PROG_B
 
 bit_of: .byte 1, 2, 4, 8, 16, 32, 64, 128
@@ -257,8 +266,7 @@ not_bit:
 
         .segment "BSS"
 
-irq_kind:   .res 1              ; the next interrupt (KIND_*: irq.s)
-ev_kind:    .res 1              ; the events': KIND_A or KIND_B
+ev_irq:     .res 2              ; the events' handler: mux_a_irq or mux_b_irq
 slot:       .res 2              ; world_frame: the top's slots being filled...
 slots_used: .res 1              ; ...how many so far
 slots_now:  .res 1

@@ -11,10 +11,10 @@
         .import irq, nmi, gen_all, floor, walk_step, wk_pos, wk_stick
         .import camera_init, camera_step, wk_cam, wk_front
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
-        .import edge_mode, edge_base, wk_ncx, wk_ncy, draw_all, maps_build
+        .import edge_base, wk_ncx, wk_ncy, draw_all, maps_build
         .import figures_init, figures_step, prog_next, prog_shown, view_d011, screen_b
-        .import precopy
-        .import irq_kind
+        .import precopy, colour_row, colour_aim
+        .import world_irq
         .import __BSS_RUN__, __BSS_SIZE__, __HIGH_LOAD__, __HIGH_RUN__, __HIGH_SIZE__
         .import __DATA_RUN__, __DATA_SIZE__
 
@@ -56,9 +56,9 @@ walk_start:
         sta VIC_IRQ_ENA
         lda #$4C                    ; the vector: TRAMPOLINE's jmp irq (so $FFFF is $FF)
         sta TRAMPOLINE
-        lda #<irq
+        lda #<world_irq             ; (the first: below)
         sta TRAMPOLINE + 1
-        lda #>irq
+        lda #>world_irq
         sta TRAMPOLINE + 2
         lda #<TRAMPOLINE
         sta VEC_IRQ
@@ -115,24 +115,19 @@ walk_start:
         sta wk_pos + 3
         jsr camera_init
         jsr figures_init
-        ; The screen where the camera is: A's characters, the shadow's colours, shown.
+        ; The screen where the camera is: A's characters, the colours, shown.
         jsr cam_cells
         lda #<SCREEN_A
         sta edge_base
         lda #>SCREEN_A
         sta edge_base + 1
-        lda #0
-        sta edge_mode
         jsr draw_all
-        lda #<SHADOW
-        sta edge_base
-        lda #>SHADOW
-        sta edge_base + 1
-        lda #1
-        sta edge_mode
-        jsr draw_all
-        jsr BLAST
-        jsr BLAST + SECOND_HALF
+        jsr colour_aim              ; and the colours
+        ldx #0
+:       jsr colour_row
+        inx
+        cpx #ROWS
+        bne :-
         lda wk_d016
         sta VIC_CTRL2
         lda wk_d018
@@ -153,9 +148,8 @@ walk_start:
         sta screen_b
         lda wk_d011
         sta view_d011
-        lda #KIND_WORLD             ; the first interrupt: the world's sprites, at line 1
-        sta irq_kind                ; (border.s)
-        lda #WORLD_LINE
+        lda #WORLD_LINE             ; the first interrupt: the world's sprites, at line 1
+                                    ; (border.s)
         sta VIC_RASTER
         lda wk_d011                 ; the screen on: the band (black), till the view
         and #7

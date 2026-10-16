@@ -29,11 +29,12 @@
 
         .include "hw.inc"
         .include "walk.inc"
+        .include "irq.inc"
 
-        .export bottom, hud_irq, world_irq, top_irq, top_spare, screen_b, view_d011
+        .export bottom, bottom_irq, hud_irq, world_irq, top_irq, top_spare, screen_b, view_d011
         .export top_near0, top_far_0
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
-        .import prog_next, prog_shown, irq_kind, irq_out, world_frame, floor
+        .import prog_next, prog_shown, irq_out, world_frame, floor
         .import first_event, blast_rest
 
         .segment "HIGH"
@@ -111,6 +112,8 @@
 ; bottom: the band under the view, the frame begun, the HUD set up. Its interrupt comes at
 ; BOTTOM_LINE (243 when ys is 6), or mux.s comes here if the last event ran past it.
 ;   Before:  A, X and Y pushed; the interrupt acknowledged; interrupts off.
+bottom_irq:
+        ENTER
 bottom:
         lda view_d011
         and #7
@@ -191,8 +194,7 @@ bottom_below:
         sta VIC_CTRL1
         lda #<HUD_LINE
         sta VIC_RASTER
-        lda #KIND_HUD
-        sta irq_kind
+        NEXT hud_irq
         ; The HUD's sprites: where they go, their colours, multicolour (the portraits) or
         ; not, all on, at HUD_Y (every sprite's last figure began by 245, so it isn't
         ; started again). Their pointers come at 266.
@@ -228,6 +230,7 @@ bottom_below:
 ; the HUD's (for 268, at 267's end). Sprite 2 k is traveler k's portrait (kind k's shape,
 ; facing right), 2 k + 1 their health.
 hud_irq:
+        ENTER
         lda #<(HUD_LINE + 2)
 :       cmp VIC_RASTER              ; 266's cycle r (0-6, or 11-17)
         bne :-
@@ -242,8 +245,7 @@ hud_irq:
         sta VIC_CTRL1               ; world's, at line 1 (its ninth bit off)
         lda #WORLD_LINE
         sta VIC_RASTER
-        lda #KIND_WORLD
-        sta irq_kind
+        NEXT world_irq
         jmp irq_out
 
 
@@ -252,11 +254,11 @@ hud_irq:
 ; Y meets a line's low byte till its own, and their Ys written by 11 (the HUD's); and the
 ; next interrupt the top's.
 world_irq:
+        ENTER
         jsr world_frame
         lda #TOP_LINE
         sta VIC_RASTER
-        lda #KIND_TOP
-        sta irq_kind
+        NEXT top_irq
         jmp irq_out
 
 ; ----------------------------------------------------------------------------------------
@@ -265,6 +267,7 @@ world_irq:
 ; fetches for 54 and for 55, so they show from 55; and the view on at 55. Then the sprites'
 ; events (mux.s). Lines 48 + ys on are row 0's, black till then.
 top_irq:
+        ENTER
         lda view_d011
         and #7
         cmp #6

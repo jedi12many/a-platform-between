@@ -56,12 +56,6 @@ HUD_Y           = 11            ; the HUD's sprites' Y: line 267's low byte, sho
                                 ; (their pointers written in 266: no sprite's fetched at its end)
 EVENT_LAST      = 238           ; no sprite reused after this line (the bottom's interrupt
                                 ; comes at 243 or 244)
-KIND_BOTTOM     = 0             ; irq_kind: which interrupt comes next (irq.s's table)
-KIND_A          = 2             ; an event's, program A's
-KIND_B          = 4             ; B's
-KIND_HUD        = 6
-KIND_WORLD      = 8
-KIND_TOP        = 10
 TRAMPOLINE      = $FF00         ; the interrupt's way in: jmp irq, so $FFFF (its vector's high
                                 ; byte, the idle VIC's byte) is $FF, all black
 
@@ -85,26 +79,27 @@ STICK_RIGHT     = $08
 ; ------------------------------------------------------------------ the scroller
 IDLE            = 0             ; nothing under way
 HALF            = 1             ; the back screen's top half made
-SHIFTED         = 2             ; the back screen made; the colours next
-SHADED          = 3             ; the shadow's first half shifted
-COLOURED        = 4             ; the colours made; the swap at the next frame
-SHADOW          = $B200         ; the colours, as they'll be shown (1000 bytes); the
-                                ; program's variables after it, from $B600 (walk.cfg)
-; Generated code (gen.s): a byte's copy each, unrolled, 6002 bytes a block: its first 500
-; bytes' copies and an RTS, then the rest and an RTS (a screen's shift takes two frames).
-SHIFT_AB        = $2800         ; screen A to B, shifted by X - 41
-SHIFT_BA        = $4000         ; B to A
-SHADE_UP        = $5800         ; the shadow, in place, shifted: first byte first
-SHADE_DOWN      = $7000         ; last byte first
-BLAST           = $8800         ; the shadow to the colour RAM, top first
+SHIFTED         = 2             ; the back screen made
+SHADED          = 3             ; held: the colours next
+COLOURED        = 4             ; the swap at the next frame; its colours copied as the
+                                ; raster passes each row, the rest at the swap
+; Generated code (gen.s), a byte's copy each, unrolled.
+SHIFT_AB        = $2800         ; screen A to B, shifted by X - 41: 6002 bytes, its first
+SHIFT_BA        = $4000         ; 500 bytes' copies and an RTS, then the rest and an RTS
 OFFSET_BIAS     = 41            ; X = the shift (-41 to 41) + this
 SECOND_HALF     = 500 * 6 + 1   ; a block's second half, from its start
+COLOUR_ROWS     = $5800         ; the colour RAM's rows from the colour map, a row a call
+ROW_CODE        = 40 * 6 + 1    ; (to $6F88)
+AIM_ROWS        = $7000         ; each row's copy aimed at its row of the colour map, a row a
+AIM_CODE        = 40 * 3 + 1    ; call (to $7BD0)
 BORDER_COLOUR   = 0             ; black
 
 ; The area's characters and colours, a byte each (96 x 48), built from the squares at the
 ; start (edge.s), so an edge is a copy: the camera's clamp keeps every edge on the area.
 CHAR_MAP        = $A000         ; to $B1FF
-COLOUR_MAP      = $E000         ; to $F1FF, under the KERNAL (out)
+COLOUR_MAP      = $8800         ; to $9FFF: a page a row of squares (a square's two rows of
+                                ; characters have its colours), its 96 columns from the
+                                ; page's start
 
 ; ------------------------------------------------------------------ the figures
 SPRITE_SHAPES   = $D000         ; under the I/O (the VIC sees the RAM): 32 shapes

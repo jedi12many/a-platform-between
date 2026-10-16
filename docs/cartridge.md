@@ -162,7 +162,7 @@ Each module owns its part; nothing else touches it.
 | $46-$4B | the music player (`fe/c64/music.s`, for the cartridge) | its pointers and scratch: only in the interrupt, or with interrupts off |
 | $4C-$4F | free | |
 | $50-$71 | the walking engine (`cart/walk/`, [walk.md](walk.md)): its own program | pointers, 16-bit working values, the body's squares, scratch; the interrupt's pointers ($6E-$71) |
-| $6E-$8F | free | |
+| $72-$8F | free | |
 | $90-$FF | the KERNAL's, on a disk (while it loads) | |
 
 The interrupt (`split.s`) uses no zero page at all.

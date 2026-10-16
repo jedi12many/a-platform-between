@@ -5,10 +5,12 @@
 ;   IDLE      the step found: the shown screen's first half copied into the other, shifted
 ;             (SHIFT_AB or SHIFT_BA); the camera held in its cell
 ;   HALF      the rest of it, and the new edges drawn (edge.s); still held
-;   SHIFTED   the shadow of the colours' first half shifted the same way; still held
-;   SHADED    the rest of it, its edges drawn; the camera into the new cell; the interrupt
-;             swaps the screens and copies the colours
-;   COLOURED  the frame of the swap: nothing heavy; the camera held in its (new) cell
+;   SHIFTED   the colours' copies aimed at the rows to be shown (colours.s); still held
+;   SHADED    the camera into the new cell; the interrupt swaps the screens at the next
+;             frame, and the frame loop, done, copies each row's colours as the raster
+;             passes it (colours.s)
+;   COLOURED  the frame of the swap: its interrupt copied the rest; nothing heavy; the
+;             camera held in its (new) cell
 ;
 ; A frame's camera is shown from the next (the interrupt sets the registers).
 
@@ -18,7 +20,7 @@
 
         .export camera_init, camera_step, wk_cam, wk_stage, wk_front, wk_dir
         .import wk_pos, wk_d016, wk_d011, wk_d018, wk_swap
-        .import edge_mode, edge_base, wk_ncx, wk_ncy, edges
+        .import edge_base, wk_ncx, wk_ncy, edges, colour_aim
 
         .segment "CODE"
 
@@ -57,7 +59,7 @@ camera_step:
         jmp @shifted
 :       cmp #SHADED
         bne :+
-        jmp @shaded_half
+        jmp @shaded
 :       cmp #HALF
         bne :+
         jmp @half
@@ -108,8 +110,6 @@ camera_step:
         ldx #>SCREEN_A
 @edges: sta edge_base
         stx edge_base + 1
-        lda #0                      ; its characters
-        sta edge_mode
         jsr new_cells
         jsr edges
         lda #SHIFTED
@@ -122,31 +122,11 @@ camera_step:
         jsr clamp
         jmp @commit
 @shifted:
-        ldx shift_x                 ; the shadow's first half, shifted the same way
-        cpx #OFFSET_BIAS + 1
-        bcc :+
-        jsr SHADE_UP                ; forward: first byte first
-        jmp :++
-:       jsr SHADE_DOWN
-:       lda #SHADED
+        jsr colour_aim              ; the colours' copies aimed at the new rows
+        lda #SHADED
         sta wk_stage
         jmp @hold
-@shaded_half:
-        ldx shift_x                 ; the rest of it
-        cpx #OFFSET_BIAS + 1
-        bcc :+
-        jsr SHADE_UP + SECOND_HALF
-        jmp @shaded
-:       jsr SHADE_DOWN + SECOND_HALF
 @shaded:
-        lda #<SHADOW
-        sta edge_base
-        lda #>SHADOW
-        sta edge_base + 1
-        lda #1                      ; its colours
-        sta edge_mode
-        jsr new_cells
-        jsr edges
         lda #COLOURED
         sta wk_stage
         lda #1                      ; the swap, and the colours, at the next frame

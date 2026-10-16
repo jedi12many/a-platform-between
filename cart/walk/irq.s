@@ -1,7 +1,8 @@
 ; The walking engine's raster interrupts (docs/walk.md, "A frame" and "The border"): a
-; frame's are border.s's bottom, HUD, world and top, and the sprites' events between (mux.s);
-; irq_kind says which comes next. The vector is TRAMPOLINE's jmp, so that its high byte,
-; $FFFF, the byte the idle VIC shows, is $FF: black. They use no zero page but mux.s's.
+; frame's are border.s's bottom, HUD, world and top, and the sprites' events between (mux.s).
+; The vector is TRAMPOLINE's JMP, so that its high byte, $FFFF, the byte the idle VIC shows,
+; is $FF: black; each handler points the JMP at the next (irq.inc). They use no zero page
+; but mux.s's.
 
         .include "hw.inc"
         .include "walk.inc"
@@ -9,23 +10,13 @@
         .export irq, nmi, irq_out
         .export wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .export prog_shown
-        .import mux_a, mux_b, irq_kind, bottom, hud_irq, world_irq, top_irq
+        .import bottom_irq
 
         .segment "HIGH"
 
-irq:    pha
-        txa
-        pha
-        tya
-        pha
-        lda #$FF
-        sta VIC_IRQ
-        ldx irq_kind
-        lda kinds + 1, x
-        pha
-        lda kinds, x
-        pha
-        rts                         ; (to the kind's code)
+irq = bottom_irq                    ; (the harness's name for the way in)
+
+; Every handler's end (they're entered by irq.inc's ENTER).
 irq_out:
         pla
         tay
@@ -33,8 +24,6 @@ irq_out:
         tax
         pla
 nmi:    rti
-
-kinds:  .word bottom - 1, mux_a - 1, mux_b - 1, hud_irq - 1, world_irq - 1, top_irq - 1
 
         .segment "BSS"
 

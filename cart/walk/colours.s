@@ -1,29 +1,76 @@
-; A step's colours copied behind the raster (docs/walk.md, "The scroller"): the colour RAM
-; can't be doubled, so at a swap the shadow's copied in, top first, ahead of the raster
-; (BLAST). But a row's colours are read once, at its bad line: in the frame before the swap,
-; once the raster's past a row's bad line, that row can take its new colours already. So the
-; frame loop, done with that frame and waiting, copies each row as the raster passes it;
-; the swap's copy then starts at the first row not done. Both copy the shadow, so a row
-; copied twice (the swap coming in the middle of one) comes out the same.
-;
-; A row's copy is BLAST's own code run from the row's first pair to the next row's, an RTS
-; put there for the call (BLAST's pairs are LDA SHADOW+i / STA COLOUR_RAM+i, 6 bytes; the
-; first half's 500, an RTS, then the second's).
+; A step's colours (docs/walk.md, "The scroller"): the colour RAM can't be doubled, so at a
+; swap each row's colours come straight from the colour map (COLOUR_ROWS, gen.s), a row a
+; call, aimed beforehand at the map's rows the screen will show (colour_aim). A row's
+; colours are read once, at its bad line: in the frame before the swap, once the raster's
+; past a row's bad line, that row can take its new colours already. So the frame loop,
+; done with that frame and waiting, copies each row as the raster passes it; the swap's
+; copy (the bottom's interrupt) then the rows not done, top first, ahead of the raster.
+; Both copy from the map, so a row copied twice (the swap coming in the middle of one)
+; comes out the same.
 
         .include "hw.inc"
         .include "walk.inc"
 
-        .export precopy, blast_rest
-        .import wk_frame, view_d011
+        .export precopy, blast_rest, colour_row, colour_aim
+        .import wk_frame, view_d011, wk_ncx, wk_ncy
 
-OP_LDA          = $AD
-OP_RTS          = $60
 FIRST_DMA       = 48            ; row 0's bad line: 48 + ys
+
+; Row X's colours: its code, Y the screen's first column on the area. (A macro: the loop's
+; copy and the interrupt's each have their own call.)
+.macro ROW_COPY
+        .local call
+        lda row_lo, x
+        sta call + 1
+        lda row_hi, x
+        sta call + 2
+        ldy wk_ncx
+call:   jsr $FFFF
+.endmacro
+
+        .segment "CODE"
+
+; ----------------------------------------------------------------------------------------
+; colour_aim: each row's copy aimed at its row of squares' page in the colour map: row r
+; shows the area's row of characters wk_ncy + r, of squares (wk_ncy + r) / 2.
+;   Before:  no copy under way (the loop's, between steps).
+;   Changes: A, X, Y.
+colour_aim:
+        ldx #0
+@row:   ldy aim_lo, x
+        sty @call + 1
+        ldy aim_hi, x
+        sty @call + 2
+        txa
+        clc
+        adc wk_ncy
+        lsr a
+        clc
+        adc #>COLOUR_MAP
+@call:  jsr $FFFF
+        inx
+        cpx #ROWS
+        bne @row
+        rts
+
+aim_lo:
+        .repeat ROWS, r
+        .byte <(AIM_ROWS + AIM_CODE * r)
+        .endrepeat
+aim_hi:
+        .repeat ROWS, r
+        .byte >(AIM_ROWS + AIM_CODE * r)
+        .endrepeat
 
         .segment "HIGH"
 
-; Row R's first pair in BLAST.
-.define ROW_AT(r) (BLAST + (40 * (r) < 500) * 6 * 40 * (r) + (40 * (r) >= 500) * (SECOND_HALF + 6 * (40 * (r) - 500)))
+; ----------------------------------------------------------------------------------------
+; colour_row: row X of the colour RAM, the map's at the screen's cell (wk_ncx, wk_ncy).
+;   Before:  the copies aimed (colour_aim) at wk_ncy.
+;   Changes: A, Y.
+colour_row:
+        ROW_COPY
+        rts
 
 ; ----------------------------------------------------------------------------------------
 ; precopy: from the frame loop, done with a frame whose step swaps at the next bottom
@@ -35,7 +82,7 @@ precopy:
         lda #0
         sta rows_done
 @row:   ldx rows_done
-        cpx #ROWS - 1        ; (row 24's bad line is too near the bottom)
+        cpx #ROWS - 1               ; (row 24's bad line is too near the bottom)
         bcs @out
         txa                         ; the line after its bad line: 48 + ys + 8 r + 1
         asl a
@@ -58,24 +105,7 @@ precopy:
         bcs @out                    ; (too near the bottom's interrupt)
         cmp line_after
         bcc @wait
-        ldx rows_done               ; row X: an RTS at the next's first pair, then its own
-        lda row_lo + 1, x
-        sta @put + 1
-        sta restore_at + 1
-        lda row_hi + 1, x
-        sta @put + 2
-        sta restore_at + 2
-        lda #OP_RTS
-@put:   sta $FFFF
-        lda row_lo, x
-        sta @call + 1
-        lda row_hi, x
-        sta @call + 2
-@call:  jsr $FFFF
-        cpx #12                     ; (row 12 runs over the halves' RTS)
-        bne :+
-        jsr BLAST + SECOND_HALF
-:       jsr restore
+        jsr colour_row
         sei                         ; counted, if the swap hasn't come meanwhile
         lda wk_frame
         cmp frame_at
@@ -86,39 +116,28 @@ precopy:
 @out:   rts
 
 ; ----------------------------------------------------------------------------------------
-; blast_rest: the swap's copy (border.s's bottom), from the first row not done: the pair
-; the frame loop may have stopped with an RTS put back first.
+; blast_rest: the swap's copy (border.s's bottom), from the first row not done (the one the
+; frame loop may be in the middle of, again), top first.
 ;   Before:  in the bottom's interrupt.
 ;   Changes: A, X, Y.
 blast_rest:
-        jsr restore
         ldx rows_done
-        lda row_lo, x
-        sta @call + 1
-        lda row_hi, x
-        sta @call + 2
-@call:  jsr $FFFF
-        cpx #13                     ; (a row of the first half: the second's too)
-        bcs :+
-        jsr BLAST + SECOND_HALF
-:       lda #0
+rest_row:
+        ROW_COPY
+        inx
+        cpx #ROWS
+        bcc rest_row
+        lda #0
         sta rows_done
         rts
 
-; The pair an RTS was put at given its LDA back (BLAST's first pair's, an LDA, till one is).
-restore:
-        lda #OP_LDA
-restore_at:
-        sta BLAST
-        rts
-
 row_lo:
-        .repeat ROWS + 1, r
-        .byte <ROW_AT r
+        .repeat ROWS, r
+        .byte <(COLOUR_ROWS + ROW_CODE * r)
         .endrepeat
 row_hi:
-        .repeat ROWS + 1, r
-        .byte >ROW_AT r
+        .repeat ROWS, r
+        .byte >(COLOUR_ROWS + ROW_CODE * r)
         .endrepeat
 
         .segment "BSS"
