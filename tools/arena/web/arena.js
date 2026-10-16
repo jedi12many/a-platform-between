@@ -1005,7 +1005,9 @@ var board, ctx, view = { scale: 1, ox: 0, oy: 0 };
 function resize() {
   if (!fight) return;
   var r = board.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  var w = fight.st.map[0].length * SQ, h = fight.st.map.length * SQ;
+  /* The view: the whole map, or (scrolling while exploring) a window onto it. */
+  var w = (fight.view ? fight.view[0] : fight.st.map[0].length) * SQ;
+  var h = (fight.view ? fight.view[1] : fight.st.map.length) * SQ;
   board.width = Math.max(1, Math.round(r.width * dpr));
   board.height = Math.max(1, Math.round(r.height * dpr));
   view.scale = Math.min((r.width - 32) / w, (r.height - 32) / h) * dpr;
@@ -1015,8 +1017,8 @@ function resize() {
 
 function squareAt(cx, cy) {
   var dpr = window.devicePixelRatio || 1;
-  var x = Math.floor((cx * dpr - view.ox) / view.scale / SQ);
-  var y = Math.floor((cy * dpr - view.oy) / view.scale / SQ);
+  var x = Math.floor((cx * dpr - view.ox) / view.scale / SQ + (fight && fight.cam ? fight.cam.x : 0));
+  var y = Math.floor((cy * dpr - view.oy) / view.scale / SQ + (fight && fight.cam ? fight.cam.y : 0));
   if (!fight || y < 0 || x < 0 || y >= fight.st.map.length || x >= fight.st.map[0].length) return null;
   return { x: x, y: y };
 }
@@ -1068,11 +1070,22 @@ function frame(now) {
   ctx.fillRect(0, 0, board.width, board.height);
   ctx.setTransform(view.scale, 0, 0, view.scale, view.ox, view.oy);
   ctx.imageSmoothingEnabled = false;
+  var cam = fight.cam, x0 = 0, y0 = 0, x1 = 1e9, y1 = 1e9;
+  if (cam) {
+    /* Scrolling: the view's window onto the area, a C64 pixel's step at a time. */
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, fight.view[0] * SQ, fight.view[1] * SQ);
+    ctx.clip();
+    ctx.translate(-cam.x * SQ, -cam.y * SQ);
+    x0 = Math.floor(cam.x); y0 = Math.floor(cam.y);
+    x1 = x0 + fight.view[0] + 1; y1 = y0 + fight.view[1] + 1;
+  }
 
   /* The grid: none while exploring; coming up as a fight from exploring starts. */
   var grid = gridShown(now), tile;
-  for (y = 0; y < map.length; ++y) {
-    for (x = 0; x < map[y].length; ++x) {
+  for (y = Math.max(0, y0); y < Math.min(map.length, y1); ++y) {
+    for (x = Math.max(0, x0); x < Math.min(map[y].length, x1); ++x) {
       tile = ART.tiles.order[Number(map[y][x])] || "open";
       if (grid < 1) ctx.drawImage(tileSprite(tile, true), x * SQ, y * SQ);
       if (grid > 0) {
@@ -1244,6 +1257,7 @@ function frame(now) {
     ctx.globalAlpha = 1;
     return true;
   });
+  if (cam) ctx.restore();
 }
 
 /* ---------------------------------------------------- every button, always */
@@ -1514,7 +1528,10 @@ function onKey(e) {
   if (mode === "intro") {
     if (k === "ArrowDown") { pick(1); e.preventDefault(); }
     else if (k === "ArrowUp") { pick(-1); e.preventDefault(); }
-    else if (k === "Enter" && picked === -1) { e.preventDefault(); exploreStart(exploreBrief.cls || "WARDEN", Number($("yard").value) & 0xFFFF); }
+    else if (k === "Enter" && picked === -1) {
+      e.preventDefault();
+      exploreStart(exploreBrief.cls || "WARDEN", Number($("yard").value) & 0xFFFF, !!exploreBrief.scroll);
+    }
     else if (k === "Enter") { e.preventDefault(); start(); }
     return;
   }
@@ -1659,8 +1676,8 @@ async function boot() {
   var m = /scenario=([AR]-\d+)/.exec(location.hash);
   if (m) picked = Math.max(0, SCENARIOS.findIndex(function (s) { return s.code === m[1]; }));
   intro();
-  var ex = /explore=(\d+)(?::(\w+))?/.exec(location.hash);      /* #explore=YARD[:CLASS] */
-  if (ex && ROOMDATA) exploreStart((ex[2] || "WARDEN").toUpperCase(), Number(ex[1]) & 0xFFFF);
+  var ex = /explore=(\d+)(?::(\w+))?(:scroll)?/.exec(location.hash);  /* #explore=YARD[:CLASS[:scroll]] */
+  if (ex && ROOMDATA) exploreStart((ex[2] || "WARDEN").toUpperCase(), Number(ex[1]) & 0xFFFF, !!ex[3]);
   requestAnimationFrame(frame);
   window.arena = {                                                  /* for tests */
     state: function () { return { mode: mode, fight: fight, S: S, auto: auto, fast: fast }; },
