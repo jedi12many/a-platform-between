@@ -265,11 +265,50 @@ range: for playing.
    floors, and each floor to this page (one region, the stairs farthest, bands 10 apart,
    every foe, cache and person on free ground that can be reached, walls 6 to 25% of
    it).
-3. **The prototype:** walking an open floor, sneaking (S), bands rolling as you approach
-   (the rolls in the log), spotted bands shown, fights on their window with the view on the
-   turn.
+3. **The prototype** (built: *Walking an open floor, built*): walking an open floor,
+   sneaking (S), bands rolling as you approach (the rolls in the log), spotted bands shown,
+   fights on their window.
 4. **The C64:** the floor in memory without the character map, floors of any size up to
    the limit, then the fight on the window.
+
+## Walking an open floor, built
+
+In the arena's explore prototype (Explore the yards, the view **Open floor**, or V while
+walking; a link: `arena/#explore=48213:warden,rogue:open`), on the rules lab's own
+seeing: `core/next/seeing.c` is in the arena's WebAssembly beside the battle engine
+(`ar_see_begin`, `ar_see_step` in `tools/arena/web/arena.c`), and `rooms.js` hands it the
+floor `buildOpen` built, the party's Notice and Stealth (Wits or Intuition; the Stealth
+skill: `rooms.json`, from the travelers' sheets) and each band's (its foes' best Sense and
+Stealth, `registry/senses.txt`).
+
+- **Walking:** each square the leader steps onto is a step of `apb_seeing_step`; every
+  check goes in the log, worked out: the TN and each modifier, each helper's roll, the
+  best's roll and what came of it. A band you haven't spotted is "something out there"
+  and isn't drawn; spotted, it's drawn where it stands and marked red on the minimap; a
+  sound you heard is a yellow mark. The minimap clears out to the party's range.
+- **S** sneaks (half speed, and bands roll against 50 + the best Stealth, the others
+  helping or not); **L** steps the light (day, dusk, night; a floor starts with its look's:
+  forest and mountain by day, town at dusk, dungeon at night).
+- **A band that sees you** talks first if it parleys (rooms.md's *Talk*), else the fight:
+  an ambush, its first round, if you hadn't spotted it. **A** falls on a band you've
+  spotted, within 6 squares, that hasn't seen you: the first round is yours. (The battle
+  engine's surprise round, `surprise travelers` or `surprise foes` in the arena's spec.)
+- **The fight** is on a 16 x 8 window of the floor (`fightWindow`): inside it, holding the
+  band, its middle nearest the middle between the band and the leader (if both can't fit,
+  round the band); its foes where they stood, the party fanned out round the leader. On a
+  16 x 8 window and view, the view doesn't need to move.
+- **After:** won, the band is gone and you walk on from where you stood; fled, you're back
+  along your way, 6 squares from them if your way goes that far, the band still there,
+  alert, checking again only when you come 4 nearer; lost, the descent ends.
+
+The dice of a floor's seeing are seeded by its yard and floor, so a floor walked the same
+way rolls the same. `make test-arena-web` walks floors to the stairs, walking, sneaking, at
+night and falling on a band, and holds every step's checks to `tools/rules/seeing.py`'s on
+the same floor, party and way, roll for roll; then the fight's window, its foes and the
+first round, and walking again after.
+
+The engine holds 24 bands at most (`APB_SEE_BANDS_MAX`): an 80 x 40 floor has up to
+19.
 
 ## Still open
 

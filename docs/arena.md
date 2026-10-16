@@ -126,8 +126,10 @@ the **studio**, beside the art desk:
   back where you came from; lost, the descent ends. Crates put gear in your pack, and the
   stairs, once cleared, go a floor deeper. **The view:** one room a screen, or scrolling (the
   floor as one area under a 16 x 8 view that follows you; V switches): to compare
-  ([rooms.md](rooms.md#scrolling-to-compare)). A link opens it: `arena/#explore=48213:warden,rogue,channeler,medic`
-  (add `:scroll` for scrolling).
+  ([rooms.md](rooms.md#scrolling-to-compare)); or an **open floor**
+  ([open-floors.md](open-floors.md#walking-an-open-floor-built)). A link opens it:
+  `arena/#explore=48213:warden,rogue,channeler,medic` (add `:scroll` for scrolling, `:open`
+  for an open floor).
 - **The fight** is the battle map at whatever size the window is, drawn from the game's art
   (`content/art/`) with every pixel crisp. Your turn shows where you can go. Pick a square
   with the arrows (or the keypad's digits for diagonals) or by clicking a lit one. Foes in

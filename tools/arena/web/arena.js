@@ -1533,7 +1533,7 @@ function onKey(e) {
     else if (k === "Enter" && picked === -1) {
       e.preventDefault();
       exploreStart(exploreBrief.party || ["WARDEN", "ROGUE", "CHANNELER", "MEDIC"], Number($("yard").value) & 0xFFFF,
-                   !!exploreBrief.scroll);
+                   exploreBrief.scroll || false, exploreBrief.look);
     }
     else if (k === "Enter") { e.preventDefault(); start(); }
     return;
@@ -1673,6 +1673,8 @@ async function boot() {
   rules.ar_shoves = M.cwrap("ar_shoves", "string", ["number", "number", "number"]);
   rules.ar_quick = M.cwrap("ar_quick", "string", ["number"]);
   rules.ar_equip = M.cwrap("ar_equip", "string", ["number", "number", "number"]);
+  rules.ar_see_begin = M.cwrap("ar_see_begin", "string", ["number", "string"]);
+  rules.ar_see_step = M.cwrap("ar_see_step", "string", ["number", "number", "number", "number"]);
   board = $("board");
   ctx = board.getContext("2d");
   board.addEventListener("click", onClick);
@@ -1685,13 +1687,15 @@ async function boot() {
   var m = /scenario=([AR]-\d+)/.exec(location.hash);
   if (m) picked = Math.max(0, SCENARIOS.findIndex(function (s) { return s.code === m[1]; }));
   intro();
-  /* #explore=YARD[:CLASS,CLASS...][:scroll][:look=LOOK] */
-  var ex = /explore=(\d+)(?::((?!scroll|look)[\w,]+))?(:scroll)?(?::look=(\w+))?/.exec(location.hash);
-  if (ex && ROOMDATA) exploreStart(ex[2] || "WARDEN", Number(ex[1]) & 0xFFFF, !!ex[3], ex[4]);
+  /* #explore=YARD[:CLASS,CLASS...][:scroll|:open][:look=LOOK] */
+  var ex = /explore=(\d+)(?::((?!scroll|open|look)[\w,]+))?(:scroll|:open)?(?::look=(\w+))?/.exec(location.hash);
+  if (ex && ROOMDATA) exploreStart(ex[2] || "WARDEN", Number(ex[1]) & 0xFFFF, ex[3] === ":open" ? "open" : !!ex[3], ex[4]);
   requestAnimationFrame(frame);
   window.arena = {                                                  /* for tests */
     state: function () { return { mode: mode, fight: fight, S: S, auto: auto, fast: fast }; },
     explore: function () { return X; },
+    travelers: function () { return ROOMDATA.travelers; },
+    foes: function () { return ROOMDATA.foes; },
     walkTo: function (x, y) { exploreTo(x, y); },
     talk: function () { return talkState(); },
     say: function (k) { if (TALK && TALK.answer) TALK.answer(k); },
