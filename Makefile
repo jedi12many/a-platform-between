@@ -21,7 +21,7 @@ NEXT_HDR := core/next/apb_battle.h $(CORE_HDR)
 VM_SRC   := vm/vm.c client/desk.c core/src/battle.c core/src/yard.c
 VM_HDR   := vm/apb_vm.h client/apb_desk.h core/include/apb_battle.h
 
-.PHONY: all arena arena-web studio test-arena-web test-rules-next cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
+.PHONY: all walk arena arena-web studio test-arena-web test-rules-next cart test-cart artdesk test-art test test-6502 test-python test-vm test-term test-receipts test-combat c64 test-c64 test-modern test-waystation test-yards test-music demo play play-e18 play-yards modern web waystation site crosscheck registry check-registry check-content clean
 
 # The game's art (docs/art.md): figures, effects and tiles, as text, read by tools/art.py.
 ART := $(wildcard content/art/*.txt) tools/art.py
@@ -223,10 +223,30 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 	    $$(for f in build/cart/assets/a*.prg; do n=$$(basename $$f .prg); echo $$f=$$n; done) \
 	    || exit 1; done
 
+# Walk the yard (docs/walk.md, docs/plan-b.md's B1): the walking engine, a program of its
+# own for a Kung Fu Flash 2 or an SD2IEC (build/walk.prg, and on a disk, build/walk.d64:
+# LOAD"WALK",8 and RUN), walking yard 48213's first floor; tests/walk/run_walk.py holds it
+# to tools/walk/walk.py, frame by frame and row by row as the VIC reads them.
+WALK_MODS := start gen irq move camera edge floor
+
+build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/walk.inc cart/walk/walk.cfg \
+                cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py
+	@mkdir -p build/walk
+	python3 tools/walk/walk.py asset 48213 1 build/walk/floor.bin
+	@for m in $(WALK_MODS); do \
+	    ca65 -I cart -I cart/walk --bin-include-dir build -g -o build/walk/$$m.o cart/walk/$$m.s || exit 1; done
+	ld65 -C cart/walk/walk.cfg -o $@ -m build/walk/walk.map -Ln build/walk/walk.lbl \
+	    $(addprefix build/walk/,$(addsuffix .o,$(WALK_MODS)))
+	python3 tools/d64.py write build/walk.d64 "walk the yard" wy $@=walk
+
+walk: build/walk.prg
+	@echo "Walk the yard: build/walk.prg (a Kung Fu Flash 2 runs it), build/walk.d64 (LOAD\"WALK\",8 and RUN)"
+
 cart: build/apb.crt
 	@echo "Cartridge: build/apb.crt (Kung Fu Flash, or x64sc -cartcrt build/apb.crt); disk: build/apb-disk.d64"
 
-test-cart: build/apb.crt build/the-fare.d64 build/battle
+test-cart: build/apb.crt build/the-fare.d64 build/battle build/walk.prg
+	python3 tests/walk/run_walk.py build/walk.prg build/walk/walk.lbl
 	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
 	    > build/cart/desk.c64

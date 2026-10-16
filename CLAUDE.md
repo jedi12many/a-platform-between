@@ -137,7 +137,11 @@ against. For `cart/`:
   play `tests/battle/*.txt` to their reviewed logs, make fighters and roll as
   `tools/rules/combat.py` says, and play random battles event for event as `build/battle`. The
   cartridge plays The Fare from `content/` (`tools/cart/departure.py` makes its assets).
-  Needs `pip install qrcode opencv-python-headless`.
+  Needs `pip install qrcode opencv-python-headless`. And the walking engine (`cart/walk/`,
+  `docs/walk.md`, `make walk`: Plan B's scrolling floor, its own program for now):
+  `tests/walk/run_walk.py` walks yard 48213's first floor to its stairs and holds every
+  frame to `tools/walk/walk.py`, leader, camera and scroller, and every row as the VIC
+  reads it at its bad line; no frame late.
 
 - `make test-art`: the art desk (`tools/artdesk/`, `docs/art.md`) in headless Chromium, on
   a copy of `content/art/`: the art keeps its rules (`tools/art.py`) and the battle
