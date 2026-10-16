@@ -62,6 +62,29 @@ door draws the next one in its place: **flip-screen**, one room to a screen, as 
 - **The floor's map** shows the rooms you've seen, the doors between them, and where you
   are.
 
+## Scrolling, to compare
+
+*A prototype beside flip-screen, to feel the two; nothing's decided.* The explore brief's
+**View** (or V while walking) chooses; a link: `arena/#explore=48213:rogue:scroll`.
+
+- **One area.** The floor's nine rooms side by side, 48 x 24 squares, the same rooms as
+  flip-screen builds; where two rooms' doors meet, the doorway is a short passage of two
+  door squares through a double wall. You walk straight through: nothing redraws.
+- **The view** is 16 x 8 squares, a fight's size, and follows you: it eases toward you in
+  the middle (kept inside the area), stepping a sixteenth of a square at a time, a C64
+  pixel, as its fine scroll would. You see into the next room before you're in it, foes
+  and all.
+- **A fight** is still the room's: crossing into a room with foes in it, the view settles
+  on the room (squarely, as flip-screen shows it) while you step in off the doorway, and
+  then the fight begins there, as before. So the two views differ only in how you get
+  about, which is what's being compared. (A fight cut from the 16 x 8 round you, wherever
+  you stand, is the next step if scrolling wins: then a doorway inside the window isn't an
+  exit, and the window's edges are.)
+- **On the C64** (from *Still open*, below): sideways is the scroll register set above our
+  split; up and down moves the bad lines the split is timed against, so the split's code
+  and its timing tests would be reworked; colour RAM can't be double-buffered, so the
+  tiles would share its colour, or 640 bytes of it would move each character's scroll.
+
 ## A floor, from a yard
 
 A floor is made from a **yard** (a number 0..65535, as the Deep Yards' [deep-yards.md](deep-yards.md))
@@ -146,11 +169,5 @@ every foe reachable.
   rather than every fight starting as you come in; and sneaking past.
 - **Things to act on:** locks, levers, traps, a body to search: what a room's squares can
   hold beyond a cache.
-- **Bigger places:** a floor as one area bigger than the screen, scrolling under you, a
-  fight taking the 16 x 8 squares round you. The C64 can: its fine scroll registers, a
-  character's shift at a time, as games with a panel below scroll eight ways. Sideways is
-  easy (the scroll register set above our split); up and down moves the bad lines our
-  cycle-counted split is timed against, so the split's code and its timing tests would be
-  reworked; and colour RAM can't be double-buffered, so the tiles would share its colour or
-  the game would move 640 bytes of it each character's scroll. A prototype in the browser
-  first, to feel it against flip-screen.
+- **Scrolling or flip-screen:** prototyped both (*Scrolling, to compare*); the C64's cost
+  of scrolling is there. The verdict is for playing them.

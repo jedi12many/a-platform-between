@@ -123,7 +123,10 @@ the **studio**, beside the art desk:
   there's no grid until a fight, when it comes up and everyone settles onto a square. Coming into a room with
   foes in it starts the fight there, on the room's own map; won, you walk on; fled, you're
   back where you came from; lost, the descent ends. Crates put gear in your pack, and the
-  stairs, once cleared, go a floor deeper. A link opens it: `arena/#explore=48213:rogue`.
+  stairs, once cleared, go a floor deeper. **The view:** one room a screen, or scrolling (the
+  floor as one area under a 16 x 8 view that follows you; V switches): to compare
+  ([rooms.md](rooms.md#scrolling-to-compare)). A link opens it: `arena/#explore=48213:rogue`
+  (add `:scroll` for scrolling).
 - **The fight** is the battle map at whatever size the window is, drawn from the game's art
   (`content/art/`) with every pixel crisp. Your turn shows where you can go. Pick a square
   with the arrows (or the keypad's digits for diagonals) or by clicking a lit one. Foes in

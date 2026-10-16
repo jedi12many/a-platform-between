@@ -325,6 +325,56 @@ def check_explore():
                                   if there["foes"] else ", walked into"))
 
 
+def check_scroll():
+    """Exploring, scrolling (docs/rooms.md): the same floor as one area, the nine rooms side by
+    side; a 16 x 8 view that follows you; across a doorway into the next room, the view
+    settles on that room and its fight is on the room's own map, you one square in off the
+    doorway, as one room a screen has it."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "rooms"))
+    import rooms
+    out = page("explore", "48213:warden:scroll")
+    if not out:
+        return
+    floor = rooms.build(48213, 1)
+    area = ["".join(floor["rooms"][(y // 8) * 3 + x]["rows"][y % 8] for x in range(3)) for y in range(24)]
+    start, held, rest = out["start"], out["held"], out["rest"]
+    bad = []
+    if start["map"] != area:
+        bad.append("the area isn't the reference's rooms side by side")
+    if not start["scroll"] or start["cam"] is None:
+        bad.append("no view onto the area")
+    elif rest["cam"]["x"] <= start["cam"]["x"]:
+        bad.append(f"walking right, the view stayed at {rest['cam']} (from {start['cam']})")
+    elif any(abs(v * 16 - round(v * 16)) > 1e-9 for v in rest["cam"].values()):
+        bad.append(f"the view stands between C64 pixels: {rest['cam']}")
+    if held["grid"] != 0:
+        bad.append("the grid shows while exploring")
+    door = [d for d, _, _ in rooms.DIRS if d in floor["rooms"][floor["start"]]["doors"]][0]
+    there = floor["rooms"][rooms.neighbour(floor["start"], door)]
+    f = out.get("fight") or {}
+    if out["next"]["room"] != there["i"]:
+        bad.append(f"across the {door} doorway is room {out['next']['room']}, not {there['i']}")
+    elif there["foes"]:
+        inner = [there["doors"][rooms.OPPOSITE[door]][0], there["doors"][rooms.OPPOSITE[door]][1]]
+        inner = [min(14, max(1, inner[0])), min(6, max(1, inner[1]))]
+        if f.get("map") != there["rows"]:
+            bad.append("the fight isn't on the room's own map")
+        elif f["fighters"][0][1:] != inner:
+            bad.append(f"the fight starts with you at {f['fighters'][0][1:]}, not one square in at {inner}")
+        elif out.get("gridUp") != 1:
+            bad.append("the grid isn't up once the fight's begun")
+        elif (out.get("after") or {}).get("mode") not in ("explore", "lost"):
+            bad.append("the fight didn't end back in walking")
+    if out["errors"]:
+        bad.append(f"the page threw {out['errors'][:2]}")
+    if bad:
+        fail("explore, scrolling: " + "; ".join(bad))
+    else:
+        ok(f"explore, scrolling: the floor as one area, the view following you a C64 pixel at a time "
+           f"(to x {rest['cam']['x']}); across the doorway, room {there['i'] + 1}"
+           + ("'s fight on its own map, you a square in, the grid up, then walking again" if there["foes"] else ""))
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -386,6 +436,7 @@ def main():
         check_first()
         check_rules()
         check_explore()
+        check_scroll()
     finally:
         server.terminate()
         server.wait()

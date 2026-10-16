@@ -53,22 +53,32 @@ async function main() {
       return { mode: s.mode, room: x.room, x: x.x, y: x.y, cleared: x.cleared, lost: x.lost, pack: x.pack,
                map: s.fight && s.fight.st.map, fighters: s.fight && s.fight.st.fighters.map((f) => [f.side, f.x, f.y]),
                doors: x.f.rooms[x.room].doors, buttons: window.arena.buttons(), px: x.px, py: x.py,
-               grid: window.arena.grid(),
+               grid: window.arena.grid(), scroll: x.scroll, cam: s.fight && s.fight.cam,
                side: document.getElementById("cards").innerText };
     });
     await page.goto(url + "#explore=" + code);
     await until("explore");
     out.start = await X();
-    /* Holding a key walks smoothly: a third of a second, and you're between squares. */
-    await page.keyboard.down("ArrowLeft");
+    /* Holding a key walks smoothly: a third of a second, and you're between squares (left;
+     * scrolling, right, so the view follows away from the area's left edge). */
+    const key = out.start.scroll ? "ArrowRight" : "ArrowLeft";
+    await page.keyboard.down(key);
     await page.waitForTimeout(330);
     out.held = await X();
-    await page.keyboard.up("ArrowLeft");
-    await page.waitForTimeout(100);
-    const door = Object.values(out.start.doors)[0];
-    await page.evaluate(([x, y]) => window.arena.walkTo(x, y), door);
+    await page.keyboard.up(key);
+    await page.waitForTimeout(600);
+    out.rest = await X();
+    /* Then through the start room's first door (scrolling: on into the next room's doorway). */
+    const side = Object.keys(out.start.doors)[0], door = out.start.doors[side];
+    const ox = out.start.scroll ? (out.start.room % 3) * 16 : 0, oy = out.start.scroll ? Math.floor(out.start.room / 3) * 8 : 0;
+    const step = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] }[side];
+    const go = out.start.scroll ? [door[0] + ox + step[0], door[1] + oy + step[1]] : door;
+    await page.evaluate(([x, y]) => window.arena.walkTo(x, y), go);
     await page.waitForFunction((r) => window.arena.explore().room !== r, out.start.room, { timeout: 20000 });
     await page.waitForTimeout(400);
+    /* Scrolling, the view settles on the room before its fight. */
+    await page.waitForFunction(() => window.arena.state().mode !== "explore" || !window.arena.explore().settle,
+                               null, { timeout: 20000 });
     out.next = await X();
     if (out.next.mode !== "explore") {
       await until("turn");
