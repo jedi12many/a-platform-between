@@ -242,7 +242,182 @@ var ROOMS = (function () {
     return out;
   }
 
-  return { build: build, next: next, fanOut: fanOut, BACK: BACK, COLS: COLS, ROWS: ROWS, W: W, H: H };
+  /* ------------------------------------------------------------ open floors
+   * docs/open-floors.md, "A floor, from a yard": one open area, clusters for walls, bands
+   * set apart by distance. The same as tools/rooms/rooms.py's build_open. */
+  var STEP8 = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
+  var STEP4 = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+
+  function openSize(floor) { return floor <= 2 ? [48, 24] : floor <= 5 ? [64, 32] : [80, 40]; }
+  function crow(a, b) { return Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1])); }
+  function walks(t) { return t !== 1 && t !== 2 && t !== 5; }
+  function stands(t) { return t === 0 || t === 3 || t === 4 || t === 6; }
+
+  /* Steps on foot from s, 8 ways: {"x,y": steps}. */
+  function byFoot(t, s) {
+    var h = t.length, w = t[0].length, dist = {}, todo = [s], k, p, q, i;
+    dist[s[0] + "," + s[1]] = 0;
+    for (i = 0; i < todo.length; ++i) {
+      p = todo[i];
+      for (k = 0; k < 8; ++k) {
+        q = [p[0] + STEP8[k][0], p[1] + STEP8[k][1]];
+        if (q[0] < 0 || q[1] < 0 || q[0] >= w || q[1] >= h || (q[0] + "," + q[1]) in dist || !walks(t[q[1]][q[0]])) continue;
+        dist[q[0] + "," + q[1]] = dist[p[0] + "," + p[1]] + 1;
+        todo.push(q);
+      }
+    }
+    return dist;
+  }
+
+  /* The first of `list` by `key` (an array, compared in order). */
+  function least(list, key) {
+    var best = null, bk = null, i, k, j, c;
+    for (i = 0; i < list.length; ++i) {
+      k = key(list[i]);
+      c = 0;
+      if (bk) for (j = 0; j < k.length && !c; ++j) c = k[j] < bk[j] ? -1 : k[j] > bk[j] ? 1 : 0;
+      if (!bk || c < 0) { best = list[i]; bk = k; }
+    }
+    return best;
+  }
+
+  function buildOpen(yard, floor, w, h) {
+    var size = openSize(floor), state, t = [], x, y, i, k, c, n, blob, p, q, d, kind, ok, sy, start, dist,
+        squares = [], standing, stairs, spots, tries, bands = [], taken = {}, caches = [], foes = {}, clear,
+        people = [], v, half, rest, hiding, g, count, L, names, where, seen, todo, key;
+    w = w || size[0]; h = h || size[1];
+    state = mix((yard ^ 0x0F10) & 0xFFFF, (floor * 256 + 254) & 0xFFFF);
+    function r(m) { state = xs(state); return state % m; }
+    function inside(a) { return a[0] >= 1 && a[0] <= w - 2 && a[1] >= 1 && a[1] <= h - 2; }
+    function has(list, a) { return list.some(function (b) { return b[0] === a[0] && b[1] === a[1]; }); }
+    /* 1. The shell. */
+    for (y = 0; y < h; ++y) {
+      t.push([]);
+      for (x = 0; x < w; ++x) t[y].push(x === 0 || y === 0 || x === w - 1 || y === h - 1 ? 1 : 0);
+    }
+    /* 2. Clusters. */
+    n = Math.floor((w - 2) * (h - 2) / 24);
+    for (c = 0; c < n; ++c) {
+      p = [2 + r(w - 4), 2 + r(h - 4)];
+      kind = 5 + r(20);
+      blob = [p];
+      for (i = 0; i < kind - 1; ++i) {
+        p = blob[r(blob.length)];
+        d = STEP4[r(4)];
+        q = [p[0] + d[0], p[1] + d[1]];
+        if (inside(q) && !has(blob, q)) blob.push(q);
+      }
+      ok = blob.every(function (b) {
+        return t[b[1]][b[0]] !== 1 && STEP8.every(function (e) { return t[b[1] + e[1]][b[0] + e[0]] !== 1; });
+      });
+      if (!ok) continue;
+      blob.forEach(function (b) { t[b[1]][b[0]] = 1; });
+      for (i = r(3); i > 0; --i) {
+        p = blob[r(blob.length)];
+        d = STEP8[r(8)];
+        k = [4, 4, 3, 6][r(4)];
+        q = [p[0] + d[0], p[1] + d[1]];
+        if (t[q[1]][q[0]] === 0) t[q[1]][q[0]] = k;
+      }
+    }
+    /* 3. Open ground. */
+    n = Math.floor((w - 2) * (h - 2) / 96);
+    for (c = 0; c < n; ++c) {
+      x = 1 + r(w - 2); y = 1 + r(h - 2); k = r(5);
+      if (t[y][x] === 0 && STEP8.every(function (e) { var u = t[y + e[1]][x + e[0]]; return u !== 1 && u !== 2 && u !== 5; }))
+        t[y][x] = [3, 3, 2, 5, 4][k];
+    }
+    /* 4. The start. */
+    sy = 1 + r(h - 2);
+    for (y = 0; y < h; ++y) for (x = 0; x < w; ++x) if (walks(t[y][x])) squares.push([x, y]);
+    start = least(squares, function (a) { return [a[0], Math.abs(a[1] - sy), a[1]]; });
+    /* 5. One region. */
+    dist = byFoot(t, start);
+    for (y = 0; y < h; ++y) for (x = 0; x < w; ++x) if (walks(t[y][x]) && !((x + "," + y) in dist)) t[y][x] = 1;
+    squares = squares.filter(function (a) { return (a[0] + "," + a[1]) in dist; });
+    function far(a) { return dist[a[0] + "," + a[1]]; }
+    /* 6. The stairs. */
+    stairs = least(squares.filter(function (a) { return t[a[1]][a[0]] === 0; }), function (a) { return [-far(a), a[1], a[0]]; });
+    /* 7. Bands. */
+    n = Math.max(1, Math.floor(squares.length / 150));
+    standing = squares.filter(function (a) { return stands(t[a[1]][a[0]]); });
+    spots = [least(standing.filter(function (a) { return crow(a, stairs) >= 2; }),
+                   function (a) { return [crow(a, stairs), a[1], a[0]]; })];
+    tries = 0;
+    while (spots.length < n && tries < 64 * n) {
+      ++tries;
+      q = [1 + r(w - 2), 1 + r(h - 2)];
+      if (stands(t[q[1]][q[0]]) && (q[0] + "," + q[1]) in dist && !(q[0] === stairs[0] && q[1] === stairs[1]) &&
+          crow(q, start) >= 10 && spots.every(function (o) { return crow(q, o) >= 10; })) spots.push(q);
+    }
+    spots.forEach(function (spot, b) {
+      hiding = r(4) !== 0;
+      g = floor + Math.floor(far(spot) / 16);
+      count = Math.min(4, 1 + Math.floor(g / 3) + (b === 0 ? 1 : 0));
+      L = Math.min(4, 1 + Math.floor(g / 2));
+      names = [];
+      for (i = 0; i < count; ++i) names.push(POOL[r(L)]);
+      where = [spot];
+      seen = {}; seen[spot[0] + "," + spot[1]] = 1;
+      todo = [spot];
+      while (todo.length && where.length < count) {
+        p = todo.shift();
+        for (k = 0; k < 8 && where.length < count; ++k) {
+          q = [p[0] + FAN[k][0], p[1] + FAN[k][1]];
+          key = q[0] + "," + q[1];
+          if (seen[key] || q[0] < 0 || q[1] < 0 || q[0] >= w || q[1] >= h) continue;
+          seen[key] = 1;
+          if (!stands(t[q[1]][q[0]]) || (q[0] === stairs[0] && q[1] === stairs[1]) ||
+              (q[0] === start[0] && q[1] === start[1]) || taken[key]) continue;
+          where.push(q);
+          todo.push(q);
+        }
+      }
+      where.forEach(function (a) { taken[a[0] + "," + a[1]] = 1; });
+      bands.push({ x: spot[0], y: spot[1], hiding: hiding, stairs: b === 0,
+                   parley: b > 0 && mix((yard ^ 0x7A1C) & 0xFFFF, (floor * 64 + b) & 0xFFFF) % 3 === 0,
+                   foes: names.slice(0, where.length).map(function (nm, j) {
+                     return { name: nm, x: where[j][0], y: where[j][1] };
+                   }) });
+    });
+    /* 8. Caches. */
+    n = 1 + Math.floor(squares.length / 600);
+    for (c = 0; c < n; ++c) {
+      for (i = 0; i < 64; ++i) {
+        q = [1 + r(w - 2), 1 + r(h - 2)];
+        if (stands(t[q[1]][q[0]]) && (q[0] + "," + q[1]) in dist && !(q[0] === stairs[0] && q[1] === stairs[1]) &&
+            crow(q, start) >= 6 && spots.every(function (o) { return crow(q, o) >= 4; }) &&
+            caches.every(function (o) { return crow(q, [o.x, o.y]) >= 4; })) {
+          caches.push({ item: CACHE[r(5)], x: q[0], y: q[1] });
+          break;
+        }
+      }
+    }
+    /* 9. People. */
+    bands.forEach(function (b) { b.foes.forEach(function (f) { foes[f.x + "," + f.y] = [f.x, f.y]; }); });
+    clear = standing.filter(function (a) {
+      return !(a[0] === stairs[0] && a[1] === stairs[1]) && spots.every(function (o) { return crow(a, o) >= 6; }) &&
+        Object.keys(foes).every(function (f) { return crow(a, foes[f]) >= 6; }) &&
+        caches.every(function (o) { return !(o.x === a[0] && o.y === a[1]); });
+    });
+    if (clear.length) {
+      v = least(clear, function (a) { return [Math.abs(far(a) - 8), a[1], a[0]]; });
+      people.push({ who: "trader", x: v[0], y: v[1] });
+      if (floor === 2 || floor === 3) {
+        rest = clear.filter(function (a) { return crow(a, v) >= 4; });
+        if (rest.length) {
+          half = Math.floor(far(stairs) / 2);
+          p = least(rest, function (a) { return [Math.abs(far(a) - half), a[1], a[0]]; });
+          people.push({ who: "courier", x: p[0], y: p[1] });
+        }
+      }
+    }
+    return { yard: yard, floor: floor, w: w, h: h,
+             rows: t.map(function (row) { return row.join(""); }),
+             start: start, stairs: stairs, bands: bands, caches: caches, people: people };
+  }
+
+  return { build: build, buildOpen: buildOpen, openSize: openSize, next: next, fanOut: fanOut, BACK: BACK, COLS: COLS, ROWS: ROWS, W: W, H: H };
 })();
 
 if (typeof module !== "undefined") module.exports = ROOMS;

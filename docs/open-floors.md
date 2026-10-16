@@ -2,8 +2,10 @@
 
 *A proposal (after [rooms.md](rooms.md)'s scrolling prototype, its zoom and minimap). Built
 so far: **being seen**, in the rules lab (`core/next/seeing.c`, its reference
-`tools/rules/seeing.py`, `tests/seeing/`: *Being seen, built*). Still to build: the open
-floors themselves, in the prototype and then on the C64 ([walk.md](walk.md)).*
+`tools/rules/seeing.py`, `tests/seeing/`: *Being seen, built*), and the **generator**
+(*A floor, from a yard*: `build_open` in `tools/rooms/rooms.py`, `buildOpen` in the
+prototype's `rooms.js`). Still to build: walking an open floor in the prototype, then the
+C64 ([walk.md](walk.md)).*
 
 Scrolling showed the floor works as one place. So the rooms go: a floor is **one open
 area**, walked as now, with walls only where something stands (a clump of trees, rocks, a
@@ -13,24 +15,81 @@ happens, and the view goes to whoever's turn it is, even if that's a foe you can
 
 ## A floor
 
-- **One area**, W x H squares, a solid border round it. Its size is the floor's (from the
-  yard and the depth); the prototype's is 48 x 24 now and can be 80 x 40 or more. On the
-  C64 a floor stays within 6 x 6 of today's rooms' worth (about 96 x 48: see
-  *On the C64*).
+- **One area**, W x H squares, a solid border round it: 48 x 24 on floors 1 and 2, 64 x
+  32 on 3 to 5, 80 x 40 from 6 down. On the C64 a floor stays within about 96 x 48 (*On
+  the C64*).
 - **Clusters, not rooms.** The generator scatters **clusters** of the look's wall (a
   stand of trees in the forest, a crag, a block of houses in the town, a pillar mass in
-  the dungeon): blobs of 3 to 12 squares, spaced so no two touch, with cover, rough and
-  high ground in their lee and pits and hazards in the open between. Then it checks the
-  floor's walkable squares are **one region** (a flood fill from the start) and breaks
-  through any cluster that walls a part off.
-- **Places on it**, set apart by distance rather than walls: the start, the stairs (the
-  farthest walkable square from the start, more or less), caches, people (the trader's
-  camp, the lost traveler: rooms.md's *People*) and **encounters**.
-- **An encounter** is a band of foes standing together (as a room's foes were), on a
-  spot at least 10 squares from the start and from each other, facing a way. The floor
-  holds about one per 150 walkable squares; the stairs always have one.
+  the dungeon): blobs of 5 to 24 squares, spaced so no two touch (about an eighth of the floor), with cover, rough and
+  high ground in their lee and pits and hazards in the open between. Then the floor's
+  walkable squares are made **one region** (a flood from the start; any pocket a cluster
+  closed off is filled in).
+- **Places on it**, set apart by distance rather than walls: the start (on the west
+  side), the stairs (the walkable square farthest from the start), caches, people (Vell's
+  camp, and Pell on floors 2 and 3: rooms.md's *People*) and **bands**.
+- **A band** is a few foes standing together (as a room's foes were), at a spot at least
+  10 squares from the start and from each other, hiding or open. The floor holds one per
+  150 walkable squares; the stairs always have one, its foes one more.
 - **The minimap's fog** is cleared by distance (6 squares round the party), so it's
   already right for an open floor.
+
+### A floor, from a yard
+
+As rooms.md's floors are, from the yard and the floor number, by `xs` and `mix` (the
+Deep Yards'): `r()` draws from a xorshift16 whose state starts at
+`mix(yard XOR 0x0F10, floor × 256 + 254)`, each draw one `xs` step, "r() mod n" that
+16-bit number mod n. Tiles are the battle's (0 open, 1 wall, 2 pit, 3 rough, 4 cover, 5
+hazard, 6 high ground); **walkable** is anything but wall, pit and hazard, a **stand**
+open, rough, cover or high ground. Squares next to each other touch 8 ways; distance
+**by foot** is steps 8 ways through walkable squares, **as the crow flies** the larger
+gap across or down. Ties go to the smaller y, then the smaller x. `tools/rooms/rooms.py`
+(`build_open`) is a reference written from this; the prototype's `rooms.js`
+(`buildOpen`) must build the same floors (`tests/rooms/check_rooms.py`).
+
+1. **The shell:** wall round the edge, open ground inside.
+2. **Clusters:** (w − 2)(h − 2) / 24 tries. Each:
+   1. its centre `x = 2 + r() mod (w − 4)`, `y = 2 + r() mod (h − 4)` and size
+      `s = 5 + r() mod 20`;
+   2. it grows from the centre: s − 1 times, `p` = its square at `r() mod (how many it
+      has)`, `d = r() mod 4` (N, E, S, W): the square that way from p joins it if it's
+      inside the border and not already in it;
+   3. it's **kept** only if none of its squares is a wall or touches one. Kept, its
+      squares are walls; then **its lee:** `r() mod 3` times, `p` = its square at `r() mod
+      (how many)`, `d = r() mod 8` (N, NE, E, SE, S, SW, W, NW), `t = r() mod 4`: the square
+      that way from p, if it's open, becomes cover, cover, rough or high ground (by t).
+      (Not kept, no lee and no draws for it.)
+3. **Open ground:** (w − 2)(h − 2) / 96 times, `x = 1 + r() mod (w − 2)`,
+   `y = 1 + r() mod (h − 2)`, `t = r() mod 5`: if (x, y) is open and touches no wall, pit
+   or hazard, it becomes rough, rough, pit, hazard or cover (by t).
+4. **The start:** `sy = 1 + r() mod (h − 2)`; the walkable square with the smallest x,
+   then the nearest y to sy (then the smaller y).
+5. **One region:** every walkable square the start can't reach on foot becomes wall.
+6. **The stairs:** the open square (tile 0) farthest from the start on foot.
+7. **Bands:** n = (walkable squares) / 150, at least 1.
+   1. **The stairs' band:** at the stand square nearest the stairs as the crow flies but
+      2 or more from them.
+   2. **The others**, until there are n bands or 64 × n tries are spent: `x = 1 + r() mod
+      (w − 2)`, `y = 1 + r() mod (h − 2)`; a band's spot if it's a stand square, not the
+      stairs, and 10 or more from the start and from every band's spot so far, as the
+      crow flies.
+   3. **Each band**, in that order: **hiding** unless `r() mod 4` is 0 (open). Its danger
+      `g = floor + (its distance from the start on foot) / 16`; it has
+      `min(4, 1 + g / 3)` foes (one more for the stairs' band, at most 4), each a foe of
+      the pool **ash rat, scrap gunner, rust-guard, maintenance drone** at `r() mod
+      min(4, 1 + g / 2)`. The first stands on the spot, the rest round it as a party
+      fans out (rooms.md's *The party*: breadth first, N E S W NE SE SW NW) on stand
+      squares that aren't the stairs, the start or another foe's.
+   4. **A parley** (rooms.md's *Talk*): band k (counting from 0) talks first if
+      `mix(yard XOR 0x7A1C, floor × 64 + k) mod 3` is 0; never the stairs' band.
+8. **Caches:** 1 + (walkable squares) / 600, each found in up to 64 tries of
+   `x = 1 + r() mod (w − 2)`, `y = 1 + r() mod (h − 2)`: a stand square, not the stairs,
+   6 or more from the start and 4 or more from every band's spot and every cache so far,
+   as the crow flies. Found, its item is `r() mod 5` of **iron sword, arc pistol, chain
+   coat, pulse rifle, ballistic weave**.
+9. **People**, by no dice: **Vell** at the stand square whose distance on foot from the
+   start is nearest 8, 6 or more from every band's spot and every foe, not a cache or the
+   stairs (as the crow flies). On floors 2 and 3, **Pell** the same, nearest half the
+   stairs' distance on foot, and 4 or more from Vell too.
 
 ## Being seen
 
@@ -200,10 +259,12 @@ range: for playing.
    the sneak sets the TN; groups; the modifiers; sight lines; Sense and Stealth for foes)
    in the rules lab, with a Python reference and tests, as rules v1's movement was
    ([turn.md](turn.md)); reviewed cases of approaches seen and missed.
-2. **Open floors** in the generator (`tools/rooms/rooms.py` and `rooms.js` alike): clusters,
-   one region, places, encounters; the floor's size a parameter; `check_rooms.py` holds
-   them to each other and to the rules above (every encounter reachable, the stairs
-   farthest, nothing walled off).
+2. **Open floors** in the generator (built: *A floor, from a yard*): `build_open` in
+   `tools/rooms/rooms.py` and `buildOpen` in `rooms.js`; `python3 tools/rooms/rooms.py open
+   YARD FLOOR` draws one. `tests/rooms/check_rooms.py` holds the two to each other on 300
+   floors, and each floor to this page (one region, the stairs farthest, bands 10 apart,
+   every foe, cache and person on free ground that can be reached, walls 6 to 25% of
+   it).
 3. **The prototype:** walking an open floor, sneaking (S), bands rolling as you approach
    (the rolls in the log), spotted bands shown, fights on their window with the view on the
    turn.
