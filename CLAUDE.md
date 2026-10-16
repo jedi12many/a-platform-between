@@ -142,7 +142,10 @@ against. For `cart/`:
   `tests/walk/run_walk.py` walks yard 48213's first floor to its stairs (and yard 7602's
   eighth, a crowd, `build/walk-crowd.prg`) and holds every frame to `tools/walk/walk.py`,
   leader, camera and scroller, every row as the VIC reads it at its bad line, and every
-  sprite (the party, foes and people, multiplexed) as the VIC starts it; no frame late.
+  sprite (the party, foes and people, multiplexed) as the VIC starts it, and the HUD in
+  the opened bottom border; no frame late. `tests/walk/vice_walk.py` runs both on x64sc,
+  VICE's cycle-exact C64, and holds its pictures to the harness's pixel for pixel (without
+  x64sc and xvfb-run it says so and passes).
 
 - `make test-art`: the art desk (`tools/artdesk/`, `docs/art.md`) in headless Chromium, on
   a copy of `content/art/`: the art keeps its rules (`tools/art.py`) and the battle

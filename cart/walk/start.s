@@ -7,13 +7,18 @@
         .include "zp.inc"
         .include "walk.inc"
 
-        .export walk_start, wk_awake, wk_done
+        .export walk_start, wk_awake, wk_joy, wk_done
         .import irq, nmi, gen_all, floor, walk_step, wk_pos, wk_stick
         .import camera_init, camera_step, wk_cam, wk_front
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
-        .import edge_mode, edge_base, wk_ncx, wk_ncy, draw_all, maps_build
-        .import figures_init, figures_step, sprites_frame, prog_next, prog_shown
-        .import __BSS_RUN__, __BSS_SIZE__
+        .import edge_base, wk_ncx, wk_ncy, draw_all, maps_build
+        .import figures_init, figures_step, prog_next, prog_shown, view_d011, screen_b
+        .import precopy, colour_row, colour_aim
+        .import world_irq
+        .import __BSS_RUN__, __BSS_SIZE__, __HIGH_LOAD__, __HIGH_RUN__, __HIGH_SIZE__
+        .import __DATA_RUN__, __DATA_SIZE__
+
+        .assert __DATA_RUN__ + __DATA_SIZE__ <= SHIFT_AB, lderror, "the program runs past $27FF"
 
         .segment "LOADADDR"
         .word $0801
@@ -49,9 +54,15 @@ walk_start:
         sta VIC_CTRL1
         lda #0
         sta VIC_IRQ_ENA
-        lda #<irq
+        lda #$4C                    ; the vector: TRAMPOLINE's jmp irq (so $FFFF is $FF)
+        sta TRAMPOLINE
+        lda #<world_irq             ; (the first: below)
+        sta TRAMPOLINE + 1
+        lda #>world_irq
+        sta TRAMPOLINE + 2
+        lda #<TRAMPOLINE
         sta VEC_IRQ
-        lda #>irq
+        lda #>TRAMPOLINE
         sta VEC_IRQ + 1
         lda #<nmi
         sta VEC_NMI
@@ -71,6 +82,25 @@ walk_start:
         inc zp_wk_out + 1
         dex
         bne :-
+        ; The interrupts' code up to $F200 (before gen_all writes over the program's top).
+        lda #<__HIGH_LOAD__
+        sta zp_wk_src
+        lda #>__HIGH_LOAD__
+        sta zp_wk_src + 1
+        lda #<__HIGH_RUN__
+        sta zp_wk_dst
+        lda #>__HIGH_RUN__
+        sta zp_wk_dst + 1
+        ldx #>(__HIGH_SIZE__ + 255)
+        ldy #0
+:       lda (zp_wk_src), y
+        sta (zp_wk_dst), y
+        iny
+        bne :-
+        inc zp_wk_src + 1
+        inc zp_wk_dst + 1
+        dex
+        bne :-
         jsr look_in                 ; (before gen_all writes over the program's top)
         jsr shapes_in
         jsr gen_all
@@ -85,24 +115,19 @@ walk_start:
         sta wk_pos + 3
         jsr camera_init
         jsr figures_init
-        ; The screen where the camera is: A's characters, the shadow's colours, shown.
+        ; The screen where the camera is: A's characters, the colours, shown.
         jsr cam_cells
         lda #<SCREEN_A
         sta edge_base
         lda #>SCREEN_A
         sta edge_base + 1
-        lda #0
-        sta edge_mode
         jsr draw_all
-        lda #<SHADOW
-        sta edge_base
-        lda #>SHADOW
-        sta edge_base + 1
-        lda #1
-        sta edge_mode
-        jsr draw_all
-        jsr BLAST
-        jsr BLAST + SECOND_HALF
+        jsr colour_aim              ; and the colours
+        ldx #0
+:       jsr colour_row
+        inx
+        cpx #ROWS
+        bne :-
         lda wk_d016
         sta VIC_CTRL2
         lda wk_d018
@@ -119,11 +144,16 @@ walk_start:
         sta VIC_SPR_MC2
         lda prog_next
         sta prog_shown
-        tax
-        jsr sprites_frame
-        lda #VB_LINE
+        lda #0
+        sta screen_b
+        lda wk_d011
+        sta view_d011
+        lda #WORLD_LINE             ; the first interrupt: the world's sprites, at line 1
+                                    ; (border.s)
         sta VIC_RASTER
-        lda wk_d011                 ; the screen on
+        lda wk_d011                 ; the screen on: the band (black), till the view
+        and #7
+        ora #CTRL1_BAND
         sta VIC_CTRL1
         lda #$FF
         sta VIC_IRQ
@@ -135,14 +165,16 @@ walk_start:
 ; ----------------------------------------------------------------------------------------
 ; The frame loop: each frame, once the interrupt has begun it, the joystick, the walk and
 ; the camera; then what it decided waits for the next frame's interrupt.
-loop:   lda wk_frame
-:       cmp wk_frame
+loop:   lda frame_seen              ; (the frame last handled, not the count now: precopy
+:       cmp wk_frame                ; returns once the next has begun)
         beq :-
+        lda wk_frame
+        sta frame_seen
 wk_awake:
         lda #1
         sta wk_busy
         lda CIA1_PRA
-        sta wk_stick
+wk_joy: sta wk_stick                ; (the VICE check sets A here: tests/walk/vice_walk.py)
         jsr walk_step
         jsr camera_step
         jsr figures_step
@@ -153,7 +185,10 @@ wk_done:
         lda #0
         sta wk_busy
         cli
-        jmp loop
+        lda wk_swap                 ; a step's swap at the next bottom: its colours copied
+        beq :+                      ; behind the raster meanwhile (colours.s)
+        jsr precopy
+:       jmp loop
 
 ; The look: its colours, and its characters at WALK_CHARS (2 KB from the floor's).
 look_in:
@@ -208,6 +243,11 @@ shapes_in:
         inc zp_wk_dst + 1
         dex
         bne :-
+        lda #0                      ; the empty shape (the asset stops at the HUD's)
+        ldy #63
+:       sta SPRITE_SHAPES + (BLANK_SHAPE - SHAPE_POINTER) * 64, y
+        dey
+        bpl :-
         lda #PORT_GAME
         sta CPU_PORT
         rts
@@ -232,3 +272,7 @@ cell_of:
         lsr zp_wk_t
         ror a
         rts
+
+        .segment "BSS"
+
+frame_seen: .res 1              ; the frame loop's last frame (wk_frame's low byte)

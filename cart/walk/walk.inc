@@ -20,7 +20,13 @@ FL_KINDS        = 1194          ; how many kinds of figure
 FL_KIND_COLOUR  = 1195          ; each kind's colour (12)
 FL_FIGURES      = 1207          ; how many figures (foes, people), then each: x, y, kind
 FL_CHARS        = 1304          ; the characters: 0 blank, then 4 a tile
-FL_SHAPES       = 2048          ; the sprite shapes: kind k's 2 k (right), 2 k + 1 (left)
+FL_HUD          = 2000          ; the HUD's sprites (border.s): their x's low bytes (8)...
+HUD_X           = 0
+HUD_COLOUR      = 8             ; ...their colours (8)...
+HUD_HIGHS       = 16            ; ...the x's ninth bits, and which are multicolour
+HUD_MULTI       = 17
+FL_SHAPES       = 2048          ; the sprite shapes: kind k's 2 k (right), 2 k + 1 (left);
+                                ; 24-27 the HUD's health, 31 empty
 
 ; ------------------------------------------------------------------ the screen
 SCREEN_A        = $C000         ; two screens, one shown while the other's made
@@ -31,10 +37,27 @@ MEM_B           = $12           ; screen B
 SCREEN_SIZE     = 1000          ; 40 x 25
 COLS            = 40
 ROWS            = 25
-CTRL1_WALK      = $10           ; $D011: the screen on, 24 rows (the fine scroll's edge
-                                ; hidden), text; the fine scroll in bits 0-2
+CTRL1_VIEW      = $18           ; $D011 in the view: the screen on, 25 rows (so line 247's
+                                ; compare doesn't shut the border), text; the fine scroll in 0-2
+CTRL1_BAND      = $58           ; ...and ECM: with multicolour an invalid mode, all black
+CTRL1_SHUT      = $50           ; the band at 24 rows (so line 251's compare doesn't either)
+RST8            = $80           ; $D011's bit 7: the raster interrupt's line's ninth bit
 CTRL2_WALK      = $10           ; $D016: multicolour, 38 columns; the fine scroll in 0-2
-VB_LINE         = 250           ; the interrupt: under the 24 rows (they end at line 246)
+FIRST_VIEW      = 55            ; the view: lines 55-246, the 24 rows' (docs/walk.md, "The border")
+LAST_VIEW       = 246
+TOP_LINE        = 52            ; the interrupts, each two lines before the line it waits
+BOTTOM_LINE     = 244           ; for (getting in takes some 80 cycles): the top's (54), the
+HUD_LINE        = 264           ; bottom's (246; 245 with the fine scroll at 6, its interrupt
+                                ; at 243), the HUD's pointers' (266: the low byte 10)...
+WORLD_LINE      = 1             ; ...and the world's sprites again, the next picture's first
+                                ; (not before: a Y of 33-55 would meet lines 289-311's low
+                                ; byte and show in the top border; and by 11, the HUD's)
+HUD_Y           = 11            ; the HUD's sprites' Y: line 267's low byte, shown from 268
+                                ; (their pointers written in 266: no sprite's fetched at its end)
+EVENT_LAST      = 238           ; no sprite reused after this line (the bottom's interrupt
+                                ; comes at 243 or 244)
+TRAMPOLINE      = $FF00         ; the interrupt's way in: jmp irq, so $FFFF (its vector's high
+                                ; byte, the idle VIC's byte) is $FF, all black
 
 ; ------------------------------------------------------------------ the camera
 CAM_X_MAX       = 455           ; (96 - 40) x 8 + 7: the screen's 40 columns on the area
@@ -56,26 +79,27 @@ STICK_RIGHT     = $08
 ; ------------------------------------------------------------------ the scroller
 IDLE            = 0             ; nothing under way
 HALF            = 1             ; the back screen's top half made
-SHIFTED         = 2             ; the back screen made; the colours next
-SHADED          = 3             ; the shadow's first half shifted
-COLOURED        = 4             ; the colours made; the swap at the next frame
-SHADOW          = $B200         ; the colours, as they'll be shown (1000 bytes); the
-                                ; program's variables after it, from $B600 (walk.cfg)
-; Generated code (gen.s): a byte's copy each, unrolled, 6002 bytes a block: its first 500
-; bytes' copies and an RTS, then the rest and an RTS (a screen's shift takes two frames).
-SHIFT_AB        = $2800         ; screen A to B, shifted by X - 41
-SHIFT_BA        = $4000         ; B to A
-SHADE_UP        = $5800         ; the shadow, in place, shifted: first byte first
-SHADE_DOWN      = $7000         ; last byte first
-BLAST           = $8800         ; the shadow to the colour RAM, top first
+SHIFTED         = 2             ; the back screen made
+SHADED          = 3             ; held: the colours next
+COLOURED        = 4             ; the swap at the next frame; its colours copied as the
+                                ; raster passes each row, the rest at the swap
+; Generated code (gen.s), a byte's copy each, unrolled.
+SHIFT_AB        = $2800         ; screen A to B, shifted by X - 41: 6002 bytes, its first
+SHIFT_BA        = $4000         ; 500 bytes' copies and an RTS, then the rest and an RTS
 OFFSET_BIAS     = 41            ; X = the shift (-41 to 41) + this
 SECOND_HALF     = 500 * 6 + 1   ; a block's second half, from its start
+COLOUR_ROWS     = $5800         ; the colour RAM's rows from the colour map, a row a call
+ROW_CODE        = 40 * 6 + 1    ; (to $6F88)
+AIM_ROWS        = $7000         ; each row's copy aimed at its row of the colour map, a row a
+AIM_CODE        = 40 * 3 + 1    ; call (to $7BD0)
 BORDER_COLOUR   = 0             ; black
 
 ; The area's characters and colours, a byte each (96 x 48), built from the squares at the
 ; start (edge.s), so an edge is a copy: the camera's clamp keeps every edge on the area.
 CHAR_MAP        = $A000         ; to $B1FF
-COLOUR_MAP      = $E000         ; to $F1FF, under the KERNAL (out)
+COLOUR_MAP      = $8800         ; to $9FFF: a page a row of squares (a square's two rows of
+                                ; characters have its colours), its 96 columns from the
+                                ; page's start
 
 ; ------------------------------------------------------------------ the figures
 SPRITE_SHAPES   = $D000         ; under the I/O (the VIC sees the RAM): 32 shapes
@@ -92,9 +116,11 @@ SPRITE_DY       = 47
 SPRITE_X_MIN    = 8             ; in sight: some of it inside the 38 x 24
 SPRITE_X_MAX    = 334
 SPRITE_Y_MIN    = 35
-SPRITE_Y_MAX    = 246
+SPRITE_Y_MAX    = 245           ; (a sprite's last line 266, before the HUD's pointers)
 SPRITE_LINES    = 21
 REUSE           = 23            ; a sprite reused: the next figure at least this far below
+BLANK_SHAPE     = SHAPE_POINTER + 31    ; an empty shape: the sprites in the border bands
+HUD_SHAPES      = SHAPE_POINTER + 24    ; the HUD's four (health), after the kinds' 24
 SPRITE_MC1      = 0             ; black: the outline drawn in
 SPRITE_MC2      = 15            ; light grey
 ; A program for the sprites (figures.s makes it, mux.s carries it out): a page each, two
