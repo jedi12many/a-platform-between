@@ -53,7 +53,8 @@ async function main() {
       return { mode: s.mode, room: x.room, x: x.x, y: x.y, cleared: x.cleared, lost: x.lost, pack: x.pack,
                map: s.fight && s.fight.st.map, fighters: s.fight && s.fight.st.fighters.map((f) => [f.side, f.x, f.y]),
                doors: x.f.rooms[x.room].doors, buttons: window.arena.buttons(), px: x.px, py: x.py,
-               grid: window.arena.grid(), scroll: x.scroll, cam: s.fight && s.fight.cam,
+               grid: window.arena.grid(), scroll: x.scroll, cam: s.fight && s.fight.cam, party: x.party,
+               shown: s.fight && s.fight.shown.slice(0, x.party.length).map((f) => [f.x, f.y, f.alpha === undefined ? 1 : f.alpha]),
                side: document.getElementById("cards").innerText };
     });
     await page.goto(url + "#explore=" + code);
@@ -74,6 +75,8 @@ async function main() {
     const step = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] }[side];
     const go = out.start.scroll ? [door[0] + ox + step[0], door[1] + oy + step[1]] : door;
     await page.evaluate(([x, y]) => window.arena.walkTo(x, y), go);
+    await page.waitForTimeout(650);
+    out.mid = await X();                       /* walking: the party strung out behind the leader */
     await page.waitForFunction((r) => window.arena.explore().room !== r, out.start.room, { timeout: 20000 });
     await page.waitForTimeout(400);
     /* Scrolling, the view settles on the room before its fight. */

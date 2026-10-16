@@ -118,14 +118,15 @@ the **studio**, beside the art desk:
   watch for, both sides' cards (worked out by the rules, not typed in), and what a thousand
   fights on the computer say. Enter starts the fight.
 - **Explore the yards** (E13, first in the list) is the prototype of exploring rooms
-  ([rooms.md](rooms.md)): pick a class and a yard, then walk a floor of nine rooms overhead,
+  ([rooms.md](rooms.md)): pick a party of up to four in marching order (the others follow
+  the leader, and fan out round them when a fight starts) and a yard, then walk a floor of nine rooms overhead,
   one room to a screen: hold the arrows or the keypad and you glide, or click a square;
   there's no grid until a fight, when it comes up and everyone settles onto a square. Coming into a room with
   foes in it starts the fight there, on the room's own map; won, you walk on; fled, you're
   back where you came from; lost, the descent ends. Crates put gear in your pack, and the
   stairs, once cleared, go a floor deeper. **The view:** one room a screen, or scrolling (the
   floor as one area under a 16 x 8 view that follows you; V switches): to compare
-  ([rooms.md](rooms.md#scrolling-to-compare)). A link opens it: `arena/#explore=48213:rogue`
+  ([rooms.md](rooms.md#scrolling-to-compare)). A link opens it: `arena/#explore=48213:warden,rogue,channeler,medic`
   (add `:scroll` for scrolling).
 - **The fight** is the battle map at whatever size the window is, drawn from the game's art
   (`content/art/`) with every pixel crisp. Your turn shows where you can go. Pick a square
