@@ -166,7 +166,7 @@ balance the rules.
 `make studio` serves the studio: the art desk (http://localhost:8064/) and the native arena
 (http://localhost:8064/arena/, `docs/arena.md`, by rules v1; with the prototype of exploring rooms
 overhead, `docs/rooms.md`, its floors built by `tools/rooms/rooms.py` and `tools/arena/web/rooms.js`
-alike, and its people's talk a Quest Script, `content/sidings/yards-talk/`, played by the story VM
+alike (and open floors, `docs/open-floors.md`: `build_open` and `buildOpen`), and its people's talk a Quest Script, `content/sidings/yards-talk/`, played by the story VM
 as WebAssembly, `tools/arena/web/story.c`; `make test-arena-web` plays it
 in headless Chromium).
 

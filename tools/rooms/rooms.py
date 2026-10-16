@@ -3,6 +3,8 @@ generator (tools/arena/web/rooms.js), so tests can check one against the other.
 
     python3 tools/rooms/rooms.py show YARD FLOOR      draw a floor's rooms
     python3 tools/rooms/rooms.py json YARD FLOOR      the floor as JSON (what rooms.js builds)
+    python3 tools/rooms/rooms.py open YARD FLOOR      an open floor (docs/open-floors.md)
+    python3 tools/rooms/rooms.py open-json YARD FLOOR  ... as JSON (rooms.js's buildOpen)
 
 A yard is a number 0..65535 and a floor 1..255; the same two always build the same rooms.
 """
@@ -250,6 +252,184 @@ def fan_out(room, lead, n):
     return [list(p) for p in out]
 
 
+# ------------------------------------------------------------------ open floors
+
+ROUGH, COVER, HIGH = 3, 4, 6
+OPEN_STANDS = (0, 3, 4, 6)
+STEP8 = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]   # N NE E SE S SW W NW
+STEP4 = [(0, -1), (1, 0), (0, 1), (-1, 0)]                                       # N E S W
+
+
+def open_size(floor):
+    """docs/open-floors.md, A floor: 48 x 24 on floors 1-2, 64 x 32 on 3-5, 80 x 40 below."""
+    return (48, 24) if floor <= 2 else (64, 32) if floor <= 5 else (80, 40)
+
+
+def crow(a, b):
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
+
+def walkable(t):
+    return t not in (WALL, PIT, HAZARD)
+
+
+def by_foot(tiles, start):
+    """{(x, y): steps} from start, 8 ways, through walkable squares."""
+    h, w = len(tiles), len(tiles[0])
+    dist, todo = {start: 0}, [start]
+    for p in todo:
+        for dx, dy in STEP8:
+            q = (p[0] + dx, p[1] + dy)
+            if 0 <= q[0] < w and 0 <= q[1] < h and q not in dist and walkable(tiles[q[1]][q[0]]):
+                dist[q] = dist[p] + 1
+                todo.append(q)
+    return dist
+
+
+def build_open(yard, floor, w=None, h=None):
+    """An open floor (docs/open-floors.md, A floor, from a yard): {yard, floor, w, h, rows,
+    start, stairs, bands, caches, people}."""
+    if w is None:
+        w, h = open_size(floor)
+    state = mix((yard ^ 0x0F10) & 0xFFFF, (floor * 256 + 254) & 0xFFFF)
+
+    def r(n):
+        nonlocal state
+        state = xs(state)
+        return state % n
+
+    # 1. The shell.
+    t = [[WALL if x in (0, w - 1) or y in (0, h - 1) else OPEN for x in range(w)] for y in range(h)]
+    inside = lambda q: 1 <= q[0] <= w - 2 and 1 <= q[1] <= h - 2  # noqa: E731
+    # 2. Clusters.
+    for _ in range((w - 2) * (h - 2) // 24):
+        c = (2 + r(w - 4), 2 + r(h - 4))
+        size = 5 + r(20)
+        blob = [c]
+        for _ in range(size - 1):
+            p = blob[r(len(blob))]
+            dx, dy = STEP4[r(4)]
+            q = (p[0] + dx, p[1] + dy)
+            if inside(q) and q not in blob:
+                blob.append(q)
+        if any(t[y][x] == WALL or any(t[y + dy][x + dx] == WALL for dx, dy in STEP8) for x, y in blob):
+            continue
+        for x, y in blob:
+            t[y][x] = WALL
+        for _ in range(r(3)):
+            p = blob[r(len(blob))]
+            dx, dy = STEP8[r(8)]
+            kind = [COVER, COVER, ROUGH, HIGH][r(4)]
+            q = (p[0] + dx, p[1] + dy)
+            if t[q[1]][q[0]] == OPEN:
+                t[q[1]][q[0]] = kind
+    # 3. Open ground.
+    for _ in range((w - 2) * (h - 2) // 96):
+        x, y, k = 1 + r(w - 2), 1 + r(h - 2), r(5)
+        if t[y][x] == OPEN and all(t[y + dy][x + dx] not in (WALL, PIT, HAZARD) for dx, dy in STEP8):
+            t[y][x] = [ROUGH, ROUGH, PIT, HAZARD, COVER][k]
+    # 4. The start.
+    sy = 1 + r(h - 2)
+    start = min(((x, y) for y in range(h) for x in range(w) if walkable(t[y][x])),
+                key=lambda q: (q[0], abs(q[1] - sy), q[1]))
+    # 5. One region.
+    dist = by_foot(t, start)
+    for y in range(h):
+        for x in range(w):
+            if walkable(t[y][x]) and (x, y) not in dist:
+                t[y][x] = WALL
+    squares = sorted(dist, key=lambda q: (q[1], q[0]))
+    # 6. The stairs.
+    stairs = min((q for q in squares if t[q[1]][q[0]] == OPEN), key=lambda q: (-dist[q], q[1], q[0]))
+    # 7. Bands.
+    n = max(1, len(squares) // 150)
+    stands = [q for q in squares if t[q[1]][q[0]] in OPEN_STANDS]
+    spots = [min((q for q in stands if crow(q, stairs) >= 2), key=lambda q: (crow(q, stairs), q[1], q[0]))]
+    tries = 0
+    while len(spots) < n and tries < 64 * n:
+        tries += 1
+        q = (1 + r(w - 2), 1 + r(h - 2))
+        if (t[q[1]][q[0]] in OPEN_STANDS and q in dist and q != stairs and crow(q, start) >= 10
+                and all(crow(q, o) >= 10 for o in spots)):
+            spots.append(q)
+    bands, taken = [], set()
+    for k, spot in enumerate(spots):
+        hiding = r(4) != 0
+        g = floor + dist[spot] // 16
+        count = min(4, 1 + g // 3 + (k == 0))
+        L = min(4, 1 + g // 2)
+        names = [POOL[r(L)] for _ in range(count)]
+        where = [spot]
+        seen, todo = {spot}, [spot]
+        while todo and len(where) < count:
+            p = todo.pop(0)
+            for dx, dy in FAN:
+                if len(where) >= count:
+                    break
+                q = (p[0] + dx, p[1] + dy)
+                if q in seen or not (0 <= q[0] < w and 0 <= q[1] < h):
+                    continue
+                seen.add(q)
+                if t[q[1]][q[0]] not in OPEN_STANDS or q in (stairs, start) or q in taken:
+                    continue
+                where.append(q)
+                todo.append(q)
+        taken.update(where)
+        bands.append({"x": spot[0], "y": spot[1], "hiding": hiding, "stairs": k == 0,
+                      "parley": k > 0 and mix((yard ^ 0x7A1C) & 0xFFFF, (floor * 64 + k) & 0xFFFF) % 3 == 0,
+                      "foes": [{"name": nm, "x": q[0], "y": q[1]} for nm, q in zip(names, where)]})
+    # 8. Caches.
+    caches = []
+    for _ in range(1 + len(squares) // 600):
+        for _ in range(64):
+            q = (1 + r(w - 2), 1 + r(h - 2))
+            if (t[q[1]][q[0]] in OPEN_STANDS and q in dist and q != stairs and crow(q, start) >= 6
+                    and all(crow(q, s) >= 4 for s in spots)
+                    and all(crow(q, (c["x"], c["y"])) >= 4 for c in caches)):
+                caches.append({"item": CACHE[r(5)], "x": q[0], "y": q[1]})
+                break
+    # 9. People.
+    foes = {(f["x"], f["y"]) for b in bands for f in b["foes"]}
+    clear = [q for q in stands if q != stairs and all(crow(q, s) >= 6 for s in spots)
+             and all(crow(q, f) >= 6 for f in foes) and q not in {(c["x"], c["y"]) for c in caches}]
+    people = []
+    if clear:
+        v = min(clear, key=lambda q: (abs(dist[q] - 8), q[1], q[0]))
+        people.append({"who": "trader", "x": v[0], "y": v[1]})
+        if floor in (2, 3):
+            rest = [q for q in clear if crow(q, v) >= 4]
+            if rest:
+                half = dist[stairs] // 2
+                p = min(rest, key=lambda q: (abs(dist[q] - half), q[1], q[0]))
+                people.append({"who": "courier", "x": p[0], "y": p[1]})
+    return {"yard": yard, "floor": floor, "w": w, "h": h,
+            "rows": ["".join(str(c) for c in row) for row in t],
+            "start": list(start), "stairs": list(stairs), "bands": bands, "caches": caches,
+            "people": people}
+
+
+def show_open(f):
+    rows = [[SHOW[int(c)] for c in r] for r in f["rows"]]
+    for k, b in enumerate(f["bands"]):
+        for fo in b["foes"]:
+            rows[fo["y"]][fo["x"]] = "abcdefghijklmnopqrstuvwxyz"[k % 26]
+    for c in f["caches"]:
+        rows[c["y"]][c["x"]] = "$"
+    for p in f["people"]:
+        rows[p["y"]][p["x"]] = "V" if p["who"] == "trader" else "P"
+    rows[f["stairs"][1]][f["stairs"][0]] = "S"
+    rows[f["start"][1]][f["start"][0]] = "@"
+    out = [f"yard {f['yard']}, floor {f['floor']}: {f['w']} x {f['h']}, {len(f['bands'])} bands, "
+           f"{len(f['caches'])} caches"]
+    out += ["".join(r) for r in rows]
+    for k, b in enumerate(f["bands"]):
+        out.append(f"band {'abcdefghijklmnopqrstuvwxyz'[k % 26]}: "
+                   + ", ".join(fo["name"] for fo in b["foes"])
+                   + (", hiding" if b["hiding"] else ", open") + (", the stairs'" if b["stairs"] else "")
+                   + (", talks first" if b["parley"] else ""))
+    return "\n".join(out)
+
+
 SHOW = {0: ".", 1: "#", 2: "O", 3: "~", 4: "+", 5: "^", 6: "=", 7: ">"}
 
 
@@ -273,10 +453,15 @@ def show(f):
 
 
 def main(argv):
-    if len(argv) != 4 or argv[1] not in ("show", "json"):
+    if len(argv) != 4 or argv[1] not in ("show", "json", "open", "open-json"):
         print(__doc__)
         return 2
-    f = build(int(argv[2]) & 0xFFFF, max(1, min(255, int(argv[3]))))
+    yard, floor = int(argv[2]) & 0xFFFF, max(1, min(255, int(argv[3])))
+    if argv[1].startswith("open"):
+        f = build_open(yard, floor)
+        print(show_open(f) if argv[1] == "open" else json.dumps(f, sort_keys=True))
+        return 0
+    f = build(yard, floor)
     print(show(f) if argv[1] == "show" else json.dumps(f, sort_keys=True))
     return 0
 

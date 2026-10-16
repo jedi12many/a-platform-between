@@ -94,6 +94,90 @@ def promises(f):
     return bad
 
 
+
+def js_open(cases):
+    script = ("const R = require(process.argv[1]); const cases = JSON.parse(process.argv[2]);"
+              "console.log(JSON.stringify(cases.map(([y, f]) => R.buildOpen(y, f))));")
+    out = subprocess.run(["node", "-e", script, os.path.join(ROOT, "tools", "arena", "web", "rooms.js"),
+                          json.dumps(cases)], capture_output=True, text=True, check=True).stdout
+    return json.loads(out)
+
+
+def open_promises(f):
+    """What's wrong with an open floor, by docs/open-floors.md's promises: [] if nothing."""
+    bad = []
+    w, h = f["w"], f["h"]
+    t = [[int(c) for c in row] for row in f["rows"]]
+    if (w, h) != rooms.open_size(f["floor"]) or len(t) != h or any(len(r) != w for r in t):
+        bad.append(f"{w} x {h}, not floor {f['floor']}'s size")
+        return bad
+    if any(t[y][x] != rooms.WALL for y in range(h) for x in range(w) if x in (0, w - 1) or y in (0, h - 1)):
+        bad.append("the border isn't all wall")
+    start, stairs = tuple(f["start"]), tuple(f["stairs"])
+    dist = rooms.by_foot(t, start)
+    walk = [(x, y) for y in range(h) for x in range(w) if rooms.walkable(t[y][x])]
+    if any(q not in dist for q in walk):
+        bad.append("not one region: some walkable squares can't be reached from the start")
+    if t[stairs[1]][stairs[0]] != rooms.OPEN or dist.get(stairs) != max(dist[q] for q in walk if t[q[1]][q[0]] == rooms.OPEN):
+        bad.append("the stairs aren't on the open square farthest from the start")
+    if start[0] != min(q[0] for q in walk):
+        bad.append("the start isn't on the west side")
+    walls = sum(row.count(rooms.WALL) for row in t) - 2 * (w + h) + 4
+    if not 0.06 <= walls / ((w - 2) * (h - 2)) <= 0.25:
+        bad.append(f"walls are {walls / ((w - 2) * (h - 2)):.2f} of the floor")
+    bands = f["bands"]
+    if not bands or not bands[0]["stairs"] or bands[0]["parley"] or rooms.crow((bands[0]["x"], bands[0]["y"]), stairs) < 2:
+        bad.append("no stairs' band by the stairs (first, not talking)")
+    if len(bands) > max(1, len(walk) // 150):
+        bad.append(f"{len(bands)} bands, more than one a 150 squares")
+    spots = [(b["x"], b["y"]) for b in bands]
+    for k, s in enumerate(spots[1:], 1):
+        if rooms.crow(s, start) < 10 or any(rooms.crow(s, o) < 10 for o in spots[:k]):
+            bad.append(f"band {k} at {s} is nearer than 10 to the start or another band")
+    seen = set()
+    for b in bands:
+        if not b["foes"] or (b["foes"][0]["x"], b["foes"][0]["y"]) != (b["x"], b["y"]) or len(b["foes"]) > 4:
+            bad.append(f"band at {(b['x'], b['y'])} has {len(b['foes'])} foes, the first not on its spot")
+        for e in b["foes"]:
+            q = (e["x"], e["y"])
+            if t[q[1]][q[0]] not in rooms.OPEN_STANDS or q not in dist or q in seen or q in (start, stairs):
+                bad.append(f"a foe at {q} isn't on a square of its own to stand on")
+            seen.add(q)
+    things = [(c["x"], c["y"]) for c in f["caches"]] + [(p["x"], p["y"]) for p in f["people"]]
+    for q in things:
+        if t[q[1]][q[0]] not in rooms.OPEN_STANDS or q not in dist or q in seen or q == stairs:
+            bad.append(f"a cache or a person at {q} isn't free ground that can be reached")
+    for p in f["people"]:
+        q = (p["x"], p["y"])
+        if any(rooms.crow(q, s) < 6 for s in spots) or any(rooms.crow(q, e) < 6 for e in seen):
+            bad.append(f"{p['who']} at {q} is within 6 of a band")
+    who = [p["who"] for p in f["people"]]
+    if who.count("trader") != 1 or who.count("courier") != (1 if f["floor"] in (2, 3) else 0):
+        bad.append(f"the people are {who}")
+    return bad
+
+
+def check_open(rng):
+    """Open floors (docs/open-floors.md): rooms.js's buildOpen as the reference's build_open,
+    each keeping the doc's promises."""
+    cases = [[rng.randrange(65536), rng.randrange(1, 13)] for _ in range(300)] + [[0, 1], [65535, 255], [48213, 1]]
+    js = js_open(cases)
+    same, sizes, n_bands, n_foes = 0, {}, 0, 0
+    for (y, fl), got in zip(cases, js):
+        want = rooms.build_open(y, fl)
+        if got != want:
+            fail(f"yard {y} floor {fl}: rooms.js builds a different open floor from the reference")
+            continue
+        same += 1
+        for b in open_promises(want):
+            fail(f"yard {y} floor {fl} (open): {b}")
+        sizes[f"{want['w']}x{want['h']}"] = sizes.get(f"{want['w']}x{want['h']}", 0) + 1
+        n_bands += len(want["bands"])
+        n_foes += sum(len(b["foes"]) for b in want["bands"])
+    print(f"ok   {same} of {len(cases)} open floors the same from rooms.js as from the reference, each keeping "
+          f"the doc's promises (" + ", ".join(f"{v} {k}" for k, v in sorted(sizes.items()))
+          + f"; {n_bands} bands, {n_foes} foes)")
+
 def main():
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 1000
     rng = random.Random(1300)
@@ -143,6 +227,7 @@ def main():
             fan_ok += 1
     print(f"ok   {fan_ok} of {len(fan_cases)} parties fanned out the same by the page as by the reference, "
           f"each on squares of their own")
+    check_open(rng)
     print(f"rooms: {failures} failed")
     return 1 if failures else 0
 
