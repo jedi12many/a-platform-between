@@ -229,7 +229,7 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 # to tools/walk/walk.py, frame by frame and row by row as the VIC reads them. And
 # build/walk-crowd.prg, the same on yard 7602's eighth floor, the dungeon, crowded: up to
 # 14 figures at once, the sprites shared down the screen.
-WALK_MODS := start gen irq move camera edge figures mux floor
+WALK_MODS := start gen irq border move camera edge figures mux floor
 
 build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/walk.inc cart/walk/walk.cfg \
                 cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py

@@ -60,10 +60,46 @@ TRAIL = 32                      # the leader's trail kept
 SHAPE_POINTER = 0x40            # shape s is at $D000 + 64 s: the VIC's pointer $40 + s
 SPRITE_DX, SPRITE_DY = 27, 47   # a figure's sprite, from its square's pixel less the camera
 SPRITE_X_MIN, SPRITE_X_MAX = 8, 334
-SPRITE_Y_MIN, SPRITE_Y_MAX = 35, 246
+SPRITE_Y_MIN, SPRITE_Y_MAX = 35, 245     # (a sprite at 246 would still be on at the HUD's start)
 REUSE = 23                      # a sprite reused: the next one at least 23 lines below
 EVENTS_MAX = 26                 # reuses a frame (the C64's program has room for no more)
+FIRST_VIEW, LAST_VIEW = 55, 246  # the view's lines (24 rows); the border's black outside them
+EVENT_LAST = 238                # no reuse set on a line after this (the bottom's interrupt next)
+
+# The HUD (docs/walk.md, "The HUD"): in the bottom border, lines 268-288, two sprites a
+# traveler: their portrait (their kind's shape facing right, multicolour) and their health
+# (hires: the number, a bar, their class's first three letters), from the explore
+# prototype's travelers at level 1.
+PARTY_CLASSES = ["WARDEN", "ROGUE", "CHANNELER", "MEDIC"]
+HUD_Y = 11                      # line 267's low byte: shown from 268
+HUD_FIRST_X, HUD_STEP = 39, 80  # traveler k's portrait at 39 + 80 k, their health 24 on
+HUD_COLOUR = 13                 # light green
+HUD_SHAPES = 24                 # the health's shapes: 24-27 (31 is the empty one)
+BLANK = 31
 SPRITE_MC1, SPRITE_MC2 = 0, 15  # black (the outline), light grey: as the cartridge sets them
+
+
+# A 3 x 5 font for the HUD: each character five rows of three bits.
+FONT = {
+    "0": "111 101 101 101 111", "1": "010 110 010 010 111", "2": "111 001 111 100 111",
+    "3": "111 001 011 001 111", "4": "101 101 111 001 001", "5": "111 100 111 001 111",
+    "6": "111 100 111 101 111", "7": "111 001 010 010 010", "8": "111 101 111 101 111",
+    "9": "111 101 111 001 111", "/": "001 001 010 100 100",
+    "A": "010 101 111 101 101", "C": "011 100 100 100 011", "D": "110 101 101 101 110",
+    "E": "111 100 110 100 111", "G": "011 100 101 101 011", "H": "101 101 111 101 101",
+    "M": "101 111 111 101 101", "N": "110 101 101 101 101", "O": "010 101 101 101 010",
+    "R": "110 101 110 101 101", "W": "101 101 111 111 101",
+}
+
+
+def text(rows, x, y, s):
+    """Write s into rows (of 0/1) at (x, y), 4 pixels a character."""
+    for ch in s:
+        for r, bits in enumerate(FONT[ch].split()):
+            for i, b in enumerate(bits):
+                if b == "1":
+                    rows[y + r][x + i] = 1
+        x += 4
 
 
 def dress_hash(yard, floor, room, x, y):
@@ -198,9 +234,57 @@ class Floor:
         out += figs + bytes(1 + 3 * FIGURES_MAX - len(figs))
         assert len(out) == 1304
         out += self.charset()
-        assert len(out) <= 2048
+        assert len(out) <= 2000
+        out += bytes(2000 - len(out))
+        hud = self.hud()
+        out += bytes([x & 255 for x, _, _, _ in hud] + [c for _, _, c, _ in hud])
+        out += bytes([sum(1 << n for n, (x, _, _, _) in enumerate(hud) if x > 255),
+                      sum(1 << n for n, (_, _, _, m) in enumerate(hud) if m)])
         out += bytes(2048 - len(out)) + shapes
+        out += bytes(64 * HUD_SHAPES - len(shapes))
+        for k in range(len(PARTY)):
+            out += self.health_shape(k)
         return bytes(out)
+
+    def travelers(self):
+        """The party's classes, level 1, with their health: (class, health, most)."""
+        sys.path.insert(0, os.path.join(HERE, "..", "arena"))
+        import arena
+        out = []
+        for cls in PARTY_CLASSES:
+            ch = arena.build(cls, 1)
+            most = 10 + ch["stats"][2] // 4 + 2 * ch["level"]     # rules-v0.md: Health
+            out.append((cls, most, most))
+        return out
+
+    def hud(self):
+        """The HUD's 8 sprites: (x, shape, colour, multicolour); sprite 2 k is traveler k's
+        portrait, 2 k + 1 their health."""
+        _, colours = self.shapes()
+        out = []
+        for k in range(len(PARTY)):
+            x = HUD_FIRST_X + HUD_STEP * k
+            out.append((x, 2 * k, colours[k], True))
+            out.append((x + 24, HUD_SHAPES + k, HUD_COLOUR, False))
+        return out
+
+    def health_shape(self, k):
+        """Traveler k's health, a hires sprite (24 x 21): the number (health/most) on rows 1-5,
+        a bar on 8-11, the class's first three letters on 14-18, in a 3 x 5 font."""
+        cls, health, most = self.travelers()[k]
+        rows = [[0] * 24 for _ in range(21)]
+        text(rows, 1, 1, f"{health}/{most}")
+        for x in range(1, 23):
+            rows[8][x] = rows[11][x] = 1
+        rows[9][1] = rows[10][1] = rows[9][22] = rows[10][22] = 1
+        for x in range(2, 2 + 20 * health // most):
+            rows[9][x] = rows[10][x] = 1
+        text(rows, 1, 14, cls[:3])
+        out = bytearray()
+        for r in rows:
+            for b in range(3):
+                out.append(sum(r[8 * b + i] << (7 - i) for i in range(8)))
+        return bytes(out) + b"\0"
 
 
 def mirrored(shape):
@@ -339,13 +423,15 @@ def allocate(shown):
     next sprite in turn (0 to 7, then round again), if it's free by its top line; a sprite
     is free REUSE lines below the top of the last figure it showed. (Since the figures come
     in order down, the next in turn is always one free soonest.) A figure whose sprite
-    isn't free in time is left out, and so is a reuse past EVENTS_MAX; the turn stays.
+    isn't free in time is left out, and so is a reuse past EVENTS_MAX or set on a line after
+    EVENT_LAST; the turn stays.
     Returns (sprite, x, y, pointer, colour, line it's set on: None for the first 8, set at
     the frame's start), and how many were left out."""
     free, out, left, n, events = [0] * 8, [], 0, 0, 0
     last = [None] * 8
     for px, py, ptr, colour in shown:
-        if free[n] > py or (last[n] is not None and events == EVENTS_MAX):
+        if free[n] > py or (last[n] is not None and (events == EVENTS_MAX
+                                                      or last[n] + 21 > EVENT_LAST)):
             left += 1
             continue
         out.append((n, px, py, ptr, colour, None if last[n] is None else last[n] + 21))

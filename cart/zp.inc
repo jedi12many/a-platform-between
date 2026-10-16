@@ -55,7 +55,7 @@ zp_t2           = $26
 zp_t3           = $27
 
 ; The walking engine (cart/walk/, docs/walk.md): its own program, so this is its alone.
-; The interrupt uses none of it.
+; The interrupt uses only zp_wk_irq and zp_wk_slot.
 zp_wk_ptr       = $50           ; 2: a row of the squares, or of a screen being drawn
 zp_wk_out       = $52           ; 2: where generated code or an edge's cells go
 zp_wk_src       = $54           ; 2: an address being written into generated code
@@ -76,3 +76,5 @@ zp_wk_x1        = $6A
 zp_wk_y0        = $6B
 zp_wk_y1        = $6C
 zp_wk_t         = $6D           ; scratch
+zp_wk_irq       = $6E           ; 2: the interrupt's own pointers (mux.s): a screen's
+zp_wk_slot      = $70           ; 2: sprites' pointers, and the top's slot being filled

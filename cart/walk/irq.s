@@ -1,12 +1,7 @@
-; The walking engine's raster interrupt (docs/walk.md, "A frame"). Two kinds (mux.s's
-; irq_kind): an event's, for the sprites (mux_a, mux_b), and the frame's, at line 250, under the
-; screen's 24 rows: a frame begins. It counts it; if the frame loop has finished the last
-; one (wk_pending), it shows what that one decided: the fine scroll, the screen, the
-; sprites' program; then it sets the sprites for the frame (sprites_frame); and on a coarse
-; step's swap, it copies the colours from the shadow, top first, ahead of the raster
-; (BLAST, about 8,200 cycles), with interrupts on again, so the sprites' events can come
-; in the middle of it. If the loop is still busy, the frame is late: nothing new is shown,
-; and wk_late counts it. It uses no zero page.
+; The walking engine's raster interrupts (docs/walk.md, "A frame" and "The border"): a
+; frame's are border.s's bottom, HUD, world and top, and the sprites' events between (mux.s);
+; irq_kind says which comes next. The vector is TRAMPOLINE's jmp, so that its high byte,
+; $FFFF, the byte the idle VIC shows, is $FF: black. They use no zero page but mux.s's.
 
         .include "hw.inc"
         .include "walk.inc"
@@ -14,9 +9,9 @@
         .export irq, nmi, irq_out
         .export wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .export prog_shown
-        .import sprites_frame, mux_a, mux_b, irq_kind, prog_next
+        .import mux_a, mux_b, irq_kind, bottom, hud_irq, world_irq, top_irq
 
-        .segment "CODE"
+        .segment "HIGH"
 
 irq:    pha
         txa
@@ -25,41 +20,12 @@ irq:    pha
         pha
         lda #$FF
         sta VIC_IRQ
-        lda irq_kind
-        beq @frame
-        lsr a
-        bcc :+
-        jmp mux_a                   ; 1: program A's event
-:       jmp mux_b                   ; 2: B's
-@frame: inc wk_frame
-        bne :+
-        inc wk_frame + 1
-:       lda wk_busy
-        beq @free
-        inc wk_late
-        jmp @sprites
-@free:  lda wk_pending
-        beq @sprites
-        lda wk_d016
-        sta VIC_CTRL2
-        lda wk_d011
-        sta VIC_CTRL1
-        lda wk_d018
-        sta VIC_MEM
-        lda prog_next
-        sta prog_shown
-        lda #0
-        sta wk_pending
-@sprites:
-        ldx prog_shown
-        jsr sprites_frame
-        lda wk_swap
-        beq irq_out
-        lda #0
-        sta wk_swap
-        cli                         ; (the sprites' events may come while the colours copy)
-        jsr BLAST
-        jsr BLAST + SECOND_HALF
+        ldx irq_kind
+        lda kinds + 1, x
+        pha
+        lda kinds, x
+        pha
+        rts                         ; (to the kind's code)
 irq_out:
         pla
         tay
@@ -67,6 +33,8 @@ irq_out:
         tax
         pla
 nmi:    rti
+
+kinds:  .word bottom - 1, mux_a - 1, mux_b - 1, hud_irq - 1, world_irq - 1, top_irq - 1
 
         .segment "BSS"
 

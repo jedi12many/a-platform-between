@@ -178,7 +178,7 @@ registers:
         lda wk_cam + 2
         and #7
         eor #7
-        ora #CTRL1_WALK
+        ora #CTRL1_VIEW
         sta wk_d011
         lda #MEM_A
         ldx wk_front

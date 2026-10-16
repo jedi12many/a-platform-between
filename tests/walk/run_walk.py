@@ -41,6 +41,8 @@ from py65.devices.mpu6502 import MPU  # noqa: E402
 from py65.memory import ObservableMemory  # noqa: E402
 
 LINE, LINES = 63, 312
+UNUSED_BITS = {0x16: 0xC0, 0x18: 0x01, 0x19: 0x70, 0x1A: 0xF0,
+               **{r: 0xF0 for r in range(0x20, 0x2F)}, 0x2F: 0xFF}
 FRAME = LINE * LINES
 BADLINE_STEAL = 40
 FIRST_DMA_LINE, LAST_DMA_LINE = 0x30, 0xF7
@@ -140,6 +142,14 @@ class C64:
         self.sprite_until = [0] * 8
         self.shown = {}                     # frame: the sprites that started showing in it
         self.shown_n = {}                   # ...and their numbers
+        self.hud_shown = {}                 # frame: the HUD's sprites as they started
+        self.sprite_start = [None] * 8      # each sprite on: the line its DMA began, its frame,
+                                            # and whether it's been recorded
+        self.last_bad = None                # the last bad line, and its row
+        self.steal_bad = self.steal_sprites = 0     # cycles the VIC will take: tick
+        self.ticked = 0
+        self.snap = set()                   # frames whose lines are kept (vice_walk.py)...
+        self.snaps = {}                     # ...frame: [each line's VIC state]
         self.most_on = 0
         self.frames = []                    # each frame shown: (wk_frame, d016, d011, rows)
         self.seen = None
@@ -165,6 +175,8 @@ class C64:
             return (self.io[0x11] & 0x7F) | (self.line >> 8) << 7
         if 0xD800 <= a < 0xDC00:
             return self.colour[a - 0xD800] | 0xF0
+        if a & 0x3F in UNUSED_BITS:                 # (the VIC's unused bits read as 1s)
+            return self.io[a - 0xD000] | UNUSED_BITS[a & 0x3F]
         if a == 0xDC00:
             f = self.frame()
             return self.script[f - 1] if 0 < f <= len(self.script) else 0xFF
@@ -194,6 +206,9 @@ class C64:
         target = self.io[0x12] | (self.io[0x11] & 0x80) << 1
         if self.line == target:
             self.io[0x19] |= 0x81
+        if self.line == 0:
+            self.last_bad = None
+            self.picture = self.frame()
         self.sprites_line()
         ys = self.io[0x11] & 7
         if FIRST_DMA_LINE <= self.line <= LAST_DMA_LINE and self.line & 7 == ys and self.io[0x11] & 0x10:
@@ -203,28 +218,64 @@ class C64:
             base = self.screen_base() + 40 * self.badrow
             self.seen[3].append((bytes(self.ram[base:base + 40]),
                                  bytes(self.colour[40 * self.badrow:40 * self.badrow + 40])))
+            self.last_bad = (self.line, self.badrow)
             self.badrow += 1
-            self.mpu.processorCycles += BADLINE_STEAL
+            self.steal_bad = BADLINE_STEAL          # (taken at the line's cycle 12: tick)
+        if getattr(self, "picture", None) in self.snap:
+            self.snaps.setdefault(self.picture, []).append(self.snapshot())
 
     def sprites_line(self):
-        """The VIC's sprites on this line: one not showing starts when its y is this line
-        (it's on); it shows 21 lines, its x, pointer and colour as they are when it starts
-        (recorded, by frame); each showing takes 2 of the 6502's cycles on each line."""
+        """The VIC's sprites on this line, as x64sc has them (tests/walk/vice_walk.py): a
+        sprite's DMA starts on the line whose low byte is its Y, if it's on and not showing
+        already, and it shows the 21 lines after. Each is recorded, by the frame it started
+        in, on its first line in the view with a shape (the empty one is the border's): its
+        x, the line it started on, its pointer and colour then; a sprite started under the
+        view (the HUD's) on its first line. Each showing takes 2 of the 6502's cycles a line."""
         on = 0
+        blank = walk.SHAPE_POINTER + walk.BLANK
         for n in range(8):
-            if self.sprite_until[n] > self.line:
-                on += 1
-            elif self.io[0x15] >> n & 1 and self.io[1 + 2 * n] == self.line:
-                self.sprite_until[n] = self.line + 21
-                x = self.io[2 * n] | (self.io[0x10] >> n & 1) << 8
-                ptr = self.ram[self.screen_base() + 0x3F8 + n]
-                self.shown.setdefault(self.frame(), []).append((x, self.line, ptr, self.io[0x27 + n] & 15))
-                self.shown_n.setdefault(self.frame(), []).append(n)
-                on += 1
-            if self.line == 0:
-                self.sprite_until[n] = 0
+            st = self.sprite_start[n]
+            if st is not None:
+                st[3] += 1                          # (its lines: it may run past line 311)
+                if st[3] > 21:
+                    st = self.sprite_start[n] = None
+            if st is None and self.io[0x15] >> n & 1 and self.io[1 + 2 * n] == self.line & 0xFF:
+                st = self.sprite_start[n] = [self.line, self.frame(), False, 0]
+            if st is None or st[3] == 0:
+                continue
+            on += 1
+            if st[2]:
+                continue
+            x = self.io[2 * n] | (self.io[0x10] >> n & 1) << 8
+            ptr = self.ram[self.screen_base() + 0x3F8 + n]
+            colour = self.io[0x27 + n] & 15
+            if st[0] >= walk.LAST_VIEW:
+                if st[3] == 2:          # (its second line: the harness's lines
+                    self.hud_shown.setdefault(st[1], []).append((x, st[0], ptr, colour))
+                    st[2] = True                    # are too coarse for its first fetch)
+            elif walk.FIRST_VIEW <= self.line <= walk.LAST_VIEW and ptr != blank:
+                self.shown.setdefault(st[1], []).append((x, st[0], ptr, colour))
+                self.shown_n.setdefault(st[1], []).append(n)
+                st[2] = True
         self.most_on = max(self.most_on, on)
-        self.mpu.processorCycles += 2 * on
+        self.steal_sprites = 2 * on                 # (for the next line: from this one's 55)
+
+    def snapshot(self):
+        """This line's VIC state, for drawing it (vice_walk.py): the registers, the row shown
+        and its line in it (None: idle), and each sprite showing: x, its line in its shape,
+        pointer, colour, multicolour."""
+        io = self.io
+        row = None
+        if self.last_bad is not None and 0 <= self.line - self.last_bad[0] < 8:
+            row = (self.last_bad[1], self.line - self.last_bad[0])
+        sprites = []
+        for n in range(8):
+            st = self.sprite_start[n]
+            if st is not None and st[3] > 0:
+                sprites.append((n, io[2 * n] | (io[0x10] >> n & 1) << 8, st[3] - 1,
+                                self.ram[self.screen_base() + 0x3F8 + n], io[0x27 + n] & 15,
+                                io[0x1C] >> n & 1))
+        return (self.line, io[0x11], io[0x16], io[0x18], row, sprites)
 
     def irq(self):
         m = self.mpu
@@ -247,11 +298,30 @@ class C64:
         word = lambda a: r[a] | r[a + 1] << 8
         return (self.frame(), word(p), word(p + 2), word(c), word(c + 2), r[s["wk_stage"]])
 
+    def tick(self):
+        """After each instruction: the raster's lines passed, the VIC's cycles taken where
+        it takes them (a bad line's from its cycle 12, the sprites' fetches from 55, for the
+        next line: the stops the 6502 sees), and the interrupt."""
+        m = self.mpu
+        while m.processorCycles // LINE != self.ticked:
+            self.ticked += 1
+            self.new_line()
+        cycle = m.processorCycles % LINE
+        if self.steal_bad and cycle >= 12:
+            m.processorCycles += self.steal_bad
+            self.steal_bad = 0
+        if self.steal_sprites and cycle >= 55:
+            m.processorCycles += self.steal_sprites
+            self.steal_sprites = 0
+            while m.processorCycles // LINE != self.ticked:
+                self.ticked += 1
+                self.new_line()
+        self.irq()
+
     def run(self, frames):
         m = self.mpu
         awake, irq, nmi = self.syms["wk_awake"], self.syms["irq"], self.syms["nmi"]
         done = self.syms["wk_done"]
-        last = 0
         while len(self.states) < frames:
             pc = m.pc
             if pc == awake:
@@ -264,10 +334,7 @@ class C64:
                 self.irq_cycles.append(m.processorCycles - self.irq_at)
                 self.irq_at = None
             m.step()
-            while m.processorCycles // LINE != last:
-                last += 1
-                self.new_line()
-            self.irq()
+            self.tick()
             if m.processorCycles > 400 * FRAME + frames * FRAME * 2:
                 raise RuntimeError("it never settled into frames")
 
@@ -303,10 +370,12 @@ def check(c64, floor, ref):
         cam = ref[f - 1][2:4]
         xs, ys = 7 - (cam[0] & 7), 7 - (cam[1] & 7)
         problems = []
-        if d016 & 7 != xs or d011 & 7 != ys or d016 & 0x18 != 0x10 or d011 & 0x78 != 0x10:
+        if d016 & 7 != xs or d011 & 7 != ys or d016 & 0x18 != 0x10 or not d011 & 0x10:
+            # (the first bad line may be in the band above the view: the mode's the
+            # border's there; tests/walk/vice_walk.py holds the picture to x64sc's)
             problems.append(f"registers ${d016:02X} ${d011:02X} for fine scroll {xs}, {ys}")
         want = expected_rows(floor, cam)
-        if len(rows) != 25:
+        if len(rows) != (24 if ys == 7 else 25):     # (ys 7: row 24, all under the view, isn't)
             problems.append(f"{len(rows)} rows read")
         for r, (chars, cols) in enumerate(rows[:25]):
             if r == 24 and ys == 7:
@@ -344,6 +413,22 @@ def check(c64, floor, ref):
         ok(f"every frame's figures as the VIC showed them, sprite by sprite (x, y, shape, colour) "
            f"as the reference places and shares them: {figs} in all, up to {most} a frame, "
            f"{left} left out")
+    # The HUD: every frame its 8 sprites, from line 267 (their Y 11), as the floor's asset has
+    # them.
+    hud = sorted((x, 256 + walk.HUD_Y, walk.SHAPE_POINTER + shape, colour)
+                 for x, shape, colour, _ in floor.hud())
+    bad = 0
+    frames_hud = sorted(f for f in c64.hud_shown if 1 <= f <= len(ref))
+    for f in frames_hud:
+        if sorted(c64.hud_shown[f]) != hud:
+            if bad < 3:
+                fail(f"frame {f}: the HUD's sprites were {sorted(c64.hud_shown[f])}, not {hud}")
+            bad += 1
+    if len(frames_hud) < len(c64.frames) - 2:
+        fail(f"the HUD shown in {len(frames_hud)} frames of {len(c64.frames)}")
+    elif not bad:
+        ok(f"the HUD in every frame ({len(frames_hud)}): its 8 sprites from line 267, the "
+           f"travelers' portraits and health")
     late = c64.ram[c64.syms["wk_late"]]
     if late:
         fail(f"{late} frames late: the loop wasn't done when the next frame began")

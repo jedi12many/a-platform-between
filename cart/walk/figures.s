@@ -503,7 +503,7 @@ merge:  ldx #0                      ; X: the next of porder[]
 ; ----------------------------------------------------------------------------------------
 ; The sprites shared out (walk.py's allocate): each figure, down the screen, takes the next
 ; sprite in turn (0-7, then round again: always one free soonest), if it's free by its top
-; line. So the first eight take sprites 0-7, set at the frame's start; each one after
+; line and the line it's set on comes by EVENT_LAST. So the first eight take sprites 0-7, set at the frame's start; each one after
 ; reuses a sprite, an event on the line the last figure it showed ends (they come in that
 ; order). Into the program not shown (PROG_A or PROG_B): a copy of the code for each.
 allocate:
@@ -567,7 +567,13 @@ rest:   sty zp_wk_i                ; (turn is 0: the first eight came round to i
         cmp list_y, y               ; free by its top line?
         beq :+
         bcs out
-:       lda events
+:       lda last_y, x               ; its event's line: by EVENT_LAST (then the bottom's
+        clc                         ; interrupt, border.s)
+        adc #SPRITE_LINES
+        bcs out
+        cmp #EVENT_LAST + 1
+        bcs out
+        lda events
         cmp #EVENTS_MAX
         bcs out
         asl a                       ; its record: P_EVENTS + 8 n

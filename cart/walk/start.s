@@ -12,8 +12,12 @@
         .import camera_init, camera_step, wk_cam, wk_front
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .import edge_mode, edge_base, wk_ncx, wk_ncy, draw_all, maps_build
-        .import figures_init, figures_step, sprites_frame, prog_next, prog_shown
-        .import __BSS_RUN__, __BSS_SIZE__
+        .import figures_init, figures_step, prog_next, prog_shown, view_d011, screen_b
+        .import irq_kind
+        .import __BSS_RUN__, __BSS_SIZE__, __HIGH_LOAD__, __HIGH_RUN__, __HIGH_SIZE__
+        .import __DATA_RUN__, __DATA_SIZE__
+
+        .assert __DATA_RUN__ + __DATA_SIZE__ <= SHIFT_AB, lderror, "the program runs past $27FF"
 
         .segment "LOADADDR"
         .word $0801
@@ -49,9 +53,15 @@ walk_start:
         sta VIC_CTRL1
         lda #0
         sta VIC_IRQ_ENA
+        lda #$4C                    ; the vector: TRAMPOLINE's jmp irq (so $FFFF is $FF)
+        sta TRAMPOLINE
         lda #<irq
-        sta VEC_IRQ
+        sta TRAMPOLINE + 1
         lda #>irq
+        sta TRAMPOLINE + 2
+        lda #<TRAMPOLINE
+        sta VEC_IRQ
+        lda #>TRAMPOLINE
         sta VEC_IRQ + 1
         lda #<nmi
         sta VEC_NMI
@@ -69,6 +79,25 @@ walk_start:
         iny
         bne :-
         inc zp_wk_out + 1
+        dex
+        bne :-
+        ; The interrupts' code up to $F200 (before gen_all writes over the program's top).
+        lda #<__HIGH_LOAD__
+        sta zp_wk_src
+        lda #>__HIGH_LOAD__
+        sta zp_wk_src + 1
+        lda #<__HIGH_RUN__
+        sta zp_wk_dst
+        lda #>__HIGH_RUN__
+        sta zp_wk_dst + 1
+        ldx #>(__HIGH_SIZE__ + 255)
+        ldy #0
+:       lda (zp_wk_src), y
+        sta (zp_wk_dst), y
+        iny
+        bne :-
+        inc zp_wk_src + 1
+        inc zp_wk_dst + 1
         dex
         bne :-
         jsr look_in                 ; (before gen_all writes over the program's top)
@@ -119,11 +148,17 @@ walk_start:
         sta VIC_SPR_MC2
         lda prog_next
         sta prog_shown
-        tax
-        jsr sprites_frame
-        lda #VB_LINE
+        lda #0
+        sta screen_b
+        lda wk_d011
+        sta view_d011
+        lda #KIND_WORLD             ; the first interrupt: the world's sprites, at line 1
+        sta irq_kind                ; (border.s)
+        lda #WORLD_LINE
         sta VIC_RASTER
-        lda wk_d011                 ; the screen on
+        lda wk_d011                 ; the screen on: the band (black), till the view
+        and #7
+        ora #CTRL1_BAND
         sta VIC_CTRL1
         lda #$FF
         sta VIC_IRQ
@@ -208,6 +243,11 @@ shapes_in:
         inc zp_wk_dst + 1
         dex
         bne :-
+        lda #0                      ; the empty shape (the asset stops at the HUD's)
+        ldy #63
+:       sta SPRITE_SHAPES + (BLANK_SHAPE - SHAPE_POINTER) * 64, y
+        dey
+        bpl :-
         lda #PORT_GAME
         sta CPU_PORT
         rts
