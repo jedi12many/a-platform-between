@@ -1,0 +1,20 @@
+# A band hears the party (success at a cost) and is alert after: its next check is 20
+# easier (-20). Dusk, so its range (Sense 50: 10 squares) leaves room for a second roll.
+# Bands are checked in order.
+seed 5
+light dusk
+map
+##################
+#................#
+#@.............a.#
+#................#
+#.........b......#
+##################
+end
+party sneaking
+traveler 40 30
+traveler 35 60
+traveler 20 25
+band a 50 20 hiding
+band b 45 40 hiding
+path E 13

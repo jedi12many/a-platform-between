@@ -1,0 +1,17 @@
+# A first try: four travelers sneak east at night toward a hiding band.
+seed 7
+light night
+map
+##################
+#................#
+#.@......+.....a.#
+#................#
+##################
+end
+party sneaking
+traveler 70 40
+traveler 45 30
+traveler 30 55
+traveler 25 20
+band a 30 20 hiding
+path E 12

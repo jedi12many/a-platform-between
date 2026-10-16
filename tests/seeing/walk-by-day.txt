@@ -1,0 +1,16 @@
+# Walking openly by day toward an open band (a camp): the band sees from far off (Sense
+# 35: 14 squares by day), TN 80 and the distance; the party looks back at 80 too.
+seed 11
+light day
+map
+######################
+#@...................#
+#....................#
+#..................a.#
+######################
+end
+party walking
+traveler 30 45
+traveler 20 30
+band a 35 20 open
+path E 17

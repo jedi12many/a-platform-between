@@ -1,0 +1,19 @@
+light day; the party walks
+step 0: the party at 1,1
+  band 1 at 19,3, 18 away: the party looks
+    TN 80 open +30 distance = 110
+    helping: Notice 30 rolls 71 = 101 against 110: cost, +0
+    looks: Notice 45 rolls 83 = 128 against 110: success: spotted
+step 4: the party at 5,1
+  band 1 at 19,3, 14 away: band 1 looks
+    TN 80 walking +20 distance = 100
+    looks: Sense 35 rolls 18 = 53 against 100: fail: not yet
+step 8: the party at 9,1
+  band 1 at 19,3, 10 away: band 1 looks
+    TN 80 walking +10 distance = 90
+    looks: Sense 35 rolls 20 = 55 against 90: fail: not yet
+step 12: the party at 13,1
+  band 1 at 19,3, 6 away: band 1 looks
+    TN 80 walking = 80
+    looks: Sense 35 rolls 51 = 86 against 80: success: seen
+the fight: band 1

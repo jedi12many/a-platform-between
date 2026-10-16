@@ -708,9 +708,26 @@ build/battle-next.sim: tests/battle-next/battle.c $(NEXT_SRC) $(NEXT_SIM_CORE) $
 build/turn-check: tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC)
 
-test-rules-next: build/battle-next build/battle-next.asan build/battle-next.sim build/turn-check
+test-rules-next: build/battle-next build/battle-next.asan build/battle-next.sim build/turn-check \
+                 build/seeing-check build/seeing-check.asan build/seeing-check.sim
 	python3 tests/battle-next/run_battles.py
 	python3 tools/rules/check_power_docs.py
+	python3 tests/seeing/run_seeing.py
+
+# Seeing and being seen (docs/open-floors.md): the rules lab's core/next/seeing.c, held to
+# tools/rules/seeing.py by tests/seeing/run_seeing.py.
+SEEING_SRC := core/next/seeing.c core/src/rng.c core/src/rules.c core/src/registry.c core/src/names.c
+SEEING_HDR := core/next/apb_seeing.h $(CORE_HDR)
+
+build/seeing-check: tests/seeing/seeing_check.c $(SEEING_SRC) $(SEEING_HDR) | build
+	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -DAPB_PLAY_ONLY -o $@ tests/seeing/seeing_check.c $(SEEING_SRC)
+
+build/seeing-check.asan: tests/seeing/seeing_check.c $(SEEING_SRC) $(SEEING_HDR) | build
+	$(CC) -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined $(WARN) $(NEXT_INC) \
+		-DAPB_PLAY_ONLY -o $@ tests/seeing/seeing_check.c $(SEEING_SRC)
+
+build/seeing-check.sim: tests/seeing/seeing_check.c $(SEEING_SRC) $(SEEING_HDR) | build
+	$(CL65) -t sim6502 -Os $(NEXT_INC) -DAPB_PLAY_ONLY -o $@ tests/seeing/seeing_check.c $(SEEING_SRC)
 
 build/battle: tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC) $(CORE_HDR) | build
 	$(CC) $(CFLAGS) $(WARN) $(INC) -o $@ tests/battle/battle.c $(BATTLE_SRC) $(CORE_SRC)

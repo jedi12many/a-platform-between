@@ -1,0 +1,44 @@
+light dusk; the party sneaks
+step 0: the party at 1,2
+  band 2 at 10,4, 9 away: the party looks
+    TN 50 + 40 hiding +10 dusk +10 distance = 110
+    helping: Notice 30 rolls 68 = 98 against 110: cost, +0
+    helping: Notice 25 rolls 18 = 43 against 110: fail, +10
+    looks: Notice 60 rolls 80 = 140 against 120: success: spotted
+  band 2 at 10,4, 9 away: band 2 looks
+    sneaking: Stealth 35 rolls 70 = 105 against 100: success, +10
+    sneaking: Stealth 20 rolls 61 = 81 against 100: cost, +0
+    TN 50 + 40 sneaking +10 the others +10 dusk +10 distance = 120
+    looks: Sense 45 rolls 21 = 66 against 120: fail: not yet
+step 2: the party at 3,2
+  band 1 at 15,2, 12 away: the party looks
+    TN 50 + 20 hiding +10 dusk +20 distance = 100
+    helping: Notice 30 rolls 84 = 114 against 100: success, -10
+    helping: Notice 25 rolls 10 = 35 against 90: fail, +10
+    looks: Notice 60 rolls 86 = 146 against 100: success: spotted
+step 4: the party at 5,2
+  band 1 at 15,2, 10 away: band 1 looks
+    sneaking: Stealth 35 rolls 87 = 122 against 100: success, +10
+    sneaking: Stealth 20 rolls 12 = 32 against 100: fail, -10
+    TN 50 + 40 sneaking +0 the others +10 dusk +10 distance = 110
+    looks: Sense 50 rolls 50 = 100 against 110: cost: heard: alert
+  band 2 at 10,4, 5 away: band 2 looks
+    sneaking: Stealth 35 rolls 64 = 99 against 100: cost, +0
+    sneaking: Stealth 20 rolls 34 = 54 against 100: fail, -10
+    TN 50 + 40 sneaking -10 the others +10 dusk = 90
+    looks: Sense 45 rolls 8 = 53 against 90: fail: not yet
+step 8: the party at 9,2
+  band 1 at 15,2, 6 away: band 1 looks
+    sneaking: Stealth 35 rolls 100 = 135 against 100: crit, +20
+    sneaking: Stealth 20 rolls 79 = 99 against 100: cost, +0
+    TN 50 + 40 sneaking +20 the others +10 dusk -20 alert = 100
+    looks: Sense 50 rolls 24 = 74 against 100: fail: not yet
+step 12: the party at 13,2
+  band 1 at 15,2, 2 away: band 1 looks
+    sneaking: Stealth 35 rolls 65 = 100 against 100: cost, +0
+    sneaking: Stealth 20 rolls 11 = 31 against 100: fail, -10
+    TN 50 + 40 sneaking -10 the others +10 dusk -20 alert = 70
+    looks: Sense 50 rolls 1 = 51 against 70: fail: not yet
+step 13: the party at 14,2
+  band 1 at 15,2, 1 away: band 1 looks: seen, no roll
+the fight: band 1

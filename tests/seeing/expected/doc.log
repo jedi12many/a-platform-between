@@ -1,0 +1,18 @@
+light night; the party sneaks
+step 8: the party at 10,2
+  band 1 at 15,2, 5 away: the party looks
+    TN 50 + 20 hiding +20 night = 90
+    helping: Notice 40 rolls 67 = 107 against 90: success, -10
+    helping: Notice 30 rolls 7 = 37 against 80: fail, +10
+    helping: Notice 20 rolls 84 = 104 against 90: success, -10
+    looks: Notice 55 rolls 28 = 83 against 80: success: spotted
+step 10: the party at 12,2
+  band 1 at 15,2, 3 away: band 1 looks
+    sneaking: Stealth 45 rolls 89 = 134 against 100: success, +10
+    sneaking: Stealth 30 rolls 98 = 128 against 100: success, +10
+    sneaking: Stealth 25 rolls 17 = 42 against 100: fail, -10
+    TN 50 + 70 sneaking +10 the others +20 night = 150
+    looks: Sense 30 rolls 46 = 76 against 150: fail: not yet
+step 12: the party at 14,2
+  band 1 at 15,2, 1 away: band 1 looks: seen, no roll
+the fight: band 1

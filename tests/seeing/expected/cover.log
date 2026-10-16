@@ -1,0 +1,18 @@
+light dusk; the party sneaks
+step 3: the party at 4,1
+  band 1 at 14,3, 10 away: the party looks
+    TN 50 + 30 hiding +10 dusk +10 distance +20 cover between = 120
+    looks: Notice 50 rolls 68 = 118 against 120: cost: heard
+step 5: the party at 6,1
+  band 1 at 14,3, 8 away: band 1 looks
+    TN 50 + 55 sneaking +10 dusk +10 distance +20 cover between = 145
+    looks: Sense 40 rolls 18 = 58 against 145: fail: not yet
+step 7: the party at 8,2
+  band 1 at 14,3, 6 away: the party looks
+    TN 50 + 30 hiding +10 dusk +20 cover between = 110
+    looks: Notice 50 rolls 80 = 130 against 110: success: spotted
+step 9: the party at 10,2
+  band 1 at 14,3, 4 away: band 1 looks
+    TN 50 + 55 sneaking +10 dusk +10 in cover = 125
+    looks: Sense 40 rolls 70 = 110 against 125: cost: heard: alert
+the end of the way: not seen

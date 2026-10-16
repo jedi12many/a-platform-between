@@ -201,6 +201,29 @@ def load(root=ROOT):
             "items": items, "echoes": echoes, "foes": foes}
 
 
+# Foes' senses (registry/senses.txt, docs/open-floors.md): read on their own, as only the
+# rules lab uses them yet. Every foe in foes.txt must have its line.
+def load_senses(root=ROOT, foes=None):
+    """{NAME: {"sense": n, "stealth": n}}."""
+    path = os.path.join(os.path.abspath(root), "senses.txt")
+    foes = foes if foes is not None else load(root)["foes"]
+    out = {}
+    for n, f in _rows(path):
+        if len(f) != 3:
+            _fail(path, n, f"expected NAME sense stealth, found {len(f)} columns")
+        if f[0] not in foes:
+            _fail(path, n, f"'{f[0]}' isn't a foe in foes.txt")
+        if f[0] in out:
+            _fail(path, n, f"'{f[0]}' has a line already")
+        out[f[0]] = {"sense": _int(path, n, f[1], 0, 100, "sense"),
+                     "stealth": _int(path, n, f[2], 0, 100, "stealth")}
+    missing = sorted(set(foes) - set(out))
+    if missing:
+        raise RegistryError(f"{os.path.relpath(path)}: no line for {', '.join(missing)} "
+                            "(give each foe its sense and stealth)")
+    return out
+
+
 # Conditions (registry/conditions.txt, docs/turn.md): read on their own, as only the
 # rules lab (core/next/) uses them yet.
 MAX_CONDITION_ID = 127
