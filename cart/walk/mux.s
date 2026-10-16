@@ -92,7 +92,9 @@ world_frame:
         sta slot_was
         lda #8
         sta slots_were
-:       ldy slots_used
+:       lda slots_used              ; (this frame's crossing: next time's count)
+        sta slots_now
+        ldy slots_used
 :       cpy slots_were
         bcs @done
         jsr slot_at
@@ -105,7 +107,7 @@ world_frame:
         inc slots_used
         ldy slots_used
         jmp :-
-@done:  lda slots_used
+@done:  lda slots_now
         sta slots_were
         lda prog_shown
         asl a
@@ -259,6 +261,7 @@ irq_kind:   .res 1              ; the next interrupt (KIND_*: irq.s)
 ev_kind:    .res 1              ; the events': KIND_A or KIND_B
 slot:       .res 2              ; world_frame: the top's slots being filled...
 slots_used: .res 1              ; ...how many so far
+slots_now:  .res 1
 slots_were: .res 1              ; how many written to a table last frame (top_spare beyond)
 slot_was:   .res 1              ; and which slots they were (their low byte)
 
