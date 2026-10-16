@@ -17,15 +17,21 @@
 
         .segment "HIGH"
 
-; The first eight from program BASE: where, their colours, on or not, their x's ninth bits;
+; The first eight from program BASE: their Ys and which are on first (by line 11, when the
+; HUD's Y comes round again); then where across, their colours, their x's ninth bits;
 ; their pointers, the shown screen's, those crossing the view's top (Y under 54: shown
 ; from above 55) empty, with their own put in the top's slots; and its events' count.
 .macro APPLY base
         .repeat 8, n
+        lda base + P_Y + n
+        sta VIC_SPR_Y + 2 * n
+        .endrepeat
+        lda base + P_ENABLE
+        sta VIC_SPR_ENA
+        .repeat 8, n
         lda base + P_X + n
         sta VIC_SPR_X + 2 * n
         lda base + P_Y + n
-        sta VIC_SPR_Y + 2 * n
         cmp #FIRST_VIEW - 1
         lda base + P_PTR + n
         bcs :+
@@ -37,8 +43,6 @@
         lda base + P_COLOUR + n
         sta VIC_SPR_COLOUR + n
         .endrepeat
-        lda base + P_ENABLE
-        sta VIC_SPR_ENA
         lda base + P_X_HIGHS
         sta VIC_SPR_X_HIGH
         lda base + P_COUNT

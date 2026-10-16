@@ -255,6 +255,8 @@ cart: build/apb.crt
 test-cart: build/apb.crt build/the-fare.d64 build/battle build/walk.prg
 	python3 tests/walk/run_walk.py build/walk.prg build/walk/walk.lbl
 	python3 tests/walk/run_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
+	python3 tests/walk/vice_walk.py build/walk.prg build/walk/walk.lbl
+	python3 tests/walk/vice_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
 	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
 	    > build/cart/desk.c64

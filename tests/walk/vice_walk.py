@@ -52,7 +52,8 @@ def render(c64, rows, snaps, border=0):
     the figures' sprites over it, sprite 0 on top, each in its own shape (the first it
     showed in the view: the harness's lines are too coarse to say on which side of a line
     a pointer's write fell, which is what x64sc is for), and only in the view, but when
-    the fine scroll is 6: then the figures crossing its top come in a line late (56), and
+    the fine scroll is 6: then the figures crossing its top (their Y under 54) come in a
+    line late (56), and
     its last line (246) has none. Outside it everything's black (the border's open: sprite
     X 31-334 is the 38 columns' window, the main border outside it) but the HUD's sprites."""
     io, ram = c64.io, c64.ram
@@ -99,7 +100,7 @@ def render(c64, rows, snaps, border=0):
             if start < last:                    # a figure's
                 if not first <= line <= last:
                     continue
-                if ys == 6 and (line == last or start < first and line == first):
+                if ys == 6 and (line == last or start < first - 1 and line == first):
                     continue
             ptr = own[(n, start)]
             data = ram[SHAPES + (ptr - 0x40) * 64 + srow * 3:SHAPES + (ptr - 0x40) * 64 + srow * 3 + 3]

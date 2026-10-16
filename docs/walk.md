@@ -25,7 +25,8 @@ engine first, proven, then the game moves onto it.
 | `tools/walk/walk.py` | the reference: the floor's asset, and walking, the camera and the scroller, frame by frame |
 | `cart/walk/start.s` | the start (a BASIC line, SYS 2061), the machine taken, the frame loop |
 | `cart/walk/gen.s` | the scroller's copying code, written at the start |
-| `cart/walk/irq.s` | the raster interrupt's way in: which of a frame's interrupts comes next |
+| `cart/walk/colours.s` | a step's colours: the colour RAM's rows from the colour map, as the raster passes them |
+| `cart/walk/irq.s`, `irq.inc` | the raster interrupt's way in (a `JMP` each handler points at the next) and out |
 | `cart/walk/border.s` | the border opened: the bands above and below the view, the frame begun (a frame's registers, the swap, the colours), the HUD |
 | `cart/walk/move.s` | walking: the joystick, sliding, the corner nudge |
 | `cart/walk/camera.s` | the camera, and the scroller's five stages |
@@ -65,30 +66,44 @@ drawn seamless: character 1 + 4 tile + 2 (lower) + 1 (right), colour RAM the til
 The camera at pixel (x, y) shows the area's character (x / 8, y / 8) at the top left, with
 the fine scroll at 7 - (x mod 8) and 7 - (y mod 8).
 
-At the start, the area's characters and their colours are written out as two maps of 96
-x 48 bytes (`CHAR_MAP` at $A000, `COLOUR_MAP` at $E000), so any row or column of the
-screen is a straight copy.
+At the start, the area's characters and their colours are written out as maps
+(`CHAR_MAP` at $A000: 96 x 48 bytes; `COLOUR_MAP` at $8800: a page for each row of
+squares, since a square's two rows of characters share its colours, its 96 columns from
+the page's start), so any row or column of the screen is a straight copy.
 
 ## The scroller
 
-Two screens in VIC bank 3 ($C000 and $C400): one shown, one made. The colour RAM can't be
-doubled, so the colours are made in a **shadow** in RAM ($B200) and copied in at once.
-When the camera's next step would cross into the next character (across, down or both),
-the step takes five frames, each frame's share small enough to leave room for the figures:
+Two screens in VIC bank 3 ($C000 and $C400): one shown, one made. When the camera's next
+step would cross into the next character (across, down or both), the step takes five
+frames, each frame's share small enough to leave room for the figures:
 
 | Stage | The frame loop | The camera next frame |
 |---|---|---|
 | `IDLE` | the shown screen's first 500 bytes copied into the other, shifted a column, a row or both (`SHIFT_AB` or `SHIFT_BA`: unrolled, `LDA from+i-41,X` / `STA to+i`, X the shift + 41) | held in its cell (it stops at the edge) |
 | `HALF` | its other 500, and the new edges copied from the map | held |
-| `SHIFTED` | the shadow's first 500 shifted the same way, in place (`SHADE_UP` first byte first for a step forward, `SHADE_DOWN` last first for back) | held |
-| `SHADED` | its other 500, and its new edges | into the new cell; the interrupt swaps the screens and copies the shadow in |
+| `SHIFTED` | the colours' copies aimed at the rows to be shown | held |
+| `SHADED` | nothing heavy; then, done, each row's colours copied as the raster passes it | into the new cell; the interrupt swaps the screens and copies the rows not done |
 | `COLOURED` | nothing heavy: the frame of the swap | held in its (new) cell |
 
 So the camera is decided one frame ahead, waits at a cell's edge while the screen is
 made, and can't make a step more than once in five frames (enough: walking crosses a
-character every five or six). The copying code, 6,002 bytes a block (each half ends in an
-`RTS`, so a half is a call), five blocks, is written by `gen.s` at the start
-($2800-$9F71), not carried in the program.
+character every five or six).
+
+**The colours.** The colour RAM can't be doubled: the new colours must land in each row
+between the VIC reading it for the last frame of the old screen (at the row's bad line)
+and for the first of the new. So each row's colours are copied straight from the colour
+map (`COLOUR_ROWS`: a row a call, `LDA map+c,Y` / `STA COLOUR_RAM+40r+c`, Y the screen's
+first column on the area, 8 cycles a byte), its page aimed in the `SHIFTED` frame at the
+row of squares it'll show (`AIM_ROWS`: each row's 40 high bytes written). In the frame
+before the swap, the loop, done, copies each row as soon as the raster is past its bad
+line (from row 0, till line 243); the swap's interrupt copies the rest, top first, ahead
+of the raster. Both copy from the map, so a row the swap catches half copied is copied
+again the same. On the crowd floor the loop gets 15-23 rows done first; on the first
+floor, all but one or two.
+
+The copying code is written by `gen.s` at the start (`SHIFT_AB` $2800, `SHIFT_BA` $4000:
+6,002 bytes each, an `RTS` half way, so a half is a call; `COLOUR_ROWS` $5800, 25 x 241
+bytes; `AIM_ROWS` $7000, 25 x 121), not carried in the program.
 
 ## A frame
 
@@ -96,9 +111,9 @@ A frame's raster interrupts, in order (`border.s`, `mux.s`):
 
 | Line | Interrupt | What |
 |---|---|---|
-| 244 (243) | bottom | the band under the view begun (see "The border"); the frame counted, and if the frame loop finished the last one, what it decided shown: `$D016` and `$D011` (the fine scroll), `$D018` (the screen), its sprites' program; the HUD's sprites set; and on a step's swap, the shadow into the colour RAM, top first (`BLAST`, about 8,200 cycles, ahead of the raster all the way down), the other interrupts let in |
-| 264 | HUD | the HUD's sprites' pointers, written in line 266: it shows on 268-288 |
-| 289 | world | the program's first eight sprites; the band at 25 rows (the border's top compare) |
+| 244 (243) | bottom | the band under the view begun (see "The border"); the frame counted, and if the frame loop finished the last one, what it decided shown: `$D016` and `$D011` (the fine scroll), `$D018` (the screen), its sprites' program; the HUD's sprites set; and on a step's swap, the other interrupts let in, the colours' rows the loop didn't copy (see "The scroller") |
+| 264 | HUD | the HUD's sprites' pointers, written in line 266: it shows on 268-288; the band at 25 rows (the border's top compare) |
+| 1 | world | the program's first eight sprites: their Ys first, by line 11 (the HUD's Y) |
 | 52 | top | the band above the view ended: the pointers of the figures crossing its top, then the view on at 55 |
 | events | the sprites reused down the screen, each at its line (by 238) |
 
@@ -213,15 +228,20 @@ steps) and yard 7602's eighth, the crowd (1,726 frames, 215 coarse steps):
 |---|---|---|
 | A PAL frame | 19,656 | 19,656 |
 | Its 25 bad lines | 1,000 | 1,000 |
-| Sprites shown | 7,589, up to 7 a frame | 16,115, up to 14 a frame |
+| Sprites shown | 7,589, up to 7 a frame | 16,034, up to 14 a frame |
 | Left out | 0 | 42 |
-| The busiest frame loop | 11,545 | 15,373 |
-| The busiest interrupt (a swap and the colours) | 8,817 | 8,776 |
+| The busiest frame loop | 13,864 | 17,248 |
+| The latest a frame loop's done (the bottom's at 244) | line 161 | line 215 |
+| Colour rows copied in the frame before a swap (of 25) | 23-24 | 15-23 |
+| The busiest interrupt (the colours' copy apart) | 1,356 | 1,302 |
 | Late frames | 0 | 0 |
 
-The tightest frame is the swap's: the interrupt's colour copy, then a whole frame loop
-(walking, the camera, the figures) after it. With 12 figures in sight its loop is done by
-line 236 of the 250 it has.
+The tightest frames are a step's first two, each shifting half a screen (4,000 cycles of
+copying) beside the figures. The swap's frame was the tightest while the colours went
+through a shadow (shifted in place over two frames, then all copied in at the swap: 16,000
+cycles a step, 8,000 of them in the swap's interrupt); now they're 8,000 cycles of copying
+straight from the map, most of it in the frame before the swap, behind the raster, and
+4,000 aiming the copies in the `SHIFTED` frame, which has nothing else heavy.
 
 ## Tested
 
@@ -254,7 +274,9 @@ every few frames, and compares its whole picture, borders and all, with the pict
 it's meant to be, drawn from the harness's snapshot of each line: the view as the rows were
 read, the figures in their shapes only in the view, the bands black, the HUD. It found what
 the harness can't: the VIC showing a sprite from the line after its Y, `$D018`'s unused
-bit reading as 1, the top compare needing 25 rows at line 51. Without x64sc (`apt-get
+bit reading as 1, the top compare needing 25 rows at line 51, and a sprite started again
+at the HUD's Y (11) in the next frame's top border when the world interrupt set its Y
+after line 11. `make test-cart` runs it on both floors, every seventh frame. Without x64sc (`apt-get
 install vice`, and `xvfb-run`) it says so and passes. It wants checking on a real C64 too.
 
 ## The floor's asset
