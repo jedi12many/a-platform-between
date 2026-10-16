@@ -298,16 +298,28 @@ function exploreBrief() {
     btn.onclick = function () { exploreBrief.scroll = v[1]; exploreBrief(); };
     views.append(btn);
   });
+  var looks = el("div", "classes");
+  [["By floor", ""]].concat(LOOKS.map(function (l) { return [l[0].toUpperCase() + l.slice(1), l]; })).forEach(function (v) {
+    var btn = el("button", null, v[0]);
+    btn.type = "button";
+    btn.setAttribute("aria-pressed", String((exploreBrief.look || "") === v[1]));
+    btn.onclick = function () { exploreBrief.look = v[1]; exploreBrief(); };
+    looks.append(btn);
+  });
   go = el("button", "primary", "Begin");
   go.type = "button";
-  go.onclick = function () { exploreStart(party, Number(yard.value) & 0xFFFF, !!exploreBrief.scroll); };
+  go.onclick = function () { exploreStart(party, Number(yard.value) & 0xFFFF, !!exploreBrief.scroll, exploreBrief.look); };
   b.append(el("h3", null, "Who goes down"), el("p", "note", "Up to four, in marching order: the first leads, " +
-           "the rest follow; click again to leave one out."), row, el("h3", null, "The view"), views, lab, go);
+           "the rest follow; click again to leave one out."), row, el("h3", null, "The view"), views,
+           el("h3", null, "The look"), el("p", "note", "How the floors are drawn (docs/art.md, Looks): by floor, " +
+           "a forest, then the mountains, a town and a dungeon, and round again; or one look all the way down."),
+           looks, lab, go);
 }
 
-function exploreStart(party, yard, scroll) {
+function exploreStart(party, yard, scroll, look) {
   party = partyOf(party);
-  X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll };
+  X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll,
+        look: LOOKS.indexOf(look) >= 0 ? look : "" };
   exploreFloor(1);
 }
 
@@ -337,6 +349,48 @@ function exploreFloor(n) {
 }
 
 function roomOf() { return X.f.rooms[X.room]; }
+
+/* The looks (docs/art.md, Looks): the same terrain drawn as a place. Floor by floor, unless
+ * one was picked. */
+var LOOKS = ["forest", "mountain", "town", "dungeon"];
+
+function lookOf(floor) { return X.look || LOOKS[(floor - 1) % LOOKS.length]; }
+
+/* A square's tile in the floor's look (docs/rooms.md, Looks): its terrain's, or one of
+ * that terrain's variants (open2, open3...), and on open ground with nothing on it, now
+ * and then scenery, picked by a hash of where the square is, so it's the same each time
+ * it's drawn and decides nothing. Room r's square (x, y); t its terrain. */
+function dress(r, x, y, t) {
+  var look = ART.looks[lookOf(X.floor)], base = ART.terrain[t], n, h, scen, vars;
+  if (!look || !base) return base || "open";
+  n = ((X.floor * 9 + r.i) * 8 + y) * 16 + x;
+  h = Math.imul((n ^ (X.yard << 4)) >>> 0, 0x9E3779B1) >>> 24;     /* 0-255 */
+  if (!look.split) {
+    look.split = { scenery: [], variants: {} };
+    look.order.slice(8).forEach(function (name) {
+      var b = name.replace(/[0-9]+$/, "");
+      if (b !== name && ART.terrain.indexOf(b) >= 0) (look.split.variants[b] = look.split.variants[b] || []).push(name);
+      else look.split.scenery.push(name);
+    });
+  }
+  scen = look.split.scenery;
+  if (t === 0 && scen.length && h < 16 && !(r.stairs && r.stairs[0] === x && r.stairs[1] === y) &&
+      !(r.cache && r.cache.x === x && r.cache.y === y) &&
+      !r.foes.some(function (f) { return f.x === x && f.y === y; })) return scen[h % scen.length];
+  vars = look.split.variants[base] || [];
+  if (!vars.length || (h & 7) !== 0) return base;                   /* seven squares in eight plain */
+  return vars[(h >> 3) % vars.length];
+}
+
+/* What the board draws for the floor: its look, and each square's tile (the area's, or
+ * one room's). */
+function dressFight(room) {
+  fight.look = lookOf(X.floor);
+  fight.dress = function (x, y, t) {
+    var r = room || X.f.rooms[roomAt(x, y)];
+    return dress(r, room ? x : x - ox(r.i), room ? y : y - oy(r.i), t);
+  };
+}
 
 function foesIn(r) { return X.cleared[r.i] ? [] : r.foes; }
 
@@ -393,6 +447,7 @@ function exploreView() {
             effects: [], floaters: [], targets: [],
             shown: all.map(function (f) { return { x: f.x, y: f.y, health: 1, state: 0, alpha: 1, flash: 0 }; }) };
   if (X.scroll) { fight.cam = X.cam; fight.view = [VIEW_W, VIEW_H]; }
+  dressFight(X.scroll ? null : r);
   showParty();                                          /* where you're drawn: between squares, walking */
   S = { code: "E13", title: "Explore", native: {
         figures: team.map(function (t) { return t.figure; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
@@ -637,6 +692,7 @@ function exploreFight() {
                   names: names, pack: X.pack.slice(), skills: team[0].skills } };
   held = {};
   newFight();
+  dressFight(r);
   /* Everyone to their squares, and the grid comes up (docs/rooms.md, Exploring). */
   fight.gridFrom = performance.now();
   team.forEach(function (t, k) {
@@ -675,13 +731,13 @@ function exploreButtons() {
   if (mode === "lost") {
     return [["", "The descent ends", null, false, "", false, "hint"],
             ["R", "This floor again", function () { X.lost = false; X.pack = []; exploreFloor(X.floor); }, false, "", true],
-            ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll); }],
+            ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll, X.look); }],
             ["Esc", "Back to the scenarios", intro]];
   }
   return [["Arrows", "Walk: hold them down (numpad: 8 ways), or click a square", null, false, "", false, "hint"],
-          ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll); }],
+          ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll, X.look); }],
           ["V", X.scroll ? "View: scrolling" : "View: one room a screen", function () {
-            exploreStart(X.party, X.yard, !X.scroll);
+            exploreStart(X.party, X.yard, !X.scroll, X.look);
           }, false, "", false, "toggle"],
           ["gap"],
           ["X", "Leave", intro]];

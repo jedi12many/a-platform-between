@@ -4,7 +4,8 @@
 // the files.
 //
 //   node desk.cjs URL roundtrip                   each file's text as the page would save it
-//   node desk.cjs URL paint FILE ENTRY DOT X Y    one dot painted, saved
+//   node desk.cjs URL paint FILE ENTRY DOT X Y    one dot painted, saved (FILE: a look's,
+//                                                 tiles16-forest, chosen by its look)
 //   node desk.cjs URL undo FILE ENTRY DOT X Y     painted, undone, saved
 //   node desk.cjs URL colour FILE ENTRY COLOUR    its own colour chosen, saved
 //   node desk.cjs URL box FILE NEW DOT X0 Y0 X1 Y1   a new entry with a box drawn, saved
@@ -33,8 +34,11 @@ async function main() {
   await page.goto(url);
   await page.waitForFunction(() => window.artdesk && window.artdesk.ready);
 
+  // A look's tiles file (tiles16-forest): its look chosen, then Tiles 16.
   const open = async (file, entry) => {
-    await page.click(`[data-file="${file}"]`);
+    const [base, look] = file.split("-");
+    if (base.startsWith("tiles")) await page.selectOption("[data-look]", look || "");
+    await page.click(`[data-file="${base}"]`);
     if (entry) await page.click(`#entry-list [data-name="${entry}"]`);
   };
   // The middle of dot X, Y on the grid, in page pixels.
@@ -56,7 +60,8 @@ async function main() {
 
   if (what === "roundtrip") {
     const out = {};
-    for (const f of ["figures", "effects", "tiles32", "tiles16"]) {
+    const meta = await (await page.request.get(url + "meta.json")).json();
+    for (const f of Object.keys(meta.files)) {
       out[f] = await page.evaluate((f) => window.artdesk.serialise(f), f);
     }
     console.log(JSON.stringify(out));

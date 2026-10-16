@@ -19,6 +19,10 @@ entry is a line `KIND NAME OPTION` and its rows, one line each:
     tile NAME COLOUR       rows of k (background) d g (shared) o (its own: one of the first
                            eight); 16 x 32 in tiles32, 8 x 16 in tiles16
 
+The tiles come in looks: tiles32 and tiles16 are the yard's; tiles32-forest and
+tiles16-forest the forest's, and so on (LOOKS). After the eight terrain tiles, a tile named
+like one with a number (open2) is a variant of it; any other is scenery.
+
 Colours are named: black white red cyan purple green blue yellow orange brown pink dgrey
 grey lgreen lblue lgrey (the C64's 0-15, in order).
 """
@@ -33,6 +37,11 @@ COLOURS = ["black", "white", "red", "cyan", "purple", "green", "blue", "yellow",
            "brown", "pink", "dgrey", "grey", "lgreen", "lblue", "lgrey"]
 TERRAIN = ["open", "wall", "pit", "rough", "cover", "hazard", "high", "exit"]
 
+# The looks (docs/art.md, Looks): the same terrain redrawn for a place, each a pair of
+# tiles files, tiles32-LOOK and tiles16-LOOK. tiles32 and tiles16 themselves are the
+# yard's, the game's own.
+LOOKS = ["forest", "mountain", "town", "dungeon"]
+
 # What each file holds: its kind of entry, and each kind's size and dots.
 FILES = {
     "figures": {"figure": (12, 21, ".abc")},
@@ -40,6 +49,25 @@ FILES = {
     "tiles32": {"tile": (16, 32, "kdgo")},
     "tiles16": {"tile": (8, 16, "kdgo")},
 }
+for _look in LOOKS:
+    FILES[f"tiles32-{_look}"] = FILES["tiles32"]
+    FILES[f"tiles16-{_look}"] = FILES["tiles16"]
+
+# The cartridge's map has 256 characters: a blank, then for each tile its four, its four
+# with the reach dot and its four with the cursor (tools/battlegfx.py, build16).
+TILES16_MOST = (256 - 1) // 12
+
+
+def tiles_file(size, look=None):
+    """The name of a look's tiles file: tiles32, tiles16-forest."""
+    return f"tiles{size}" + (f"-{look}" if look else "")
+
+
+def variant_of(name):
+    """The terrain a tile redraws, if it's a variant (open2, wall3: chosen square by square,
+    docs/art.md), else None: scenery."""
+    base = name.rstrip("0123456789")
+    return base if base != name and base in TERRAIN else None
 
 
 class Problem(Exception):
@@ -141,6 +169,9 @@ def parse(name, text):
         if have != TERRAIN:
             raise Problem(f"{name}.txt: the first eight tiles must be the terrain, in the "
                           f"rules' order: {' '.join(TERRAIN)} (they're {' '.join(have)})")
+        if name.startswith("tiles16") and len(entries) > TILES16_MOST:
+            raise Problem(f"{name}.txt: {len(entries)} tiles, and the cartridge has room for "
+                          f"{TILES16_MOST} (each takes 12 of its 256 characters): leave some out")
     return Art(name, header, entries, comments)
 
 

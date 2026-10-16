@@ -1,7 +1,7 @@
 # The art: figures, effects and tiles
 
 The battle screen's graphics, on every front end, are built from four text files in
-`content/art/`, which anyone can read in a diff and the **art desk** edits in a browser.
+`content/art/` (and the tiles come in looks besides: *Looks*), which anyone can read in a diff and the **art desk** edits in a browser.
 `tools/battlegfx.py` builds them into the C version's graphics file (`BGFX`: the C64's
 `btab`/`bchr`/`bspr`, the desktop and the browser) and the cartridge's (asset 0). The
 story's pictures are another matter: see `tools/c64fit.py` and `docs/c64.md`.
@@ -19,7 +19,9 @@ saved here can be fought with straight away. On the published site it's the **Ar
 tab (`make site`; `serve.py --publish` writes it as plain files): there's no server there
 to save into the game's files, so Save is **Download**, and the changed file is sent in.
 
-- **Files**: Figures, Effects, Tiles 32 (the C version's map), Tiles 16 (the cartridge's).
+- **Files**: Figures, Effects, Tiles 32 (the C version's map), Tiles 16 (the cartridge's),
+  and **Look**: which look's tiles the two Tiles buttons open (the yard's, or the forest's,
+  the mountains', the town's, the dungeon's; see *Looks*).
   A dot after a file's name: it has changes not saved yet. **Save** (Ctrl+S) saves them
   all; **Revert** goes back to what's saved.
 - **Entries**: pick one from the list. **New**, **Duplicate**, **Rename**, **Delete**. The
@@ -72,6 +74,28 @@ A multicolour dot is two pixels wide, as on the C64. A figure's name is its race
 foe's in the registry (`registry/*.txt`: `HUMAN`, `ASH_RAT`), or `STRANGER`; a figure
 stands with its feet on the bottom row. The effects the battle screen uses are `CURSOR`,
 `BOLT`, `SPARK` and `SLASH`.
+
+## Looks
+
+The same eight terrain tiles, redrawn for a place: a **look**. There are four besides the
+yard's own (`tiles32.txt`, `tiles16.txt`, what the game draws now): **forest**, **mountain**,
+**town** and **dungeon**, each a pair of files, `tiles32-forest.txt` and `tiles16-forest.txt`,
+in the same format. A look has its own background and shared colours (three of the C64's
+registers, so changing look costs nothing on screen) and each tile its own colour.
+
+After the eight terrain tiles a look holds:
+
+- **Variants**: a terrain's name with a number (`open2`, `open3`, `wall2`), the same terrain
+  drawn another way, so a floor isn't one tile repeated. Squares pick them now and then.
+- **Scenery**: any other name (`mushrooms`, `lamp`, `skull`): drawn on open ground now and
+  then, and nothing more; it changes no rule.
+
+How a room picks them is in [rooms.md](rooms.md#looks); the arena's exploring (E13) draws
+the looks now, and the game will when rooms come to it. On the cartridge a look is an asset
+of its own, every tile 12 of the map's 256 characters (its four, with the reach dot, with
+the cursor), so a tiles16 file holds at most **21** tiles: `art.py` refuses more, and
+`battlegfx.py --looks` builds each look's characters to prove they fit. The first pass at
+the four looks was drawn by a program as starting points: redraw them freely in the desk.
 
 ## What the build adds
 

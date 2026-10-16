@@ -413,6 +413,54 @@ def check_party():
            f"in room {there['i'] + 1}'s fight they stand fanned out round the leader as the reference says")
 
 
+def check_looks():
+    """The looks while exploring (docs/rooms.md, Looks; docs/art.md): yard 48213's start
+    room in each look (and by floor: floor 1 is the forest). Every square is drawn with a
+    tile of that look's file: its terrain's, or a variant of that terrain, or, on open
+    ground with no foe, stairs or crate on it, scenery; some squares get a variant or
+    scenery; and the same every time it's drawn."""
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import art
+    out = page("looks", "48213")
+    if not out:
+        return
+    bad = []
+    for name, got in out["looks"].items():
+        look = "forest" if name == "by floor" else name
+        if got["look"] != look:
+            bad.append(f"{name}: the board's look is {got['look']}")
+            continue
+        names = [e.name for e in art.load(art.tiles_file(32, look)).entries]
+        r, dressed = got["room"], 0
+        taken = {(f["x"], f["y"]) for f in r["foes"]}
+        if r["stairs"]:
+            taken.add(tuple(r["stairs"]))
+        if r["cache"]:
+            taken.add((r["cache"]["x"], r["cache"]["y"]))
+        for y, row in enumerate(got["tiles"]):
+            for x, tile in enumerate(row):
+                terrain = art.TERRAIN[int(r["rows"][y][x])]
+                if tile not in names:
+                    bad.append(f"{look}: {x},{y} is drawn as {tile}, not a tile of the look")
+                elif tile != terrain and art.variant_of(tile) != terrain and not (
+                        art.variant_of(tile) is None and tile not in art.TERRAIN
+                        and terrain == "open" and (x, y) not in taken):
+                    bad.append(f"{look}: {x},{y} ({terrain}) is drawn as {tile}")
+                dressed += tile != terrain
+        if not dressed:
+            bad.append(f"{look}: no square has a variant or scenery")
+        if got["again"] != got["tiles"]:
+            bad.append(f"{look}: drawn twice, the tiles differ")
+    if out["errors"]:
+        bad.append(f"the page threw {out['errors'][:2]}")
+    if bad:
+        fail("looks: " + "; ".join(bad[:6]))
+    else:
+        ok("looks: exploring in the forest, mountain, town and dungeon (and by floor, the forest "
+           "first) draws each square with its look's tile for the terrain, a variant of it, or "
+           "scenery on open ground, the same every time")
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -476,6 +524,7 @@ def main():
         check_explore()
         check_scroll()
         check_party()
+        check_looks()
     finally:
         server.terminate()
         server.wait()

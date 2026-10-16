@@ -102,3 +102,4 @@ dialog::backdrop { background: #000a; }
 
 /* In the site's Art desk tab, the site's tabs take the studio's place. */
 .framed nav.studio { display: none; }
+#files label.look { display: flex; gap: 6px; align-items: center; margin-left: 8px; }

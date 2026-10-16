@@ -238,6 +238,24 @@ def build16():
             + bytes(colours) + bytes(names))
 
 
+def look16(look):
+    """A look's map on the cartridge (docs/art.md, Looks), 2 KB of characters: 0 blank,
+    then each of its tiles' four, the four with the reach dot and the four with the cursor,
+    tile by tile in the file's order, the terrain first. A look is an asset of its own, its
+    colours set when it's fetched; Problem if it breaks the cell rule or doesn't fit."""
+    a = art.load(art.tiles_file(16, look))
+    if 1 + 12 * len(a.entries) > 256:
+        raise Problem(f"{a.name}.txt: {len(a.entries)} tiles need {1 + 12 * len(a.entries)} "
+                      "characters, and the cartridge's map has 256")
+    charset = [[0] * 8]
+    for e in a.entries:
+        rows = [list(r) for r in e.rows]
+        for change in (lambda r: r, marked16, cursor16):
+            charset += chars16(change(rows), e.colour)[0]
+    charset += [[0] * 8] * (256 - len(charset))
+    return bytes(b for ch in charset for b in ch)
+
+
 # ------------------------------------------------------------------ building
 
 class Problem(Exception):
@@ -440,6 +458,16 @@ def main(argv):
     if "--cart16" in argv:
         with open(argv[argv.index("--cart16") + 1], "wb") as f:
             f.write(build16())
+    if "--looks" in argv:
+        try:
+            for look in art.LOOKS:
+                look16(look)
+        except Problem as e:
+            print(f"battlegfx: {e}")
+            return 1
+        print("battlegfx: the looks fit the cartridge: " + ", ".join(
+            f"{look} {1 + 12 * len(art.load(art.tiles_file(16, look)).entries)} characters"
+            for look in art.LOOKS))
     if "--c64" in argv:
         out = argv[argv.index("--c64") + 1]
         os.makedirs(out, exist_ok=True)

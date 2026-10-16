@@ -58,8 +58,9 @@ function paint(ctx, rows, colourOf, wide) {
 /* A tile; seamless: without the faint seam on its right and bottom edges, so a room seen
  * while exploring shows no grid (docs/rooms.md): its last column and row are the ones
  * beside them again. On the C64 that's a second copy of the tiles' characters. */
-function tileSprite(name, seamless) {
-  var key = "tile:" + name + (seamless ? ":seamless" : ""), t = ART.tiles, e = t.entries[name], c, rows;
+function tileSprite(name, seamless, look) {
+  var key = "tile:" + (look || "") + ":" + name + (seamless ? ":seamless" : ""), c, rows;
+  var t = (look && ART.looks && ART.looks[look]) || ART.tiles, e = t.entries[name] || t.entries.open;
   if (sprites[key]) return sprites[key];
   c = canvas(SQ, SQ);
   rows = !seamless ? e.rows : e.rows.slice(0, -1).map(function (r) { return r.slice(0, -1) + r[r.length - 2]; });
@@ -1086,11 +1087,12 @@ function frame(now) {
   var grid = gridShown(now), tile;
   for (y = Math.max(0, y0); y < Math.min(map.length, y1); ++y) {
     for (x = Math.max(0, x0); x < Math.min(map[y].length, x1); ++x) {
-      tile = ART.tiles.order[Number(map[y][x])] || "open";
-      if (grid < 1) ctx.drawImage(tileSprite(tile, true), x * SQ, y * SQ);
+      /* The square's tile: the terrain's, or, in a look, a variant or scenery (rooms.js). */
+      tile = fight.dress ? fight.dress(x, y, Number(map[y][x])) : ART.tiles.order[Number(map[y][x])] || "open";
+      if (grid < 1) ctx.drawImage(tileSprite(tile, true, fight.look), x * SQ, y * SQ);
       if (grid > 0) {
         ctx.globalAlpha = grid;
-        ctx.drawImage(tileSprite(tile), x * SQ, y * SQ);
+        ctx.drawImage(tileSprite(tile, false, fight.look), x * SQ, y * SQ);
         ctx.globalAlpha = 1;
       }
     }
@@ -1677,9 +1679,9 @@ async function boot() {
   var m = /scenario=([AR]-\d+)/.exec(location.hash);
   if (m) picked = Math.max(0, SCENARIOS.findIndex(function (s) { return s.code === m[1]; }));
   intro();
-  /* #explore=YARD[:CLASS,CLASS...[:scroll]] */
-  var ex = /explore=(\d+)(?::([\w,]+))?(:scroll)?/.exec(location.hash);
-  if (ex && ROOMDATA) exploreStart(ex[2] || "WARDEN", Number(ex[1]) & 0xFFFF, !!ex[3]);
+  /* #explore=YARD[:CLASS,CLASS...][:scroll][:look=LOOK] */
+  var ex = /explore=(\d+)(?::((?!scroll|look)[\w,]+))?(:scroll)?(?::look=(\w+))?/.exec(location.hash);
+  if (ex && ROOMDATA) exploreStart(ex[2] || "WARDEN", Number(ex[1]) & 0xFFFF, !!ex[3], ex[4]);
   requestAnimationFrame(frame);
   window.arena = {                                                  /* for tests */
     state: function () { return { mode: mode, fight: fight, S: S, auto: auto, fast: fast }; },
