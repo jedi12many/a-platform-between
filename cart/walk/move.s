@@ -119,19 +119,22 @@ slide:
         sbc zp_wk_b
         cmp #$F8
         beq @no
-        ; Would the body fit there, moved, the other axis at c?
+        ; Would the body fit there, moved, the other axis at c (16 c, in sixteenths)?
         jsr body_moved
-        ldx other
         lda edge
-        ldy edge + 1
-        cpx #0
-        bne :+
-        sta zp_wk_fx
-        sty zp_wk_fx + 1
-        jmp @test
-:       sta zp_wk_fy
-        sty zp_wk_fy + 1
-@test:  jsr fits
+        sta zp_wk_a
+        lda edge + 1
+        sta zp_wk_a + 1
+        .repeat 4
+        asl zp_wk_a
+        rol zp_wk_a + 1
+        .endrepeat
+        ldx other
+        lda zp_wk_a
+        sta zp_wk_fx, x
+        lda zp_wk_a + 1
+        sta zp_wk_fx + 1, x
+        jsr fits
         bcs @no
         ; gap = 16 c - pos[other]
         lda edge
@@ -189,46 +192,27 @@ slide:
         dec wk_pos + 1, x
 :       rts
 
-; fx, fy: the body's pixels, the moved axis's from mv, the other's from wk_pos.
+; fx, fy: where the body is, in sixteenths: the moved axis's from mv, the other's from
+; wk_pos.
 body_moved:
-        lda zp_wk_mv
-        sta zp_wk_a
-        lda zp_wk_mv + 1
-        sta zp_wk_a + 1
-        jsr shr4_a
-        lda zp_wk_axis
-        eor #2
-        tax
-        lda wk_pos, x
-        sta zp_wk_b
-        lda wk_pos + 1, x
-        sta zp_wk_b + 1
-        lsr zp_wk_b + 1
-        ror zp_wk_b
-        lsr zp_wk_b + 1
-        ror zp_wk_b
-        lsr zp_wk_b + 1
-        ror zp_wk_b
-        lsr zp_wk_b + 1
-        ror zp_wk_b
         lda zp_wk_axis
         bne @y
-        lda zp_wk_a                 ; moved across
+        lda zp_wk_mv                ; moved across
         sta zp_wk_fx
-        lda zp_wk_a + 1
+        lda zp_wk_mv + 1
         sta zp_wk_fx + 1
-        lda zp_wk_b
+        lda wk_pos + 2
         sta zp_wk_fy
-        lda zp_wk_b + 1
+        lda wk_pos + 3
         sta zp_wk_fy + 1
         rts
-@y:     lda zp_wk_a                 ; moved down
+@y:     lda zp_wk_mv                ; moved down
         sta zp_wk_fy
-        lda zp_wk_a + 1
+        lda zp_wk_mv + 1
         sta zp_wk_fy + 1
-        lda zp_wk_b
+        lda wk_pos
         sta zp_wk_fx
-        lda zp_wk_b + 1
+        lda wk_pos + 1
         sta zp_wk_fx + 1
         rts
 
@@ -245,10 +229,10 @@ shr4_a:
         rts
 
 ; ----------------------------------------------------------------------------------------
-; fits: the body at pixel (fx, fy) stands only on squares you can stand on.
-;   Takes:   zp_wk_fx, zp_wk_fy.
+; fits: the body at (fx, fy) stands only on squares you can stand on.
+;   Takes:   zp_wk_fx, zp_wk_fy: where it is, in sixteenths of a pixel.
 ;   After:   carry clear if it fits, set if not.
-;   Changes: A, X, Y, zp_wk_ptr, zp_wk_x0-y1, zp_wk_a.
+;   Changes: A, X, Y, zp_wk_ptr, zp_wk_x0-y1.
 fits:
         ldx #0
         jsr squares_of              ; x0, x1
@@ -277,27 +261,23 @@ fits:
 @no:    sec
         rts
 
-; The squares under the body along an axis (X = 0: fx, 2: fy): A = (f + BODY_LO) >> 4,
-; Y = (f + BODY_HI) >> 4.
+; The squares under the body along an axis (X = 0: fx, 2: fy), from f in sixteenths: its
+; pixel p = f >> 4, and (p + BODY_LO) >> 4 is the high byte of (f & $FFF0) + 16 BODY_LO (a
+; square is 256 sixteenths): A that, Y the same for BODY_HI.
 squares_of:
         lda zp_wk_fx, x
+        and #$F0
         clc
-        adc #BODY_HI
-        sta zp_wk_a
+        adc #BODY_HI * 16
         lda zp_wk_fx + 1, x
         adc #0
-        sta zp_wk_a + 1
-        jsr shr4_a
-        ldy zp_wk_a
+        tay
         lda zp_wk_fx, x
+        and #$F0
         clc
-        adc #BODY_LO
-        sta zp_wk_a
+        adc #BODY_LO * 16
         lda zp_wk_fx + 1, x
         adc #0
-        sta zp_wk_a + 1
-        jsr shr4_a
-        lda zp_wk_a
         rts
 
         .segment "BSS"

@@ -226,8 +226,10 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 # Walk the yard (docs/walk.md, docs/plan-b.md's B1): the walking engine, a program of its
 # own for a Kung Fu Flash 2 or an SD2IEC (build/walk.prg, and on a disk, build/walk.d64:
 # LOAD"WALK",8 and RUN), walking yard 48213's first floor; tests/walk/run_walk.py holds it
-# to tools/walk/walk.py, frame by frame and row by row as the VIC reads them.
-WALK_MODS := start gen irq move camera edge floor
+# to tools/walk/walk.py, frame by frame and row by row as the VIC reads them. And
+# build/walk-crowd.prg, the same on yard 7602's eighth floor, the dungeon, crowded: up to
+# 14 figures at once, the sprites shared down the screen.
+WALK_MODS := start gen irq move camera edge figures mux floor
 
 build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/walk.inc cart/walk/walk.cfg \
                 cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py
@@ -238,6 +240,11 @@ build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/w
 	ld65 -C cart/walk/walk.cfg -o $@ -m build/walk/walk.map -Ln build/walk/walk.lbl \
 	    $(addprefix build/walk/,$(addsuffix .o,$(WALK_MODS)))
 	python3 tools/d64.py write build/walk.d64 "walk the yard" wy $@=walk
+	@mkdir -p build/walk-crowd/walk
+	python3 tools/walk/walk.py asset 7602 8 build/walk-crowd/walk/floor.bin
+	ca65 -I cart -I cart/walk --bin-include-dir build/walk-crowd -g -o build/walk-crowd/floor.o cart/walk/floor.s
+	ld65 -C cart/walk/walk.cfg -o build/walk-crowd.prg -Ln build/walk-crowd/walk.lbl \
+	    $(addprefix build/walk/,$(addsuffix .o,$(filter-out floor,$(WALK_MODS)))) build/walk-crowd/floor.o
 
 walk: build/walk.prg
 	@echo "Walk the yard: build/walk.prg (a Kung Fu Flash 2 runs it), build/walk.d64 (LOAD\"WALK\",8 and RUN)"
@@ -247,6 +254,7 @@ cart: build/apb.crt
 
 test-cart: build/apb.crt build/the-fare.d64 build/battle build/walk.prg
 	python3 tests/walk/run_walk.py build/walk.prg build/walk/walk.lbl
+	python3 tests/walk/run_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
 	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
 	    > build/cart/desk.c64

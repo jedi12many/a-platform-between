@@ -1,11 +1,13 @@
 ; The camera and the scroller (docs/walk.md, "The camera", "The scroller"): each frame, the
 ; camera eases toward the leader; when it would cross into the next character, the screen
-; it'll show is made over three frames, as tools/walk/walk.py's play does:
+; it'll show is made over five frames, as tools/walk/walk.py's play does:
 ;
-;   IDLE      the step found: the shown screen copied into the other, shifted, and the new
-;             edges drawn (SHIFT_AB or SHIFT_BA, then edge.s); the camera held in its cell
-;   SHIFTED   the shadow of the colours shifted the same way, its edges drawn; the camera
-;             into the new cell; the interrupt swaps the screens and copies the colours
+;   IDLE      the step found: the shown screen's first half copied into the other, shifted
+;             (SHIFT_AB or SHIFT_BA); the camera held in its cell
+;   HALF      the rest of it, and the new edges drawn (edge.s); still held
+;   SHIFTED   the shadow of the colours' first half shifted the same way; still held
+;   SHADED    the rest of it, its edges drawn; the camera into the new cell; the interrupt
+;             swaps the screens and copies the colours
 ;   COLOURED  the frame of the swap: nothing heavy; the camera held in its (new) cell
 ;
 ; A frame's camera is shown from the next (the interrupt sets the registers).
@@ -53,6 +55,12 @@ camera_step:
         cmp #SHIFTED
         bne :+
         jmp @shifted
+:       cmp #SHADED
+        bne :+
+        jmp @shaded_half
+:       cmp #HALF
+        bne :+
+        jmp @half
 :       cmp #COLOURED
         bne @idle
         lda #IDLE                   ; the swap's frame: rest
@@ -80,13 +88,22 @@ camera_step:
         adc wk_dir
         sta shift_x
         tax
-        lda wk_front                ; the shown screen into the other
+        lda wk_front                ; the shown screen's first half into the other
         bne :+
         jsr SHIFT_AB
+        jmp :++
+:       jsr SHIFT_BA
+:       lda #HALF
+        sta wk_stage
+        jmp @hold
+@half:  ldx shift_x                 ; the rest, and the edges
+        lda wk_front
+        bne :+
+        jsr SHIFT_AB + SECOND_HALF
         lda #<SCREEN_B
         ldx #>SCREEN_B
         jmp @edges
-:       jsr SHIFT_BA
+:       jsr SHIFT_BA + SECOND_HALF
         lda #<SCREEN_A
         ldx #>SCREEN_A
 @edges: sta edge_base
@@ -105,12 +122,22 @@ camera_step:
         jsr clamp
         jmp @commit
 @shifted:
-        ldx shift_x                 ; the shadow, shifted the same way
+        ldx shift_x                 ; the shadow's first half, shifted the same way
         cpx #OFFSET_BIAS + 1
         bcc :+
         jsr SHADE_UP                ; forward: first byte first
-        jmp @shaded
+        jmp :++
 :       jsr SHADE_DOWN
+:       lda #SHADED
+        sta wk_stage
+        jmp @hold
+@shaded_half:
+        ldx shift_x                 ; the rest of it
+        cpx #OFFSET_BIAS + 1
+        bcc :+
+        jsr SHADE_UP + SECOND_HALF
+        jmp @shaded
+:       jsr SHADE_DOWN + SECOND_HALF
 @shaded:
         lda #<SHADOW
         sta edge_base
@@ -360,7 +387,7 @@ most:   .word CAM_X_MAX, CAM_Y_MAX
         .segment "BSS"
 
 wk_cam:     .res 4              ; the camera: x, y, the area's pixel at the view's top left
-wk_stage:   .res 1              ; IDLE, SHIFTED or COLOURED
+wk_stage:   .res 1              ; IDLE, HALF, SHIFTED, SHADED or COLOURED
 wk_front:   .res 1              ; the screen shown: 0 A, 1 B
 want:       .res 4              ; where the leader wants it
 next:       .res 4              ; where it'll be next frame

@@ -7,7 +7,8 @@
 ;                       forward), or last first (back), so nothing's read after it's written
 ;   BLAST               LDA SHADOW+i / STA COLOUR_RAM+i: the colours shown, top first
 ;
-; Each ends with an RTS: 6001 bytes.
+; Each has an RTS half way (after 500 copies: SECOND_HALF is where the rest start) and at
+; its end: 6002 bytes.
 
         .include "hw.inc"
         .include "zp.inc"
@@ -106,7 +107,19 @@ gen_block:
         bne :+
         dec zp_wk_n + 1
 :       dec zp_wk_n
-        lda zp_wk_n
+        lda zp_wk_n                 ; half way: an RTS between the halves
+        cmp #<(SCREEN_SIZE / 2)
+        bne :+
+        lda zp_wk_n + 1
+        cmp #>(SCREEN_SIZE / 2)
+        bne :+
+        ldy #0
+        lda #OP_RTS
+        sta (zp_wk_out), y
+        inc zp_wk_out
+        bne :+
+        inc zp_wk_out + 1
+:       lda zp_wk_n
         ora zp_wk_n + 1
         bne @pair
         ldy #0

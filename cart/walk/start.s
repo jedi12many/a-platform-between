@@ -12,6 +12,7 @@
         .import camera_init, camera_step, wk_cam, wk_front
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .import edge_mode, edge_base, wk_ncx, wk_ncy, draw_all, maps_build
+        .import figures_init, figures_step, sprites_frame, prog_next, prog_shown
         .import __BSS_RUN__, __BSS_SIZE__
 
         .segment "LOADADDR"
@@ -70,8 +71,9 @@ walk_start:
         inc zp_wk_out + 1
         dex
         bne :-
+        jsr look_in                 ; (before gen_all writes over the program's top)
+        jsr shapes_in
         jsr gen_all
-        jsr look_in
         jsr maps_build
         ; The leader on the start's square.
         lda #0
@@ -82,6 +84,7 @@ walk_start:
         lda floor + FL_START + 1
         sta wk_pos + 3
         jsr camera_init
+        jsr figures_init
         ; The screen where the camera is: A's characters, the shadow's colours, shown.
         jsr cam_cells
         lda #<SCREEN_A
@@ -99,10 +102,25 @@ walk_start:
         sta edge_mode
         jsr draw_all
         jsr BLAST
+        jsr BLAST + SECOND_HALF
         lda wk_d016
         sta VIC_CTRL2
         lda wk_d018
         sta VIC_MEM
+        lda #$FF                    ; the sprites: multicolour, in front, the first program
+        sta VIC_SPR_MULTI
+        lda #0
+        sta VIC_SPR_TALL
+        sta VIC_SPR_WIDE
+        sta VIC_SPR_BEHIND
+        lda #SPRITE_MC1
+        sta VIC_SPR_MC1
+        lda #SPRITE_MC2
+        sta VIC_SPR_MC2
+        lda prog_next
+        sta prog_shown
+        tax
+        jsr sprites_frame
         lda #VB_LINE
         sta VIC_RASTER
         lda wk_d011                 ; the screen on
@@ -127,6 +145,7 @@ wk_awake:
         sta wk_stick
         jsr walk_step
         jsr camera_step
+        jsr figures_step
 wk_done:
         sei
         lda #1
@@ -164,6 +183,33 @@ look_in:
         inc zp_wk_dst + 1
         dex
         bne :-
+        rts
+
+; The sprite shapes, from the floor's to SPRITE_SHAPES, under the I/O (the RAM there
+; written with the I/O out for a moment): 2 KB.
+shapes_in:
+        lda #<(floor + FL_SHAPES)
+        sta zp_wk_src
+        lda #>(floor + FL_SHAPES)
+        sta zp_wk_src + 1
+        lda #<SPRITE_SHAPES
+        sta zp_wk_dst
+        lda #>SPRITE_SHAPES
+        sta zp_wk_dst + 1
+        lda #PORT_ALL_RAM
+        sta CPU_PORT
+        ldx #8
+        ldy #0
+:       lda (zp_wk_src), y
+        sta (zp_wk_dst), y
+        iny
+        bne :-
+        inc zp_wk_src + 1
+        inc zp_wk_dst + 1
+        dex
+        bne :-
+        lda #PORT_GAME
+        sta CPU_PORT
         rts
 
 ; wk_ncx, wk_ncy: the camera's cell (the screen's top left on the area).

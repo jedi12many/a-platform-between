@@ -1,7 +1,9 @@
 """The walking engine (cart/walk/, docs/walk.md) on an emulated C64, held to its reference
 (tools/walk/walk.py) frame by frame.
 
-    python3 tests/walk/run_walk.py PRG LABELS [--frames N] [--shot FRAME FILE.png] [--gif FILE.gif]
+    python3 tests/walk/run_walk.py PRG LABELS [--yard Y --floor F] [--frames N] [--shot FRAME FILE.png]
+
+PRG is the walking engine built for yard Y's floor F (48213's first, unless said).
 
 The program runs on py65 with the C64 around it played in Python: the memory as the PLA
 maps it (the I/O apart from the RAM under it, the colour RAM its own four bits), CIA 1's
@@ -18,6 +20,10 @@ round corners), then walks to the floor's stairs, through its doors (route). Che
 - every frame shown is the area as the reference's camera sees it: each character and
   colour on the screen's visible 38 x 24 (and the edges the fine scroll shows), and the
   fine scroll's registers;
+- every frame's figures as the VIC showed them: each sprite as it started showing (its
+  x, y, shape pointer and colour, read when the raster reaches its y) is the reference's,
+  the party on the leader's trail and the floor's foes and people, shared out among the 8
+  sprites; and each sprite showing takes its 2 cycles a line from the 6502;
 - no frame is late (the frame loop always done before the next frame's interrupt), and
   the busiest frame's cycles, the loop's and the interrupt's, are reported.
 """
@@ -131,6 +137,9 @@ class C64:
         self.mpu.pc = syms["walk_start"]
         self.line = 0
         self.badrow = 0
+        self.sprite_until = [0] * 8
+        self.shown = {}                     # frame: the sprites that started showing in it
+        self.most_on = 0
         self.frames = []                    # each frame shown: (wk_frame, d016, d011, rows)
         self.seen = None
         self.states = []                    # each loop's: (frame, pos x, pos y, cam x, cam y, stage)
@@ -184,6 +193,7 @@ class C64:
         target = self.io[0x12] | (self.io[0x11] & 0x80) << 1
         if self.line == target:
             self.io[0x19] |= 0x81
+        self.sprites_line()
         ys = self.io[0x11] & 7
         if FIRST_DMA_LINE <= self.line <= LAST_DMA_LINE and self.line & 7 == ys and self.io[0x11] & 0x10:
             if self.seen is None:
@@ -194,6 +204,25 @@ class C64:
                                  bytes(self.colour[40 * self.badrow:40 * self.badrow + 40])))
             self.badrow += 1
             self.mpu.processorCycles += BADLINE_STEAL
+
+    def sprites_line(self):
+        """The VIC's sprites on this line: one not showing starts when its y is this line
+        (it's on); it shows 21 lines, its x, pointer and colour as they are when it starts
+        (recorded, by frame); each showing takes 2 of the 6502's cycles on each line."""
+        on = 0
+        for n in range(8):
+            if self.sprite_until[n] > self.line:
+                on += 1
+            elif self.io[0x15] >> n & 1 and self.io[1 + 2 * n] == self.line:
+                self.sprite_until[n] = self.line + 21
+                x = self.io[2 * n] | (self.io[0x10] >> n & 1) << 8
+                ptr = self.ram[self.screen_base() + 0x3F8 + n]
+                self.shown.setdefault(self.frame(), []).append((x, self.line, ptr, self.io[0x27 + n] & 15))
+                on += 1
+            if self.line == 0:
+                self.sprite_until[n] = 0
+        self.most_on = max(self.most_on, on)
+        self.mpu.processorCycles += 2 * on
 
     def irq(self):
         m = self.mpu
@@ -253,7 +282,7 @@ def check(c64, floor, ref):
         f = st[0]
         if f < 1 or f > len(ref):
             continue
-        want = ref[f - 1]
+        want = ref[f - 1][:5]
         if st[1:] != want:
             if bad < 5:
                 fail(f"frame {f}: the leader at {st[1:3]}, the camera at {st[3:5]}, stage {st[5]}; "
@@ -294,6 +323,25 @@ def check(c64, floor, ref):
     if not bad:
         ok(f"{len(c64.frames)} frames as the VIC showed them, each row read at its bad line: the "
            f"area as the reference's camera sees it, character for character and colour for colour")
+    # The figures as the VIC showed them.
+    bad, figs, most, left = 0, 0, 0, 0
+    for f in sorted({fr[0] for fr in c64.frames}):
+        if f < 1 or f > len(ref):
+            continue
+        sprites, dropped = ref[f - 1][5]
+        want = sorted((x & 511, y, ptr, col) for _, x, y, ptr, col, _ in sprites)
+        got = sorted(c64.shown.get(f, []))
+        figs += len(want)
+        most = max(most, len(want))
+        left += dropped
+        if got != want:
+            if bad < 5:
+                fail(f"frame {f}: the sprites shown were {got}, not {want}")
+            bad += 1
+    if not bad:
+        ok(f"every frame's figures as the VIC showed them, sprite by sprite (x, y, shape, colour) "
+           f"as the reference places and shares them: {figs} in all, up to {most} a frame, "
+           f"{left} left out")
     late = c64.ram[c64.syms["wk_late"]]
     if late:
         fail(f"{late} frames late: the loop wasn't done when the next frame began")
@@ -326,8 +374,10 @@ def main():
     ap.add_argument("labels")
     ap.add_argument("--frames", type=int, default=0, help="(all the script's, if 0)")
     ap.add_argument("--shot", nargs=2, metavar=("FRAME", "FILE"))
+    ap.add_argument("--yard", type=int, default=YARD)
+    ap.add_argument("--floor", type=int, default=FLOOR)
     args = ap.parse_args()
-    floor = walk.Floor(YARD, FLOOR)
+    floor = walk.Floor(args.yard, args.floor)
     script = sticks(floor)
     args.frames = args.frames or len(script)
     script += [0xFF] * (args.frames + 2 - len(script))

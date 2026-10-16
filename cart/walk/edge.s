@@ -144,9 +144,10 @@ draw_col:
         lda wk_ncy
         jsr map_at
         ldx #0
-@cell:  jsr row_out
+        jsr row_out
         ldy col
-        lda (zp_wk_ptr), y
+        ldx #ROWS
+@cell:  lda (zp_wk_ptr), y
         sta (zp_wk_out), y
         lda zp_wk_ptr               ; the map's next row
         clc
@@ -154,8 +155,13 @@ draw_col:
         sta zp_wk_ptr
         bcc :+
         inc zp_wk_ptr + 1
-:       inx
-        cpx #ROWS
+        clc
+:       lda zp_wk_out               ; the screen's
+        adc #COLS
+        sta zp_wk_out
+        bcc :+
+        inc zp_wk_out + 1
+:       dex
         bne @cell
         rts
 
