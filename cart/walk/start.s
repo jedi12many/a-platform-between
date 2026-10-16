@@ -7,7 +7,7 @@
         .include "zp.inc"
         .include "walk.inc"
 
-        .export walk_start, wk_awake, wk_done
+        .export walk_start, wk_awake, wk_joy, wk_done
         .import irq, nmi, gen_all, floor, walk_step, wk_pos, wk_stick
         .import camera_init, camera_step, wk_cam, wk_front
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
@@ -142,7 +142,7 @@ wk_awake:
         lda #1
         sta wk_busy
         lda CIA1_PRA
-        sta wk_stick
+wk_joy: sta wk_stick                ; (the VICE check sets A here: tests/walk/vice_walk.py)
         jsr walk_step
         jsr camera_step
         jsr figures_step

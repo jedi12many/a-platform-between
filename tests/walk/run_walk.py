@@ -139,6 +139,7 @@ class C64:
         self.badrow = 0
         self.sprite_until = [0] * 8
         self.shown = {}                     # frame: the sprites that started showing in it
+        self.shown_n = {}                   # ...and their numbers
         self.most_on = 0
         self.frames = []                    # each frame shown: (wk_frame, d016, d011, rows)
         self.seen = None
@@ -218,6 +219,7 @@ class C64:
                 x = self.io[2 * n] | (self.io[0x10] >> n & 1) << 8
                 ptr = self.ram[self.screen_base() + 0x3F8 + n]
                 self.shown.setdefault(self.frame(), []).append((x, self.line, ptr, self.io[0x27 + n] & 15))
+                self.shown_n.setdefault(self.frame(), []).append(n)
                 on += 1
             if self.line == 0:
                 self.sprite_until[n] = 0
