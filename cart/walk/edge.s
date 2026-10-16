@@ -1,6 +1,6 @@
-; Drawing the screen from the floor (docs/walk.md, "The scroller"): its characters, or its
-; colours into the shadow, a row or a column at a time; after a step, only the new edges
-; (a column, a row, or both); at the start, every row.
+; Drawing the screen's characters from the floor (docs/walk.md, "The scroller"), a row or a
+; column at a time; after a step, only the new edges (a column, a row, or both); at the
+; start, every row. (The colours are copied a row at a time from the colour map: colours.s.)
 ;
 ; The screen's (column c, row r) shows the area's character (wk_ncx + c, wk_ncy + r): the
 ; square's tile's quarter (1 + 4 tile + 2 (row & 1) + (column & 1)), its colour the tile's.
@@ -10,7 +10,7 @@
         .include "zp.inc"
         .include "walk.inc"
 
-        .export edge_mode, edge_base, wk_ncx, wk_ncy, edges, draw_all, maps_build
+        .export edge_base, wk_ncx, wk_ncy, edges, draw_all, maps_build, map_lo, map_hi
         .import floor, sq_row_lo, sq_row_hi, wk_dir
 
         .segment "CODE"
@@ -18,8 +18,7 @@
 ; ----------------------------------------------------------------------------------------
 ; edges: the new edges for the step under way (camera.s's wk_dir): a column on the side
 ; it moved to, a row on the side it moved to.
-;   Takes:   edge_mode (0 characters, 1 colours), edge_base (the screen, or SHADOW),
-;            wk_ncx, wk_ncy, and wk_dir (camera.s).
+;   Takes:   edge_base (the screen), wk_ncx, wk_ncy, and wk_dir (camera.s).
 ;   Changes: A, X, Y, zp_wk_out, zp_wk_ptr.
 edges:
         lda wk_dir
@@ -41,7 +40,8 @@ edges:
 
 ; ----------------------------------------------------------------------------------------
 ; maps_build: CHAR_MAP and COLOUR_MAP from the floor's squares, each square's four
-; characters (1 + 4 tile, + 1 right, + 2 below) and their colour.
+; characters (1 + 4 tile, + 1 right, + 2 below), and its colour twice (its two columns) on
+; its row's page.
 ;   Changes: A, X, Y, zp_wk_ptr, zp_wk_out, zp_wk_src, zp_wk_mx, zp_wk_my, zp_wk_t.
 maps_build:
         lda #0
@@ -56,11 +56,13 @@ maps_build:
         tax
         lda map_lo, x
         sta zp_wk_out
-        sta zp_wk_src
         lda map_hi, x
         sta zp_wk_out + 1
+        lda #0                      ; its colours: the colour map's page y
+        sta zp_wk_src
+        lda zp_wk_my
         clc
-        adc #>(COLOUR_MAP - CHAR_MAP)
+        adc #>COLOUR_MAP
         sta zp_wk_src + 1
         lda #0
         sta zp_wk_mx                ; the square
@@ -95,10 +97,6 @@ maps_build:
         adc #1
         iny
         sta (zp_wk_out), y
-        lda floor + FL_TILE_COLOUR, x
-        sta (zp_wk_src), y
-        dey
-        sta (zp_wk_src), y
         inc zp_wk_mx
         lda zp_wk_mx
         cmp #SQUARES_X
@@ -165,7 +163,7 @@ draw_col:
         bne @cell
         rts
 
-; zp_wk_ptr = the map's (chars or colours, by edge_mode) row A, at column wk_ncx.
+; zp_wk_ptr = the characters' map's row A, at column wk_ncx.
 map_at:
         tay
         lda map_lo, y
@@ -174,11 +172,7 @@ map_at:
         sta zp_wk_ptr
         lda map_hi, y
         adc #0
-        ldy edge_mode
-        beq :+
-        clc
-        adc #>(COLOUR_MAP - CHAR_MAP)
-:       sta zp_wk_ptr + 1
+        sta zp_wk_ptr + 1
         rts
 
 ; zp_wk_out = edge_base + 40 X.
@@ -213,8 +207,7 @@ row40_hi:
 
         .segment "BSS"
 
-edge_mode:  .res 1              ; 0: characters; 1: colours
-edge_base:  .res 2              ; the screen (or the shadow) drawn into
+edge_base:  .res 2              ; the screen drawn into
 wk_ncx:     .res 1              ; the area's character at its top left
 wk_ncy:     .res 1
 col:        .res 1

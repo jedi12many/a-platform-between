@@ -7,28 +7,42 @@
 ; there are none: a copy of its code for each program. No zero page.
 
         .include "hw.inc"
+        .include "zp.inc"
         .include "walk.inc"
+        .include "irq.inc"
 
-        .export sprites_frame, mux_a, mux_b, irq_kind
-        .import irq_out
+        .export world_frame, first_event, mux_a, mux_b, bottom_line
+        .import irq_out, bottom, bottom_irq, prog_shown, view_d011, screen_b, top_spare
+        .import top_near0, top_far_0
 
-        .segment "CODE"
+        .segment "HIGH"
 
-; The first eight from program BASE, and its counts.
+; The first eight from program BASE: their Ys and which are on first (by line 11, when the
+; HUD's Y comes round again); then where across, their colours, their x's ninth bits;
+; their pointers, the shown screen's, those crossing the view's top (Y under 54: shown
+; from above 55) empty, with their own put in the top's slots; and its events' count.
 .macro APPLY base
+        .repeat 8, n
+        lda base + P_Y + n
+        sta VIC_SPR_Y + 2 * n
+        .endrepeat
+        lda base + P_ENABLE
+        sta VIC_SPR_ENA
         .repeat 8, n
         lda base + P_X + n
         sta VIC_SPR_X + 2 * n
         lda base + P_Y + n
-        sta VIC_SPR_Y + 2 * n
+        cmp #FIRST_VIEW - 1
         lda base + P_PTR + n
-        sta POINTERS_A + n
-        sta POINTERS_B + n
+        bcs :+
+        ldx #n
+        jsr crossing
+        lda #BLANK_SHAPE
+:       ldy #n
+        sta (zp_wk_irq), y
         lda base + P_COLOUR + n
         sta VIC_SPR_COLOUR + n
         .endrepeat
-        lda base + P_ENABLE
-        sta VIC_SPR_ENA
         lda base + P_X_HIGHS
         sta VIC_SPR_X_HIGH
         lda base + P_COUNT
@@ -38,37 +52,167 @@
 .endmacro
 
 ; ----------------------------------------------------------------------------------------
-; sprites_frame: program X (0 PROG_A, 1 PROG_B) shown: its first eight set, and the first
-; event's interrupt asked for (irq_kind 1 + X: its copy of the events' code).
-;   Before:  in the interrupt at line 250, interrupts off.
-;   Changes: A, X, Y.
-sprites_frame:
-        txa
+; world_frame: the shown program's first eight sprites, after the HUD (border.s's world
+; interrupt); the top's slots filled: the crossing figures' pointers first, the rest
+; writing to top_spare.
+;   Before:  in an interrupt, interrupts off.
+;   Changes: A, X, Y, zp_wk_irq.
+world_frame:
+        lda #$FF                    ; multicolour again (the HUD's health isn't)
+        sta VIC_SPR_MULTI
+        ; The slots to fill: the near ones, or the far when ys is 6.
+        lda view_d011
+        and #7
+        cmp #6
+        beq @far
+        lda #<top_near0
+        ldx #>top_near0
+        bne @set                    ; (always)
+@far:   lda #<top_far_0
+        ldx #>top_far_0
+@set:   sta slot
+        stx slot + 1
+        lda #0
+        sta slots_used
+        ; The shown screen's pointers.
+        lda #<POINTERS_A
+        ldx #>POINTERS_A
+        bit screen_b
+        bpl :+
+        lda #<POINTERS_B
+        ldx #>POINTERS_B
+:       sta zp_wk_irq
+        stx zp_wk_irq + 1
+        lda prog_shown
         beq :+
         jmp @b
 :       APPLY PROG_A
-        lda #1
-        jmp @kind
+        jmp @rest
 @b:     APPLY PROG_B
-        lda #2
-@kind:  ldx #P_EVENTS
-        stx ev_off
+@rest:  ; The slots not used: written to top_spare (those used last time, the rest are;
+        ; all of them when the other set was used last time: the near and the far).
+        lda slot
+        cmp slot_was
+        beq :+
+        sta slot_was
+        lda #8
+        sta slots_were
+:       lda slots_used              ; (this frame's crossing: next time's count)
+        sta slots_now
+        ldy slots_used
+:       cpy slots_were
+        bcs @done
+        jsr slot_at
+        ldy #3
+        lda #<top_spare
+        sta (zp_wk_slot), y
+        iny
+        lda #>top_spare
+        sta (zp_wk_slot), y
+        inc slots_used
+        ldy slots_used
+        jmp :-
+@done:  lda slots_now
+        sta slots_were
+        lda prog_shown              ; the events' handler: program A's or B's
+        lsr a
+        lda #<mux_a_irq
+        ldx #>mux_a_irq
+        bcc :+
+        lda #<mux_b_irq
+        ldx #>mux_b_irq
+:       sta ev_irq
+        stx ev_irq + 1
+        lda #P_EVENTS
+        sta ev_off
+        rts
+
+; Sprite X crosses the view's top: the next slot writes A (its own pointer) to the shown
+; screen's entry for it.
+;   Changes: Y, zp_wk_slot (X kept).
+crossing:
+        pha
+        ldy slots_used
+        jsr slot_at
+        pla
+        ldy #1                      ; the immediate
+        sta (zp_wk_slot), y
+        txa
+        clc
+        adc zp_wk_irq               ; (a table's 8 are within a page)
+        ldy #3
+        sta (zp_wk_slot), y
+        lda zp_wk_irq + 1
+        iny
+        sta (zp_wk_slot), y
+        inc slots_used
+        rts
+
+; zp_wk_slot: slot Y of those being filled (each 5 bytes).
+slot_at:
+        lda slot
+        clc
+        adc five, y
+        sta zp_wk_slot
+        lda slot + 1
+        adc #0
+        sta zp_wk_slot + 1
+        rts
+
+five:   .byte 0, 5, 10, 15, 20, 25, 30, 35
+
+; ----------------------------------------------------------------------------------------
+; first_event: from the top's interrupt: the first event's line asked for (and come to now
+; if it's due by the next), or the bottom's when there are none.
+;   Before:  A, X and Y pushed; interrupts off.
+first_event:
         ldx ev_left
         beq @none
-        sta irq_kind
-        lda first_line
+        lda ev_irq
+        sta TRAMPOLINE + 1
+        lda ev_irq + 1
+        sta TRAMPOLINE + 2
+        lda VIC_RASTER
+        clc
+        adc #1
+        cmp first_line
+        bcc :+
+        lda prog_shown              ; due now
+        bne @nb
+        jmp mux_a
+@nb:    jmp mux_b
+:       lda first_line
         sta VIC_RASTER
+        jmp irq_out
+@none:  jmp to_bottom
+
+; The bottom's interrupt asked for: at BOTTOM_LINE, a line sooner when ys is 6; if the
+; raster's already there, the bottom now.
+to_bottom:
+        NEXT bottom_irq
+        jsr bottom_line
+        sta VIC_RASTER
+        sec
+        sbc #1
+        cmp VIC_RASTER
+        bcs :+
+        jmp bottom                  ; (missed it: now)
+:       jmp irq_out
+
+bottom_line:
+        lda view_d011
+        and #7
+        cmp #6
+        bne :+
+        lda #BOTTOM_LINE - 1
         rts
-@none:  lda #0
-        sta irq_kind
-        lda #VB_LINE
-        sta VIC_RASTER
+:       lda #BOTTOM_LINE
         rts
 
 ; ----------------------------------------------------------------------------------------
-; mux_a, mux_b: an event's interrupt, program A's or B's (irq.s comes here when irq_kind is
-; 1 or 2): every event due by the next line set, then the next one's line asked for (or
-; line 250's).
+; mux_a, mux_b: an event's interrupt, program A's or B's (mux_a_irq, mux_b_irq the way in
+; from the vector): every event due by the next line set, then the next one's line asked
+; for (or the bottom's).
 ;   Before:  A, X and Y pushed; the interrupt acknowledged.
 .macro MUX base
         .local one, last
@@ -110,17 +254,15 @@ one:    ldx ev_off
         lda base + E_LINE, x
         sta VIC_RASTER
         jmp irq_out
-last:   lda #0
-        sta irq_kind
-        lda #VB_LINE
-        sta VIC_RASTER
-        jmp irq_out
+last:   jmp to_bottom
 .endmacro
 
+mux_a_irq:
+        ENTER
 mux_a:  MUX PROG_A
+mux_b_irq:
+        ENTER
 mux_b:  MUX PROG_B
-
-        .segment "DATA"
 
 bit_of: .byte 1, 2, 4, 8, 16, 32, 64, 128
 not_bit:
@@ -128,8 +270,13 @@ not_bit:
 
         .segment "BSS"
 
-irq_kind:   .res 1              ; the next interrupt: 0 the frame's (line 250), 1 an event's
-                                ; in program A, 2 in B
+ev_irq:     .res 2              ; the events' handler: mux_a_irq or mux_b_irq
+slot:       .res 2              ; world_frame: the top's slots being filled...
+slots_used: .res 1              ; ...how many so far
+slots_now:  .res 1
+slots_were: .res 1              ; how many written to a table last frame (top_spare beyond)
+slot_was:   .res 1              ; and which slots they were (their low byte)
+
 ev_left:    .res 1              ; events still to come this frame
 ev_off:     .res 1              ; the next one's place in the program
 first_line: .res 1              ; the first one's line

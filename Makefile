@@ -229,7 +229,7 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 # to tools/walk/walk.py, frame by frame and row by row as the VIC reads them. And
 # build/walk-crowd.prg, the same on yard 7602's eighth floor, the dungeon, crowded: up to
 # 14 figures at once, the sprites shared down the screen.
-WALK_MODS := start gen irq move camera edge figures mux floor
+WALK_MODS := start gen irq border colours move camera edge figures mux floor
 
 build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/walk.inc cart/walk/walk.cfg \
                 cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py
@@ -255,6 +255,8 @@ cart: build/apb.crt
 test-cart: build/apb.crt build/the-fare.d64 build/battle build/walk.prg
 	python3 tests/walk/run_walk.py build/walk.prg build/walk/walk.lbl
 	python3 tests/walk/run_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
+	python3 tests/walk/vice_walk.py build/walk.prg build/walk/walk.lbl
+	python3 tests/walk/vice_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
 	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
 	    > build/cart/desk.c64
