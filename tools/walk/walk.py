@@ -6,14 +6,13 @@
     data = floor.asset()                            # what the C64 is given (docs/walk.md)
     frames = walk.play(floor, sticks)               # each frame: the leader and the camera
 
-    python3 tools/walk/walk.py asset YARD FLOOR DIR [open|open-unseen]   write the floor's
-                                                    asset: DIR/floor.bin and DIR/squares.bin
-    python3 tools/walk/walk.py show YARD FLOOR [open]  draw the area, the start marked
+    python3 tools/walk/walk.py asset YARD FLOOR DIR [unseen]   write the floor's asset:
+                                                    DIR/floor.bin and DIR/squares.bin
+    python3 tools/walk/walk.py show YARD FLOOR      draw the area, the start marked
 
-The floor is the explore prototype's (tools/rooms/rooms.py): its nine rooms side by side
-as one area of 48 x 24 squares, or (open) an open floor (docs/open-floors.md: build_open,
-48 x 24 to 80 x 40), in the look the prototype gives its floor, each square dressed as
-rooms.js dresses it (a variant, or scenery). Walking and the camera follow the prototype's
+The floor is the explore prototype's: an open floor (docs/open-floors.md: build_open in
+tools/rooms/rooms.py, 48 x 24 to 80 x 40), in the look the prototype gives its floor, each
+square dressed as rooms.js dresses it (a variant, or scenery). Walking and the camera follow the prototype's
 rules, in whole numbers a C64 can do: see docs/walk.md, "The rules".
 """
 
@@ -32,7 +31,6 @@ import rooms  # noqa: E402
 import seeing  # noqa: E402
 
 LOOKS = ["forest", "mountain", "town", "dungeon"]
-ROOMS_X, ROOMS_Y = rooms.COLS * rooms.W, rooms.ROWS * rooms.H          # 48 x 24: nine rooms
 # A floor's size: any, up to 80 x 48 squares (the engine keeps a row of squares in a page:
 # its colours, two bytes a square, then the squares, a byte each: 3 x 80 <= 256).
 SQUARES_X_MAX, SQUARES_Y_MAX = 80, 48
@@ -123,8 +121,8 @@ def dress_hash(yard, floor, room, x, y):
 
 
 class Floor:
-    def __init__(self, yard, number, look=None, open_floor=False, unseen=False):
-        self.yard, self.number, self.open = yard, number, open_floor
+    def __init__(self, yard, number, look=None, unseen=False):
+        self.yard, self.number = yard, number
         self.look = look or LOOKS[(number - 1) % len(LOOKS)]
         self.art = art.load(art.tiles_file(16, self.look))
         names = [e.name for e in self.art.entries]
@@ -133,60 +131,11 @@ class Floor:
         variants = {t: [n for n in names[8:] if art.variant_of(n) == t] for t in art.TERRAIN}
         self.kinds = list(PARTY)
         self.figures = []
-        self.bands = []                             # seeing's (open floors only)
+        self.bands = []                             # seeing's
         self.light = LIGHT_OF[self.look]
         self.seed = ((yard * 31 + number * 977) & 0xFFFF) or 1
         self.notice, self.stealth = self.senses()
-        if open_floor:
-            self._open(scenery, variants, unseen)
-            return
-        self.f = rooms.build(yard, number)
-        self.w, self.h = ROOMS_X, ROOMS_Y
-        self.squares = [[0] * self.w for _ in range(self.h)]
-        for r in self.f["rooms"]:
-            ox, oy = (r["i"] % rooms.COLS) * rooms.W, (r["i"] // rooms.COLS) * rooms.H
-            taken = {(e["x"], e["y"]) for e in r["foes"]}
-            if r["stairs"]:
-                taken.add(tuple(r["stairs"]))
-            if r["cache"]:
-                taken.add((r["cache"]["x"], r["cache"]["y"]))
-            standing = {(e["x"], e["y"]) for e in r["foes"]}           # foes and people block
-            if r.get("talk"):
-                standing.add((r["talk"]["x"], r["talk"]["y"]))
-            for y in range(rooms.H):
-                for x in range(rooms.W):
-                    t = int(r["rows"][y][x])
-                    base = art.TERRAIN[t]
-                    h = dress_hash(yard, number, r["i"], x, y)
-                    if t == 0 and scenery and h < 16 and (x, y) not in taken:
-                        name = scenery[h % len(scenery)]
-                    elif variants[base] and h & 7 == 0:
-                        name = variants[base][(h >> 3) % len(variants[base])]
-                    else:
-                        name = base
-                    blocked = t in (WALL, PIT, HAZARD) or (x, y) in standing
-                    self.squares[oy + y][ox + x] = names.index(name) | (BLOCKED if blocked else 0)
-        # The figures: the party's kinds first, then each foe and person's.
-        for r in self.f["rooms"]:
-            ox, oy = (r["i"] % rooms.COLS) * rooms.W, (r["i"] // rooms.COLS) * rooms.H
-            who = [(e["x"], e["y"], e["name"]) for e in r["foes"]]
-            if r.get("talk"):
-                who.append((r["talk"]["x"], r["talk"]["y"], PEOPLE[r["talk"]["who"]]))
-            for x, y, name in who:
-                if name not in self.kinds:
-                    self.kinds.append(name)
-                self.figures.append((ox + x, oy + y, self.kinds.index(name), NO_BAND))
-        # Kept in order down the area (those level in the rooms' order), so the engine
-        # looks at only the rows in sight.
-        self.figures.sort(key=lambda f: f[1])
-        assert len(self.kinds) <= KINDS_MAX and len(self.figures) <= FIGURES_MAX
-        # Where you start: the start room's (7, 3), as the prototype puts you, or its door;
-        # and where the stairs' room is (its (7, 3) too: a test walks there).
-        s = self.f["start"]
-        sx, sy = (s % rooms.COLS) * rooms.W + 7, (s // rooms.COLS) * rooms.H + 3
-        self.start = (sx, sy)
-        s = self.f["stairs"]
-        self.goal = ((s % rooms.COLS) * rooms.W + 7, (s // rooms.COLS) * rooms.H + 3)
+        self._open(scenery, variants, unseen)
 
     def _open(self, scenery, variants, unseen):
         """An open floor (docs/open-floors.md): build_open's, each square dressed as rooms.js
@@ -688,16 +637,15 @@ def play(floor, sticks):
 # ------------------------------------------------------------------ the command line
 
 def main(argv):
-    if len(argv) in (5, 6) and argv[1] == "asset" and argv[5:] in ([], ["open"], ["open-unseen"]):
-        fl = Floor(int(argv[2]), int(argv[3]), open_floor=argv[5:] != [],
-                   unseen=argv[5:] == ["open-unseen"])
+    if len(argv) in (5, 6) and argv[1] == "asset" and argv[5:] in ([], ["unseen"]):
+        fl = Floor(int(argv[2]), int(argv[3]), unseen=argv[5:] == ["unseen"])
         with open(os.path.join(argv[4], "floor.bin"), "wb") as f:
             f.write(fl.asset())
         with open(os.path.join(argv[4], "squares.bin"), "wb") as f:
             f.write(fl.squares_asset())
         return 0
-    if len(argv) in (4, 5) and argv[1] == "show" and argv[4:] in ([], ["open"]):
-        fl = Floor(int(argv[2]), int(argv[3]), open_floor=argv[4:] == ["open"])
+    if len(argv) == 4 and argv[1] == "show":
+        fl = Floor(int(argv[2]), int(argv[3]))
         print(f"yard {fl.yard}, floor {fl.number}, the {fl.look}: you start at {fl.start}")
         for y, row in enumerate(fl.squares):
             print("".join("@" if (x, y) == fl.start else "#" if v & BLOCKED else "."

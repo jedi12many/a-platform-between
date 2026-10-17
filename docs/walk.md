@@ -8,20 +8,18 @@ bands hidden until spotted and looking for the party, and a fight set up on its 
 when one sees it. Built (W1, W2, W3, W4, W5, W6).*
 
     make walk           build/walk.prg (a Kung Fu Flash 2 runs it), build/walk.d64 (LOAD"WALK",8 and RUN),
-                        build/walk-crowd.prg (yard 7602's eighth floor: a crowd to test the sprites),
-                        build/walk-open.prg (yard 48213's sixth floor as an open floor: 80 x 40,
-                        every foe shown, none looking), and build/walk-seen.prg (its third, 64 x 32,
+                        build/walk-crowd.prg (yard 7602's eighth floor, the dungeon, 80 x 40: a crowd
+                        to test the sprites), build/walk-open.prg (yard 48213's sixth, 80 x 40, a
+                        crowd too), and build/walk-seen.prg (its third, 64 x 32,
                         seeing: the bands hidden till spotted, the walk stopped when one sees you,
                         and the fight set up on its window)
     make test-cart      ...and tests/walk/run_walk.py and tests/walk/vice_walk.py on all four
 
-It walks yard 48213's first floor, the explore prototype's ([rooms.md](rooms.md)): its nine
-rooms side by side as one area of 48 x 24 squares, in the forest look
-([art.md](art.md#looks)), each square dressed as the prototype dresses it, its foes and
-people standing where the prototype puts them. Or an open floor
-([open-floors.md](open-floors.md)), as `buildOpen` builds it and the prototype dresses it,
-its bands' foes and its people standing where they stand (`walk.py asset YARD FLOOR DIR
-open`), each band unseen until the party spots it, and looking for the party (see
+It walks an open floor ([open-floors.md](open-floors.md)), as `buildOpen` builds it and the
+explore prototype dresses it (yard 48213's first: 48 x 24, in the forest look,
+[art.md](art.md#looks)), its bands' foes and its people standing where they stand, each
+band unseen until the party spots it, and looking for the party (or, `walk.py asset YARD
+FLOOR DIR unseen`, every foe shown and none looking: the tests' crowds; see
 *Seeing*). A joystick in port 2 walks the party; the screen follows.
 
 It's a program of its own (`cart/walk/`), not yet part of the cartridge's game: the
@@ -116,8 +114,8 @@ changed: after a step across none has, after a step down or up every other row. 
 frame before the swap, the loop, done, copies each row as soon as the raster is past its
 bad line (from row 0, till line 243); the swap's interrupt copies the rest, top first,
 ahead of the raster. Both copy from the map, so a row the swap catches half copied is
-copied again the same. On the crowd floor the loop gets 15-23 rows done first; on the
-open floor 11-23; on the first floor, all but one or two. (So that frame is kept light:
+copied again the same. On the rooms' crowd floor (W1-W3) the loop got 15-23 rows done
+first; on the open floor 11-23; on the rooms' first floor, all but one or two. (So that frame is kept light:
 work moved into it starves the copy, and the swap's interrupt, copying the rest, runs
 into the next frame.)
 
@@ -180,7 +178,7 @@ that stop lands in the instruction before the edge's write, the write comes out 
 cycles late: up to 6 pixels at the left of the band's first line (or the view's) stay as
 they were, in that frame; with an open floor's crowd crossing the bottom edge at once
 (several figures' fetches in a row), up to 32 (4 characters). The VICE check counts these
-(in about 1 picture in 20 on the first floor, and 4 of 277 on the open floor); a sync to
+(in about 1 picture in 20 on the rooms' first floor, and 4 of 277 on the open floor); a sync to
 the cycle would remove them.
 
 ## The HUD
@@ -309,23 +307,25 @@ below $2800 is full; seeing's log of each step's checks, every die, is at $AC00 
 ## Measured
 
 On the harness's model of the C64 (its bad lines taking 40 cycles each, each sprite
-showing on a line 2), over three walks: yard 48213's first floor (1,467 frames: the
-script's knocks into walls and corners, then through the floor's doors to its stairs, 136
-coarse steps), yard 7602's eighth, the crowd (1,726 frames, 215 coarse steps), and yard
-48213's sixth as an open floor, 80 x 40 (1,941 frames, 183 coarse steps, to its stairs past
-the band guarding them):
+showing on a line 2), over three walks, every foe shown: yard 48213's first open floor,
+48 x 24 (1,360 frames: the script's knocks into walls and corners, then to its stairs, 129
+coarse steps), yard 7602's eighth, the dungeon, 80 x 40 (1,614 frames, 147 coarse steps),
+and yard 48213's sixth, 80 x 40 (1,941 frames, 183 coarse steps, to its stairs past the
+band guarding them):
 
-| | The first floor | The crowd | The open floor |
+| | The first floor | The dungeon | The sixth floor |
 |---|---|---|---|
 | A PAL frame | 19,656 | 19,656 | 19,656 |
 | Its 25 bad lines | 1,000 | 1,000 | 1,000 |
-| Sprites shown | 7,589, up to 7 a frame | 16,034, up to 14 a frame | 14,898, up to 16 a frame |
-| Left out | 0 | 42 | 30 |
-| The busiest frame loop | 12,771 | 16,283 | 17,098 |
-| The latest a frame loop's done (the bottom's at 244) | line 143 | line 200 | line 226 |
-| Colour rows copied in the frame before a swap (of 25) | 23-24 | 15-23 | 11-23 |
-| The busiest interrupt (the colours' copy apart) | 1,356 | 1,302 | 1,329 |
+| Sprites shown | 6,625, up to 8 a frame | 12,679, up to 15 a frame | 14,898, up to 16 a frame |
+| Left out | 0 | 0 | 30 |
+| The busiest frame loop | 12,896 | 17,932 | 17,371 |
+| The busiest interrupt (the colours' copy apart) | 1,356 | 1,383 | 1,329 |
 | Late frames | 0 | 0 | 0 |
+
+(The sixth floor's loop was done by line 226 at the latest, with 11-23 of the colours' 25
+rows copied in the frame before a swap, when it was measured for W4. The rooms' floors the
+first walks were on, nine rooms side by side, are retired: [rooms.md](rooms.md).)
 
 The tightest frames are a step's first two, each shifting half a screen (4,000 cycles of
 copying) beside the figures. The swap's frame was the tightest while the colours went
@@ -380,7 +380,7 @@ install vice`, and `xvfb-run`) it says so and passes. It wants checking on a rea
 
 ## The floor's asset
 
-What `tools/walk/walk.py asset YARD FLOOR DIR [open|open-unseen]` writes (`Floor.asset`, `floor.bin`;
+What `tools/walk/walk.py asset YARD FLOOR DIR [unseen]` writes (`Floor.asset`, `floor.bin`;
 and the squares, `squares.bin`), and the program has built in (`floor.s`):
 
 | Offset | Size | What |
@@ -395,7 +395,7 @@ and the squares, `squares.bin`), and the program has built in (`floor.s`):
 | 57 | 1 + 240 | how many foes and people (80 at most), then each one's square x, y and kind, in order down the area |
 | 298 | 32 | each tile's terrain, the battle's (1 a wall, 4 cover...): seeing's lines |
 | 330 | 80 | each foe's or person's band ($FF: a person's, always drawn) |
-| 410 | 1 + 24 x 5 | how many bands (24 at most; none on a rooms' floor, or `open-unseen`), then each: square x, y, Sense, Stealth, hiding |
+| 410 | 1 + 24 x 5 | how many bands (24 at most; none with `unseen`), then each: square x, y, Sense, Stealth, hiding |
 | 531 | 4 + 4 | the party's Notice, then Stealth, in marching order |
 | 539 | 1 | the floor's light (0 day, 1 dusk, 2 night: the look's) |
 | 540 | 2 | seeing's dice: the seed |

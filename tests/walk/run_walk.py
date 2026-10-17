@@ -1,7 +1,7 @@
 """The walking engine (cart/walk/, docs/walk.md) on an emulated C64, held to its reference
 (tools/walk/walk.py) frame by frame.
 
-    python3 tests/walk/run_walk.py PRG LABELS [--yard Y --floor F] [--open] [--frames N] [--shot FRAME FILE.png]
+    python3 tests/walk/run_walk.py PRG LABELS [--yard Y --floor F] [--unseen] [--frames N] [--shot FRAME FILE.png]
 
 PRG is the walking engine built for yard Y's floor F (48213's first, unless said).
 
@@ -599,10 +599,9 @@ def main():
     ap.add_argument("--shot", nargs=2, metavar=("FRAME", "FILE"))
     ap.add_argument("--yard", type=int, default=YARD)
     ap.add_argument("--floor", type=int, default=FLOOR)
-    ap.add_argument("--open", action="store_true", help="an open floor (docs/open-floors.md)")
     ap.add_argument("--unseen", action="store_true", help="its foes all shown, none looking")
     args = ap.parse_args()
-    floor = walk.Floor(args.yard, args.floor, open_floor=args.open, unseen=args.unseen)
+    floor = walk.Floor(args.yard, args.floor, unseen=args.unseen)
     script = sticks(floor)
     args.frames = args.frames or walk_frames(floor, script)
     script += [0xFF] * (args.frames + 2 - len(script))
@@ -627,7 +626,7 @@ def main():
         fail(f"the walk ends on square {end}, not the stairs' {goal}")
     else:
         ok(f"the walk reaches the stairs, square {goal}, "
-           + (f"across the open floor ({floor.w} x {floor.h})" if floor.open else "through the floor's doors"))
+           + f"across the open floor ({floor.w} x {floor.h})")
     if args.shot:
         shot(c64, floor, int(args.shot[0]), args.shot[1])
     print(f"walk: {failures} failed")
