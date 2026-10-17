@@ -2,24 +2,23 @@
 ; no storage. The chips are cart/hw.inc's.
 
 ; ------------------------------------------------------------------ the area
-SQUARES_X       = 48            ; the floor's nine rooms side by side
-SQUARES_Y       = 24
-CHARS_X         = 96            ; two characters a square, both ways
-CHARS_Y         = 48
+SQUARES_X_MAX   = 80            ; a floor's size: any up to these (its width and height in
+SQUARES_Y_MAX   = 48            ; the asset): a row of squares is a page of COLOUR_MAP
 BLOCKED         = $80           ; a square's byte: its tile, and this if you can't stand there
 TILE_MASK       = $1F
 
-; The floor's asset (tools/walk/walk.py, Floor.asset), where the program has it.
+; The floor's asset (tools/walk/walk.py, Floor.asset), where the program has it; its
+; squares (w x h, a row at a time) are a second file, squares.bin (floor.s).
 FL_COLOURS      = 0             ; background, shared 1, shared 2
 FL_TILES        = 3             ; how many tiles
 FL_TILE_COLOUR  = 4             ; each tile's colour RAM value (32)
 FL_START        = 36            ; where you start: square x, y
-FL_SQUARES      = 38            ; 48 x 24
-FL_PARTY        = 1190          ; the party's kinds, in marching order (4)
-FL_KINDS        = 1194          ; how many kinds of figure
-FL_KIND_COLOUR  = 1195          ; each kind's colour (12)
-FL_FIGURES      = 1207          ; how many figures (foes, people), then each: x, y, kind
-FL_CHARS        = 1304          ; the characters: 0 blank, then 4 a tile
+FL_SIZE         = 38            ; the floor's width and height, in squares
+FL_PARTY        = 40            ; the party's kinds, in marching order (4)
+FL_KINDS        = 44            ; how many kinds of figure
+FL_KIND_COLOUR  = 45            ; each kind's colour (12)
+FL_FIGURES      = 57            ; how many figures (foes, people), then each: x, y, kind
+FL_CHARS        = 304           ; the characters: 0 blank, then 4 a tile
 FL_HUD          = 2000          ; the HUD's sprites (border.s): their x's low bytes (8)...
 HUD_X           = 0
 HUD_COLOUR      = 8             ; ...their colours (8)...
@@ -60,8 +59,8 @@ TRAMPOLINE      = $FF00         ; the interrupt's way in: jmp irq, so $FFFF (its
                                 ; byte, the idle VIC's byte) is $FF, all black
 
 ; ------------------------------------------------------------------ the camera
-CAM_X_MAX       = 455           ; (96 - 40) x 8 + 7: the screen's 40 columns on the area
-CAM_Y_MAX       = 191           ; (48 - 25) x 8 + 7
+; Its most, across and down, is the floor's (camera_init): (2 w - 40) x 8 + 7 and (2 h -
+; 25) x 8 + 7, the screen's 40 x 25 characters on the area.
 HALF_VIEW_X     = 152           ; half the 38 columns, in pixels
 HALF_VIEW_Y     = 96            ; half the 24 rows
 
@@ -94,12 +93,11 @@ AIM_ROWS        = $7000         ; each row's copy aimed at its row of the colour
 AIM_CODE        = 40 * 3 + 1    ; call (to $7BD0)
 BORDER_COLOUR   = 0             ; black
 
-; The area's characters and colours, a byte each (96 x 48), built from the squares at the
-; start (edge.s), so an edge is a copy: the camera's clamp keeps every edge on the area.
-CHAR_MAP        = $A000         ; to $B1FF
-COLOUR_MAP      = $8800         ; to $9FFF: a page a row of squares (a square's two rows of
-                                ; characters have its colours), its 96 columns from the
-                                ; page's start
+; The area, a page a row of squares (edge.s, maps_build): its colours from the page's
+; start, a byte a column of characters (a square's two columns and two rows have its
+; colour), so a row of the colour RAM is a straight copy; then, from 2 w, the squares
+; themselves. (The characters aren't kept: an edge's are worked out from its squares.)
+COLOUR_MAP      = $7C00         ; to $ABFF at most (48 rows)
 
 ; ------------------------------------------------------------------ the figures
 SPRITE_SHAPES   = $D000         ; under the I/O (the VIC sees the RAM): 32 shapes
@@ -107,7 +105,7 @@ SHAPE_POINTER   = $40           ; shape s: the VIC's pointer $40 + s
 POINTERS_A      = SCREEN_A + $03F8      ; each screen's sprite pointers (both are kept)
 POINTERS_B      = SCREEN_B + $03F8
 PARTY_SIZE      = 4
-FIGURES_MAX     = 32            ; the floor's foes and people
+FIGURES_MAX     = 80            ; the floor's foes and people
 SHOWN_MAX       = PARTY_SIZE + FIGURES_MAX
 GAP             = 9             ; trail entries between travelers in marching order
 TRAIL           = 32            ; the leader's trail kept (a power of 2)

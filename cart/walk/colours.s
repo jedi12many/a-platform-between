@@ -11,7 +11,7 @@
         .include "hw.inc"
         .include "walk.inc"
 
-        .export precopy, blast_rest, colour_row, colour_aim
+        .export precopy, blast_rest, colour_row, colour_aim, aim_all
         .import wk_frame, view_d011, wk_ncx, wk_ncy
 
 FIRST_DMA       = 48            ; row 0's bad line: 48 + ys
@@ -32,23 +32,34 @@ call:   jsr $FFFF
 
 ; ----------------------------------------------------------------------------------------
 ; colour_aim: each row's copy aimed at its row of squares' page in the colour map: row r
-; shows the area's row of characters wk_ncy + r, of squares (wk_ncy + r) / 2.
+; shows the area's row of characters wk_ncy + r, of squares (wk_ncy + r) / 2. Only the
+; rows whose page has changed are aimed again (none after a step across; every other row
+; after a step down or up); aim_all forgets them all first (the start's).
 ;   Before:  no copy under way (the loop's, between steps).
 ;   Changes: A, X, Y.
+aim_all:
+        lda #$FF
+        ldx #ROWS - 1
+:       sta aimed, x
+        dex
+        bpl :-
 colour_aim:
         ldx #0
-@row:   ldy aim_lo, x
-        sty @call + 1
-        ldy aim_hi, x
-        sty @call + 2
-        txa
+@row:   txa
         clc
         adc wk_ncy
         lsr a
         clc
         adc #>COLOUR_MAP
+        cmp aimed, x
+        beq @next
+        sta aimed, x
+        ldy aim_lo, x
+        sty @call + 1
+        ldy aim_hi, x
+        sty @call + 2
 @call:  jsr $FFFF
-        inx
+@next:  inx
         cpx #ROWS
         bne @row
         rts
@@ -145,3 +156,4 @@ row_hi:
 rows_done:  .res 1              ; rows of the coming swap already copied
 frame_at:   .res 1
 line_after: .res 1
+aimed:      .res ROWS           ; each row's copy: the colour map's page it's aimed at

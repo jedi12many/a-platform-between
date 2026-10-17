@@ -1,7 +1,7 @@
 """The walking engine (cart/walk/, docs/walk.md) on an emulated C64, held to its reference
 (tools/walk/walk.py) frame by frame.
 
-    python3 tests/walk/run_walk.py PRG LABELS [--yard Y --floor F] [--frames N] [--shot FRAME FILE.png]
+    python3 tests/walk/run_walk.py PRG LABELS [--yard Y --floor F] [--open] [--frames N] [--shot FRAME FILE.png]
 
 PRG is the walking engine built for yard Y's floor F (48213's first, unless said).
 
@@ -79,9 +79,7 @@ def route(floor, before):
     way (4 ways, square to square) to the floor's stairs: each frame, toward the middle of
     the next square on the way, a pixel's slack each way. Only the joystick comes from here:
     the C64 and the reference walk it the same."""
-    f = floor.f
-    s = f["stairs"]
-    goal = ((s % 3) * 16 + 7, (s // 3) * 8 + 3)
+    goal = floor.goal
     pos = [floor.start[0] * 256, floor.start[1] * 256]
     for st in before:
         walk.walk(floor, pos, st)
@@ -463,8 +461,9 @@ def main():
     ap.add_argument("--shot", nargs=2, metavar=("FRAME", "FILE"))
     ap.add_argument("--yard", type=int, default=YARD)
     ap.add_argument("--floor", type=int, default=FLOOR)
+    ap.add_argument("--open", action="store_true", help="an open floor (docs/open-floors.md)")
     args = ap.parse_args()
-    floor = walk.Floor(args.yard, args.floor)
+    floor = walk.Floor(args.yard, args.floor, open_floor=args.open)
     script = sticks(floor)
     args.frames = args.frames or len(script)
     script += [0xFF] * (args.frames + 2 - len(script))
@@ -473,13 +472,13 @@ def main():
     c64 = C64(open(args.prg, "rb").read(), syms, script)
     c64.run(args.frames)
     check(c64, floor, ref)
-    s = floor.f["stairs"]
-    goal = ((s % 3) * 16 + 7, (s // 3) * 8 + 3)
+    goal = floor.goal
     end = ((ref[-1][0] + 128) >> 8, (ref[-1][1] + 128) >> 8)
     if end != goal:
         fail(f"the walk ends on square {end}, not the stairs' {goal}")
     else:
-        ok(f"the walk reaches the stairs, square {goal}, through the floor's doors")
+        ok(f"the walk reaches the stairs, square {goal}, "
+           + (f"across the open floor ({floor.w} x {floor.h})" if floor.open else "through the floor's doors"))
     if args.shot:
         shot(c64, floor, int(args.shot[0]), args.shot[1])
     print(f"walk: {failures} failed")

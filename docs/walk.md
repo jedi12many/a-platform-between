@@ -2,18 +2,22 @@
 
 *Plan B's first demo ([plan-b.md](plan-b.md), B1): a whole-screen floor scrolling smoothly
 in eight directions at 50 frames a second on a stock PAL C64, the party, foes and people
-on it as sprites, and the party's portraits and health in the opened bottom border. Built
-(W1, W2, W3).*
+on it as sprites, and the party's portraits and health in the opened bottom border; and
+open floors of any size up to 80 x 48 squares ([open-floors.md](open-floors.md)). Built
+(W1, W2, W3, W4).*
 
     make walk           build/walk.prg (a Kung Fu Flash 2 runs it), build/walk.d64 (LOAD"WALK",8 and RUN),
-                        and build/walk-crowd.prg (yard 7602's eighth floor: a crowd to test the sprites)
-    make test-cart      ...and tests/walk/run_walk.py and tests/walk/vice_walk.py on both
+                        build/walk-crowd.prg (yard 7602's eighth floor: a crowd to test the sprites),
+                        and build/walk-open.prg (yard 48213's sixth floor as an open floor: 80 x 40)
+    make test-cart      ...and tests/walk/run_walk.py and tests/walk/vice_walk.py on all three
 
 It walks yard 48213's first floor, the explore prototype's ([rooms.md](rooms.md)): its nine
 rooms side by side as one area of 48 x 24 squares, in the forest look
 ([art.md](art.md#looks)), each square dressed as the prototype dresses it, its foes and
-people standing where the prototype puts them. A joystick in port 2 walks the party; the
-screen follows.
+people standing where the prototype puts them. Or an open floor
+([open-floors.md](open-floors.md)), as `buildOpen` builds it and the prototype dresses it,
+its bands' foes and its people standing where they stand (`walk.py asset YARD FLOOR DIR
+open`). A joystick in port 2 walks the party; the screen follows.
 
 It's a program of its own (`cart/walk/`), not yet part of the cartridge's game: the
 engine first, proven, then the game moves onto it.
@@ -32,8 +36,8 @@ engine first, proven, then the game moves onto it.
 | `cart/walk/camera.s` | the camera, and the scroller's five stages |
 | `cart/walk/figures.s` | the figures: the party's trail, who's in sight, the sprites shared out into a program |
 | `cart/walk/mux.s` | the multiplexer: a program carried out, its first eight after the HUD and each event at its line |
-| `cart/walk/edge.s` | the area's characters and colours, and drawing rows and columns of them |
-| `cart/walk/floor.s` | the floor's asset, built in |
+| `cart/walk/edge.s` | the floor on its pages (its colours and squares), and drawing rows and columns of characters from the squares |
+| `cart/walk/floor.s` | the floor's asset and its squares, built in |
 | `tests/walk/run_walk.py` | the harness: the program on an emulated C64, held to the reference |
 | `tests/walk/vice_walk.py`, `vice.py` | the program on x64sc, VICE's cycle-exact C64, its pictures held to the harness's, pixel for pixel |
 
@@ -52,8 +56,9 @@ The prototype's, in whole numbers:
   either side of the middle). It fits where every square under it can be stood on: not
   wall, pit or hazard, and no foe or person there.
 - **The camera** is the area's pixel at the view's top left. Where the leader wants it:
-  the leader's middle in the view's middle (152 across, 96 down), kept within 0-455 and
-  0-191 (so the screen's 40 x 25 characters stay on the area). Each frame it moves an
+  the leader's middle in the view's middle (152 across, 96 down), kept within 0 and
+  (2 w - 40) x 8 + 7 across, (2 h - 25) x 8 + 7 down, for a floor of w x h squares (so the
+  screen's 40 x 25 characters stay on the area: 0-455 and 0-191 for 48 x 24). Each frame it moves an
   eighth of the way there, at least a pixel, at most two (the prototype eases at 6 a
   second: an eighth a frame, near enough).
 
@@ -66,10 +71,14 @@ drawn seamless: character 1 + 4 tile + 2 (lower) + 1 (right), colour RAM the til
 The camera at pixel (x, y) shows the area's character (x / 8, y / 8) at the top left, with
 the fine scroll at 7 - (x mod 8) and 7 - (y mod 8).
 
-At the start, the area's characters and their colours are written out as maps
-(`CHAR_MAP` at $A000: 96 x 48 bytes; `COLOUR_MAP` at $8800: a page for each row of
-squares, since a square's two rows of characters share its colours, its 96 columns from
-the page's start), so any row or column of the screen is a straight copy.
+At the start, the floor is laid out a page for each row of squares (`COLOUR_MAP` from
+$7C00): the row's colours from the page's start, a byte a column of characters (a
+square's two columns and two rows share its colour), so a row of the colour RAM is a
+straight copy; then, from 2 w, the squares themselves, a byte each (its tile, and whether
+it can be stood on). So a floor can be up to 80 squares wide (3 x 80 <= 256) and 48 deep
+(to $ABFF). The characters aren't kept: a new edge's are worked out from its squares as
+it's drawn (1 + 4 tile + 2 lower + 1 right), a row's two at a time and a column's a square
+at a time, about as fast as copying them was.
 
 ## The scroller
 
@@ -80,8 +89,8 @@ frames, each frame's share small enough to leave room for the figures:
 | Stage | The frame loop | The camera next frame |
 |---|---|---|
 | `IDLE` | the shown screen's first 500 bytes copied into the other, shifted a column, a row or both (`SHIFT_AB` or `SHIFT_BA`: unrolled, `LDA from+i-41,X` / `STA to+i`, X the shift + 41) | held in its cell (it stops at the edge) |
-| `HALF` | its other 500, and the new edges copied from the map | held |
-| `SHIFTED` | the colours' copies aimed at the rows to be shown | held |
+| `HALF` | its other 500 | held |
+| `SHIFTED` | the new edges, worked out from the squares; the colours' copies aimed at the rows to be shown (those whose row of squares changed) | held |
 | `SHADED` | nothing heavy; then, done, each row's colours copied as the raster passes it | into the new cell; the interrupt swaps the screens and copies the rows not done |
 | `COLOURED` | nothing heavy: the frame of the swap | held in its (new) cell |
 
@@ -94,12 +103,15 @@ between the VIC reading it for the last frame of the old screen (at the row's ba
 and for the first of the new. So each row's colours are copied straight from the colour
 map (`COLOUR_ROWS`: a row a call, `LDA map+c,Y` / `STA COLOUR_RAM+40r+c`, Y the screen's
 first column on the area, 8 cycles a byte), its page aimed in the `SHIFTED` frame at the
-row of squares it'll show (`AIM_ROWS`: each row's 40 high bytes written). In the frame
-before the swap, the loop, done, copies each row as soon as the raster is past its bad
-line (from row 0, till line 243); the swap's interrupt copies the rest, top first, ahead
-of the raster. Both copy from the map, so a row the swap catches half copied is copied
-again the same. On the crowd floor the loop gets 15-23 rows done first; on the first
-floor, all but one or two.
+row of squares it'll show (`AIM_ROWS`: each row's 40 high bytes written), if that's
+changed: after a step across none has, after a step down or up every other row. In the
+frame before the swap, the loop, done, copies each row as soon as the raster is past its
+bad line (from row 0, till line 243); the swap's interrupt copies the rest, top first,
+ahead of the raster. Both copy from the map, so a row the swap catches half copied is
+copied again the same. On the crowd floor the loop gets 15-23 rows done first; on the
+open floor 11-23; on the first floor, all but one or two. (So that frame is kept light:
+work moved into it starves the copy, and the swap's interrupt, copying the rest, runs
+into the next frame.)
 
 The copying code is written by `gen.s` at the start (`SHIFT_AB` $2800, `SHIFT_BA` $4000:
 6,002 bytes each, an `RTS` half way, so a half is a call; `COLOUR_ROWS` $5800, 25 x 241
@@ -158,8 +170,10 @@ crossing the top come in a line late (56), and the view's last line (246) shows 
 **The limit**: when a figure crosses an edge, the VIC stops the CPU for its fetch, and if
 that stop lands in the instruction before the edge's write, the write comes out a few
 cycles late: up to 6 pixels at the left of the band's first line (or the view's) stay as
-they were, in that frame. The VICE check counts these (in about 1 picture in 20 on the
-first floor); a sync to the cycle would remove them.
+they were, in that frame; with an open floor's crowd crossing the bottom edge at once
+(several figures' fetches in a row), up to 32 (4 characters). The VICE check counts these
+(in about 1 picture in 20 on the first floor, and 4 of 277 on the open floor); a sync to
+the cycle would remove them.
 
 ## The HUD
 
@@ -181,7 +195,8 @@ stand on their squares, each a multicolour sprite: the figure's battle art
 ([art.md](art.md)), drawn into a sprite by `walk.py` (its 16 x 16 pixels into the
 sprite's top left, the outline in shared colour 1, black, and its own colour; and
 mirrored, facing left). The floor's asset carries them (32 shapes at most: 2 for each of
-up to 12 kinds), copied at the start to $D000, under the I/O, where the VIC sees them.
+up to 12 kinds), copied at the start to $D000, under the I/O, where the VIC sees them. A
+floor has up to 80 foes and people.
 
 - **The trail**: each frame the leader's pixel moves, it goes on a trail of the last 32.
   Traveler k (0 the leader) stands 9 k entries back (about 13 pixels a traveler at a
@@ -220,21 +235,23 @@ being looked at when its square is inside the window's edge squares.
 ## Measured
 
 On the harness's model of the C64 (its bad lines taking 40 cycles each, each sprite
-showing on a line 2), over two walks: yard 48213's first floor (1,467 frames: the script's
-knocks into walls and corners, then through the floor's doors to its stairs, 136 coarse
-steps) and yard 7602's eighth, the crowd (1,726 frames, 215 coarse steps):
+showing on a line 2), over three walks: yard 48213's first floor (1,467 frames: the
+script's knocks into walls and corners, then through the floor's doors to its stairs, 136
+coarse steps), yard 7602's eighth, the crowd (1,726 frames, 215 coarse steps), and yard
+48213's sixth as an open floor, 80 x 40 (1,941 frames, 183 coarse steps, to its stairs past
+the band guarding them):
 
-| | The first floor | The crowd |
-|---|---|---|
-| A PAL frame | 19,656 | 19,656 |
-| Its 25 bad lines | 1,000 | 1,000 |
-| Sprites shown | 7,589, up to 7 a frame | 16,034, up to 14 a frame |
-| Left out | 0 | 42 |
-| The busiest frame loop | 13,864 | 17,248 |
-| The latest a frame loop's done (the bottom's at 244) | line 161 | line 215 |
-| Colour rows copied in the frame before a swap (of 25) | 23-24 | 15-23 |
-| The busiest interrupt (the colours' copy apart) | 1,356 | 1,302 |
-| Late frames | 0 | 0 |
+| | The first floor | The crowd | The open floor |
+|---|---|---|---|
+| A PAL frame | 19,656 | 19,656 | 19,656 |
+| Its 25 bad lines | 1,000 | 1,000 | 1,000 |
+| Sprites shown | 7,589, up to 7 a frame | 16,034, up to 14 a frame | 14,898, up to 16 a frame |
+| Left out | 0 | 42 | 30 |
+| The busiest frame loop | 12,771 | 16,283 | 17,098 |
+| The latest a frame loop's done (the bottom's at 244) | line 143 | line 200 | line 226 |
+| Colour rows copied in the frame before a swap (of 25) | 23-24 | 15-23 | 11-23 |
+| The busiest interrupt (the colours' copy apart) | 1,356 | 1,302 | 1,329 |
+| Late frames | 0 | 0 | 0 |
 
 The tightest frames are a step's first two, each shifting half a screen (4,000 cycles of
 copying) beside the figures. The swap's frame was the tightest while the colours went
@@ -281,19 +298,23 @@ install vice`, and `xvfb-run`) it says so and passes. It wants checking on a rea
 
 ## The floor's asset
 
-What `tools/walk/walk.py asset YARD FLOOR OUT` writes (`Floor.asset`), and the program has
-built in (`floor.s`):
+What `tools/walk/walk.py asset YARD FLOOR DIR [open]` writes (`Floor.asset`, `floor.bin`;
+and the squares, `squares.bin`), and the program has built in (`floor.s`):
 
 | Offset | Size | What |
 |---|---|---|
 | 0 | 3 | the look's background and two shared colours |
 | 3 | 1 | how many tiles |
 | 4 | 32 | each tile's colour RAM value |
-| 36 | 2 | where you start: square x, y (the start room's (7, 3)) |
-| 38 | 1,152 | the squares, 48 x 24, a row at a time: the tile (bits 0-4), and $80 if it can't be stood on |
-| 1,190 | 4 | the party's kinds, in marching order |
-| 1,194 | 1 + 12 | how many kinds of figure, then each one's sprite colour |
-| 1,207 | 1 + 96 | how many foes and people (32 at most), then each one's square x, y and kind, in order down the area |
-| 1,304 | 8 + 32 a tile | the characters: 0 blank, then each tile's four |
+| 36 | 2 | where you start: square x, y (the start room's (7, 3), or an open floor's start) |
+| 38 | 2 | the floor's width and height, in squares (up to 80 x 48) |
+| 40 | 4 | the party's kinds, in marching order |
+| 44 | 1 + 12 | how many kinds of figure, then each one's sprite colour |
+| 57 | 1 + 240 | how many foes and people (80 at most), then each one's square x, y and kind, in order down the area |
+| 304 | 8 + 32 a tile | the characters: 0 blank, then each tile's four |
 | 2,000 | 18 | the HUD's sprites: their X's low bytes (8), colours (8), X's ninth bits, which are multicolour |
 | 2,048 | 64 a shape | the sprite shapes: kind k's 2 k (facing right) and 2 k + 1 (left); 24-27 the HUD's health (31, empty, is made at the start) |
+
+`squares.bin` is the squares, w x h, a row at a time: the tile (bits 0-4), and $80 if it
+can't be stood on. It's loaded past $27FF, with the interrupts' code, and laid out on its
+pages (`maps_build`) before `gen.s` writes the copying code there.
