@@ -133,7 +133,10 @@ the **studio**, beside the art desk:
 - **The fight** is the battle map at whatever size the window is, drawn from the game's art
   (`content/art/`) with every pixel crisp: at a whole number of screen pixels to each of the
   art's (2x, 3x...), so every dot is the same size, unless that would shrink the board by
-  more than a quarter; figures on the move are drawn on whole art pixels too. Your turn shows where you can go. Pick a square
+  more than a quarter; figures on the move are drawn on whole art pixels too. **C** switches to
+  the C64's scale: the cartridge's 16-pixel tiles (`tiles16`) under the same figures, their
+  shared colour black as the cartridge has it, so a figure stands taller than its square,
+  as it will on the C64; the choice is kept in the browser. Your turn shows where you can go. Pick a square
   with the arrows (or the keypad's digits for diagonals) or by clicking a lit one. Foes in
   reach from there are marked with the TN to hit them. Click one, or press A, to attack.
   Cards on the right show everyone's health and numbers; the log shows every roll.

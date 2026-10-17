@@ -709,6 +709,51 @@ def check_open():
                   else "") + ("; its fight on a 16 x 8 window of the floor, then walking again" if fought is not None else ""))
 
 
+def check_c64():
+    """The C64's scale (C, arena.js): the board drawn with the cartridge's 16-pixel tiles
+    (each dot as the look's tiles16 file says, in its colours), the figures with their
+    shared colour a black, as the cartridge has them; the choice kept after a reload, and
+    C again turns it off."""
+    sys.path.insert(0, os.path.join(ROOT, "tools"))
+    import art
+    from c64pic import PALETTE
+    out = page("c64", "-")
+    if not out:
+        return
+    bad = []
+    hexes = ["#%02x%02x%02x" % c for c in PALETTE]
+    look = art.load("tiles16-forest2")
+    on = out["on"]
+    if out["before"] or not on["c64"] or "Scale: the C64's" not in on["buttons"]:
+        bad.append(f"C didn't turn the C64's scale on ({out['before']} -> {on['c64']}, {on['buttons']})")
+    for name, got in on["tiles"].items():
+        e = look.entry(name)
+        colour = {"k": look.background, "d": look.shared[0], "g": look.shared[1], "o": e.colour}
+        # (seamless: the last row and column are the ones before them again)
+        rows = [r[:-1] + r[-2] for r in e.rows[:-1]]
+        rows.append(rows[-1])
+        want = [[hexes[colour[c]] for c in r] for r in rows]
+        if got != want:
+            bad.append(f"forest2's {name} isn't its tiles16 art")
+    figs = art.load("figures")
+    e = figs.entry("HUMAN2")
+    colour = {"a": 0, "b": figs.shared[1], "c": e.colour}
+    for y, row in enumerate(e.rows):
+        for x, c in enumerate(row):
+            if c != "." and on["figure"][y][x] != hexes[colour[c]]:
+                bad.append(f"HUMAN2's dot {x},{y} ({c}) is {on['figure'][y][x]}, not {hexes[colour[c]]}")
+                break
+    if not out["reloaded"] or out["off"]:
+        bad.append(f"after a reload the C64's scale is {out['reloaded']}, and C made it {out['off']}")
+    if out["errors"]:
+        bad.append(f"the page threw {out['errors'][:2]}")
+    if bad:
+        fail("the C64's scale: " + "; ".join(bad[:6]))
+    else:
+        ok("the C64's scale: C draws the look's tiles16 art (forest2's open, wall, pit and cover, dot "
+           "for dot) and the figures with a black as the cartridge has them; kept after a reload")
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -777,6 +822,7 @@ def main():
         check_looks()
         check_talk()
         check_scale()
+        check_c64()
         check_open()
     finally:
         server.terminate()

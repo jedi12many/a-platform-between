@@ -1713,6 +1713,7 @@ function exploreButtons() {
             exploreStart(X.party, X.yard, X.open ? false : X.scroll ? "open" : true, X.look);
           }, false, "", false, "toggle"]]).concat(X.open ? openButtons() : []).concat(X.scroll ? [
           ["Z", "Zoom: " + viewSize()[0] + " x " + viewSize()[1] + " squares", exploreZoom, false, "", false, "toggle"]] : []).concat([
+          scaleButton(),
           ["gap"],
           ["X", "Leave", intro]]);
 }
@@ -1728,13 +1729,14 @@ function exploreDraw() {
 }
 
 function figureAt(name, x, y, alpha) {
+  var fp = figurePlace();
   ctx.globalAlpha = alpha === undefined ? 1 : alpha;
   ctx.fillStyle = "rgba(0,0,0,.35)";
   ctx.beginPath();
-  ctx.ellipse(x * SQ + 16, y * SQ + 29, 9, 2.5, 0, 0, 2 * Math.PI);
+  ctx.ellipse(x * SQ + fp.sx, y * SQ + fp.sy, fp.rx, fp.ry, 0, 0, 2 * Math.PI);
   ctx.fill();
   x = snap(x); y = snap(y);
-  ctx.drawImage(figureSprite(name), x * SQ + 3, y * SQ + 8);
+  drawFigure(figureSprite(name), x, y);
   ctx.globalAlpha = 1;
 }
 
