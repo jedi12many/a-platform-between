@@ -1012,8 +1012,13 @@ function resize() {
   board.width = Math.max(1, Math.round(r.width * dpr));
   board.height = Math.max(1, Math.round(r.height * dpr));
   view.scale = Math.min((r.width - 32) / w, (r.height - 32) / h) * dpr;
-  view.ox = (board.width - w * view.scale) / 2;
-  view.oy = (board.height - h * view.scale) / 2;
+  /* Whole screen pixels to an art pixel (2x, 3x...), so every dot of the art is drawn the
+   * same size: at 2.4x, some would be 2 wide and some 3, and the art looks rougher than
+   * it is. Unless that would shrink the board by more than a quarter (1.7x to 1x, on a
+   * small window): then it fits as it can. */
+  if (Math.floor(view.scale) >= 0.75 * view.scale) view.scale = Math.floor(view.scale);
+  view.ox = Math.round((board.width - w * view.scale) / 2);
+  view.oy = Math.round((board.height - h * view.scale) / 2);
 }
 
 function squareAt(cx, cy) {
@@ -1057,6 +1062,10 @@ function tag(x, y, text, colour) {
 }
 
 /* How much of the grid shows, 0..1. */
+/* A position in squares, put on the nearest whole art pixel (a 32nd of a square), so a
+ * figure on its way between squares is drawn as crisply as one standing still. */
+function snap(v) { return Math.round(v * SQ) / SQ; }
+
 function gridShown(now) {
   if (!fight || fight.explore) return 0;
   return fight.gridFrom ? Math.min(1, ((now || performance.now()) - fight.gridFrom) / 450) : 1;
@@ -1151,6 +1160,7 @@ function frame(now) {
       if (l >= 1) s.lunge = null;
       else { k = Math.sin(l * Math.PI) * 0.3; px += s.lunge.x * k; py += s.lunge.y * k; }
     }
+    px = snap(px); py = snap(py);                       /* on a whole art pixel, moving or not */
     ctx.globalAlpha = s.alpha;
     if (s.state === 1) {
       ctx.save();
@@ -1239,6 +1249,7 @@ function frame(now) {
       px = fx.at.x; py = fx.at.y;
       ctx.globalAlpha = 1 - t * 0.6;
     }
+    px = snap(px); py = snap(py);
     ctx.drawImage(img, px * SQ + 4, py * SQ + 5);
     ctx.globalAlpha = 1;
   });

@@ -48,6 +48,16 @@
   var canvas = document.getElementById("screen");
   var ctx = canvas.getContext("2d");
   var image = ctx.createImageData(640, 400);
+  /* Whole screen pixels to a pixel of the game's (on the device's own pixels), so every
+   * pixel of the art is drawn the same size; a window smaller than the screen fits as it
+   * can (the stylesheet's width). */
+  function fit() {
+    var dpr = window.devicePixelRatio || 1;
+    var k = Math.floor(Math.min(window.innerWidth * dpr / 640, window.innerHeight * dpr / 400));
+    canvas.style.width = k >= 1 ? 640 * k / dpr + "px" : "";
+  }
+  fit();
+  window.addEventListener("resize", fit);
   var statusLine = document.getElementById("status");
 
   var Module = {

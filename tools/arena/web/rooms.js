@@ -1729,6 +1729,7 @@ function figureAt(name, x, y, alpha) {
   ctx.beginPath();
   ctx.ellipse(x * SQ + 16, y * SQ + 29, 9, 2.5, 0, 0, 2 * Math.PI);
   ctx.fill();
+  x = snap(x); y = snap(y);
   ctx.drawImage(figureSprite(name), x * SQ + 3, y * SQ + 8);
   ctx.globalAlpha = 1;
 }

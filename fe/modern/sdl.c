@@ -293,6 +293,9 @@ int main(int argc, char **argv)
             return 1;
         }
         SDL_RenderSetLogicalSize(renderer, SCR_W, SCR_H);
+        /* Whole window pixels to a screen pixel (2x, 3x...), so every pixel of the art is
+         * drawn the same size; the rest of the window is a border. */
+        SDL_RenderSetIntegerScale(renderer, SDL_TRUE);
         SDL_StartTextInput();
     }
     if (shot_dir) modern_on_wait = shot;

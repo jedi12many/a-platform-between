@@ -42,7 +42,9 @@ It's framed ([frames.md](frames.md)):
 The screen is 640 x 400 pixels: 40 x 25 characters of 16 x 16, from an 8 x 8 font
 (`fe/modern/font8x8.h`, the public-domain font8x8) made bold as the C64's is (each stroke
 a pixel wider, unless that closes a gap: `tools/c64font.py`), doubled. The window scales it to
-fit.
+fit at a whole number of pixels to each of its own (2x, 3x...), the rest a border, so every
+pixel of the art is the same size; in the browser too, unless the page is smaller than the
+screen.
 
 **A fight** is in the view: the battle screen with graphics (`client/tactics.c`,
 [c64.md](c64.md#the-battle-screen)), drawn exactly as the C64's VIC-II draws it, from the
