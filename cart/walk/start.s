@@ -38,6 +38,8 @@
 ;   After:   never returns.
 walk_start:
         sei
+        ldx #$FF                    ; the stack from the top: the loop's $0180-$01FF, seeing's
+        txs                         ; checks' below it (watch.s)
         lda #PORT_GAME              ; RAM but the I/O
         sta CPU_PORT
         lda #$7F                    ; the CIAs' interrupts off
