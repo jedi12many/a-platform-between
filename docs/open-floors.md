@@ -282,14 +282,16 @@ range: for playing.
 
 ## Walking an open floor, built
 
-In the arena's explore prototype (Explore the yards, the view **Open floor**, or V while
-walking; a link: `arena/#explore=48213:warden,rogue:open`), on the rules lab's own
+In the arena's explore prototype (Explore the yards: open floors are all it walks now, the
+rooms' views retired; a link: `arena/#explore=48213:warden,rogue`), on the rules lab's own
 seeing: `core/next/seeing.c` is in the arena's WebAssembly beside the battle engine
 (`ar_see_begin`, `ar_see_step` in `tools/arena/web/arena.c`), and `rooms.js` hands it the
 floor `buildOpen` built, the party's Notice and Stealth (Wits or Intuition; the Stealth
 skill: `rooms.json`, from the travelers' sheets) and each band's (its foes' best Sense and
 Stealth, `registry/senses.txt`).
 
+- **The view** is the C64's: 19 x 12 squares, at the C64's scale (its 16-pixel tiles, C to
+  change it), following you a C64 pixel at a time; **Z** zooms out to the whole floor.
 - **Walking:** each square the leader steps onto is a step of `apb_seeing_step`; every
   check goes in the log, worked out: the TN and each modifier, each helper's roll, the
   best's roll and what came of it. A band you haven't spotted is "something out there"

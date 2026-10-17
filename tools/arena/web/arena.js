@@ -61,10 +61,15 @@ function paint(ctx, rows, colourOf, wide, tall) {
  * shared colour a black. The board keeps its squares of SQ; at the C64's scale they're
  * the tiles16 art at twice the size, and the figures twice theirs: the C64's proportions.
  * A preference, kept in the browser. */
-var c64 = false;
-try { c64 = localStorage.getItem("apb-c64") === "1"; } catch (e) { /* (private windows) */ }
+var c64 = false, c64Chosen = false;
+try { c64Chosen = localStorage.getItem("apb-c64") !== null; c64 = localStorage.getItem("apb-c64") === "1"; }
+catch (e) { /* (private windows) */ }
+/* Exploring is at the C64's scale unless C has chosen otherwise: what's tried here is what
+ * the C64 shows (docs/walk.md). */
+function c64Default() { if (!c64Chosen) c64 = true; }
 function toggleC64() {
   c64 = !c64;
+  c64Chosen = true;
   try { localStorage.setItem("apb-c64", c64 ? "1" : "0"); } catch (e) { /* as above */ }
   if (fight && fight.explore) exploreSide();
   actions();
@@ -231,8 +236,8 @@ function intro() {
     var eli = el("li"), eb = el("button");
     list.append(el("li", "group", "Explore (prototype)"));
     eb.type = "button";
-    eb.append(el("span", "code", "E13"), el("span", "t", "Explore the yards"),
-              el("span", "who", "rooms, overhead; fights where you stand"));
+    eb.append(el("span", "code", "E14"), el("span", "t", "Explore the yards"),
+              el("span", "who", "open floors, overhead; seen or unseen"));
     eb.setAttribute("aria-current", String(picked === -1));
     eb.onclick = function () { picked = -1; intro(); };
     eli.append(eb);
@@ -737,7 +742,7 @@ function swap(slot, item) {
 /* ----------------------------------------------------------------- the end */
 
 function finish(result) {
-  if (S.explore) return exploreAfter(result);           /* a room's fight: back to walking */
+  if (S.explore) return exploreAfter(result);           /* a fight on the floor: back to walking */
   var won = result === 1, title = $("end-title"), body = $("end-body");
   var f = fight.st.fighters[0], a = S.lab;
   fight.whose = -1;
@@ -1582,7 +1587,7 @@ function onKey(e) {
     else if (k === "Enter" && picked === -1) {
       e.preventDefault();
       exploreStart(exploreBrief.party || ["WARDEN", "ROGUE", "CHANNELER", "MEDIC"], Number($("yard").value) & 0xFFFF,
-                   exploreBrief.scroll || false, exploreBrief.look);
+                   exploreBrief.look);
     }
     else if (k === "Enter") { e.preventDefault(); start(); }
     return;
@@ -1736,9 +1741,10 @@ async function boot() {
   var m = /scenario=([AR]-\d+)/.exec(location.hash);
   if (m) picked = Math.max(0, SCENARIOS.findIndex(function (s) { return s.code === m[1]; }));
   intro();
-  /* #explore=YARD[:CLASS,CLASS...][:scroll|:open][:look=LOOK] */
+  /* #explore=YARD[:CLASS,CLASS...][:look=LOOK] (an open floor; the old :open or :scroll is
+   * taken and ignored, so older links still work) */
   var ex = /explore=(\d+)(?::((?!scroll|open|look)[\w,]+))?(:scroll|:open)?(?::look=(\w+))?/.exec(location.hash);
-  if (ex && ROOMDATA) exploreStart(ex[2] || "WARDEN", Number(ex[1]) & 0xFFFF, ex[3] === ":open" ? "open" : !!ex[3], ex[4]);
+  if (ex && ROOMDATA) exploreStart(ex[2] || "WARDEN", Number(ex[1]) & 0xFFFF, ex[4]);
   requestAnimationFrame(frame);
   window.arena = {                                                  /* for tests */
     state: function () { return { mode: mode, fight: fight, S: S, auto: auto, fast: fast }; },

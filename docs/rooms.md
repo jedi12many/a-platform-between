@@ -1,8 +1,13 @@
 # Rooms
 
-*Milestone E13, a design and a prototype. The prototype is in the studio's arena
-([arena.md](arena.md)): "Explore the yards". The game itself still explores by scenes and
-menus ([engine-plan.md](engine-plan.md)).*
+*Milestone E13, a design and a prototype; **walking rooms is retired.** Exploring is
+open floors only now ([open-floors.md](open-floors.md)), seen 19 x 12 squares at a time,
+as the C64 shows them: one room a screen and the rooms side by side (*Scrolling, to
+compare*) don't suit the C64, and the prototype no longer offers them. What's still in use
+from this page: the party's marching order and fan-out (*The party*), the people and the
+talk (*People*, *Talk*), the looks (*Looks*); and `tools/rooms/rooms.py` and `rooms.js`,
+which build the open floors and the fights' windows too. The rest is kept as the record of
+what was tried.*
 
 Between fights, the party walks. A **room** is a square grid seen from overhead, the same
 grid as the battle map: the same 16-pixel squares on the cartridge, the same tiles, the

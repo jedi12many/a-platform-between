@@ -80,7 +80,7 @@ def check_start(code, s):
         return
     if "Start the fight" not in out["intro"]["buttons"]:
         fail(f"{code}: the intro has no Start button")
-    want_list = ["E13"] + scenarios.PLAYING + ([] if code in scenarios.PLAYING else [code])
+    want_list = ["E14"] + scenarios.PLAYING + ([] if code in scenarios.PLAYING else [code])
     if out["intro"]["listed"] != want_list:
         fail(f"{code}: the intro lists {out['intro']['listed']}, not the scenarios to play now "
              f"{scenarios.PLAYING} (and the one linked), after exploring")
@@ -275,178 +275,36 @@ def check_rules():
 
 
 def check_explore():
-    """Exploring (docs/rooms.md): yard 48213's first floor, a Warden. The start room is the
-    reference's (tools/rooms/rooms.py); through its first door is the next room, and if it
-    holds foes the fight starts at once on that room's map, the foes where the floor put
-    them; on Auto it ends, and you're walking again with the room cleared (or the descent
-    over)."""
-    sys.path.insert(0, os.path.join(ROOT, "tools", "rooms"))
-    import rooms
-    out = page("explore", "48213:warden")
-    if not out:
-        return
-    floor = rooms.build(48213, 1)
-    start, nxt = out["start"], out["next"]
-    want = floor["rooms"][floor["start"]]
-    bad = []
-    if start["room"] != floor["start"] or start["map"] != want["rows"]:
-        bad.append(f"the start room is {start['room']}, not the reference's {floor['start']} as it draws it")
-    held = out["held"]
-    if start["grid"] != 0 or held["grid"] != 0:
-        bad.append(f"the grid shows while exploring ({start['grid']}, {held['grid']})")
-    if not (start["px"] - 2.2 < held["px"] < start["px"] - 0.3) or held["px"] == round(held["px"]):
-        bad.append(f"holding left a third of a second took you from {start['px']} to {held['px']}, "
-                   f"not smoothly about 1.5 squares (4.5 a second)")
-    door = [d for d, _, _ in rooms.DIRS if d in want["doors"]][0]
-    there = floor["rooms"][rooms.neighbour(floor["start"], door)]
-    if nxt["room"] != there["i"]:
-        bad.append(f"through the {door} door is room {nxt['room']}, not {there['i']}")
-    if there["foes"]:
-        f = out.get("fight") or {}
-        if f.get("map") != there["rows"]:
-            bad.append("the fight isn't on the room's own map")
-        elif out.get("gridUp") != 1:
-            bad.append(f"the grid isn't up once the fight's begun ({out.get('gridUp')})")
-        elif sorted(p[1:] for p in f["fighters"][1:]) != sorted([e["x"], e["y"]] for e in there["foes"]):
-            bad.append(f"the foes stand at {f['fighters'][1:]}, not where the floor put them")
-        after = out.get("after") or {}
-        if after.get("mode") == "explore" and str(there["i"]) not in after.get("cleared", {}):
-            bad.append("won, but the room isn't cleared")
-        if after.get("mode") not in ("explore", "lost"):
-            bad.append(f"after the fight the page is in {after.get('mode')}")
-    if out["errors"]:
-        bad.append(f"the page threw {out['errors'][:2]}")
-    if bad:
-        fail("explore: " + "; ".join(bad))
-    else:
-        ok(f"explore: yard 48213's floor 1 as the reference builds it, walked smoothly with no grid "
-           f"(a key held a third of a second: {start['px'] - held['px']:.2f} squares); through the door, room "
-           f"{there['i'] + 1}" + (f"'s fight on its own map ({len(there['foes'])} foe), the grid up, then walking again"
-                                  if there["foes"] else ", walked into"))
-
-
-def check_scroll():
-    """Exploring, scrolling (docs/rooms.md): the same floor as one area, the nine rooms side by
-    side; a 16 x 8 view that follows you; across a doorway into the next room, the view
-    settles on that room and its fight is on the room's own map, you one square in off the
-    doorway, as one room a screen has it."""
-    sys.path.insert(0, os.path.join(ROOT, "tools", "rooms"))
-    import rooms
-    out = page("explore", "48213:warden:scroll")
-    if not out:
-        return
-    floor = rooms.build(48213, 1)
-    area = ["".join(floor["rooms"][(y // 8) * 3 + x]["rows"][y % 8] for x in range(3)) for y in range(24)]
-    start, held, rest = out["start"], out["held"], out["rest"]
-    bad = []
-    if start["map"] != area:
-        bad.append("the area isn't the reference's rooms side by side")
-    if not start["scroll"] or start["cam"] is None:
-        bad.append("no view onto the area")
-    elif rest["cam"]["x"] <= start["cam"]["x"]:
-        bad.append(f"walking right, the view stayed at {rest['cam']} (from {start['cam']})")
-    elif any(abs(v * 16 - round(v * 16)) > 1e-9 for v in rest["cam"].values()):
-        bad.append(f"the view stands between C64 pixels: {rest['cam']}")
-    if held["grid"] != 0:
-        bad.append("the grid shows while exploring")
-    door = [d for d, _, _ in rooms.DIRS if d in floor["rooms"][floor["start"]]["doors"]][0]
-    there = floor["rooms"][rooms.neighbour(floor["start"], door)]
-    f = out.get("fight") or {}
-    if out["next"]["room"] != there["i"]:
-        bad.append(f"across the {door} doorway is room {out['next']['room']}, not {there['i']}")
-    elif there["foes"]:
-        inner = [there["doors"][rooms.OPPOSITE[door]][0], there["doors"][rooms.OPPOSITE[door]][1]]
-        inner = [min(14, max(1, inner[0])), min(6, max(1, inner[1]))]
-        if f.get("map") != there["rows"]:
-            bad.append("the fight isn't on the room's own map")
-        elif f["fighters"][0][1:] != inner:
-            bad.append(f"the fight starts with you at {f['fighters'][0][1:]}, not one square in at {inner}")
-        elif out.get("gridUp") != 1:
-            bad.append("the grid isn't up once the fight's begun")
-        elif (out.get("after") or {}).get("mode") not in ("explore", "lost"):
-            bad.append("the fight didn't end back in walking")
-    if out["errors"]:
-        bad.append(f"the page threw {out['errors'][:2]}")
-    if bad:
-        fail("explore, scrolling: " + "; ".join(bad))
-    else:
-        ok(f"explore, scrolling: the floor as one area, the view following you a C64 pixel at a time "
-           f"(to x {rest['cam']['x']}); across the doorway, room {there['i'] + 1}"
-           + ("'s fight on its own map, you a square in, the grid up, then walking again" if there["foes"] else ""))
-
-
-def check_zoom():
-    """Exploring, scrolling, zoomed out (docs/rooms.md): Z steps the view from 16 x 8 to
-    24 x 12, to the whole floor's 48 x 24, and back; the view kept on the area and on C64
-    pixels, about you; and crossing into a room with foes, the view goes back to the room's
-    size as it settles on it."""
-    out = page("zoom", "48213:warden:scroll")
-    if not out:
-        return
-    bad = []
-    sizes = [v["view"] for v in out["views"]]
-    if sizes != [[16, 8], [24, 12], [48, 24], [16, 8], [24, 12]]:
-        bad.append(f"Z gave the views {sizes}")
-    for v in out["views"]:
-        w, h = v["view"]
-        c = v["cam"]
-        if not (0 <= c["x"] <= 48 - w and 0 <= c["y"] <= 24 - h):
-            bad.append(f"the {w} x {h} view at {c} runs off the area")
-        elif any(abs(t * 16 - round(t * 16)) > 1e-9 for t in c.values()):
-            bad.append(f"the {w} x {h} view stands between C64 pixels: {c}")
-        elif w < 48 and not (c["x"] <= v["px"] + 0.5 <= c["x"] + w and c["y"] <= v["py"] + 0.5 <= c["y"] + h):
-            bad.append(f"you're out of the {w} x {h} view")
-        if v["button"] != f"Zoom: {w} x {h} squares":
-            bad.append(f"the zoom button says {v['button']!r} at {w} x {h}")
-    if out["settling"]["settle"] and out["settling"]["view"] != [16, 8]:
-        bad.append(f"settling on a room, the view is {out['settling']['view']}, not the room's 16 x 8")
-    if bad:
-        fail("explore, zoomed out: " + "; ".join(bad))
-    else:
-        ok("explore, zoomed out: Z steps the view 16 x 8, 24 x 12, the whole 48 x 24 floor and back, "
-           "kept on the area and on C64 pixels; a room's fight settles at the room's size")
-
-
-def check_minimap():
-    """Exploring, scrolling: the side panel's minimap (docs/rooms.md): the floor at 4 pixels a
-    square; black but where the party's been within 6 squares (at the start, exactly the
-    squares that near), more seen after a walk and nothing seen lost; the view's rectangle
-    drawn where the view is."""
-    out = page("minimap", "48213:warden:scroll")
-    if not out:
-        return
-    bad = []
-    s, w = out["start"], out["walked"]
-    if s["size"] != [48 * 4, 24 * 4]:
-        bad.append(f"the minimap is {s['size']}, not 192 x 96")
-    want = [1 if (x - s["x"]) ** 2 + (y - s["y"]) ** 2 <= 36 else 0 for y in range(24) for x in range(48)]
-    if s["fog"] != want:
-        bad.append(f"at the start {sum(s['fog'] or [])} squares are seen, not the {sum(want)} within 6 of the party")
-    elif not w["fog"] or sum(w["fog"]) <= sum(s["fog"]) or any(a and not b for a, b in zip(s["fog"], w["fog"])):
-        bad.append("walking didn't clear more of the fog (or covered some again)")
-    for v in (s, w):
-        if v["corner"] != [255, 255, 255]:
-            bad.append(f"no rectangle at the view's corner {v['cam']}: {v['corner']}")
-            break
-    if bad:
-        fail("explore, the minimap: " + "; ".join(bad))
-    else:
-        ok(f"explore, the minimap: fog cleared within 6 squares of the party ({sum(s['fog'])} squares at "
-           f"the start, {sum(w['fog'])} after a walk), the view's rectangle where the view is")
-
-
-def check_party():
-    """A party of four exploring (docs/rooms.md, The party): walking, the others follow the
-    leader in marching order along the leader's trail, a gap apart; coming into a room with
-    foes, they fan out round the leader as the reference's fan_out has it."""
+    """Exploring (docs/open-floors.md): yard 48213's first open floor, a party of four. The
+    floor is the reference's (tools/rooms/rooms.py's build_open), you start where it says;
+    the view is the C64's, 19 x 12 squares at its scale, on the floor and on C64 pixels,
+    you inside it; holding a key walks smoothly with no grid, and the others follow the
+    leader's trail in marching order, a gap apart."""
     sys.path.insert(0, os.path.join(ROOT, "tools", "rooms"))
     import rooms
     out = page("explore", "48213:warden,rogue,channeler,medic")
     if not out:
         return
-    floor = rooms.build(48213, 1)
-    mid = out["mid"]
+    o = rooms.build_open(48213, 1)
+    start, held, mid, rest = out["start"], out["held"], out["mid"], out["rest"]
     bad = []
+    if start["map"] != o["rows"] or [start["x"], start["y"]] != o["start"]:
+        bad.append("the floor or the start isn't the reference's")
+    if start["view"] != [19, 12] or not start["c64"]:
+        bad.append(f"the view is {start['view']}, the C64's scale {start['c64']}: not the C64's 19 x 12")
+    if start["grid"] != 0 or held["grid"] != 0:
+        bad.append(f"the grid shows while exploring ({start['grid']}, {held['grid']})")
+    if not (start["px"] + 0.3 < held["px"] < start["px"] + 2.2) or held["px"] == round(held["px"]):
+        bad.append(f"holding right a third of a second took you from {start['px']} to {held['px']}, "
+                   f"not smoothly about 1.5 squares (4.5 a second)")
+    for v in (start, held, mid, rest):
+        c, (w, h) = v["cam"], v["view"]
+        if not (0 <= c["x"] <= o["w"] - w and 0 <= c["y"] <= o["h"] - h):
+            bad.append(f"the view at {c} runs off the floor")
+        elif any(abs(t * 16 - round(t * 16)) > 1e-9 for t in c.values()):
+            bad.append(f"the view stands between C64 pixels: {c}")
+        elif not (c["x"] <= v["px"] + 0.5 <= c["x"] + w and c["y"] <= v["py"] + 0.5 <= c["y"] + h):
+            bad.append(f"you're out of the view at {c}")
     if mid["party"] != ["WARDEN", "ROGUE", "CHANNELER", "MEDIC"]:
         bad.append(f"the party is {mid['party']}")
     lead = mid["shown"][0]
@@ -454,38 +312,91 @@ def check_party():
         d = ((x - lead[0]) ** 2 + (y - lead[1]) ** 2) ** 0.5
         if alpha < 1 or not (0.3 < d <= k * 0.85 + 0.01):
             bad.append(f"walking, number {k + 1} is {d:.2f} from the leader (seen {alpha}), not on the trail {k} gaps back")
-    door = [d for d, _, _ in rooms.DIRS if d in floor["rooms"][floor["start"]]["doors"]][0]
-    there = floor["rooms"][rooms.neighbour(floor["start"], door)]
-    f = out.get("fight") or {}
-    if there["foes"]:
-        travelers = [p[1:] for p in f.get("fighters", []) if p[0] == 0]
-        want = rooms.fan_out(there, travelers[0], 4) if travelers else None
-        if travelers != want:
-            bad.append(f"the party stands at {travelers} as the fight begins, not the fan-out {want}")
-        elif (out.get("after") or {}).get("mode") not in ("explore", "lost"):
-            bad.append("the fight didn't end back in walking")
+    if any(b and ("View:" in b) for b in start["buttons"]):
+        bad.append("there's still a choice of view")
     if out["errors"]:
         bad.append(f"the page threw {out['errors'][:2]}")
     if bad:
-        fail("explore, a party of four: " + "; ".join(bad))
+        fail("explore: " + "; ".join(bad))
     else:
-        ok("explore, a party of four: walking, the others follow the leader's trail a gap apart; "
-           f"in room {there['i'] + 1}'s fight they stand fanned out round the leader as the reference says")
+        ok(f"explore: yard 48213's first open floor as the reference builds it, seen 19 x 12 at the "
+           f"C64's scale, on C64 pixels; walked smoothly with no grid (a key held a third of a second: "
+           f"{held['px'] - start['px']:.2f} squares), the party following the leader's trail")
+
+
+def check_zoom():
+    """Exploring, zoomed out (docs/open-floors.md): Z steps the view from the C64's 19 x 12
+    to the whole floor and back; the view kept on the floor and on C64 pixels, about you."""
+    out = page("zoom", "48213:warden")
+    if not out:
+        return
+    bad = []
+    fw, fh = out["floor"]
+    sizes = [v["view"] for v in out["views"]]
+    if sizes != [[19, 12], [fw, fh], [19, 12], [fw, fh]]:
+        bad.append(f"Z gave the views {sizes}")
+    for v in out["views"]:
+        w, h = v["view"]
+        c = v["cam"]
+        if not (0 <= c["x"] <= fw - w and 0 <= c["y"] <= fh - h):
+            bad.append(f"the {w} x {h} view at {c} runs off the floor")
+        elif any(abs(t * 16 - round(t * 16)) > 1e-9 for t in c.values()):
+            bad.append(f"the {w} x {h} view stands between C64 pixels: {c}")
+        elif not (c["x"] <= v["px"] + 0.5 <= c["x"] + w and c["y"] <= v["py"] + 0.5 <= c["y"] + h):
+            bad.append(f"you're out of the {w} x {h} view")
+        if v["button"] != f"Zoom: {w} x {h} squares":
+            bad.append(f"the zoom button says {v['button']!r} at {w} x {h}")
+    if bad:
+        fail("explore, zoomed out: " + "; ".join(bad))
+    else:
+        ok(f"explore, zoomed out: Z steps the view from the C64's 19 x 12 to the whole {fw} x {fh} floor "
+           "and back, kept on the floor and on C64 pixels")
+
+
+def check_minimap():
+    """Exploring: the side panel's minimap (docs/open-floors.md): the floor at 4 pixels a
+    square; black but where the party's been within its sight (at the start, exactly the
+    squares that near), more seen after a walk and nothing seen lost; the view's rectangle
+    drawn where the view is."""
+    out = page("minimap", "48213:warden")
+    if not out:
+        return
+    bad = []
+    s_, w = out["start"], out["walked"]
+    fw, fh, r = s_["w"], s_["h"], s_["sight"]
+    if s_["size"] != [fw * 4, fh * 4]:
+        bad.append(f"the minimap is {s_['size']}, not {fw * 4} x {fh * 4}")
+    want = [1 if (x - s_["x"]) ** 2 + (y - s_["y"]) ** 2 <= r * r else 0 for y in range(fh) for x in range(fw)]
+    if s_["fog"] != want:
+        bad.append(f"at the start {sum(s_['fog'] or [])} squares are seen, not the {sum(want)} within {r} of the party")
+    elif not w["fog"] or sum(w["fog"]) <= sum(s_["fog"]) or any(a and not b for a, b in zip(s_["fog"], w["fog"])):
+        bad.append("walking didn't clear more of the fog (or covered some again)")
+    for v in (s_, w):
+        if v["corner"] != [255, 255, 255]:
+            bad.append(f"no rectangle at the view's corner {v['cam']}: {v['corner']}")
+            break
+    if bad:
+        fail("explore, the minimap: " + "; ".join(bad))
+    else:
+        ok(f"explore, the minimap: fog cleared within the party's sight ({r} squares: {sum(s_['fog'])} at "
+           f"the start, {sum(w['fog'])} after a walk), the view's rectangle where the view is")
 
 
 def check_talk():
     """Talk while exploring (docs/rooms.md, Talk): the story VM playing
-    content/sidings/yards-talk/. Yard 14: Vell's camp is beside where you arrive; the page
-    offers to talk, clicking her opens her words and choices as the script has them, a
-    question gets its answer, Move on ends it and you walk again. Yard 2: through the first
-    door, ash rats who talk first; the parley's check is rolled and shown, and its end is
-    the story's: a failure starts the fight, a success clears the room."""
+    content/sidings/yards-talk/. Yard 326: clicking Vell walks you up to her and opens her
+    words and choices as the script has them, a question gets its answer, Move on ends it
+    and you walk again, next to her. Its band 2, ash rats who talk first when they see you:
+    the parley's check is rolled and shown, and its end is the story's: a failure starts
+    the fight, a success clears the band."""
     out = page("talk", "-")
     if not out:
         return
     bad = []
-    if "Talk to Vell" not in out["before"]["buttons"] or not out["before"]["waiting"]:
-        bad.append(f"arriving beside Vell, the buttons are {out['before']['buttons']}")
+    if not out["before"]["waiting"]:
+        bad.append("the story isn't waiting when you arrive")
+    if max(abs(a - b) for a, b in zip(out["near"], out["vellAt"])) > 1:
+        bad.append(f"talking to Vell, you're at {out['near']}, not next to her at {out['vellAt']}")
     vell = out["vell"]
     if (vell["mode"], vell["who"]) != ("talk", "Vell") or not vell["lines"] or not vell["lines"][0].startswith("A camp"):
         bad.append(f"clicking Vell: {vell['mode']}, {vell['who']!r}, {vell['lines'][:1]}")
@@ -498,7 +409,7 @@ def check_talk():
         bad.append(f"after Move on: {after['mode']}, the panel {'open' if after['open'] else 'shut'}")
     parley = out["parley"]
     if parley["mode"] != "talk" or not parley["who"].startswith("Ash rat") or "Shout them down" not in parley["choices"]:
-        bad.append(f"the ash rats' room: {parley['mode']}, {parley['who']!r}, {parley['choices']}")
+        bad.append(f"the ash rats' parley: {parley['mode']}, {parley['who']!r}, {parley['choices']}")
     rolls = [line for line in out["shout"]["lines"] if line.startswith("Presence check: rolled")]
     then = out["then"]
     if len(rolls) != 1:
@@ -507,21 +418,21 @@ def check_talk():
         failed = rolls[0].endswith(": fail.")
         if failed and then["mode"] != "turn":
             bad.append(f"the shout failed, and then the page is in {then['mode']}, not the fight")
-        if not failed and (then["mode"] != "explore" or not then["cleared"]):
+        if not failed and (then["mode"] != "explore" or not then["cleared"][1]):
             bad.append(f"the shout worked, and then the page is in {then['mode']}, cleared {then['cleared']}")
     if out["errors"]:
         bad.append(f"the page threw {out['errors'][:2]}")
     if bad:
         fail("talk: " + "; ".join(bad))
     else:
-        ok(f"talk: Vell beside the start, her words and choices as the script has them, a question "
+        ok(f"talk: walked up to Vell, her words and choices as the script has them, a question "
            f"answered and back to walking; the ash rats talk first, the shout rolled ({rolls[0]}) and "
            f"the story's ending kept ({then['mode']})")
 
 
 def check_looks():
-    """The looks while exploring (docs/rooms.md, Looks; docs/art.md): yard 48213's start
-    room in each look (and by floor: floor 1 is the forest). Every square is drawn with a
+    """The looks while exploring (docs/rooms.md, Looks; docs/art.md): yard 48213's first
+    open floor in each look (and by floor: floor 1 is the forest). Every square is drawn with a
     tile of that look's file: its terrain's, or a variant of that terrain, or, on open
     ground with no foe, stairs or crate on it, scenery; some squares get a variant or
     scenery; and the same every time it's drawn."""
@@ -692,6 +603,16 @@ def check_open():
                 bad.append(f"the fight's map isn't the floor's 16 x 8 window at {wx},{wy}")
             elif got_foes != foes:
                 bad.append(f"the band's foes stand at {got_foes} in the fight, not where they stood, {foes}")
+            else:
+                sys.path.insert(0, os.path.join(ROOT, "tools", "rooms"))
+                import rooms
+                room = {"rows": window, "foes": [{"x": f["x"] - wx, "y": f["y"] - wy} for f in b["foes"]]}
+                places = rooms.fight_places(room, (met["x"] - wx, met["y"] - wy), met["party"])
+                got_places = [f[1:] for f in met["fighters"] if f[0] == 0]
+                if [wx, wy] != rooms.fight_window(b["foes"], (met["x"], met["y"]), o["w"], o["h"]):
+                    bad.append(f"the window at {wx},{wy} isn't rooms.py's fight_window")
+                elif got_places != places:
+                    bad.append(f"the party stands at {got_places}, not fight_places' {places}")
             after = out.get("after") or {}
             if after.get("mode") not in ("explore", "lost"):
                 bad.append("the fight didn't end back in walking")
@@ -710,10 +631,10 @@ def check_open():
 
 
 def check_c64():
-    """The C64's scale (C, arena.js): the board drawn with the cartridge's 16-pixel tiles
-    (each dot as the look's tiles16 file says, in its colours), the figures with their
-    shared colour a black, as the cartridge has them; the choice kept after a reload, and
-    C again turns it off."""
+    """The C64's scale (C, arena.js): exploring starts at it, the board drawn with the
+    cartridge's 16-pixel tiles (each dot as the look's tiles16 file says, in its colours),
+    the figures with their shared colour a black, as the cartridge has them; C turns it
+    off, the choice kept after a reload, and C again turns it on."""
     sys.path.insert(0, os.path.join(ROOT, "tools"))
     import art
     from c64pic import PALETTE
@@ -724,8 +645,8 @@ def check_c64():
     hexes = ["#%02x%02x%02x" % c for c in PALETTE]
     look = art.load("tiles16-forest2")
     on = out["on"]
-    if out["before"] or not on["c64"] or "Scale: the C64's" not in on["buttons"]:
-        bad.append(f"C didn't turn the C64's scale on ({out['before']} -> {on['c64']}, {on['buttons']})")
+    if not on["c64"] or "Scale: the C64's" not in on["buttons"]:
+        bad.append(f"exploring didn't start at the C64's scale ({on['c64']}, {on['buttons']})")
     for name, got in on["tiles"].items():
         e = look.entry(name)
         colour = {"k": look.background, "d": look.shared[0], "g": look.shared[1], "o": e.colour}
@@ -743,15 +664,15 @@ def check_c64():
             if c != "." and on["figure"][y][x] != hexes[colour[c]]:
                 bad.append(f"HUMAN2's dot {x},{y} ({c}) is {on['figure'][y][x]}, not {hexes[colour[c]]}")
                 break
-    if not out["reloaded"] or out["off"]:
-        bad.append(f"after a reload the C64's scale is {out['reloaded']}, and C made it {out['off']}")
+    if out["off"] or out["reloaded"] or not out["again"]:
+        bad.append(f"C made the C64's scale {out['off']}, after a reload {out['reloaded']}, and C again {out['again']}")
     if out["errors"]:
         bad.append(f"the page threw {out['errors'][:2]}")
     if bad:
         fail("the C64's scale: " + "; ".join(bad[:6]))
     else:
-        ok("the C64's scale: C draws the look's tiles16 art (forest2's open, wall, pit and cover, dot "
-           "for dot) and the figures with a black as the cartridge has them; kept after a reload")
+        ok("the C64's scale: exploring draws the look's tiles16 art (forest2's open, wall, pit and cover, "
+           "dot for dot) and the figures with a black as the cartridge has them; C's choice kept after a reload")
 
 
 def check_powers():
@@ -815,10 +736,8 @@ def main():
         check_first()
         check_rules()
         check_explore()
-        check_scroll()
         check_zoom()
         check_minimap()
-        check_party()
         check_looks()
         check_talk()
         check_scale()

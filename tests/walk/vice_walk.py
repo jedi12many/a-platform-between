@@ -5,7 +5,7 @@ picture, the whole raster with its borders, is compared pixel for pixel with the
 the harness says the VIC showed it: each row of characters as read at its bad line, with
 the fine scroll, and each sprite from the line after its Y, as the VIC-II starts one.
 
-    python3 tests/walk/vice_walk.py PRG LABELS [--yard Y --floor F] [--open] [--frames N]
+    python3 tests/walk/vice_walk.py PRG LABELS [--yard Y --floor F] [--unseen] [--frames N]
             [--every K] [--shots DIR]
 
 Needs x64sc (apt-get install vice) and xvfb-run; without them it says so and passes."""
@@ -139,7 +139,6 @@ def main():
     ap.add_argument("labels")
     ap.add_argument("--yard", type=int, default=48213)
     ap.add_argument("--floor", type=int, default=1)
-    ap.add_argument("--open", action="store_true", help="an open floor (docs/open-floors.md)")
     ap.add_argument("--unseen", action="store_true", help="its foes all shown, none looking")
     ap.add_argument("--frames", type=int, default=0, help="how many (default: the walk)")
     ap.add_argument("--every", type=int, default=7, help="compare every Kth frame")
@@ -150,7 +149,7 @@ def main():
         return 0
     sys.path.insert(0, os.path.join(HERE, "..", "..", "tools"))
 
-    floor = walk.Floor(args.yard, args.floor, open_floor=args.open, unseen=args.unseen)
+    floor = walk.Floor(args.yard, args.floor, unseen=args.unseen)
     script = run_walk.sticks(floor)
     frames = args.frames or run_walk.walk_frames(floor, script)
     script += [0xFF] * (frames + 10 - len(script))

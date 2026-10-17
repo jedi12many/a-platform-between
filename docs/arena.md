@@ -117,19 +117,17 @@ the **studio**, beside the art desk:
   its link (`arena/#scenario=R-02`). The chosen one shows what we want tested and what to
   watch for, both sides' cards (worked out by the rules, not typed in), and what a thousand
   fights on the computer say. Enter starts the fight.
-- **Explore the yards** (E13, first in the list) is the prototype of exploring rooms
-  ([rooms.md](rooms.md)): pick a party of up to four in marching order (the others follow
-  the leader, and fan out round them when a fight starts) and a yard, then walk a floor of nine rooms overhead,
-  one room to a screen: hold the arrows or the keypad and you glide, or click a square;
-  there's no grid until a fight, when it comes up and everyone settles onto a square. Coming into a room with
-  foes in it starts the fight there, on the room's own map; won, you walk on; fled, you're
-  back where you came from; lost, the descent ends. Crates put gear in your pack, and the
-  stairs, once cleared, go a floor deeper. **The view:** one room a screen, or scrolling (the
-  floor as one area under a 16 x 8 view that follows you; V switches): to compare
-  ([rooms.md](rooms.md#scrolling-to-compare)); or an **open floor**
-  ([open-floors.md](open-floors.md#walking-an-open-floor-built)). A link opens it:
-  `arena/#explore=48213:warden,rogue,channeler,medic` (add `:scroll` for scrolling, `:open`
-  for an open floor).
+- **Explore the yards** (E14, first in the list) is the prototype of exploring an **open
+  floor** ([open-floors.md](open-floors.md#walking-an-open-floor-built)): pick a party of up
+  to four in marching order (the others follow the leader, and fan out round them when a
+  fight starts) and a yard, then walk the floor overhead, 19 x 12 squares at a time at the
+  C64's scale, as the C64 shows it (Z: the whole floor): hold the arrows or the keypad and
+  you glide, or click a square; there's no grid until a fight, when it comes up and
+  everyone settles onto a square. Bands of foes stand about unseen and roll to see you; one
+  that does fights you on a 16 x 8 window of the floor; won, you walk on; fled, you're back
+  along your way; lost, the descent ends. Crates put gear in your pack, and the stairs go a
+  floor deeper. (The rooms' views, one room a screen and scrolling, are retired:
+  [rooms.md](rooms.md).) A link opens it: `arena/#explore=48213:warden,rogue,channeler,medic`.
 - **The fight** is the battle map at whatever size the window is, drawn from the game's art
   (`content/art/`) with every pixel crisp: at a whole number of screen pixels to each of the
   art's (2x, 3x...), so every dot is the same size, unless that would shrink the board by

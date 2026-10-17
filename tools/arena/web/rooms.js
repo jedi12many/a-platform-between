@@ -468,85 +468,41 @@ var BODY = 0.3;          /* half a figure's footprint, in squares */
 var held = {};           /* the walking keys held down: their steps */
 var GAP = 0.85;          /* squares between travelers in marching order, walking */
 
-/* Scrolling (docs/rooms.md, "Scrolling, to compare"): the floor's nine rooms side by side
- * as one area of 48 x 24 squares, their doors meeting; a view follows you: 16 x 8, a room's
- * size, or zoomed out (Z) to 24 x 12 or the whole floor. Then X.x, X.y, X.px and X.py are
- * the area's; one room a screen, they're the room's. */
-var ZOOMS = [[16, 8], [24, 12], [48, 24]], zoom = 0;
-function viewSize() { return X && X.open && zoom === ZOOMS.length - 1 ? [X.o.w, X.o.h] : ZOOMS[zoom]; }
+/* The view (docs/open-floors.md; docs/walk.md): 19 x 12 squares, what the C64's walking
+ * engine shows, following you; or zoomed out (Z) to the whole floor. X.x, X.y, X.px and
+ * X.py are the floor's squares. */
+var ZOOMS = [[19, 12], null], zoom = 0;
+function viewSize() { return ZOOMS[zoom] || [X.o.w, X.o.h]; }
 
-/* The area you walk: the nine rooms side by side, or an open floor (docs/open-floors.md). */
-function areaW() { return X.open ? X.o.w : ROOMS.COLS * ROOMS.W; }
-function areaH() { return X.open ? X.o.h : ROOMS.ROWS * ROOMS.H; }
-/* How the explore was begun: one room a screen (false), scrolling (true), or "open". */
-function viewArg() { return X.open ? "open" : X.scroll; }
-function ox(i) { return X.scroll ? (i % ROOMS.COLS) * ROOMS.W : 0; }
-function oy(i) { return X.scroll ? Math.floor(i / ROOMS.COLS) * ROOMS.H : 0; }
+/* The floor you walk: an open floor (docs/open-floors.md). */
+function areaW() { return X.o.w; }
+function areaH() { return X.o.h; }
 
-/* The room a square of the area is in, or -1. */
-function roomAt(x, y) {
-  if (X.open) return x < 0 || y < 0 || x >= X.o.w || y >= X.o.h ? -1 : 0;
-  if (x < 0 || y < 0 || x >= ROOMS.COLS * ROOMS.W || y >= ROOMS.ROWS * ROOMS.H) return -1;
-  return Math.floor(y / ROOMS.H) * ROOMS.COLS + Math.floor(x / ROOMS.W);
-}
+/* Can you stand on (x, y)? */
+function free(x, y) { return openFree(x, y); }
 
-/* Can you stand on (x, y), in X's own squares? */
-function free(x, y) {
-  if (X.open) return openFree(x, y);
-  if (!X.scroll) return walkable(roomOf(), x, y);
-  var i = roomAt(x, y);
-  return i >= 0 && walkable(X.f.rooms[i], x - ox(i), y - oy(i));
-}
-
-/* Standing at square (x, y) of the room you're in, drawn there too (a door, a floor's
- * start, after a fight). */
+/* Standing at square (x, y), drawn there too (a floor's start, after a fight). */
 function at(x, y) {
-  X.x = x + ox(X.room); X.y = y + oy(X.room); X.px = X.x; X.py = X.y; X.path = null;
+  X.x = x; X.y = y; X.px = X.x; X.py = X.y; X.path = null;
   X.trail = [[X.px, X.py]];                             /* the others start at the leader's heels */
   reveal();
 }
 
-/* The minimap's fog (scrolling): the squares the party has come within SIGHT of, kept for
- * the floor. Cleared by distance, not by room, so it holds when rooms open into each other. */
-var SIGHT = 6;
+/* The minimap's fog: the squares the party has come within its range of (openSight),
+ * kept for the floor. */
 function reveal() {
-  if (!X.scroll) return;
-  var w = areaW(), h = areaH(), x, y, R = X.open ? openSight() : SIGHT;    /* (open: the party's range) */
+  var w = areaW(), h = areaH(), x, y, R = openSight();
   if (!X.fog) X.fog = new Uint8Array(w * h);
   for (y = Math.max(0, X.y - R); y <= Math.min(h - 1, X.y + R); ++y)
     for (x = Math.max(0, X.x - R); x <= Math.min(w - 1, X.x + R); ++x)
       if ((x - X.x) * (x - X.x) + (y - X.y) * (y - X.y) <= R * R) X.fog[y * w + x] = 1;
 }
 
-/* The minimap (scrolling): the floor a few pixels a square, black where it's not been seen;
- * the stairs, crates and foes seen; the view's rectangle and the party. */
+/* The minimap: the floor a few pixels a square, black where it's not been seen (openMinimap). */
 var MM = 4, MM_COLOUR = ["#3d3d46", "#9a9aa6", "#2a2a9a", "#6b4a1e", "#3f7a3a", "#a83a2e", "#c8c8d0", "#c8b848"];
 function drawMinimap() {
-  var c = $("minimap"), g, w = areaW(), h = areaH(), x, y, cam = fight && fight.cam;
-  if (!c || !X.fog) return;
-  if (X.open) return openMinimap(c);
-  g = c.getContext("2d");
-  g.fillStyle = "#000";
-  g.fillRect(0, 0, c.width, c.height);
-  for (y = 0; y < h; ++y)
-    for (x = 0; x < w; ++x)
-      if (X.fog[y * w + x]) { g.fillStyle = MM_COLOUR[Number(X.area[y][x])] || MM_COLOUR[0]; g.fillRect(x * MM, y * MM, MM, MM); }
-  X.f.rooms.forEach(function (r) {
-    var x0 = ox(r.i), y0 = oy(r.i), seen = function (sx, sy) { return X.fog[(y0 + sy) * w + x0 + sx]; };
-    if (r.stairs && seen(r.stairs[0], r.stairs[1])) { g.fillStyle = "#fff"; g.fillRect((x0 + r.stairs[0]) * MM, (y0 + r.stairs[1]) * MM, MM, MM); }
-    if (r.cache && !X.taken[r.i] && seen(r.cache.x, r.cache.y)) { g.fillStyle = "#e0a030"; g.fillRect((x0 + r.cache.x) * MM, (y0 + r.cache.y) * MM, MM, MM); }
-    foesIn(r).forEach(function (f) {
-      if (seen(f.x, f.y)) { g.fillStyle = "#ff4040"; g.fillRect((x0 + f.x) * MM + 1, (y0 + f.y) * MM + 1, MM - 2, MM - 2); }
-    });
-  });
-  if (cam && fight.view) {
-    g.strokeStyle = "#fff";
-    g.lineWidth = 1;
-    g.strokeRect(Math.round(cam.x * MM) + 0.5, Math.round(cam.y * MM) + 0.5,     /* (on whole pixels: crisp) */
-                 fight.view[0] * MM - 1, fight.view[1] * MM - 1);
-  }
-  g.fillStyle = "#40ff80";
-  g.fillRect(Math.round(X.px * MM) - 1, Math.round(X.py * MM) - 1, MM + 2, MM + 2);
+  var c = $("minimap");
+  if (c && X.fog) openMinimap(c);
 }
 
 /* Where the k-th in marching order walks: k gaps back along the leader's trail, and how
@@ -585,20 +541,22 @@ function exploreLoad() {
   return fetch("rooms.json").then(function (r) { return r.json(); }).then(function (d) { ROOMDATA = d; });
 }
 
-/* The intro's brief, for exploring: a class and a yard, then off. */
+/* The intro's brief, for exploring: the party and a yard, then off. */
 function exploreBrief() {
   var b = $("brief"), row = el("div", "classes"), yard = el("input"), go;
   var party = exploreBrief.party = exploreBrief.party || ["WARDEN", "ROGUE", "CHANNELER", "MEDIC"];
   b.textContent = "";
-  b.append(el("p", "code", "Prototype · E13"), el("h2", null, "Explore the yards"),
-           el("p", null, "Walk a floor of nine rooms, seen from overhead, one room to a screen (docs/rooms.md). " +
-              "Coming into a room with foes in it starts a fight on that room's own map, unless they talk first. " +
-              "Caches hold gear for your pack; the stairs, once their guards are down, take you a floor deeper."),
+  b.append(el("p", "code", "Prototype · E14"), el("h2", null, "Explore the yards"),
+           el("p", null, "Walk an open floor (docs/open-floors.md), seen from overhead, 19 x 12 squares at a time, as " +
+              "the C64 shows it. Bands of foes stand about it unseen, and roll to see you as you come near (S to " +
+              "sneak), as you roll to spot them: the rolls are in the log. A band that sees you fights on a 16 x 8 " +
+              "window of the floor, unless it talks first. Caches hold gear for your pack; the stairs take you a " +
+              "floor deeper."),
            el("p", null, "People: Vell trades gear from a camp on every floor, and someone is lost on the floors " +
               "below. What they say, and what you say back, is a Quest Script played by the game's own story VM; " +
               "the leader's checks are rolled by the rules, and the story remembers the whole descent."),
-           el("p", "watch", "What to watch: whether walking between fights feels good, whether fights on the " +
-              "rooms' maps play well, how the floors build up, and whether talking feels like a real way round a fight."));
+           el("p", "watch", "What to watch: whether walking and sneaking feel good, whether the bands' rolls are " +
+              "fair, whether fights on the window play well, and whether talking feels like a real way round a fight."));
   /* The party: up to four, in the order picked (marching order: the first leads). */
   Object.keys(ROOMDATA.travelers).forEach(function (c) {
     var t = ROOMDATA.travelers[c], k = party.indexOf(c), btn = el("button", null, (k >= 0 ? (k + 1) + " " : "") + t.name);
@@ -615,14 +573,6 @@ function exploreBrief() {
   yard.value = exploreBrief.yard != null ? exploreBrief.yard : 1 + Math.floor(Math.random() * 65535);
   yard.onchange = function () { exploreBrief.yard = Number(yard.value); };
   var lab = el("label", null, "Yard "); lab.append(yard);
-  var views = el("div", "classes");
-  [["One room a screen", false], ["Scrolling", true], ["Open floor", "open"]].forEach(function (v) {
-    var btn = el("button", null, v[0]);
-    btn.type = "button";
-    btn.setAttribute("aria-pressed", String((exploreBrief.scroll || false) === v[1]));
-    btn.onclick = function () { exploreBrief.scroll = v[1]; exploreBrief(); };
-    views.append(btn);
-  });
   var looks = el("div", "classes");
   [["By floor", ""]].concat(allLooks().map(function (l) { return [l[0].toUpperCase() + l.slice(1), l]; })).forEach(function (v) {
     var btn = el("button", null, v[0]);
@@ -633,52 +583,26 @@ function exploreBrief() {
   });
   go = el("button", "primary", "Begin");
   go.type = "button";
-  go.onclick = function () { exploreStart(party, Number(yard.value) & 0xFFFF, exploreBrief.scroll || false, exploreBrief.look); };
+  go.onclick = function () { exploreStart(party, Number(yard.value) & 0xFFFF, exploreBrief.look); };
   b.append(el("h3", null, "Who goes down"), el("p", "note", "Up to four, in marching order: the first leads, " +
-           "the rest follow; click again to leave one out."), row, el("h3", null, "The view"), el("p", "note", "An open floor (docs/open-floors.md) is one wide space, " +
-           "walls in clusters; bands of foes stand about it unseen, and roll to see you as you come near (S to sneak), " +
-           "as you roll to spot them: the rolls are in the log."), views,
+           "the rest follow; click again to leave one out."), row,
            el("h3", null, "The look"), el("p", "note", "How the floors are drawn (docs/art.md, Looks): by floor, " +
            "a forest, then the mountains, a town and a dungeon, and round again; or one look all the way down."),
            looks, lab, go);
 }
 
-function exploreStart(party, yard, scroll, look) {
+/* Off: the party (classes in marching order), a yard, a look (or by floor). At the C64's
+ * scale, unless it's been chosen otherwise (C). */
+function exploreStart(party, yard, look) {
   party = partyOf(party);
-  X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll, open: scroll === "open",
+  X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, open: true,
         look: allLooks().indexOf(look) >= 0 ? look : "", pell: "" };
+  c64Default();
   storyBoard();
   exploreFloor(1);
 }
 
-function exploreFloor(n) {
-  if (X.open) return openFloor(n);
-  X.floor = n;
-  X.f = ROOMS.build(X.yard, n);
-  X.cleared = {}; X.taken = {}; X.seen = {}; X.parleyed = {};
-  X.fog = null;
-  X.room = X.f.start;
-  X.settle = false;
-  if (X.scroll) {
-    /* The area: the rooms' rows side by side. */
-    X.area = [];
-    for (var ay = 0; ay < ROOMS.ROWS * ROOMS.H; ++ay) {
-      var line = "";
-      for (var ax = 0; ax < ROOMS.COLS; ++ax) line += X.f.rooms[Math.floor(ay / ROOMS.H) * ROOMS.COLS + ax].rows[ay % ROOMS.H];
-      X.area.push(line);
-    }
-  }
-  var r = X.f.rooms[X.room], d = r.doors[Object.keys(r.doors)[0]];
-  at(7, 3);
-  if (!walkable(r, 7, 3)) { var p = inside(r, d); at(p[0], p[1]); }
-  X.cam = camFor();
-  show("fight");
-  $("log").textContent = "";
-  log("Yard " + X.yard + ", floor " + n + ". You come down into the dark.", "round");
-  exploreEnter(null);
-}
-
-function roomOf() { return X.f.rooms[X.room]; }
+function exploreFloor(n) { return openFloor(n); }
 
 /* The looks (docs/art.md, Looks): the same terrain drawn as a place. Floor by floor, unless
  * one was picked. */
@@ -716,80 +640,28 @@ function dress(r, x, y, t) {
   return vars[(h >> 3) % vars.length];
 }
 
-/* What the board draws for the floor: its look, and each square's tile (the area's, or
- * one room's). */
-function dressFight(room) {
+/* What the board draws for the floor: its look, and each square's tile. */
+function dressFight() {
   fight.look = lookOf(X.floor);
-  fight.dress = function (x, y, t) {
-    var r = room || X.f.rooms[roomAt(x, y)];
-    return dress(r, room ? x : x - ox(r.i), room ? y : y - oy(r.i), t);
-  };
+  fight.dress = function (x, y, t) { return dress(X.f.rooms[0], x, y, t); };
 }
 
-function foesIn(r) { return X.cleared[r.i] ? [] : r.foes; }
-
-/* A square you can stand on out of a fight: not wall, pit or hazard, nobody there. */
-function walkable(r, x, y) {
-  if (x < 0 || y < 0 || x >= ROOMS.W || y >= ROOMS.H) return false;
-  var t = Number(r.rows[y][x]);
-  if (t === 1 || t === 2 || t === 5) return false;
-  if (npcIn(r) && r.talk.x === x && r.talk.y === y) return false;
-  return !foesIn(r).some(function (f) { return f.x === x && f.y === y; });
-}
-
-/* The square just inside a door. */
-function inside(r, door) {
-  var x = door[0] === 0 ? 1 : door[0] === ROOMS.W - 1 ? ROOMS.W - 2 : door[0];
-  var y = door[1] === 0 ? 1 : door[1] === ROOMS.H - 1 ? ROOMS.H - 2 : door[1];
-  return walkable(r, x, y) ? [x, y] : [door[0], door[1]];
-}
-
-/* Into the room you're in now (from the room `from`, or none): a fight if it holds foes. */
-function exploreEnter(from) {
-  var r = roomOf();
-  X.came = from;
-  X.seen[r.i] = 1;
-  if (foesIn(r).length) {
-    log("Room " + (r.i + 1) + ": " + foesIn(r).map(function (f) { return ROOMDATA.foes[f.name].name; }).join(", ") +
-        ". They've seen you.", "bad");
-    if (X.scroll && fight && fight.explore) {
-      /* The view settles on the room first (exploreTick), and you step in off the doorway
-       * (as you'd stand one room a screen); then the fight begins. */
-      var lx = X.x - ox(r.i), ly = X.y - oy(r.i), inn = inside(r, [lx, ly]);
-      X.settle = true;
-      X.walkIn = [inn[0] + ox(r.i), inn[1] + oy(r.i)];
-      if (fight.view[0] !== ROOMS.W) { fight.view = [ROOMS.W, ROOMS.H]; resize(); }  /* (zoomed out: in to the room) */
-      held = {};
-      X.path = null;
-      return exploreSide();
-    }
-    return exploreMeet();
-  }
-  if (r.kind === "cache" && !X.taken[r.i]) log("Room " + (r.i + 1) + ": a crate, still shut.");
-  else if (r.stairs) log("Room " + (r.i + 1) + ": the stairs down.");
-  exploreView();
-}
-
-/* What the board draws while exploring: the room, you, and its foes (as the fight would). */
+/* What the board draws while exploring: the floor, you, and the bands you've spotted. */
 function exploreView() {
-  var r = roomOf(), fs = [], all, team = X.party.map(function (c) { return ROOMDATA.travelers[c]; });
-  /* The foes in view: this room's, or, scrolling, every room's, where they stand in the area. */
-  if (X.open) fs = openShown();
-  else (X.scroll ? X.f.rooms : [r]).forEach(function (room) {
-    foesIn(room).forEach(function (f) { fs.push({ name: f.name, x: f.x + ox(room.i), y: f.y + oy(room.i) }); });
-  });
+  var fs = openShown(), all, team = X.party.map(function (c) { return ROOMDATA.travelers[c]; });
   all = team.map(function () { return { side: 0, state: 0, x: X.x, y: X.y, health: 1, health_max: 1, conds: [] }; })
     .concat(fs.map(function (f) { return { side: 1, state: 0, x: f.x, y: f.y, health: 1, health_max: 1, conds: [] }; }));
-  fight = { explore: true, st: { map: X.scroll ? X.area.slice() : r.rows.slice(), fighters: all }, whose: -1, me: 0,
+  fight = { explore: true, st: { map: X.area.slice(), fighters: all }, whose: -1, me: 0,
             effects: [], floaters: [], targets: [],
             shown: all.map(function (f) { return { x: f.x, y: f.y, health: 1, state: 0, alpha: 1, flash: 0 }; }) };
-  if (X.scroll) { fight.cam = X.cam; fight.view = viewSize().slice(); }
-  dressFight(X.scroll ? null : r);
+  fight.cam = X.cam;
+  fight.view = viewSize().slice();
+  dressFight();
   showParty();                                          /* where you're drawn: between squares, walking */
-  S = { code: "E13", title: "Explore", native: {
+  S = { code: "E14", title: "Explore", native: {
         figures: team.map(function (t) { return t.figure; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
         names: team.map(function (t) { return t.name; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].name; })) } };
-  $("where").textContent = "Yard " + X.yard + " · floor " + X.floor + (X.open ? " · open" : " · room " + (r.i + 1));
+  $("where").textContent = "Yard " + X.yard + " · floor " + X.floor;
   resize();
   setMode(X.lost ? "lost" : "explore");
 }
@@ -805,47 +677,8 @@ function showParty() {
   }
 }
 
-/* The side panel while exploring: the floor's map, who you are, what's here. */
-function exploreSide() {
-  if (X.open) return openSide();
-  var c = $("cards"), grid = el("div", "floormap"), r = roomOf(), i, cell, room, cards = [];
-  c.textContent = "";
-  for (i = 0; i < 9; ++i) {
-    room = X.f.rooms[i];
-    cell = el("div", "fm" + (X.seen[i] ? " seen" : "") + (i === X.room ? " here" : ""));
-    if (X.seen[i]) {
-      Object.keys(room.doors).forEach(function (d) { cell.classList.add("door-" + d); });
-      cell.textContent = room.stairs ? "▼" : room.kind === "cache" && !X.taken[i] ? "■" :
-        foesIn(room).length ? "!" : "";
-    }
-    cell.title = X.seen[i] ? "Room " + (i + 1) : "Not seen yet";
-    grid.append(cell);
-  }
-  X.party.forEach(function (cls, k) {
-    var t = ROOMDATA.travelers[cls], card = el("div", "card traveler");
-    card.append(el("div", "nm", (k + 1) + ". " + t.name + ", level 1" + (k ? "" : " · leads")),
-                el("div", "gear", "Powers: " + t.powers.map(function (p) { return powerByName(p[0]); }).join(", ")));
-    cards.push(card);
-  });
-  cards.push(el("p", "note", "Pack (the party's): " +
-                (X.pack.length ? X.pack.map(function (id) { return itemOf(id).display; }).join(", ") : "empty")));
-  if (X.scroll) {
-    grid = el("canvas", "minimap");
-    grid.id = "minimap";
-    grid.width = ROOMS.COLS * ROOMS.W * MM;
-    grid.height = ROOMS.ROWS * ROOMS.H * MM;
-    grid.title = "The floor: what you've seen, and the view's rectangle";
-  }
-  c.append(el("h2", null, "Floor " + X.floor), grid);
-  if (X.scroll) drawMinimap();
-  cards.forEach(function (card) { c.append(card); });
-  c.append(
-           el("p", "note", r.stairs ? (foesIn(r).length ? "The stairs, guarded." : "The stairs: step on them to go down.")
-             : r.kind === "cache" && !X.taken[r.i] ? "A crate: step on it to open it." : "Doors lead on: step onto one."));
-  var who = npcIn(r);
-  if (who) c.append(el("p", "note", who.name + (who.who === "trader" ? "'s camp" : ", lost") + ": walk up and press T, or click them, to talk."));
-  if (X.pell === "follows") c.append(el("p", "note", "Pell is following you. Vell's camp is somewhere on every floor."));
-}
+/* The side panel while exploring (openSide). */
+function exploreSide() { return openSide(); }
 
 function powerByName(n) {
   var id = Object.keys(POWERS).filter(function (k) { return POWERS[k].name === n; })[0];
@@ -883,15 +716,14 @@ function slide(dx, dy) {
   return false;
 }
 
-/* Where the view would be, scrolling: you in its middle, kept inside the area. */
+/* Where the view would be: you in its middle, kept on the floor. */
 function camFor() {
-  if (!X.scroll) return null;
   var w = viewSize()[0], h = viewSize()[1];
   return { x: Math.max(0, Math.min(areaW() - w, X.px + 0.5 - w / 2)),
            y: Math.max(0, Math.min(areaH() - h, X.py + 0.5 - h / 2)) };
 }
 
-/* Z: the view zoomed out a step (or back in from the whole floor), straight away. */
+/* Z: the whole floor, or back in to 19 x 12, straight away. */
 function exploreZoom() {
   zoom = (zoom + 1) % ZOOMS.length;
   X.cam = camFor();
@@ -902,37 +734,25 @@ function exploreZoom() {
 }
 
 /* The view eases toward where it should be, a C64 pixel at a time (1/16 of a square: the
- * fine scroll's step). Settling on a room for its fight, it goes straight there. */
+ * fine scroll's step). */
 function camStep(dt) {
-  var want = X.settle ? { x: ox(X.room), y: oy(X.room) } : camFor(), k = Math.min(1, dt * (X.settle ? 9 : 6));
+  var want = camFor(), k = Math.min(1, dt * 6);
   X.cam.x += (want.x - X.cam.x) * k;
   X.cam.y += (want.y - X.cam.y) * k;
   if (Math.abs(want.x - X.cam.x) < 1 / 16 && Math.abs(want.y - X.cam.y) < 1 / 16) { X.cam.x = want.x; X.cam.y = want.y; }
   fight.cam = { x: Math.round(X.cam.x * 16) / 16, y: Math.round(X.cam.y * 16) / 16 };
-  return X.cam.x === want.x && X.cam.y === want.y;
 }
 
 /* Each frame while exploring (arena.js's frame calls it). */
 function exploreTick(now) {
-  var dt = Math.min(0.05, X.t ? (now - X.t) / 1000 : 0), dx = 0, dy = 0, sp, t, d, before = X.room, i, back;
+  var dt = Math.min(0.05, X.t ? (now - X.t) / 1000 : 0), dx = 0, dy = 0, sp, t, d;
   X.t = now;
   if (mode !== "explore" || !fight || !fight.explore) return;
-  if (X.settle && X.walkIn) {
-    /* Stepping in off the doorway while the view settles. */
-    t = X.walkIn;
-    d = Math.hypot(t[0] - X.px, t[1] - X.py);
-    sp = SPEED * dt;
-    if (d <= sp) { X.px = t[0]; X.py = t[1]; X.x = t[0]; X.y = t[1]; X.walkIn = null; }
-    else { X.px += (t[0] - X.px) / d * sp; X.py += (t[1] - X.py) / d * sp; }
-    trailOn();
-    showParty();
-  }
-  if (X.scroll) drawMinimap();
-  if (X.scroll && camStep(dt) && X.settle && !X.walkIn) { X.settle = false; return exploreMeet(); }
-  if (X.settle) return;
+  drawMinimap();
+  camStep(dt);
   Object.keys(held).forEach(function (k) { dx += held[k][0]; dy += held[k][1]; });
   dx = Math.sign(dx); dy = Math.sign(dy);
-  sp = SPEED * dt * (X.open && X.sneak ? 0.5 : 1);     /* sneaking: half speed */
+  sp = SPEED * dt * (X.sneak ? 0.5 : 1);                /* sneaking: half speed */
   if (dx || dy) {
     X.path = null;
     if (dx && dy) sp *= Math.SQRT1_2;
@@ -952,20 +772,10 @@ function exploreTick(now) {
   showParty();
   t = [Math.floor(X.px + 0.5), Math.floor(X.py + 0.5)];
   if (t[0] !== X.x || t[1] !== X.y) {
-    back = [X.x - ox(X.room), X.y - oy(X.room)];
     X.x = t[0]; X.y = t[1];
     reveal();
     fight.st.fighters[0].x = X.x; fight.st.fighters[0].y = X.y;
-    i = X.scroll ? roomAt(X.x, X.y) : X.room;
-    if (i !== X.room) {
-      /* Scrolling, across a doorway into the next room: no redraw, the view just follows. */
-      X.from = { room: X.room, back: back };
-      X.room = i;
-      $("where").textContent = "Yard " + X.yard + " · floor " + X.floor + " · room " + (i + 1);
-      return exploreEnter(before);
-    }
-    arrive();
-    if (X.room !== before) held = {};                   /* a new room: let go, look about */
+    openArrive();
     if (mode === "explore" && !!nearNpc() !== !!X.near) { X.near = nearNpc(); actions(); }
   }
 }
@@ -980,38 +790,9 @@ if (typeof document !== "undefined") {
   window.addEventListener("blur", function () { held = {}; });
 }
 
-/* What happens where you've stepped: a door, a crate, the stairs. */
-function arrive() {
-  if (X.open) return openArrive();
-  var r = roomOf(), d, n, there, lx = X.x - ox(r.i), ly = X.y - oy(r.i);
-  d = X.scroll ? null : Object.keys(r.doors).filter(function (k) { return r.doors[k][0] === lx && r.doors[k][1] === ly; })[0];
-  if (d) {
-    n = ROOMS.next(r.i, d);
-    there = X.f.rooms[n];
-    var p = inside(there, there.doors[ROOMS.BACK[d]]);
-    X.from = { room: r.i, x: r.doors[d][0], y: r.doors[d][1], back: inside(r, r.doors[d]) };
-    X.room = n;
-    at(p[0], p[1]);
-    return exploreEnter(r.i);
-  }
-  if (r.cache && !X.taken[r.i] && r.cache.x === lx && r.cache.y === ly) {
-    X.taken[r.i] = 1;
-    var id = ROOMDATA.cache[r.cache.item];
-    if (X.pack.indexOf(id) < 0 && X.pack.length < 6) X.pack.push(id);
-    log("In the crate: " + itemOf(id).display + ". It's in your pack (P in a fight).", "good");
-    exploreSide();
-  }
-  if (r.stairs && r.stairs[0] === lx && r.stairs[1] === ly && !foesIn(r).length) {
-    log("Down the stairs.", "round");
-    held = {};
-    return exploreFloor(X.floor + 1);
-  }
-}
-
 /* The way to a clicked square (breadth-first, 8 ways), glided along (exploreTick). */
 function exploreTo(tx, ty) {
   var prev = {}, todo = [[X.x, X.y]], k = X.x + "," + X.y, p, dx, dy, nx, ny, path = [], who = npcAt(tx, ty);
-  if (X.settle) return;
   X.talkAfter = false;
   if (who) {
     /* Someone to talk to: next to them already, talk; or walk up to them first. */
@@ -1057,7 +838,6 @@ function openFloor(n) {
   X.seeTrace = [];
   X.fog = null;
   X.room = 0;
-  X.settle = false;
   X.area = o.rows.slice();
   X.light = LIGHT_OF[lookOf(n).replace(/[0-9]+$/, "")] || "day";
   X.bands = o.bands.map(function (b, k) {
@@ -1250,7 +1030,7 @@ function openMeet(b, surprise) {
 
 function fightWindow(b) { return ROOMS.fightWindow(b.foes, [X.x, X.y], X.o.w, X.o.h); }
 
-/* The fight on the window: the battle engine's, as a room's (exploreFight). */
+/* The fight on the window: the battle engine's (docs/open-floors.md, Where the fight is). */
 function openFight(b, surprise) {
   var ts = team(), win = fightWindow(b), wx = win[0], wy = win[1], rows = [], k, room, fan, lines, was, names, seen = {};
   for (k = 0; k < WIN[1]; ++k) rows.push(X.area[wy + k].slice(wx, wx + WIN[0]));
@@ -1505,25 +1285,13 @@ function storyMenu(labels) {
   return new Promise(function (res) { talkChoices(labels, res); });
 }
 
-/* Someone in room r to talk to, if they're still there: {who, name, figure}. */
-function npcIn(r) {
-  if (!r || !r.talk) return null;
-  if (r.talk.who === "courier" && X.pell) return null;  /* following, or gone */
-  return { who: r.talk.who, name: NPC[r.talk.who].name, figure: NPC[r.talk.who].figure, room: r };
-}
-
 function npcAt(x, y) {
-  if (X.open) return openNpcs().filter(function (n) { return n.x === x && n.y === y; })[0] || null;
-  var i = X.scroll ? roomAt(x, y) : X.room, r = i >= 0 ? X.f.rooms[i] : null, n = npcIn(r);
-  return n && r.talk.x === x - ox(i) && r.talk.y === y - oy(i) ? n : null;
+  return openNpcs().filter(function (n) { return n.x === x && n.y === y; })[0] || null;
 }
 
 /* Who's next to the leader to talk to (8 ways). */
 function nearNpc() {
-  if (X.open) return openNpcs().filter(function (n) { return Math.max(Math.abs(X.x - n.x), Math.abs(X.y - n.y)) <= 1; })[0] || null;
-  var r = roomOf(), n = npcIn(r);
-  if (!n) return null;
-  return Math.max(Math.abs(X.x - ox(r.i) - r.talk.x), Math.abs(X.y - oy(r.i) - r.talk.y)) <= 1 ? n : null;
+  return openNpcs().filter(function (n) { return Math.max(Math.abs(X.x - n.x), Math.abs(X.y - n.y)) <= 1; })[0] || null;
 }
 
 function talkTo(n) {
@@ -1536,28 +1304,6 @@ function talkTo(n) {
     if (sig.indexOf("stay") >= 0) { X.pell = "safe"; log("Pell stays at Vell's camp.", "good"); }
     setMode("explore");
   });
-}
-
-/* A room with foes: if they talk first (docs/rooms.md, People), a parley, which ends in
- * the fight or with them letting you by; else the fight. */
-function exploreMeet() {
-  var r = roomOf();
-  if (r.parley && !X.parleyed[r.i] && TALK && TALK.park) {
-    X.parleyed[r.i] = 1;
-    if (!X.scroll) exploreView();
-    held = {};
-    var f = r.foes[0];
-    return talk(f.name, ROOMDATA.foes[f.name].name + (r.foes.length > 1 ? " and the rest" : ""), function (sig) {
-      if (sig.indexOf("leave") >= 0) {
-        X.cleared[r.i] = 1;
-        log("They let you by. Room " + (r.i + 1) + " is clear without a fight.", "good");
-        exploreView();
-      } else {
-        exploreFight();
-      }
-    });
-  }
-  return exploreFight();
 }
 
 /* A conversation: with `who` (the story's @label: trader, courier, or a foe's name), the
@@ -1644,76 +1390,13 @@ function talkState() {
            waiting: !!(TALK && TALK.park && !TALK.reading), pell: X && X.pell, pack: X && X.pack };
 }
 
-/* A room's fight: the battle engine's, on the room's map (docs/rooms.md, Exploring). */
-function exploreFight() {
-  var r = roomOf(), team = X.party.map(function (c) { return ROOMDATA.travelers[c]; }), fs = foesIn(r);
-  var names = team.map(function (t) { return t.name; }), lines, seen = {}, was, fan;
-  lines = ["map " + ROOMS.W + " " + ROOMS.H].concat(r.rows.map(function (row) {
-    return row.split("").map(function (c) { return MAPCH[c]; }).join("");
-  }));
-  /* The party fans out round the leader, in marching order (docs/rooms.md, The party). */
-  var lx = X.x - ox(r.i), ly = X.y - oy(r.i);
-  fan = ROOMS.fanOut(r, [lx, ly], team.length);
-  was = team.map(function (t, k) { return [fight.shown[k].x - ox(r.i), fight.shown[k].y - oy(r.i)]; });
-  team.forEach(function (t, k) {
-    var at0 = fan[Math.min(k, fan.length - 1)];
-    lines.push("traveler " + at0[0] + " " + at0[1] + " " + t.passport + " " + t.weapon);
-  });
-  fs.forEach(function (f) {
-    var fd = ROOMDATA.foes[f.name], same = fs.filter(function (g) { return g.name === f.name; }).length > 1;
-    seen[f.name] = (seen[f.name] || 0) + 1;
-    lines.push("foe " + f.x + " " + f.y + " " + fd.line + " level " + X.floor);
-    names.push(fd.name + (same ? " " + seen[f.name] : ""));
-  });
-  team.forEach(function (t, k) { t.powers.forEach(function (p) { lines.push("power " + k + " " + p[0] + " " + p[1]); }); });
-  S = { code: "E13-" + X.yard + "-" + X.floor + "-" + (r.i + 1), title: "Floor " + X.floor + ", room " + (r.i + 1),
-        explore: true, lab: { won: "?", rounds: "?" },
-        native: { spec: lines.join("\n") + "\n",
-                  figures: team.map(function (t) { return t.figure; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
-                  names: names, pack: X.pack.slice(), skills: team[0].skills } };
-  held = {};
-  newFight();
-  dressFight(r);
-  /* Everyone to their squares, and the grid comes up (docs/rooms.md, Exploring). */
-  fight.gridFrom = performance.now();
-  team.forEach(function (t, k) {
-    var s = fight.shown[k], to = fight.st.fighters[k];
-    s.x = was[k][0]; s.y = was[k][1];
-    tween(s, to.x, to.y, 260);
-  });
-  resize();
-  cards();
-  advance();
-}
-
-/* The fight's over: back to walking (docs/rooms.md, Exploring). */
-function exploreAfter(result) {
-  if (X.open) return openAfter(result);
-  var r = roomOf(), me0 = fight.st.fighters[0];
-  X.pack = fight.pack.slice();
-  if (result === 1) {
-    /* Everyone's up again (turn.md, After a fight), and the leader leads on from where
-     * they stood. */
-    X.cleared[r.i] = 1;
-    at(me0.x, me0.y);
-    if (!walkable(r, me0.x, me0.y)) { var p = inside(r, r.doors[Object.keys(r.doors)[0]]); at(p[0], p[1]); }
-    log("The room is yours. You catch your breath: full health again.", "good");
-  } else if (result === 3 && X.from) {
-    X.room = X.from.room;
-    at(X.from.back[0], X.from.back[1]);
-    log("You get back out the way you came.", "round");
-  } else {
-    X.lost = true;
-    log("You go down. The descent ends here.", "bad");
-  }
-  exploreView();
-}
-
+/* The fight's over: back to walking (openAfter). */
+function exploreAfter(result) { return openAfter(result); }
 function exploreButtons() {
   if (mode === "lost") {
     return [["", "The descent ends", null, false, "", false, "hint"],
             ["R", "This floor again", function () { X.lost = false; X.pack = []; exploreFloor(X.floor); }, false, "", true],
-            ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), viewArg(), X.look); }],
+            ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.look); }],
             ["Esc", "Back to the scenarios", intro]];
   }
   if (mode === "talk") {
@@ -1723,20 +1406,17 @@ function exploreButtons() {
   return [["Arrows", "Walk: hold them down (numpad: 8 ways), or click a square", null, false, "", false, "hint"]]
     .concat(near ? [["T", "Talk to " + near.name, function () { talkTo(near); }, false, "", true]] : [])
     .concat([
-          ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), viewArg(), X.look); }],
-          ["V", X.open ? "View: open floor" : X.scroll ? "View: scrolling" : "View: one room a screen", function () {
-            exploreStart(X.party, X.yard, X.open ? false : X.scroll ? "open" : true, X.look);
-          }, false, "", false, "toggle"]]).concat(X.open ? openButtons() : []).concat(X.scroll ? [
-          ["Z", "Zoom: " + viewSize()[0] + " x " + viewSize()[1] + " squares", exploreZoom, false, "", false, "toggle"]] : []).concat([
+          ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.look); }]])
+    .concat(openButtons()).concat([
+          ["Z", "Zoom: " + viewSize()[0] + " x " + viewSize()[1] + " squares", exploreZoom, false, "", false, "toggle"],
           scaleButton(),
           ["gap"],
           ["X", "Leave", intro]]);
 }
 
-/* Stairs, crates and people, drawn over the room's tiles; and the courier, following. */
+/* Stairs, crates and people, drawn over the floor's tiles; and the courier, following. */
 function exploreDraw() {
-  if (X.open) openDraw();
-  else (X.scroll ? X.f.rooms : [roomOf()]).forEach(drawThings);
+  openDraw();
   if (X.pell === "follows") {
     var f = follower(X.party.length);
     figureAt(NPC.courier.figure, f.x, f.y, f.alpha);
@@ -1753,13 +1433,6 @@ function figureAt(name, x, y, alpha) {
   x = snap(x); y = snap(y);
   drawFigure(figureSprite(name), x, y);
   ctx.globalAlpha = 1;
-}
-
-function drawThings(r) {
-  var x, y, k, x0 = ox(r.i) * SQ, y0 = oy(r.i) * SQ, who = npcIn(r);
-  if (who) figureAt(who.figure, ox(r.i) + r.talk.x, oy(r.i) + r.talk.y);
-  if (r.stairs) drawStairs(x0 + r.stairs[0] * SQ, y0 + r.stairs[1] * SQ);
-  if (r.cache && !X.taken[r.i]) drawCrate(x0 + r.cache.x * SQ, y0 + r.cache.y * SQ);
 }
 
 /* The stairs down and a crate, at pixel x, y. */

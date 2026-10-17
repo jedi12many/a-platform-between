@@ -139,8 +139,8 @@ against. For `cart/`:
   cartridge plays The Fare from `content/` (`tools/cart/departure.py` makes its assets).
   Needs `pip install qrcode opencv-python-headless`. And the walking engine (`cart/walk/`,
   `docs/walk.md`, `make walk`: Plan B's scrolling floor, its own program for now):
-  `tests/walk/run_walk.py` walks yard 48213's first floor to its stairs (and yard 7602's
-  eighth, a crowd, `build/walk-crowd.prg`; an open floor, 80 x 40, `build/walk-open.prg`;
+  `tests/walk/run_walk.py` walks yard 48213's first open floor to its stairs (and yard 7602's
+  eighth, the dungeon, a crowd, `build/walk-crowd.prg`; the sixth, 80 x 40, `build/walk-open.prg`;
   and one with seeing, its bands hidden till spotted and the walk stopped when one sees the
   party, `build/walk-seen.prg`, every die `tools/rules/seeing.py`'s, then the fight set up
   on its window, as `tools/rooms/rooms.py`'s `fight_window` and `fight_places`)
@@ -168,10 +168,11 @@ the scenarios to play by hand now (`PLAYING` in `tools/arena/scenarios.py`; `doc
 `python3 tools/arena/arena.py "Warden 3" vs RUST_GUARD --sweep level 1-10`): use it to
 balance the rules.
 `make studio` serves the studio: the art desk (http://localhost:8064/) and the native arena
-(http://localhost:8064/arena/, `docs/arena.md`, by rules v1; with the prototype of exploring rooms
-overhead, `docs/rooms.md`, its floors built by `tools/rooms/rooms.py` and `tools/arena/web/rooms.js`
-alike (and open floors, `docs/open-floors.md`: `build_open` and `buildOpen`, walked with the rules
-lab's seeing in the arena's WebAssembly), and its people's talk a Quest Script, `content/sidings/yards-talk/`, played by the story VM
+(http://localhost:8064/arena/, `docs/arena.md`, by rules v1; with the prototype of exploring open
+floors overhead, `docs/open-floors.md`, 19 x 12 squares at a time as the C64 shows them, its floors
+built by `tools/rooms/rooms.py` and `tools/arena/web/rooms.js` alike (`build_open` and `buildOpen`;
+the rooms' views of `docs/rooms.md` are retired), walked with the rules lab's seeing in the arena's
+WebAssembly, and its people's talk a Quest Script, `content/sidings/yards-talk/`, played by the story VM
 as WebAssembly, `tools/arena/web/story.c`; `make test-arena-web` plays it
 in headless Chromium).
 

@@ -16,22 +16,21 @@
 //   node native.cjs URL rules CODE        the first turn: each power button hovered, then
 //                                         the first power on the traveler's card: the
 //                                         rule card's text each time
-//   node native.cjs URL explore YARD:CLASS   explore (rooms.js): the start room, a walk
-//                                         through its first door, and that room's fight
-//                                         on Auto (fast) if it has one, back to walking
+//   node native.cjs URL explore YARD:CLASSES   explore (rooms.js): an open floor's start,
+//                                         a walk right (a key held), the party following
 //   node native.cjs URL shove CODE SEED KEYS   the first turn: KEYS (arrows: R L U D) to
 //                                         move, then a Shove of the first foe in reach
 //   node native.cjs URL shot CODE PATH    a screenshot of the first turn
-//   node native.cjs URL talk -            talk (docs/rooms.md, Talk): yard 14, Vell beside
-//                                         the start; yard 2, a parley through the first door
+//   node native.cjs URL talk -            talk (docs/rooms.md, Talk): yard 326, walked up to
+//                                         Vell; then its band 2 of ash rats, who talk first
 //   node native.cjs URL scale -          the board's scale at a few window sizes
 //   node native.cjs URL c64 -            the C64's scale (C): tiles16 and the cartridge's figures
 //   node native.cjs URL open YARD:CLASSES[:look=LOOK] walk|sneak|ambush   an open floor
 //                                         (docs/open-floors.md): to the stairs until a band
 //                                         sees you (or you fall on one), every step's checks,
 //                                         then the fight on its window, on Auto, to the end
-//   node native.cjs URL looks YARD [DIR]  explore in each look (and by floor): the start
-//                                         room's tiles as the board draws them (twice);
+//   node native.cjs URL looks YARD [DIR]  explore in each look (and by floor): the floor's
+//                                         tiles as the board draws them (twice);
 //                                         DIR: a screenshot of each, LOOK.png
 //
 // Prints one line of JSON, and anything the page threw.
@@ -60,7 +59,7 @@ async function main() {
   if (what === "talk") {
     const out = { errors };
     const T = () => page.evaluate(() => Object.assign(window.arena.talk(), { mode: window.arena.state().mode,
-      buttons: window.arena.buttons(), cleared: window.arena.explore().cleared,
+      buttons: window.arena.buttons(), cleared: window.arena.explore().bands.map((b) => b.cleared),
       log: Array.from(document.querySelectorAll("#log li")).map((li) => li.textContent) }));
     const parked = () => page.waitForFunction(() => window.arena && window.arena.talk().waiting && window.arena.state().mode === "explore",
                                               null, { timeout: 20000 });
@@ -71,11 +70,12 @@ async function main() {
       if (k < 0) throw new Error("no choice '" + label + "' in " + JSON.stringify(t.choices));
       await page.keyboard.press(String(k + 1));
     };
-    /* Vell, next to where you arrive: click her, ask, and leave. */
-    await page.goto(url + "#explore=14:WARDEN");
+    /* Vell, a few squares from where you arrive: click her (you walk up), ask, and leave. */
+    await page.goto(url + "#explore=326:WARDEN");
     await parked();
     out.before = await T();
-    await page.evaluate(() => window.arena.walkTo(8, 3));
+    const vell = await page.evaluate(() => window.arena.explore().o.people.filter((p) => p.who === "trader")[0]);
+    await page.evaluate((v) => window.arena.walkTo(v.x, v.y), vell);
     await choices();
     out.vell = await T();
     await say("What's on this floor?");
@@ -85,13 +85,10 @@ async function main() {
     await say("Move on");
     await parked();
     out.after = await T();
-    /* A parley: through the start room's door, ash rats who talk first; shout. */
-    await page.goto(url + "#explore=2:WARDEN");
-    await page.reload();
-    await parked();
-    const door = await page.evaluate(() => { const x = window.arena.explore(), r = x.f.rooms[x.room];
-                                               return r.doors[Object.keys(r.doors)[0]]; });
-    await page.evaluate((d) => window.arena.walkTo(d[0], d[1]), door);
+    out.near = await page.evaluate(() => { const x = window.arena.explore(); return [x.x, x.y]; });
+    out.vellAt = [vell.x, vell.y];
+    /* A parley: band 2, ash rats who talk first, as when they see you; shout. */
+    await page.evaluate(() => openMeet(window.arena.explore().bands[1], ""));
     await page.waitForFunction(() => window.arena.state().mode === "talk", null, { timeout: 20000 });
     await choices();
     out.parley = await T();
@@ -127,8 +124,7 @@ async function main() {
     return;
   }
   if (what === "zoom") {
-    /* Scrolling, Z zooms out: the view's size and where it is, each press; then, zoomed out,
-     * across the start room's first door: the view settles on the room as before. */
+    /* Z zooms out to the whole floor and back: the view's size and where it is, each press. */
     const out = { errors, views: [] };
     const V = () => page.evaluate(() => {
       const x = window.arena.explore(), f = window.arena.state().fight;
@@ -138,36 +134,25 @@ async function main() {
     await page.goto(url + "#explore=" + code);
     await until("explore");
     out.views.push(await V());
-    for (let k = 0; k < 4; ++k) {
+    for (let k = 0; k < 3; ++k) {
       await page.keyboard.press("z");
       await page.waitForTimeout(150);
       out.views.push(await V());
-      if (arg && k === 1) await page.screenshot({ path: arg });     /* (the whole floor) */
+      if (arg && k === 0) await page.screenshot({ path: arg });     /* (the whole floor) */
     }
-    const x0 = await page.evaluate(() => { const x = window.arena.explore(); return { room: x.room, doors: x.f.rooms[x.room].doors }; });
-    const side = Object.keys(x0.doors)[0], door = x0.doors[side];
-    const step = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] }[side];
-    await page.evaluate(([x, y]) => window.arena.walkTo(x, y),
-                        [door[0] + (x0.room % 3) * 16 + step[0], door[1] + Math.floor(x0.room / 3) * 8 + step[1]]);
-    await page.waitForFunction((r) => window.arena.explore().room !== r, x0.room, { timeout: 20000 });
-    await page.waitForTimeout(100);
-    out.settling = await page.evaluate(() => ({ settle: !!window.arena.explore().settle,
-                                                view: window.arena.state().fight.view }));
-    await page.waitForFunction(() => window.arena.state().mode !== "explore" || !window.arena.explore().settle,
-                               null, { timeout: 20000 });
-    out.settled = await page.evaluate(() => ({ mode: window.arena.state().mode, room: window.arena.explore().room,
-                                               map: window.arena.state().fight.st.map }));
+    out.floor = await page.evaluate(() => [window.arena.explore().o.w, window.arena.explore().o.h]);
     console.log(JSON.stringify(out));
     await browser.close();
     return;
   }
   if (what === "minimap") {
-    /* Scrolling: the minimap's fog at the start and after a walk, and the view's rectangle. */
+    /* The minimap's fog at the start and after a walk, and the view's rectangle. */
     const out = { errors };
     const M = () => page.evaluate(() => {
       const x = window.arena.explore(), f = window.arena.state().fight, c = document.getElementById("minimap");
       const at = (px, py) => Array.from(c.getContext("2d").getImageData(px, py, 1, 1).data.slice(0, 3));
       return { size: c && [c.width, c.height], fog: x.fog ? Array.from(x.fog) : null, x: x.x, y: x.y,
+               w: x.o.w, h: x.o.h, sight: openSight(),
                cam: f.cam, view: f.view, corner: c && at(Math.round(f.cam.x * 4), Math.round(f.cam.y * 4)) };
     });
     await page.goto(url + "#explore=" + code);
@@ -185,10 +170,11 @@ async function main() {
     return;
   }
   if (what === "c64") {
-    /* The C64's scale (C): explore in forest2, C pressed; the tiles as drawn (a dot of each
-     * row of every tile), a figure's a dots, the button, and C kept after a reload. */
+    /* The C64's scale: exploring starts at it (nothing chosen yet); the tiles as drawn (a dot
+     * of each row of every tile), a figure's a dots, the button; then C turns it off, kept
+     * after a reload, and C turns it on again. */
     const out = { errors };
-    await page.goto(url + "#explore=48213:WARDEN:scroll:look=forest2");
+    await page.goto(url + "#explore=48213:WARDEN:look=forest2");
     await until("explore");
     const sample = () => page.evaluate(() => {
       const hex = (c, x, y) => { const d = c.getContext("2d").getImageData(x, y, 1, 1).data;
@@ -203,14 +189,14 @@ async function main() {
       for (let y = 0; y < 21; ++y) { const r = []; for (let x = 0; x < 12; ++x) r.push(hex(f, 1 + x * 2, 1 + y)); fig.push(r); }
       return { c64: c64, tiles: tiles, figure: fig, buttons: window.arena.buttons() };
     });
-    out.before = await page.evaluate(() => c64);
-    await page.keyboard.press("c");
     out.on = await sample();
+    await page.keyboard.press("c");
+    out.off = await page.evaluate(() => c64);
     await page.reload();
     await until("explore");
     out.reloaded = await page.evaluate(() => c64);
     await page.keyboard.press("c");
-    out.off = await page.evaluate(() => c64);
+    out.again = await page.evaluate(() => c64);
     console.log(JSON.stringify(out));
     await browser.close();
     return;
@@ -221,7 +207,7 @@ async function main() {
     for (const [w, h] of [[1400, 860], [1640, 1000], [1237, 911], [2000, 1300]]) {
       const p = await browser.newPage({ viewport: { width: w, height: h } });
       p.on("pageerror", (e) => errors.push(e.message));
-      await p.goto(url + "#explore=48213:WARDEN:scroll");
+      await p.goto(url + "#explore=48213:WARDEN");
       await p.waitForFunction(() => window.arena && window.arena.state().mode === "explore", null, { timeout: 20000 });
       out.scales.push(await p.evaluate(() => {
         const r = document.getElementById("board").getBoundingClientRect(), f = window.arena.state().fight;
@@ -241,7 +227,7 @@ async function main() {
      * (X.seeTrace); then the fight on its window on Auto (fast), back to walking. */
     const out = { errors };
     const [yard, party, look] = code.split(":");
-    await page.goto(url + "#explore=" + yard + ":" + party + ":open" + (look ? ":" + look : ""));
+    await page.goto(url + "#explore=" + yard + ":" + party + (look ? ":" + look : ""));
     await until("explore");
     if (arg !== "walk") await page.keyboard.press("s");
     out.start = await page.evaluate(() => {
@@ -275,6 +261,7 @@ async function main() {
     const at = () => page.evaluate(() => {
       const x = window.arena.explore(), s = window.arena.state();
       return { mode: s.mode, floor: x.floor, trace: x.seeTrace, win: x.win, fightBand: x.fightBand ? x.fightBand.k : -1,
+               party: x.party.length,
                spec: s.S && s.S.native && s.S.native.spec, map: s.fight && s.fight.st.map, x: x.x, y: x.y,
                fighters: s.fight && s.fight.st.fighters.map((f) => [f.side, f.x, f.y]), round: s.fight && s.fight.st.round,
                shown: (s.fight && s.fight.explore) ? s.fight.st.fighters.length - x.party.length : null,
@@ -304,57 +291,26 @@ async function main() {
     const out = { errors };
     const X = () => page.evaluate(() => {
       const x = window.arena.explore(), s = window.arena.state();
-      return { mode: s.mode, room: x.room, x: x.x, y: x.y, cleared: x.cleared, lost: x.lost, pack: x.pack,
-               map: s.fight && s.fight.st.map, fighters: s.fight && s.fight.st.fighters.map((f) => [f.side, f.x, f.y]),
-               doors: x.f.rooms[x.room].doors, buttons: window.arena.buttons(), px: x.px, py: x.py,
-               grid: window.arena.grid(), scroll: x.scroll, cam: s.fight && s.fight.cam, party: x.party,
+      return { mode: s.mode, x: x.x, y: x.y, px: x.px, py: x.py, map: s.fight && s.fight.st.map,
+               start: x.o.start, w: x.o.w, h: x.o.h, buttons: window.arena.buttons(),
+               grid: window.arena.grid(), cam: s.fight && s.fight.cam, view: s.fight && s.fight.view,
+               party: x.party, c64: c64,
                shown: s.fight && s.fight.shown.slice(0, x.party.length).map((f) => [f.x, f.y, f.alpha === undefined ? 1 : f.alpha]),
                side: document.getElementById("cards").innerText };
     });
     await page.goto(url + "#explore=" + code);
     await until("explore");
     out.start = await X();
-    /* Holding a key walks smoothly: a third of a second, and you're between squares (left;
-     * scrolling, right, so the view follows away from the area's left edge). */
-    const key = out.start.scroll ? "ArrowRight" : "ArrowLeft";
-    await page.keyboard.down(key);
+    /* Holding a key walks smoothly: a third of a second, and you're between squares; held
+     * on, the party strings out behind the leader. */
+    await page.keyboard.down("ArrowRight");
     await page.waitForTimeout(330);
     out.held = await X();
-    await page.keyboard.up(key);
+    await page.waitForTimeout(800);
+    out.mid = await X();
+    await page.keyboard.up("ArrowRight");
     await page.waitForTimeout(600);
     out.rest = await X();
-    /* Then through the start room's first door (scrolling: on into the next room's doorway). */
-    const side = Object.keys(out.start.doors)[0], door = out.start.doors[side];
-    const ox = out.start.scroll ? (out.start.room % 3) * 16 : 0, oy = out.start.scroll ? Math.floor(out.start.room / 3) * 8 : 0;
-    const step = { N: [0, -1], E: [1, 0], S: [0, 1], W: [-1, 0] }[side];
-    const go = out.start.scroll ? [door[0] + ox + step[0], door[1] + oy + step[1]] : door;
-    await page.evaluate(([x, y]) => window.arena.walkTo(x, y), go);
-    await page.waitForTimeout(650);
-    out.mid = await X();                       /* walking: the party strung out behind the leader */
-    await page.waitForFunction((r) => window.arena.explore().room !== r, out.start.room, { timeout: 20000 });
-    await page.waitForTimeout(400);
-    /* Scrolling, the view settles on the room before its fight. */
-    await page.waitForFunction(() => window.arena.state().mode !== "explore" || !window.arena.explore().settle,
-                               null, { timeout: 20000 });
-    out.next = await X();
-    if (out.next.mode === "talk") {
-      /* Foes who talk first (docs/rooms.md, People): this test is for the fight. */
-      await page.waitForFunction(() => window.arena.talk().choices.indexOf("Fight") >= 0, null, { timeout: 20000 });
-      out.parley = await page.evaluate(() => window.arena.talk().who);
-      await page.evaluate(() => window.arena.say(window.arena.talk().choices.indexOf("Fight")));
-      await page.waitForFunction(() => window.arena.state().mode !== "talk", null, { timeout: 20000 });
-      out.next = await X();
-    }
-    if (out.next.mode !== "explore") {
-      await until("turn");
-      out.fight = await X();
-      await page.waitForTimeout(700);
-      out.gridUp = await page.evaluate(() => window.arena.grid());
-      await page.keyboard.press("z");
-      await page.keyboard.press("t");
-      await page.waitForFunction(() => ["explore", "lost"].includes(window.arena.state().mode), null, { timeout: 120000 });
-      out.after = await X();
-    }
     console.log(JSON.stringify(out));
     await browser.close();
     return;
