@@ -111,6 +111,8 @@ SEE_BANDS_MAX   = 24            ; a floor's bands (seeing.s)
 SEE_LOG         = $AC00         ; each step's checks, every die (for the tests): to $B1FF
 SEE_LOG_SIZE    = $0600
 SEE_SHOWN       = 8             ; a step's checks shown this many frames after it (watch.s)
+FIGHT_FOES_MAX  = 8             ; a band's foes (setup.s)
+PLACE_SPEED     = 2             ; a traveler walking to their place in a fight: pixels a frame
 TASK_STACK      = $017F         ; the checks' stack, $0100-$017F (the frame loop's above)
 
 ; ------------------------------------------------------------------ the figures

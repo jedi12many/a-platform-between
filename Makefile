@@ -232,7 +232,7 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 # floor (docs/open-floors.md): yard 48213's sixth, 80 x 40 squares, every foe shown (a crowd);
 # and build/walk-seen.prg, its third (64 x 32), its bands hidden till spotted and looking
 # for the party (seeing: cart/walk/seeing.s), the walk stopped when one sees it.
-WALK_MODS := start gen irq border colours move camera edge figures mux watch seeing roll floor
+WALK_MODS := start gen irq border colours move camera edge figures mux watch seeing setup roll floor
 
 # A floor's program: the engine with another floor's asset (build/walk-NAME/walk/).
 define walk_floor
@@ -245,7 +245,7 @@ endef
 
 build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/walk.inc cart/walk/walk.cfg \
                 cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py \
-                tools/rules/seeing.py registry/senses.txt
+                tools/rules/seeing.py registry/senses.txt tools/rooms/rooms.py
 	@mkdir -p build/walk/walk
 	python3 tools/walk/walk.py asset 48213 1 build/walk/walk
 	@for m in $(WALK_MODS); do \

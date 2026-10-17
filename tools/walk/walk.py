@@ -63,6 +63,7 @@ PEOPLE = {"trader": "GLASSFOLK", "courier": "HUMAN"}
 KINDS_MAX, FIGURES_MAX = 12, 80
 BANDS_MAX = 24                  # seeing's bands (docs/open-floors.md)
 SEE_LOG = 0xAC00                # each step's checks, for the tests (walk.inc)
+PLACE_SPEED = 2                 # a traveler's walk to their place in a fight: pixels a frame
 SEE_SHOWN = 8                   # a step's checks shown this many frames on (watch.s)
 NO_BAND = 0xFF                  # a figure that's no band's: a person
 # A floor's light by its look (the arena's explore prototype has the same): seeing's ranges
@@ -454,8 +455,15 @@ def walk(floor, pos, stick):
 # ------------------------------------------------------------------ the camera
 
 def target(floor, pos):
-    tx = (pos[0] >> 4) + 8 - VIEW_W // 2
-    ty = (pos[1] >> 4) + 8 - VIEW_H // 2
+    """Where the camera wants to be: the leader's middle (pos in sixteenths: its square's
+    pixel + 8) in the view's, kept on the area."""
+    return aim(floor, (pos[0] >> 4) + 8, (pos[1] >> 4) + 8)
+
+
+def aim(floor, mx_px, my_px):
+    """The camera with this pixel in the view's middle, kept on the area."""
+    tx = mx_px - VIEW_W // 2
+    ty = my_px - VIEW_H // 2
     mx, my = floor.cam_most
     return max(0, min(mx, tx)), max(0, min(my, ty))
 
@@ -475,6 +483,34 @@ def clamp_cell(v, cell):
     return max(cell * 8, min(cell * 8 + 7, v))
 
 
+class Fight:
+    """A fight's setup on an open floor (docs/walk.md, "The fight"): band (0-based) has seen
+    the party, the leader on square (lx, ly). The window (rooms.fight_window), its squares'
+    terrain, where the party stands (rooms.fight_places), and the band's foes on it:
+    .record as the engine keeps it (FIGHT_REC); the camera's middle; the band's middle
+    across, the travelers' places in pixels."""
+
+    def __init__(self, floor, band, lx, ly):
+        foes = [(x, y, kind) for x, y, kind, b in floor.figures if b == band]
+        self.window = wx, wy = rooms.fight_window([{"x": x, "y": y} for x, y, _ in foes], (lx, ly),
+                                                  floor.w, floor.h)
+        rows = [floor.f["rows"][wy + j][wx:wx + rooms.W] for j in range(rooms.H)]
+        room = {"rows": rows, "foes": [{"x": x - wx, "y": y - wy} for x, y, _ in foes]}
+        places = rooms.fight_places(room, (lx - wx, ly - wy), len(PARTY))
+        self.record = bytes([wx, wy] + [int(c) for row in rows for c in row]
+                            + [v for p in places for v in p]
+                            + [len(foes)] + [v for x, y, kind in foes for v in (x - wx, y - wy, kind)])
+        self.places = [((wx + x) * 16, (wy + y) * 16) for x, y in places]
+        self.middle = ((2 * wx + rooms.W) * 8, (2 * wy + rooms.H) * 8)
+        xs = [x for x, _, _ in foes]
+        self.band_x = (min(xs) + max(xs)) * 8           # a traveler right of it faces left
+
+
+def toward(v, to):
+    """A frame's walk to a place, on one axis: up to PLACE_SPEED pixels."""
+    return v + max(-PLACE_SPEED, min(PLACE_SPEED, to - v))
+
+
 class Party:
     """The party as it's drawn (docs/walk.md, "The figures"): the leader's trail, how many
     frames they've moved, whether they moved this one, and where each traveler was last
@@ -485,6 +521,21 @@ class Party:
         self.steps, self.moved = 0, False
         self.last_x = [pos[0] >> 4] * len(PARTY)
         self.left = [False] * len(PARTY)
+        self.fight, self.at = None, None                # a fight's: where each stands now
+
+    def take_places(self, fight):
+        """A fight begins: each traveler from where they were drawn (or the trail's oldest,
+        if not out yet) walks to their place."""
+        self.fight = fight
+        self.at = [list(self.trail[-1 - GAP * k] if len(self.trail) > GAP * k else self.trail[0])
+                   for k in range(len(PARTY))]
+        self.moved = False
+
+    def to_places(self):
+        """A frame's walk toward their places; True once everyone's there."""
+        for k, (x, y) in enumerate(self.fight.places):
+            self.at[k] = [toward(self.at[k][0], x), toward(self.at[k][1], y)]
+        return all(tuple(a) == p for a, p in zip(self.at, self.fight.places))
 
     def step(self, pos):
         at = (pos[0] >> 4, pos[1] >> 4)
@@ -504,6 +555,10 @@ def figures(floor, party, cam, shown=None):
     figs = []
     lead_x = party.trail[-1][0]
     for k in range(len(PARTY)):
+        if party.fight:                             # taking their places: facing the band
+            x, y = party.at[k]
+            figs.append((x, y, 2 * k + (x > party.fight.band_x), colours[k]))
+            continue
         if len(party.trail) <= GAP * k:
             continue
         x, y = party.trail[-1 - GAP * k]
@@ -568,31 +623,43 @@ def play(floor, sticks):
     # while they're under way wait. A band shown to have seen the party stops the walk.
     watch = play.watch = floor.watch()
     play.steps = []                                 # the frame each step's checks came in
+    # And a fight (docs/walk.md, "The fight"): once a band's shown to have seen the party,
+    # the camera eases to the fight's window and the travelers walk to their places;
+    # play.ready is the frame it's all still (the battle begins), or None.
+    play.fight = play.ready = None
     square, wait, shown, shown_fight = tuple(floor.start), 0, None, None
 
     def show():
         return [st["spotted"] or st["seen"] for st in watch.state], watch.fight
+
+    def begin_fight():
+        play.fight = Fight(floor, shown_fight[0], *square)
+        party.take_places(play.fight)
     if watch:
         watch.step(*square)
         play.steps.append(-1)
         shown, shown_fight = show()
+        if shown_fight is not None:
+            begin_fight()
     for n, stick in enumerate(sticks):
         out.append((pos[0], pos[1], cam[0], cam[1], stage, figures(floor, party, cam, shown)))
         if shown_fight is not None:
             stick = 0xFF                            # stopped: the band's seen the party
         walk(floor, pos, stick)
-        party.step(pos)
+        placed = party.to_places() if party.fight else party.step(pos)
         if watch:
             if wait:
                 wait -= 1
                 if not wait:
                     shown, shown_fight = show()
+                    if shown_fight is not None:
+                        begin_fight()
             now = ((pos[0] + 128) >> 8, (pos[1] + 128) >> 8)
             if not wait and shown_fight is None and now != square:
                 square, wait = now, SEE_SHOWN
                 watch.step(*square)
                 play.steps.append(n)
-        want = target(floor, pos)
+        want = aim(floor, *play.fight.middle) if play.fight else target(floor, pos)
         nxt = [ease(cam[0], want[0]), ease(cam[1], want[1])]
         if stage == IDLE:
             d = tuple((nxt[i] >> 3) - (cam[i] >> 3) for i in range(2))
@@ -613,6 +680,8 @@ def play(floor, sticks):
             stage = IDLE                                # the swap frame: nothing heavy
             nxt = [clamp_cell(nxt[i], cam[i] >> 3) for i in range(2)]
         cam = nxt
+        if play.fight and placed and play.ready is None and stage == IDLE and cam == list(want):
+            play.ready = n                              # the camera and the party still
     return out
 
 

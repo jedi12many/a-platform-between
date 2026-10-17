@@ -8,9 +8,11 @@
         .include "walk.inc"
 
         .export figures_init, figures_step, prog_next, prog_left
-        .import floor, wk_pos, wk_cam, wk_h, b_shown
+        .export placing, wk_ready
+        .import floor, wk_pos, wk_cam, wk_h, b_shown, wk_stage, cam_want
+        .import shown_fight, fight_px, fight_py, fight_band_x
 
-        .segment "CODE"
+        .segment "SEEING"         ; (only at the start: run from $E000)
 
 ; ----------------------------------------------------------------------------------------
 ; figures_init: the trail at the leader's start, everyone facing right; the first frame's
@@ -99,7 +101,10 @@ figures_init:
         iny
         cpy rows_end
         bne @row
-        jmp build
+        lda #0
+        sta placing
+        sta wk_ready
+        jmp walked                  ; (the start's checks may have found a fight)
 
 ; A = A x 16's low byte, zp_wk_t its high.
 times16:
@@ -117,12 +122,18 @@ times16:
         lda zp_wk_mx
         rts
 
+        .segment "CODE"
+
 ; ----------------------------------------------------------------------------------------
 ; figures_step: the trail moved on if the leader has, and the next frame's program made.
 ;   Before:  this frame's walk and camera done (wk_pos, wk_cam the next frame's).
 ;   Changes: A, X, Y, zp_wk_*.
 figures_step:
-        lda #0
+        lda placing                 ; a fight: the travelers to their places instead
+        beq :+
+        jsr to_places
+        jmp build
+:       lda #0
         sta moved
         jsr leader_px
         ldx head
@@ -137,7 +148,7 @@ figures_step:
         bne @moved
         lda zp_wk_b + 1
         cmp trail_yh, x
-        beq build
+        beq walked
 @moved: inc moved
         inc steps
         inx
@@ -155,8 +166,11 @@ figures_step:
         sta trail_yh, x
         lda trail_len
         cmp #TRAIL
-        beq build
+        beq walked
         inc trail_len
+walked: lda shown_fight             ; a band has seen the party: the fight begins
+        beq build
+        jsr take_places
         ; (on into build)
 
 ; The next frame's program: the figures in sight, sorted, allocated.
@@ -167,7 +181,26 @@ build:
         ; The party: traveler k at the trail's entry GAP k back, if it's that long.
         ldy #0                      ; k
 @party: sty party_k
-        lda gap_back, y
+        lda placing                 ; in a fight: where they've got to, facing the band
+        beq @trail
+        lda at_xl, y
+        sta zp_wk_a
+        lda at_xh, y
+        sta zp_wk_a + 1
+        lda at_yl, y
+        sta zp_wk_b
+        lda at_yh, y
+        sta zp_wk_b + 1
+        lda fight_band_x            ; right of the band's middle: facing left
+        cmp zp_wk_a
+        lda fight_band_x + 1
+        sbc zp_wk_a + 1
+        lda #0
+        bcs :+
+        lda #1
+:       sta facing, y
+        jmp @nobob
+@trail: lda gap_back, y
         cmp trail_len
         bcc :+
         jmp @next_k                 ; (not yet out from behind the one before)
@@ -659,6 +692,133 @@ leader_px:
         bne :-
         rts
 
+; ----------------------------------------------------------------------------------------
+; A fight (docs/walk.md, "The fight"): the travelers walk from where they were drawn to
+; their places on its window (setup.s), PLACE_SPEED pixels a frame each way.
+        .segment "SEEING"         ; (run from $E000, with seeing and the fight's setup)
+
+; take_places: each traveler from where they stand (the trail's entry GAP k back, or its
+; oldest if it's not that long) to walk to their place.
+;   Changes: A, X, Y.
+take_places:
+        ldy #0
+@k:     lda trail_len               ; back = min(GAP k, length - 1)
+        sec
+        sbc #1
+        cmp gap_back, y
+        bcc :+
+        lda gap_back, y
+:       eor #$FF                    ; head - back, round the trail
+        sec
+        adc head
+        and #TRAIL - 1
+        tax
+        lda trail_xl, x
+        sta at_xl, y
+        lda trail_xh, x
+        sta at_xh, y
+        lda trail_y, x
+        sta at_yl, y
+        lda trail_yh, x
+        sta at_yh, y
+        iny
+        cpy #PARTY_SIZE
+        bne @k
+        lda #1
+        sta placing
+        rts
+
+; to_places: a frame's walk toward their places; once everyone's there, the camera's still
+; where it wants to be and the scroller's at rest, wk_ready (the battle can begin).
+;   Before:  this frame's camera done.
+;   Changes: A, X, Y; zp_wk_a, zp_wk_t.
+to_places:
+        lda #0
+        sta zp_wk_t                 ; anyone not there yet
+        ldx #0
+@k:     lda fight_px, x             ; across
+        sta zp_wk_a
+        lda fight_px + PARTY_SIZE, x
+        sta zp_wk_a + 1
+        lda at_xl, x
+        ldy at_xh, x
+        jsr toward
+        sta at_xl, x
+        tya
+        sta at_xh, x
+        lda fight_py, x             ; and down
+        sta zp_wk_a
+        lda fight_py + PARTY_SIZE, x
+        sta zp_wk_a + 1
+        lda at_yl, x
+        ldy at_yh, x
+        jsr toward
+        sta at_yl, x
+        tya
+        sta at_yh, x
+        inx
+        cpx #PARTY_SIZE
+        bne @k
+        lda zp_wk_t
+        bne @done
+        lda wk_stage
+        bne @done                   ; (IDLE is 0)
+        ldx #3
+:       lda wk_cam, x
+        cmp cam_want, x
+        bne @done
+        dex
+        bpl :-
+        lda #1
+        sta wk_ready
+@done:  rts
+
+; Y:A (a position) moved toward zp_wk_a by up to PLACE_SPEED; zp_wk_t made non-zero if it
+; still isn't there. Keeps X.
+toward: sta at_l
+        sty at_h
+        sec                         ; d = to - at
+        lda zp_wk_a
+        sbc at_l
+        sta d_l
+        lda zp_wk_a + 1
+        sbc at_h
+        sta d_h
+        bmi @back
+        bne @far                    ; d >= 256
+        lda d_l
+        beq @there
+        cmp #PLACE_SPEED + 1
+        bcc @add                    ; within a step: there
+@far:   inc zp_wk_t
+        lda #PLACE_SPEED
+@add:   clc
+        adc at_l
+        sta at_l
+        lda at_h
+        adc #0
+        tay
+        lda at_l
+        rts
+@back:  cmp #$FF                    ; d < -256: a full step back
+        bne @bfar
+        lda d_l
+        cmp #256 - PLACE_SPEED
+        bcs @sub                    ; within a step: there (A = d's low byte)
+@bfar:  inc zp_wk_t
+        lda #256 - PLACE_SPEED
+@sub:   clc                         ; at + d (d negative: its low byte, $FF above)
+        adc at_l
+        sta at_l
+        lda at_h
+        adc #$FF
+        tay
+        lda at_l
+        rts
+@there: ldy at_h
+        lda at_l
+        rts
+
         .segment "DATA"
 
 nears:  .word SPRITE_DX - SPRITE_X_MIN, SPRITE_DY - SPRITE_Y_MIN
@@ -672,6 +832,16 @@ bit_of: .byte 1, 2, 4, 8, 16, 32, 64, 128
         .segment "BSS"
 
 prog_next:  .res 1              ; the program last made: 0 PROG_A, 1 PROG_B
+placing:    .res 1              ; a fight: the travelers drawn where they've got to
+wk_ready:   .res 1              ; ...and they're all there, the camera still: the battle's
+at_xl:      .res PARTY_SIZE     ; where each has got to
+at_xh:      .res PARTY_SIZE
+at_yl:      .res PARTY_SIZE
+at_yh:      .res PARTY_SIZE
+at_l:       .res 1              ; toward's
+at_h:       .res 1
+d_l:        .res 1
+d_h:        .res 1
 prog_left:  .res 1              ; figures left out (the program last made)
 left = prog_left
 

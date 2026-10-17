@@ -17,11 +17,11 @@
         .include "walk.inc"
 
         .export watch_init, watch_step, watch_stick, watch_idle, see_yield, b_shown, see_late
-        .export wk_seen, wk_begin, shown_fight
+        .export wk_seen, wk_begin, shown_fight, task_on
         .import floor, wk_pos, wk_stick, wk_frame, frame_seen, roll_seed
         .import see_prepare, see_step, see_light, see_n, see_notice, see_stealth, see_sneak
         .import see_lamp, see_bands, b_x, b_y, b_sense, b_stealth, b_hiding, b_spotted, b_seen
-        .import b_alert, b_plast, b_blast, see_x, see_y, see_fight
+        .import b_alert, b_plast, b_blast, see_x, see_y, see_fight, fight_setup
 
 NONE            = $FF
 
@@ -160,7 +160,10 @@ task:   jsr checks
 
 checks: jsr see_step
 wk_seen:                            ; (the harness reads each step's log here)
-        rts
+        lda see_fight               ; a band has seen the party: the fight set up
+        beq :+
+        jmp fight_setup
+:       rts
 
 ; see_x, see_y = the leader's square: the one under its middle, (wk_pos + 8 pixels) / 16.
 square_of:

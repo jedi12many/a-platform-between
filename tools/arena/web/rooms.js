@@ -417,7 +417,43 @@ var ROOMS = (function () {
              start: start, stairs: stairs, bands: bands, caches: caches, people: people };
   }
 
-  return { build: build, buildOpen: buildOpen, openSize: openSize, next: next, fanOut: fanOut, BACK: BACK, COLS: COLS, ROWS: ROWS, W: W, H: H };
+  /* ------------------------------------------------------------ a fight on an open floor
+   * docs/open-floors.md, "Where the fight is". The same as tools/rooms/rooms.py's. */
+
+  /* The window, W x H inside the floor (fw x fh), holding the band's foes and the leader,
+   * its middle nearest the middle between them; if they can't both fit, round the band. */
+  function fightWindow(foes, leader, fw, fh) {
+    var xs = foes.map(function (f) { return f.x; }), ys = foes.map(function (f) { return f.y; }), best = null, bk, x0, y0, k;
+    var mx = (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2, my = (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2;
+    var cx = (mx + leader[0]) / 2, cy = (my + leader[1]) / 2;
+    function holds(x0, y0, x, y) { return x >= x0 && y >= y0 && x < x0 + W && y < y0 + H; }
+    for (y0 = 0; y0 <= fh - H; ++y0) {
+      for (x0 = 0; x0 <= fw - W; ++x0) {
+        if (!foes.every(function (f) { return holds(x0, y0, f.x, f.y); })) continue;
+        k = (holds(x0, y0, leader[0], leader[1]) ? 0 : 1000) +
+          Math.abs(x0 + W / 2 - (holds(x0, y0, leader[0], leader[1]) ? cx : mx)) +
+          Math.abs(y0 + H / 2 - (holds(x0, y0, leader[0], leader[1]) ? cy : my));
+        if (best === null || k < bk) { best = [x0, y0]; bk = k; }
+      }
+    }
+    return best || [0, 0];
+  }
+
+  /* Where the party of n stands on the window (room: its rows and foes, relative to it):
+   * fanned out round the leader (lead, relative: kept inside), the leader's own square
+   * left out if it can't be stood on or a foe's on it; the last place repeated if there
+   * aren't n. */
+  function fightPlaces(room, lead, n) {
+    var l = [Math.max(0, Math.min(W - 1, lead[0])), Math.max(0, Math.min(H - 1, lead[1]))], fan, out = [], k;
+    fan = fanOut(room, l, n + 1);
+    if (fan.length > 1 && (STANDS.indexOf(Number(room.rows[l[1]][l[0]])) < 0 ||
+                           room.foes.some(function (f) { return f.x === l[0] && f.y === l[1]; }))) fan.shift();
+    for (k = 0; k < n; ++k) out.push(fan[Math.min(k, fan.length - 1)]);
+    return out;
+  }
+
+  return { build: build, buildOpen: buildOpen, openSize: openSize, next: next, fanOut: fanOut,
+           fightWindow: fightWindow, fightPlaces: fightPlaces, BACK: BACK, COLS: COLS, ROWS: ROWS, W: W, H: H };
 })();
 
 if (typeof module !== "undefined") module.exports = ROOMS;
@@ -1212,34 +1248,14 @@ function openMeet(b, surprise) {
   return openFight(b, surprise);
 }
 
-/* The window a fight is on (docs/open-floors.md, Where the fight is): 16 x 8 inside the
- * floor, holding the band and the leader, its middle nearest the middle between them; if
- * they can't both fit, round the band. */
-function fightWindow(b) {
-  var xs = b.foes.map(function (f) { return f.x; }), ys = b.foes.map(function (f) { return f.y; }), best = null, bk, x0, y0, k;
-  var mx = (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2, my = (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2;
-  var cx = (mx + X.x) / 2, cy = (my + X.y) / 2;
-  function holds(x0, y0, x, y) { return x >= x0 && y >= y0 && x < x0 + WIN[0] && y < y0 + WIN[1]; }
-  for (y0 = 0; y0 <= X.o.h - WIN[1]; ++y0) {
-    for (x0 = 0; x0 <= X.o.w - WIN[0]; ++x0) {
-      if (!b.foes.every(function (f) { return holds(x0, y0, f.x, f.y); })) continue;
-      k = (holds(x0, y0, X.x, X.y) ? 0 : 1000) +
-        Math.abs(x0 + WIN[0] / 2 - (holds(x0, y0, X.x, X.y) ? cx : mx)) + Math.abs(y0 + WIN[1] / 2 - (holds(x0, y0, X.x, X.y) ? cy : my));
-      if (best === null || k < bk) { best = [x0, y0]; bk = k; }
-    }
-  }
-  return best || [0, 0];
-}
+function fightWindow(b) { return ROOMS.fightWindow(b.foes, [X.x, X.y], X.o.w, X.o.h); }
 
 /* The fight on the window: the battle engine's, as a room's (exploreFight). */
 function openFight(b, surprise) {
-  var ts = team(), win = fightWindow(b), wx = win[0], wy = win[1], rows = [], k, room, lead, fan, lines, was, names, seen = {};
+  var ts = team(), win = fightWindow(b), wx = win[0], wy = win[1], rows = [], k, room, fan, lines, was, names, seen = {};
   for (k = 0; k < WIN[1]; ++k) rows.push(X.area[wy + k].slice(wx, wx + WIN[0]));
   room = { rows: rows, foes: b.foes.map(function (f) { return { name: f.name, x: f.x - wx, y: f.y - wy }; }) };
-  lead = [Math.max(0, Math.min(WIN[0] - 1, X.x - wx)), Math.max(0, Math.min(WIN[1] - 1, X.y - wy))];
-  fan = ROOMS.fanOut(room, lead, ts.length + 1);
-  if (fan.length > 1 && (STANDS_OPEN.indexOf(Number(rows[lead[1]][lead[0]])) < 0 ||
-                         room.foes.some(function (f) { return f.x === lead[0] && f.y === lead[1]; }))) fan.shift();
+  fan = ROOMS.fightPlaces(room, [X.x - wx, X.y - wy], ts.length);
   lines = ["map " + WIN[0] + " " + WIN[1]].concat(rows.map(function (row) {
     return row.split("").map(function (c) { return MAPCH[c]; }).join("");
   }));
@@ -1280,7 +1296,6 @@ function openFight(b, surprise) {
   cards();
   advance();
 }
-var STANDS_OPEN = [0, 3, 4, 6];
 
 /* After a fight on the window: won, the band's gone and you walk on from where you
  * stood; fled, you're back along your way, the band still there and alert; lost, it ends. */

@@ -152,6 +152,7 @@ class C64:
         self.frames = []                    # each frame shown: (wk_frame, d016, d011, rows)
         self.seen = None
         self.states = []                    # each loop's: (frame, pos x, pos y, cam x, cam y, stage)
+        self.ready = None                   # the frame the fight's setup was done (wk_ready)
         self.see_begun = []                 # the frame each step's checks began
         self.see_steps = []                 # each step's checks (the log) and the frame done
         self.loop_cycles = []               # each loop's cycles, awake to done
@@ -348,6 +349,9 @@ class C64:
             elif pc == seen:
                 self.see_steps.append((self.see_log(), len(self.states) - 1))
             elif pc == awake:
+                ready = self.syms.get("wk_ready")
+                if ready and self.ready is None and self.ram[ready]:
+                    self.ready = len(self.states) - 1
                 self.states.append(self.state())
                 self.awake_at = m.processorCycles
             elif pc == done and self.awake_at is not None:
@@ -462,6 +466,66 @@ def check(c64, floor, ref):
            f"(a frame is {FRAME}, less 25 bad lines' {25 * BADLINE_STEAL})")
 
 
+def check_fight(c64, fight, ready):
+    """The fight's setup (setup.s) as the reference's (walk.Fight): its record (the window,
+    its terrain, the party's places, the band's foes) and the frame it was all still. (The
+    camera's ease to the window and the travelers' walk to their places are in the frames
+    held to the reference above.)"""
+    a = c64.syms["fight_rec"]
+    got = bytes(c64.ram[a:a + len(fight.record)])
+    if got != fight.record:
+        first = next(i for i in range(len(got)) if got[i] != fight.record[i])
+        fail(f"the fight's record differs at byte {first}: {list(got[first:first + 8])}, the "
+             f"reference's {list(fight.record[first:first + 8])}")
+    elif c64.ready != ready:
+        fail(f"the fight ready at frame {c64.ready}, the reference's {ready}")
+    else:
+        n = fight.record[2 + 128 + 8]
+        ok(f"the fight set up as tools/rooms/rooms.py's: its window at {tuple(fight.window)} (16 x 8, "
+           f"its terrain), the party's places {[tuple(fight.record[130 + 2 * k:132 + 2 * k]) for k in range(4)]}, "
+           f"the band's {n} foes on it; the camera eased there and the travelers walked to their "
+           f"places, all still at frame {ready}")
+
+
+def check_setups(c64, floor):
+    """setup.s on its own, after the walk: every band, the leader on squares near it and
+    far (too far for the window to hold both, too), each record as walk.Fight's."""
+    import random
+    m, ram, L = c64.mpu, c64.ram, c64.syms
+    rnd = random.Random(floor.yard * 100 + floor.number)
+    stop = 0x0300                               # (free RAM: a JSR and where it returns)
+    bad = cases = outside = 0
+    for band, b in enumerate(floor.bands):
+        for k in range(12):
+            if k < 9:
+                lx = max(0, min(floor.w - 1, b["x"] + rnd.randrange(-9, 10)))
+                ly = max(0, min(floor.h - 1, b["y"] + rnd.randrange(-6, 7)))
+            else:
+                lx, ly = rnd.randrange(floor.w), rnd.randrange(floor.h)
+            ram[L["see_fight"]], ram[L["see_x"]], ram[L["see_y"]] = band + 1, lx, ly
+            ram[L["task_on"]] = 0                   # (see_yield: carry on)
+            ram[stop:stop + 3] = [0x20, L["fight_setup"] & 255, L["fight_setup"] >> 8]
+            m.pc, n = stop, 0
+            while m.pc != stop + 3:
+                m.step()
+                n += 1
+                if n > 1_000_000:
+                    raise RuntimeError("fight_setup ran away")
+            want = walk.Fight(floor, band, lx, ly)
+            a = L["fight_rec"]
+            cases += 1
+            wx, wy = want.window
+            outside += not (wx <= lx < wx + 16 and wy <= ly < wy + 8)
+            if bytes(ram[a:a + len(want.record)]) != want.record:
+                if bad < 3:
+                    fail(f"band {band + 1}, the leader at {lx},{ly}: fight_rec "
+                         f"{list(ram[a:a + 10])}..., the reference's {list(want.record[:10])}...")
+                bad += 1
+    if not bad:
+        ok(f"setup.s on its own: {cases} fights (every band, the leader near and far: {outside} "
+           f"too far for the window to hold both), each record walk.Fight's")
+
+
 def check_seeing(c64, floor, watch, frames):
     """Seeing (watch.s, seeing.s) as the reference's (walk.play): each step's checks begun
     on the frame its are, every check and die as tools/rules/seeing.py's, all finished in
@@ -530,6 +594,10 @@ def main():
     args = ap.parse_args()
     floor = walk.Floor(args.yard, args.floor, open_floor=args.open, unseen=args.unseen)
     script = sticks(floor)
+    if not args.frames and floor.bands:             # a fight: on till it's ready, and a little
+        walk.play(floor, script + [0xFF] * 2000)
+        if walk.play.ready is not None:
+            args.frames = max(len(script), walk.play.ready + 25)
     args.frames = args.frames or len(script)
     script += [0xFF] * (args.frames + 2 - len(script))
     ref = walk.play(floor, script)
@@ -546,6 +614,9 @@ def main():
         band, ambush = watch.fight
         ok(f"band {band + 1} sees the party (" + ("an ambush" if ambush else "spotted first")
            + f"): the walk stops on square {end}, its joystick let go")
+        check_fight(c64, walk.play.fight, walk.play.ready)
+    if floor.bands:
+        check_setups(c64, floor)
     elif end != goal:
         fail(f"the walk ends on square {end}, not the stairs' {goal}")
     else:

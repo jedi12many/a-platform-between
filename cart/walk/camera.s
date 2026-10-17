@@ -18,8 +18,8 @@
         .include "zp.inc"
         .include "walk.inc"
 
-        .export camera_init, camera_step, wk_cam, wk_stage, wk_front, wk_dir
-        .import wk_pos, wk_d016, wk_d011, wk_d018, wk_swap
+        .export camera_init, camera_step, wk_cam, wk_stage, wk_front, wk_dir, cam_want
+        .import wk_pos, shown_fight, fight_mid, wk_d016, wk_d011, wk_d018, wk_swap
         .import edge_base, wk_ncx, wk_ncy, edges, colour_aim, wk_w, wk_h
 
         .segment "CODE"
@@ -202,8 +202,17 @@ target:
         ldx #2
         ; (on into target_axis)
 ; X = 0 across, 2 down: want = (pos >> 4) + 8 - half the view, within 0 and the most.
+; In a fight (shown_fight), the window's middle instead (fight_mid: less 8, as the leader's
+; pixel is to its middle).
 target_axis:
-        lda wk_pos, x
+        lda shown_fight
+        beq @lead
+        lda fight_mid, x
+        sta zp_wk_a
+        lda fight_mid + 1, x
+        sta zp_wk_a + 1
+        jmp @less
+@lead:  lda wk_pos, x
         sta zp_wk_a
         lda wk_pos + 1, x
         sta zp_wk_a + 1
@@ -212,7 +221,7 @@ target_axis:
         ror zp_wk_a
         dey
         bne :-
-        lda zp_wk_a                 ; - (half - 8)
+@less:  lda zp_wk_a                 ; - (half - 8)
         sec
         sbc half_less_8, x
         sta zp_wk_a
@@ -398,7 +407,8 @@ wk_cam:     .res 4              ; the camera: x, y, the area's pixel at the view
 most:       .res 4              ; its most, across and down: the floor's (camera_init)
 wk_stage:   .res 1              ; IDLE, HALF, SHIFTED, SHADED or COLOURED
 wk_front:   .res 1              ; the screen shown: 0 A, 1 B
-want:       .res 4              ; where the leader wants it
+want:       .res 4              ; where the leader (or a fight) wants it
+cam_want = want
 next:       .res 4              ; where it'll be next frame
 cell:       .res 2              ; its character cell now, across and down
 wk_dir:     .res 2              ; the step under way: -1, 0 or 1 each way
