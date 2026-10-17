@@ -58,7 +58,7 @@ waits until it can reach the Waystation.
 |---|---|---|
 | **W1** | A static site: the character creator, Passport decoding and editing (spending points), the tabletop sheet printer. The rules core runs in the browser as WebAssembly. (Travel Stamps are applied without a server only on trust; Boarding Passes need W2, which remembers the tickets it issued.) | No |
 | **W2** | Accounts, Boarding Passes, a store for seasons and Departures, downloads and disk images, receipts from modern clients and Travel Stamps from retro ones, replay verification | Yes |
-| **W3** | Trading, the lost-and-found, meeting travelers, parties and co-op lobbies | Yes |
+| **W3** | Trading (tokens, the station's traders, collectibles and the Exchange: [social.md](social.md#at-the-waystation-tokens)), the lost-and-found, meeting travelers, parties and co-op lobbies | Yes |
 
 W1 can come early: it needs only what already exists, plus a WebAssembly build. W2 and
 W3 are the online Waystation (roadmap phase 4).
