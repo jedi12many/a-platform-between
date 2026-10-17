@@ -437,18 +437,26 @@ var GAP = 0.85;          /* squares between travelers in marching order, walking
  * size, or zoomed out (Z) to 24 x 12 or the whole floor. Then X.x, X.y, X.px and X.py are
  * the area's; one room a screen, they're the room's. */
 var ZOOMS = [[16, 8], [24, 12], [48, 24]], zoom = 0;
-function viewSize() { return ZOOMS[zoom]; }
+function viewSize() { return X && X.open && zoom === ZOOMS.length - 1 ? [X.o.w, X.o.h] : ZOOMS[zoom]; }
+
+/* The area you walk: the nine rooms side by side, or an open floor (docs/open-floors.md). */
+function areaW() { return X.open ? X.o.w : ROOMS.COLS * ROOMS.W; }
+function areaH() { return X.open ? X.o.h : ROOMS.ROWS * ROOMS.H; }
+/* How the explore was begun: one room a screen (false), scrolling (true), or "open". */
+function viewArg() { return X.open ? "open" : X.scroll; }
 function ox(i) { return X.scroll ? (i % ROOMS.COLS) * ROOMS.W : 0; }
 function oy(i) { return X.scroll ? Math.floor(i / ROOMS.COLS) * ROOMS.H : 0; }
 
 /* The room a square of the area is in, or -1. */
 function roomAt(x, y) {
+  if (X.open) return x < 0 || y < 0 || x >= X.o.w || y >= X.o.h ? -1 : 0;
   if (x < 0 || y < 0 || x >= ROOMS.COLS * ROOMS.W || y >= ROOMS.ROWS * ROOMS.H) return -1;
   return Math.floor(y / ROOMS.H) * ROOMS.COLS + Math.floor(x / ROOMS.W);
 }
 
 /* Can you stand on (x, y), in X's own squares? */
 function free(x, y) {
+  if (X.open) return openFree(x, y);
   if (!X.scroll) return walkable(roomOf(), x, y);
   var i = roomAt(x, y);
   return i >= 0 && walkable(X.f.rooms[i], x - ox(i), y - oy(i));
@@ -467,19 +475,20 @@ function at(x, y) {
 var SIGHT = 6;
 function reveal() {
   if (!X.scroll) return;
-  var w = ROOMS.COLS * ROOMS.W, h = ROOMS.ROWS * ROOMS.H, x, y;
+  var w = areaW(), h = areaH(), x, y, R = X.open ? openSight() : SIGHT;    /* (open: the party's range) */
   if (!X.fog) X.fog = new Uint8Array(w * h);
-  for (y = Math.max(0, X.y - SIGHT); y <= Math.min(h - 1, X.y + SIGHT); ++y)
-    for (x = Math.max(0, X.x - SIGHT); x <= Math.min(w - 1, X.x + SIGHT); ++x)
-      if ((x - X.x) * (x - X.x) + (y - X.y) * (y - X.y) <= SIGHT * SIGHT) X.fog[y * w + x] = 1;
+  for (y = Math.max(0, X.y - R); y <= Math.min(h - 1, X.y + R); ++y)
+    for (x = Math.max(0, X.x - R); x <= Math.min(w - 1, X.x + R); ++x)
+      if ((x - X.x) * (x - X.x) + (y - X.y) * (y - X.y) <= R * R) X.fog[y * w + x] = 1;
 }
 
 /* The minimap (scrolling): the floor a few pixels a square, black where it's not been seen;
  * the stairs, crates and foes seen; the view's rectangle and the party. */
 var MM = 4, MM_COLOUR = ["#3d3d46", "#9a9aa6", "#2a2a9a", "#6b4a1e", "#3f7a3a", "#a83a2e", "#c8c8d0", "#c8b848"];
 function drawMinimap() {
-  var c = $("minimap"), g, w = ROOMS.COLS * ROOMS.W, h = ROOMS.ROWS * ROOMS.H, x, y, cam = fight && fight.cam;
+  var c = $("minimap"), g, w = areaW(), h = areaH(), x, y, cam = fight && fight.cam;
   if (!c || !X.fog) return;
+  if (X.open) return openMinimap(c);
   g = c.getContext("2d");
   g.fillStyle = "#000";
   g.fillRect(0, 0, c.width, c.height);
@@ -571,10 +580,10 @@ function exploreBrief() {
   yard.onchange = function () { exploreBrief.yard = Number(yard.value); };
   var lab = el("label", null, "Yard "); lab.append(yard);
   var views = el("div", "classes");
-  [["One room a screen", false], ["Scrolling", true]].forEach(function (v) {
+  [["One room a screen", false], ["Scrolling", true], ["Open floor", "open"]].forEach(function (v) {
     var btn = el("button", null, v[0]);
     btn.type = "button";
-    btn.setAttribute("aria-pressed", String(!!exploreBrief.scroll === v[1]));
+    btn.setAttribute("aria-pressed", String((exploreBrief.scroll || false) === v[1]));
     btn.onclick = function () { exploreBrief.scroll = v[1]; exploreBrief(); };
     views.append(btn);
   });
@@ -588,9 +597,11 @@ function exploreBrief() {
   });
   go = el("button", "primary", "Begin");
   go.type = "button";
-  go.onclick = function () { exploreStart(party, Number(yard.value) & 0xFFFF, !!exploreBrief.scroll, exploreBrief.look); };
+  go.onclick = function () { exploreStart(party, Number(yard.value) & 0xFFFF, exploreBrief.scroll || false, exploreBrief.look); };
   b.append(el("h3", null, "Who goes down"), el("p", "note", "Up to four, in marching order: the first leads, " +
-           "the rest follow; click again to leave one out."), row, el("h3", null, "The view"), views,
+           "the rest follow; click again to leave one out."), row, el("h3", null, "The view"), el("p", "note", "An open floor (docs/open-floors.md) is one wide space, " +
+           "walls in clusters; bands of foes stand about it unseen, and roll to see you as you come near (S to sneak), " +
+           "as you roll to spot them: the rolls are in the log."), views,
            el("h3", null, "The look"), el("p", "note", "How the floors are drawn (docs/art.md, Looks): by floor, " +
            "a forest, then the mountains, a town and a dungeon, and round again; or one look all the way down."),
            looks, lab, go);
@@ -598,13 +609,14 @@ function exploreBrief() {
 
 function exploreStart(party, yard, scroll, look) {
   party = partyOf(party);
-  X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll,
+  X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll, open: scroll === "open",
         look: LOOKS.indexOf(look) >= 0 ? look : "", pell: "" };
   storyBoard();
   exploreFloor(1);
 }
 
 function exploreFloor(n) {
+  if (X.open) return openFloor(n);
   X.floor = n;
   X.f = ROOMS.build(X.yard, n);
   X.cleared = {}; X.taken = {}; X.seen = {}; X.parleyed = {};
@@ -722,7 +734,8 @@ function exploreEnter(from) {
 function exploreView() {
   var r = roomOf(), fs = [], all, team = X.party.map(function (c) { return ROOMDATA.travelers[c]; });
   /* The foes in view: this room's, or, scrolling, every room's, where they stand in the area. */
-  (X.scroll ? X.f.rooms : [r]).forEach(function (room) {
+  if (X.open) fs = openShown();
+  else (X.scroll ? X.f.rooms : [r]).forEach(function (room) {
     foesIn(room).forEach(function (f) { fs.push({ name: f.name, x: f.x + ox(room.i), y: f.y + oy(room.i) }); });
   });
   all = team.map(function () { return { side: 0, state: 0, x: X.x, y: X.y, health: 1, health_max: 1, conds: [] }; })
@@ -736,7 +749,7 @@ function exploreView() {
   S = { code: "E13", title: "Explore", native: {
         figures: team.map(function (t) { return t.figure; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
         names: team.map(function (t) { return t.name; }).concat(fs.map(function (f) { return ROOMDATA.foes[f.name].name; })) } };
-  $("where").textContent = "Yard " + X.yard + " · floor " + X.floor + " · room " + (r.i + 1);
+  $("where").textContent = "Yard " + X.yard + " · floor " + X.floor + (X.open ? " · open" : " · room " + (r.i + 1));
   resize();
   setMode(X.lost ? "lost" : "explore");
 }
@@ -754,6 +767,7 @@ function showParty() {
 
 /* The side panel while exploring: the floor's map, who you are, what's here. */
 function exploreSide() {
+  if (X.open) return openSide();
   var c = $("cards"), grid = el("div", "floormap"), r = roomOf(), i, cell, room, cards = [];
   c.textContent = "";
   for (i = 0; i < 9; ++i) {
@@ -833,8 +847,8 @@ function slide(dx, dy) {
 function camFor() {
   if (!X.scroll) return null;
   var w = viewSize()[0], h = viewSize()[1];
-  return { x: Math.max(0, Math.min(ROOMS.COLS * ROOMS.W - w, X.px + 0.5 - w / 2)),
-           y: Math.max(0, Math.min(ROOMS.ROWS * ROOMS.H - h, X.py + 0.5 - h / 2)) };
+  return { x: Math.max(0, Math.min(areaW() - w, X.px + 0.5 - w / 2)),
+           y: Math.max(0, Math.min(areaH() - h, X.py + 0.5 - h / 2)) };
 }
 
 /* Z: the view zoomed out a step (or back in from the whole floor), straight away. */
@@ -878,7 +892,7 @@ function exploreTick(now) {
   if (X.settle) return;
   Object.keys(held).forEach(function (k) { dx += held[k][0]; dy += held[k][1]; });
   dx = Math.sign(dx); dy = Math.sign(dy);
-  sp = SPEED * dt;
+  sp = SPEED * dt * (X.open && X.sneak ? 0.5 : 1);     /* sneaking: half speed */
   if (dx || dy) {
     X.path = null;
     if (dx && dy) sp *= Math.SQRT1_2;
@@ -928,6 +942,7 @@ if (typeof document !== "undefined") {
 
 /* What happens where you've stepped: a door, a crate, the stairs. */
 function arrive() {
+  if (X.open) return openArrive();
   var r = roomOf(), d, n, there, lx = X.x - ox(r.i), ly = X.y - oy(r.i);
   d = X.scroll ? null : Object.keys(r.doors).filter(function (k) { return r.doors[k][0] === lx && r.doors[k][1] === ly; })[0];
   if (d) {
@@ -978,6 +993,423 @@ function exploreTo(tx, ty) {
   if (prev[tx + "," + ty] === undefined) { toast("You can't get there from here."); return; }
   for (p = [tx, ty]; p && !(p[0] === X.x && p[1] === X.y); p = prev[p[0] + "," + p[1]]) path.unshift(p);
   X.path = [[X.x, X.y]].concat(path);                   /* from the middle of your square first */
+}
+
+/* ------------------------------------------------------------ open floors */
+
+/* Walking an open floor (docs/open-floors.md): one wide space, its bands of foes unseen
+ * until you spot them. Each step onto a new square is a step of the rules lab's seeing
+ * (core/next/seeing.c, in the arena's WebAssembly): every band in range checks, you
+ * looking at it and it looking back, the rolls in the log. A band that sees you starts the
+ * fight (an ambush, if you hadn't spotted it), on a 16 x 8 window of the floor. */
+var LIGHT_OF = { forest: "day", mountain: "day", town: "dusk", dungeon: "night" };
+var LIGHTS = ["day", "dusk", "night"];
+var OUTCOME = ["not yet", "heard", "spotted", "seen"];
+var WIN = [16, 8];       /* a fight's window: the battle's map, and the view */
+var AMBUSH = 6;          /* how near a band you've spotted you can fall on it from */
+
+function openFloor(n) {
+  var o = X.o = ROOMS.buildOpen(X.yard, n);
+  X.floor = n;
+  X.f = { rooms: [{ i: 0, rows: o.rows, foes: [], doors: {}, stairs: o.stairs, cache: null, kind: "open" }], start: 0 };
+  X.cleared = {}; X.taken = {}; X.seen = {}; X.parleyed = {};
+  X.heard = [];
+  X.seeTrace = [];
+  X.fog = null;
+  X.room = 0;
+  X.settle = false;
+  X.area = o.rows.slice();
+  X.light = LIGHT_OF[lookOf(n).replace(/[0-9]+$/, "")] || "day";
+  X.bands = o.bands.map(function (b, k) {
+    return { k: k, x: b.x, y: b.y, foes: b.foes, hiding: b.hiding, stairs: b.stairs, parley: b.parley,
+             spotted: 0, seen: 0, alert: 0, party_last: 255, band_last: 255, cleared: false };
+  });
+  at(o.start[0], o.start[1]);
+  X.cam = camFor();
+  show("fight");
+  $("log").textContent = "";
+  log("Yard " + X.yard + ", floor " + n + ": an open floor, " + o.w + " x " + o.h + ", by " + X.light +
+      ". Somewhere on it, " + o.bands.length + " band" + (o.bands.length === 1 ? "" : "s") + " of foes.", "round");
+  /* The dice of seeing: the yard's and the floor's, so a floor walked the same way rolls
+   * the same (for tests, and to compare). */
+  seeBegin(((X.yard * 31 + n * 977) & 0xFFFF) || 1);
+  exploreView();
+  seeStep();
+}
+
+/* Can you stand on (x, y): not wall, pit or hazard, nobody there (seen or not). */
+function openFree(x, y) {
+  if (x < 0 || y < 0 || x >= X.o.w || y >= X.o.h) return false;
+  var t = Number(X.area[y][x]);
+  if (t === 1 || t === 2 || t === 5) return false;
+  if (openNpcs().some(function (n) { return n.x === x && n.y === y; })) return false;
+  return !X.bands.some(function (b) {
+    return !b.cleared && b.foes.some(function (f) { return f.x === x && f.y === y; });
+  });
+}
+
+function openNpcs() {
+  return X.o.people.filter(function (p) { return !(p.who === "courier" && X.pell); }).map(function (p) {
+    return { who: p.who, name: NPC[p.who].name, figure: NPC[p.who].figure, x: p.x, y: p.y };
+  });
+}
+
+/* The best of a list: the first of the highest (as the rules pick a group's best). */
+function bestOf(list) {
+  var b = 0, i;
+  for (i = 1; i < list.length; ++i) if (list[i] > list[b]) b = i;
+  return b;
+}
+
+function team() { return X.party.map(function (c) { return ROOMDATA.travelers[c]; }); }
+
+/* The party's range: its best Notice / 5 squares, doubled by day, halved at night. */
+function openSight() {
+  var r = Math.floor(Math.max.apply(null, team().map(function (t) { return t.notice; })) / 5);
+  r = X.light === "day" ? r * 2 : X.light === "night" ? Math.floor(r / 2) : r;
+  return Math.max(1, r);
+}
+
+/* A band in words: "2 ash rats and a rust guard" (Cap: "2 ash rats...", "An ash rat"). */
+function cap(t) { return t.replace(/^./, function (c) { return c.toUpperCase(); }); }
+function bandName(b) {
+  var count = {}, order = [];
+  b.foes.forEach(function (f) {
+    if (!count[f.name]) { count[f.name] = 0; order.push(f.name); }
+    ++count[f.name];
+  });
+  return order.map(function (n) {
+    var nm = ROOMDATA.foes[n].name.toLowerCase();
+    return count[n] === 1 ? (/^[aeiou]/.test(nm) ? "an " : "a ") + nm : count[n] + " " + nm + "s";
+  }).join(" and ");
+}
+/* "It" or "They", "looks" or "look": a band of one or more. */
+function they(b, verb) { return b.foes.length > 1 ? verb : verb + "s"; }
+
+/* The floor, the light, the party and the bands, as the seeing engine takes them (and the
+ * bands as they stand: a rebuild after a fight carries them over). */
+function seeBegin(seed) {
+  var lines = ["floor " + X.o.w + " " + X.o.h].concat(X.area), r;
+  lines.push("light " + X.light);
+  team().forEach(function (t) { lines.push("traveler " + t.stealth + " " + t.notice); });
+  X.seeMap = [];
+  X.bands.forEach(function (b) {
+    if (b.cleared) return;
+    X.seeMap.push(b.k);
+    lines.push(["band", b.x, b.y,
+                Math.max.apply(null, b.foes.map(function (f) { return ROOMDATA.foes[f.name].sense; })),
+                Math.max.apply(null, b.foes.map(function (f) { return ROOMDATA.foes[f.name].stealth; })),
+                b.hiding ? 1 : 0, b.spotted, b.seen, b.alert, b.party_last, b.band_last].join(" "));
+  });
+  r = JSON.parse(rules.ar_see_begin(seed || 0, lines.join("\n") + "\n"));
+  if (r.error) log("Seeing couldn't start: " + r.error, "bad");
+}
+
+/* A step onto a new square: the checks. True if it started something (a fight, a talk). */
+function seeStep() {
+  var r = JSON.parse(rules.ar_see_step(X.x, X.y, X.sneak ? 1 : 0, 0)), spotted = false, b;
+  if (r.error) return false;
+  r.bands.forEach(function (s, j) {
+    b = X.bands[X.seeMap[j]];
+    if (s[0] && !b.spotted) spotted = true;
+    b.spotted = s[0]; b.seen = s[1]; b.alert = s[2]; b.party_last = s[3]; b.band_last = s[4];
+  });
+  r.events.forEach(function (e) { seeLog(e, X.bands[X.seeMap[e.band]]); });
+  X.seeTrace.push({ x: X.x, y: X.y, sneak: !!X.sneak, events: r.events.map(function (e) {   /* for tests */
+    return Object.assign({}, e, { band: X.seeMap[e.band] });
+  }), fight: r.fight ? X.seeMap[r.fight - 1] + 1 : 0, ambush: r.ambush });
+  if (r.fight) { openMeet(X.bands[X.seeMap[r.fight - 1]], r.ambush ? "foes" : ""); return true; }
+  if (spotted) exploreView();                           /* a band spotted: drawn now */
+  return false;
+}
+
+function signed(n) { return (n < 0 ? "−" : "+") + Math.abs(n); }
+
+/* A check's TN, in words: its base and each modifier. */
+function tnWords(e) {
+  var parts = [e.base_rating ? "50 + Stealth " + e.base_rating : "80"];
+  if (e.shift) parts.push(signed(e.shift) + " the others sneaking");
+  [[1, 10, "dusk"], [2, 20, "night"], [4, e.dist_mod, "far"], [8, 20, "cover between"], [16, 10, "in cover"],
+   [32, -20, "alert"], [64, -20, "a light"]].forEach(function (m) {
+    if (e.mods & m[0]) parts.push(signed(m[1]) + " " + m[2]);
+  });
+  return parts.join(" ") + (parts.length > 1 ? " = " + e.tn : "");
+}
+
+/* One of the seeing engine's events, in the log. */
+function seeLog(e, b) {
+  var ts = team(), best, others, words, cls;
+  if (e.kind === "party") {
+    if (e.automatic) return log("Right beside you: " + bandName(b) + ".", "round");
+    best = bestOf(ts.map(function (t) { return t.notice; }));
+    others = ts.filter(function (t, i) { return i !== best; });
+    words = "You look (" + e.d + " squares off): TN " + tnWords(e) + ".";
+    e.help.forEach(function (h, i) {
+      words += " " + others[i].name + " " + h.roll + " + " + h.rating + " = " + (h.roll + h.rating) + ", " +
+        CHECKED[h.result] + (h.shift ? " (" + signed(h.shift) + ")" : "") + ";";
+    });
+    words += " " + ts[best].name + " rolls " + e.roll + " + " + e.rating + " = " + e.total + " against " + e.look_tn + ": " +
+      CHECKED[e.result] + ". " + (e.outcome === 2 ? "Spotted: " + bandName(b) + ", not looking your way."
+        : e.outcome === 1 ? "You hear something out there." : "Nothing yet.");
+    if (e.outcome === 1) X.heard.push([b.x, b.y]);
+    cls = "roll " + (e.outcome === 2 ? "good" : "");
+  } else {
+    if (e.automatic) return log(cap(bandName(b)) + ", right beside you, " + they(b, "see") + " you.", "bad");
+    words = (b.spotted ? cap(bandName(b)) + " " + they(b, "look") : "Something out there looks") + " your way (" + e.d +
+      " squares): TN " + tnWords(e) + ".";
+    if (e.sneak.length) {
+      best = bestOf(ts.map(function (t) { return t.stealth; }));
+      others = ts.filter(function (t, i) { return i !== best; });
+      words += " Sneaking: " + e.sneak.map(function (h, i) {
+        return others[i].name + " " + h.roll + " + " + h.rating + " = " + (h.roll + h.rating) + ", " + CHECKED[h.result] +
+          (h.shift ? " (" + signed(h.shift) + ")" : "");
+      }).join("; ") + ".";
+    }
+    words += " " + (b.spotted && b.foes.length > 1 ? "They roll " : "It rolls ") + e.roll + " + " + e.rating + " = " + e.total + ": " + CHECKED[e.result] + ". " +
+      (e.outcome === 3 ? "Seen!" : e.outcome === 1 ? "Heard something: alert now." : "Not seen.");
+    cls = "roll " + (e.outcome === 3 ? "bad" : e.outcome === 1 ? "" : "good");
+  }
+  log(words, cls);
+}
+
+/* The foes drawn while walking: the bands you've spotted. */
+function openShown() {
+  var fs = [];
+  X.bands.forEach(function (b) {
+    if (b.cleared || !b.spotted) return;
+    b.foes.forEach(function (f) { fs.push({ name: f.name, x: f.x, y: f.y }); });
+  });
+  return fs;
+}
+
+/* A band has seen you (or you fall on it): a parley first if it talks, else the fight. */
+function openMeet(b, surprise) {
+  held = {};
+  X.path = null;
+  if (b.parley && !X.parleyed[b.k] && TALK && TALK.park) {
+    X.parleyed[b.k] = 1;
+    b.spotted = 1;
+    exploreView();
+    log(cap(bandName(b)) + ": " + (b.foes.length > 1 ? "they call" : "it calls") + " out before anyone draws.", "round");
+    return talk(b.foes[0].name, ROOMDATA.foes[b.foes[0].name].name + (b.foes.length > 1 ? " and the rest" : ""), function (sig) {
+      if (sig.indexOf("leave") >= 0) {
+        b.cleared = true;
+        seeBegin(0);
+        log("They let you by.", "good");
+        exploreView();
+      } else {
+        openFight(b, "");
+      }
+    });
+  }
+  log(surprise === "foes" ? cap(bandName(b)) + ", on you before you saw them: an ambush. The first round is theirs."
+      : surprise === "travelers" ? "You fall on " + bandName(b) + " before they see you: the first round is yours."
+      : cap(bandName(b)) + ": " + (b.foes.length > 1 ? "they've" : "it's") + " seen you.", surprise === "travelers" ? "good" : "bad");
+  return openFight(b, surprise);
+}
+
+/* The window a fight is on (docs/open-floors.md, Where the fight is): 16 x 8 inside the
+ * floor, holding the band and the leader, its middle nearest the middle between them; if
+ * they can't both fit, round the band. */
+function fightWindow(b) {
+  var xs = b.foes.map(function (f) { return f.x; }), ys = b.foes.map(function (f) { return f.y; }), best = null, bk, x0, y0, k;
+  var mx = (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2, my = (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2;
+  var cx = (mx + X.x) / 2, cy = (my + X.y) / 2;
+  function holds(x0, y0, x, y) { return x >= x0 && y >= y0 && x < x0 + WIN[0] && y < y0 + WIN[1]; }
+  for (y0 = 0; y0 <= X.o.h - WIN[1]; ++y0) {
+    for (x0 = 0; x0 <= X.o.w - WIN[0]; ++x0) {
+      if (!b.foes.every(function (f) { return holds(x0, y0, f.x, f.y); })) continue;
+      k = (holds(x0, y0, X.x, X.y) ? 0 : 1000) +
+        Math.abs(x0 + WIN[0] / 2 - (holds(x0, y0, X.x, X.y) ? cx : mx)) + Math.abs(y0 + WIN[1] / 2 - (holds(x0, y0, X.x, X.y) ? cy : my));
+      if (best === null || k < bk) { best = [x0, y0]; bk = k; }
+    }
+  }
+  return best || [0, 0];
+}
+
+/* The fight on the window: the battle engine's, as a room's (exploreFight). */
+function openFight(b, surprise) {
+  var ts = team(), win = fightWindow(b), wx = win[0], wy = win[1], rows = [], k, room, lead, fan, lines, was, names, seen = {};
+  for (k = 0; k < WIN[1]; ++k) rows.push(X.area[wy + k].slice(wx, wx + WIN[0]));
+  room = { rows: rows, foes: b.foes.map(function (f) { return { name: f.name, x: f.x - wx, y: f.y - wy }; }) };
+  lead = [Math.max(0, Math.min(WIN[0] - 1, X.x - wx)), Math.max(0, Math.min(WIN[1] - 1, X.y - wy))];
+  fan = ROOMS.fanOut(room, lead, ts.length + 1);
+  if (fan.length > 1 && (STANDS_OPEN.indexOf(Number(rows[lead[1]][lead[0]])) < 0 ||
+                         room.foes.some(function (f) { return f.x === lead[0] && f.y === lead[1]; }))) fan.shift();
+  lines = ["map " + WIN[0] + " " + WIN[1]].concat(rows.map(function (row) {
+    return row.split("").map(function (c) { return MAPCH[c]; }).join("");
+  }));
+  names = ts.map(function (t) { return t.name; });
+  was = ts.map(function (t, k) { return [fight.shown[k].x - wx, fight.shown[k].y - wy]; });
+  ts.forEach(function (t, k) {
+    var p = fan[Math.min(k, fan.length - 1)];
+    lines.push("traveler " + p[0] + " " + p[1] + " " + t.passport + " " + t.weapon);
+  });
+  room.foes.forEach(function (f) {
+    var fd = ROOMDATA.foes[f.name], same = room.foes.filter(function (g) { return g.name === f.name; }).length > 1;
+    seen[f.name] = (seen[f.name] || 0) + 1;
+    lines.push("foe " + f.x + " " + f.y + " " + fd.line + " level " + X.floor);
+    names.push(fd.name + (same ? " " + seen[f.name] : ""));
+  });
+  ts.forEach(function (t, k) { t.powers.forEach(function (p) { lines.push("power " + k + " " + p[0] + " " + p[1]); }); });
+  if (surprise) lines.push("surprise " + surprise);
+  X.fightBand = b;
+  X.win = win;
+  X.before = X.trail.map(function (p) { return [Math.round(p[0]), Math.round(p[1])]; }).reverse();
+  X.before.unshift([X.x, X.y]);
+  S = { code: "E14-" + X.yard + "-" + X.floor + "-" + (b.k + 1), title: "Floor " + X.floor + ", band " + (b.k + 1),
+        explore: true, lab: { won: "?", rounds: "?" },
+        native: { spec: lines.join("\n") + "\n",
+                  figures: ts.map(function (t) { return t.figure; }).concat(room.foes.map(function (f) { return ROOMDATA.foes[f.name].figure; })),
+                  names: names, pack: X.pack.slice(), skills: ts[0].skills } };
+  held = {};
+  newFight();
+  fight.look = lookOf(X.floor);
+  fight.dress = function (x, y, t) { return dress(X.f.rooms[0], x + wx, y + wy, t); };
+  fight.gridFrom = performance.now();
+  ts.forEach(function (t, k) {
+    var s = fight.shown[k], to = fight.st.fighters[k];
+    s.x = was[k][0]; s.y = was[k][1];
+    tween(s, to.x, to.y, 260);
+  });
+  resize();
+  cards();
+  advance();
+}
+var STANDS_OPEN = [0, 3, 4, 6];
+
+/* After a fight on the window: won, the band's gone and you walk on from where you
+ * stood; fled, you're back along your way, the band still there and alert; lost, it ends. */
+function openAfter(result) {
+  var me0 = fight.st.fighters[0], b = X.fightBand, w = X.win, back;
+  X.pack = fight.pack.slice();
+  if (result === 1) {
+    b.cleared = true;
+    at(me0.x + w[0], me0.y + w[1]);
+    if (!openFree(X.x, X.y)) at(X.before[0][0], X.before[0][1]);
+    log("The band is gone. You catch your breath: full health again.", "good");
+  } else if (result === 3) {
+    /* Back along your way: the first square of it 6 from them, or the farthest it goes. */
+    var gap = function (p) { return Math.min.apply(null, b.foes.map(function (f) { return Math.max(Math.abs(f.x - p[0]), Math.abs(f.y - p[1])); })); };
+    back = X.before.filter(function (p) { return openFree(p[0], p[1]); });
+    back = back.filter(function (p) { return gap(p) >= 6; })[0] ||
+      back.reduce(function (a, p) { return gap(p) > gap(a) ? p : a; }, back[0] || X.before[0]);
+    at(back[0], back[1]);
+    b.seen = 0; b.alert = 1; b.spotted = 1;
+    b.band_last = b.party_last = Math.max(Math.abs(b.x - X.x), Math.abs(b.y - X.y));
+    log("You get back the way you came. They're still there, and alert now.", "round");
+  } else {
+    X.lost = true;
+    log("You go down. The descent ends here.", "bad");
+  }
+  X.cam = camFor();
+  seeBegin(0);
+  exploreView();
+}
+
+/* Where you've stepped: what sees you, then a crate or the stairs. */
+function openArrive() {
+  var o = X.o, id;
+  if (seeStep()) return;
+  o.caches.forEach(function (c, k) {
+    if (X.taken[k] || c.x !== X.x || c.y !== X.y) return;
+    X.taken[k] = 1;
+    id = ROOMDATA.cache[c.item];
+    if (X.pack.indexOf(id) < 0 && X.pack.length < 6) X.pack.push(id);
+    log("In the crate: " + itemOf(id).display + ". It's in your pack (P in a fight).", "good");
+    exploreSide();
+  });
+  if (X.x === o.stairs[0] && X.y === o.stairs[1]) {
+    log("Down the stairs.", "round");
+    held = {};
+    return exploreFloor(X.floor + 1);
+  }
+}
+
+/* A band you've spotted, not yet seen you, near enough to fall on. */
+function ambushable() {
+  var near = null, nd = AMBUSH + 1;
+  X.bands.forEach(function (b) {
+    if (b.cleared || !b.spotted || b.seen) return;
+    var d = Math.max(Math.abs(b.x - X.x), Math.abs(b.y - X.y));
+    if (d < nd) { near = b; nd = d; }
+  });
+  return near;
+}
+
+function openButtons() {
+  var b = ambushable();
+  return [["S", X.sneak ? "Sneaking: half speed" : "Walking: S to sneak", function () {
+            X.sneak = !X.sneak;
+            log(X.sneak ? "You sneak: half speed, and a band rolls against 50 + your best Stealth, the others helping or not."
+                        : "You walk openly: a band rolls against 80.", "round");
+            actions(); exploreSide();
+          }, false, "", false, "toggle"],
+          ["L", "Light: " + X.light, function () {
+            X.light = LIGHTS[(LIGHTS.indexOf(X.light) + 1) % LIGHTS.length];
+            seeBegin(0);
+            log("Now it's " + X.light + ".", "round");
+            actions(); exploreSide();
+          }, false, "", false, "toggle"]]
+    .concat(b ? [["A", "Ambush " + bandName(b),
+                  function () { openMeet(b, "travelers"); }, false, "", true]] : []);
+}
+
+/* The side panel, on an open floor. */
+function openSide() {
+  var c = $("cards"), mm = el("canvas", "minimap"), ts = team(), here = nearNpc(), spotted;
+  c.textContent = "";
+  mm.id = "minimap";
+  mm.width = X.o.w * MM;
+  mm.height = X.o.h * MM;
+  mm.title = "The floor: what you've seen, the bands spotted (red), sounds (yellow), the view's rectangle";
+  c.append(el("h2", null, "Floor " + X.floor), mm);
+  drawMinimap();
+  c.append(el("p", "note", (X.sneak ? "Sneaking" : "Walking openly") + ", by " + X.light + "; you see " + openSight() + " squares."));
+  ts.forEach(function (t, k) {
+    var card = el("div", "card traveler");
+    card.append(el("div", "nm", (k + 1) + ". " + t.name + ", level 1" + (k ? "" : " · leads")),
+                el("div", "gear", "Notice " + t.notice + " · Stealth " + t.stealth));
+    c.append(card);
+  });
+  spotted = X.bands.filter(function (b) { return b.spotted && !b.cleared; });
+  c.append(el("p", "note", spotted.length ? "Spotted: " + spotted.map(function (b) {
+    return bandName(b) + (b.seen ? "" : b.alert ? " (alert)" : " (not looking)");
+  }).join("; ") + "." : "No band spotted yet."));
+  c.append(el("p", "note", "Pack (the party's): " +
+              (X.pack.length ? X.pack.map(function (id) { return itemOf(id).display; }).join(", ") : "empty")));
+  if (here) c.append(el("p", "note", here.name + ": press T, or click them, to talk."));
+  if (X.pell === "follows") c.append(el("p", "note", "Pell is following you."));
+}
+
+function openMinimap(c) {
+  var g = c.getContext("2d"), w = X.o.w, h = X.o.h, x, y, cam = fight && fight.cam;
+  function seen(x, y) { return X.fog[y * w + x]; }
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, c.width, c.height);
+  for (y = 0; y < h; ++y)
+    for (x = 0; x < w; ++x)
+      if (seen(x, y)) { g.fillStyle = MM_COLOUR[Number(X.area[y][x])] || MM_COLOUR[0]; g.fillRect(x * MM, y * MM, MM, MM); }
+  if (seen(X.o.stairs[0], X.o.stairs[1])) { g.fillStyle = "#fff"; g.fillRect(X.o.stairs[0] * MM, X.o.stairs[1] * MM, MM, MM); }
+  X.o.caches.forEach(function (o, k) {
+    if (!X.taken[k] && seen(o.x, o.y)) { g.fillStyle = "#e0a030"; g.fillRect(o.x * MM, o.y * MM, MM, MM); }
+  });
+  X.heard.forEach(function (p) { g.fillStyle = "#e8e040"; g.fillRect(p[0] * MM, p[1] * MM, MM, MM); });
+  openShown().forEach(function (f) { g.fillStyle = "#ff4040"; g.fillRect(f.x * MM, f.y * MM, MM, MM); });
+  if (cam && fight.view) {
+    g.strokeStyle = "#fff";
+    g.lineWidth = 1;
+    g.strokeRect(Math.round(cam.x * MM) + 0.5, Math.round(cam.y * MM) + 0.5, fight.view[0] * MM - 1, fight.view[1] * MM - 1);
+  }
+  g.fillStyle = "#40ff80";
+  g.fillRect(Math.round(X.px * MM) - 1, Math.round(X.py * MM) - 1, MM + 2, MM + 2);
+}
+
+/* The stairs, the crates and the people, over the floor's tiles. */
+function openDraw() {
+  drawStairs(X.o.stairs[0] * SQ, X.o.stairs[1] * SQ);
+  X.o.caches.forEach(function (c, k) { if (!X.taken[k]) drawCrate(c.x * SQ, c.y * SQ); });
+  openNpcs().forEach(function (n) { figureAt(n.figure, n.x, n.y); });
 }
 
 /* ------------------------------------------------------------------ talk */
@@ -1062,12 +1494,14 @@ function npcIn(r) {
 }
 
 function npcAt(x, y) {
+  if (X.open) return openNpcs().filter(function (n) { return n.x === x && n.y === y; })[0] || null;
   var i = X.scroll ? roomAt(x, y) : X.room, r = i >= 0 ? X.f.rooms[i] : null, n = npcIn(r);
   return n && r.talk.x === x - ox(i) && r.talk.y === y - oy(i) ? n : null;
 }
 
 /* Who's next to the leader to talk to (8 ways). */
 function nearNpc() {
+  if (X.open) return openNpcs().filter(function (n) { return Math.max(Math.abs(X.x - n.x), Math.abs(X.y - n.y)) <= 1; })[0] || null;
   var r = roomOf(), n = npcIn(r);
   if (!n) return null;
   return Math.max(Math.abs(X.x - ox(r.i) - r.talk.x), Math.abs(X.y - oy(r.i) - r.talk.y)) <= 1 ? n : null;
@@ -1235,6 +1669,7 @@ function exploreFight() {
 
 /* The fight's over: back to walking (docs/rooms.md, Exploring). */
 function exploreAfter(result) {
+  if (X.open) return openAfter(result);
   var r = roomOf(), me0 = fight.st.fighters[0];
   X.pack = fight.pack.slice();
   if (result === 1) {
@@ -1259,7 +1694,7 @@ function exploreButtons() {
   if (mode === "lost") {
     return [["", "The descent ends", null, false, "", false, "hint"],
             ["R", "This floor again", function () { X.lost = false; X.pack = []; exploreFloor(X.floor); }, false, "", true],
-            ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll, X.look); }],
+            ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), viewArg(), X.look); }],
             ["Esc", "Back to the scenarios", intro]];
   }
   if (mode === "talk") {
@@ -1269,10 +1704,10 @@ function exploreButtons() {
   return [["Arrows", "Walk: hold them down (numpad: 8 ways), or click a square", null, false, "", false, "hint"]]
     .concat(near ? [["T", "Talk to " + near.name, function () { talkTo(near); }, false, "", true]] : [])
     .concat([
-          ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), X.scroll, X.look); }],
-          ["V", X.scroll ? "View: scrolling" : "View: one room a screen", function () {
-            exploreStart(X.party, X.yard, !X.scroll, X.look);
-          }, false, "", false, "toggle"]]).concat(X.scroll ? [
+          ["N", "A new yard", function () { exploreStart(X.party, 1 + Math.floor(Math.random() * 65535), viewArg(), X.look); }],
+          ["V", X.open ? "View: open floor" : X.scroll ? "View: scrolling" : "View: one room a screen", function () {
+            exploreStart(X.party, X.yard, X.open ? false : X.scroll ? "open" : true, X.look);
+          }, false, "", false, "toggle"]]).concat(X.open ? openButtons() : []).concat(X.scroll ? [
           ["Z", "Zoom: " + viewSize()[0] + " x " + viewSize()[1] + " squares", exploreZoom, false, "", false, "toggle"]] : []).concat([
           ["gap"],
           ["X", "Leave", intro]]);
@@ -1280,7 +1715,8 @@ function exploreButtons() {
 
 /* Stairs, crates and people, drawn over the room's tiles; and the courier, following. */
 function exploreDraw() {
-  (X.scroll ? X.f.rooms : [roomOf()]).forEach(drawThings);
+  if (X.open) openDraw();
+  else (X.scroll ? X.f.rooms : [roomOf()]).forEach(drawThings);
   if (X.pell === "follows") {
     var f = follower(X.party.length);
     figureAt(NPC.courier.figure, f.x, f.y, f.alpha);
@@ -1301,19 +1737,23 @@ function figureAt(name, x, y, alpha) {
 function drawThings(r) {
   var x, y, k, x0 = ox(r.i) * SQ, y0 = oy(r.i) * SQ, who = npcIn(r);
   if (who) figureAt(who.figure, ox(r.i) + r.talk.x, oy(r.i) + r.talk.y);
-  if (r.stairs) {
-    x = x0 + r.stairs[0] * SQ; y = y0 + r.stairs[1] * SQ;
-    ctx.fillStyle = "#0b0b10";
-    ctx.fillRect(x + 4, y + 4, SQ - 8, SQ - 8);
-    for (k = 0; k < 4; ++k) {
-      ctx.fillStyle = "rgba(232,197,71," + (0.9 - k * 0.2) + ")";
-      ctx.fillRect(x + 6 + k * 2, y + 7 + k * 5, SQ - 12 - k * 4, 3);
-    }
+  if (r.stairs) drawStairs(x0 + r.stairs[0] * SQ, y0 + r.stairs[1] * SQ);
+  if (r.cache && !X.taken[r.i]) drawCrate(x0 + r.cache.x * SQ, y0 + r.cache.y * SQ);
+}
+
+/* The stairs down and a crate, at pixel x, y. */
+function drawStairs(x, y) {
+  var k;
+  ctx.fillStyle = "#0b0b10";
+  ctx.fillRect(x + 4, y + 4, SQ - 8, SQ - 8);
+  for (k = 0; k < 4; ++k) {
+    ctx.fillStyle = "rgba(232,197,71," + (0.9 - k * 0.2) + ")";
+    ctx.fillRect(x + 6 + k * 2, y + 7 + k * 5, SQ - 12 - k * 4, 3);
   }
-  if (r.cache && !X.taken[r.i]) {
-    x = x0 + r.cache.x * SQ; y = y0 + r.cache.y * SQ;
-    ctx.fillStyle = "#6b4a2b"; ctx.fillRect(x + 7, y + 11, 18, 13);
-    ctx.fillStyle = "#a0753f"; ctx.fillRect(x + 7, y + 11, 18, 4);
-    ctx.fillStyle = "#e8c547"; ctx.fillRect(x + 15, y + 15, 2, 3);
-  }
+}
+
+function drawCrate(x, y) {
+  ctx.fillStyle = "#6b4a2b"; ctx.fillRect(x + 7, y + 11, 18, 13);
+  ctx.fillStyle = "#a0753f"; ctx.fillRect(x + 7, y + 11, 18, 4);
+  ctx.fillStyle = "#e8c547"; ctx.fillRect(x + 15, y + 15, 2, 3);
 }

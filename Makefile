@@ -555,9 +555,11 @@ build/site/index.html: site/index.html build/web/apb.js build/waystation/ws.js \
 ARENA_WEB_FLAGS := -O2 -sALLOW_MEMORY_GROWTH -sMODULARIZE -sEXPORT_NAME=ArenaRules \
                    -sEXPORTED_RUNTIME_METHODS=cwrap
 
-build/arena-web/rules.js: tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_HDR)
+build/arena-web/rules.js: tools/arena/web/arena.c $(NEXT_SRC) core/next/seeing.c $(CORE_SRC) $(NEXT_HDR) \
+                          core/next/apb_seeing.h
 	@mkdir -p build/arena-web
-	$(EMCC) $(ARENA_WEB_FLAGS) $(NEXT_INC) -DAPB_ARENA -o $@ tools/arena/web/arena.c $(NEXT_SRC) $(CORE_SRC)
+	$(EMCC) $(ARENA_WEB_FLAGS) $(NEXT_INC) -DAPB_ARENA -o $@ tools/arena/web/arena.c $(NEXT_SRC) \
+	    core/next/seeing.c $(CORE_SRC)
 
 # Talk while exploring (docs/rooms.md, Talk): the story VM and the v0 rules, playing the
 # talk Departure (content/sidings/yards-talk/), waiting on the page with Asyncify.

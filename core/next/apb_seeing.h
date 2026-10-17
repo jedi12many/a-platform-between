@@ -13,7 +13,7 @@
 #include "apb.h"
 
 #define APB_SEE_PARTY_MAX   4
-#define APB_SEE_BANDS_MAX   16
+#define APB_SEE_BANDS_MAX   24     /* an 80 x 40 open floor has up to 19 (walkable / 150) */
 #define APB_SEE_NONE        0xFF   /* a distance never checked at */
 
 enum { APB_LIGHT_DAY = 0, APB_LIGHT_DUSK, APB_LIGHT_NIGHT };

@@ -25,6 +25,10 @@
 //   node native.cjs URL talk -            talk (docs/rooms.md, Talk): yard 14, Vell beside
 //                                         the start; yard 2, a parley through the first door
 //   node native.cjs URL scale -          the board's scale at a few window sizes
+//   node native.cjs URL open YARD:CLASSES[:look=LOOK] walk|sneak|ambush   an open floor
+//                                         (docs/open-floors.md): to the stairs until a band
+//                                         sees you (or you fall on one), every step's checks,
+//                                         then the fight on its window, on Auto, to the end
 //   node native.cjs URL looks YARD [DIR]  explore in each look (and by floor): the start
 //                                         room's tiles as the board draws them (twice);
 //                                         DIR: a screenshot of each, LOOK.png
@@ -192,6 +196,72 @@ async function main() {
         return { fit: Math.min((r.width - 32) / w, (r.height - 32) / h), scale: view.scale, ox: view.ox, oy: view.oy };
       }));
       await p.close();
+    }
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
+  if (what === "open") {
+    /* An open floor (docs/open-floors.md): CODE is YARD:CLASSES[:look=LOOK]; ARG says how
+     * the party goes: walk, sneak (S first), or ambush (sneaking, and A on the first band
+     * spotted near enough). To the stairs until a fight starts, every step's checks
+     * (X.seeTrace); then the fight on its window on Auto (fast), back to walking. */
+    const out = { errors };
+    const [yard, party, look] = code.split(":");
+    await page.goto(url + "#explore=" + yard + ":" + party + ":open" + (look ? ":" + look : ""));
+    await until("explore");
+    if (arg !== "walk") await page.keyboard.press("s");
+    out.start = await page.evaluate(() => {
+      const x = window.arena.explore(), t = x.party.map((c) => window.arena.travelers()[c]);
+      return { o: x.o, light: x.light, bands: x.bands.map((b) => ({ x: b.x, y: b.y, hiding: b.hiding, foes: b.foes,
+               sense: Math.max(...b.foes.map((f) => window.arena.foes()[f.name].sense)),
+               stealth: Math.max(...b.foes.map((f) => window.arena.foes()[f.name].stealth)) })),
+               party: t.map((c) => ({ notice: c.notice, stealth: c.stealth })), sneak: !!x.sneak,
+               side: document.getElementById("cards").innerText };
+    });
+    await page.evaluate(() => { const s = window.arena.explore().o.stairs; window.arena.walkTo(s[0], s[1]); });
+    out.ambushed = false;
+    for (let i = 0; i < 600; ++i) {
+      const st = await page.evaluate(() => ({ mode: window.arena.state().mode, floor: window.arena.explore().floor,
+                                               b: window.arena.buttons() }));
+      if (st.mode !== "explore" || st.floor > 1) break;
+      if (arg === "ambush" && st.b.some((t) => t && t.startsWith("Ambush"))) {
+        out.ambushed = true;
+        out.drawn = await page.evaluate(() => {                /* before: what's drawn of the bands */
+          const x = window.arena.explore(), f = window.arena.state().fight;
+          return { foes: f.st.fighters.filter((g) => g.side === 1).map((g) => [g.x, g.y]).sort(),
+                   spotted: x.bands.filter((b) => b.spotted && !b.cleared).flatMap((b) => b.foes.map((g) => [g.x, g.y])).sort(),
+                   unspotted: x.bands.filter((b) => !b.spotted).length };
+        });
+        await page.keyboard.press("a");
+        break;
+      }
+      await page.waitForTimeout(100);
+    }
+    await page.waitForTimeout(300);
+    const at = () => page.evaluate(() => {
+      const x = window.arena.explore(), s = window.arena.state();
+      return { mode: s.mode, floor: x.floor, trace: x.seeTrace, win: x.win, fightBand: x.fightBand ? x.fightBand.k : -1,
+               spec: s.S && s.S.native && s.S.native.spec, map: s.fight && s.fight.st.map, x: x.x, y: x.y,
+               fighters: s.fight && s.fight.st.fighters.map((f) => [f.side, f.x, f.y]), round: s.fight && s.fight.st.round,
+               shown: (s.fight && s.fight.explore) ? s.fight.st.fighters.length - x.party.length : null,
+               cleared: x.bands.map((b) => b.cleared), spotted: x.bands.map((b) => b.spotted),
+               log: Array.from(document.querySelectorAll("#log li")).map((li) => li.textContent) };
+    });
+    out.met = await at();
+    if (out.met.mode === "talk") {
+      await page.waitForFunction(() => window.arena.talk().choices.indexOf("Fight") >= 0, null, { timeout: 20000 });
+      await page.evaluate(() => window.arena.say(window.arena.talk().choices.indexOf("Fight")));
+      await page.waitForFunction(() => window.arena.state().mode !== "talk", null, { timeout: 20000 });
+      out.met = await at();
+      out.talked = true;
+    }
+    if (out.met.mode !== "explore") {
+      await page.keyboard.press("z");
+      await page.keyboard.press("t");
+      await page.waitForFunction(() => ["explore", "lost"].includes(window.arena.state().mode), null, { timeout: 120000 });
+      await page.waitForTimeout(200);
+      out.after = await at();
     }
     console.log(JSON.stringify(out));
     await browser.close();

@@ -741,9 +741,14 @@ def rooms():
         travelers[cls] = {"name": arena.REG["classes"][cls]["display"], "passport": arena.passport.encode(ch),
                           "weapon": item_id(t["weapon"]), "figure": arena.DEFAULT_RACE[cls],
                           "powers": t["powers"],
-                          "skills": {k: arena.rating(ch, k.upper()) for k in ("melee", "ranged", "channel", "athletics")}}
+                          "skills": {k: arena.rating(ch, k.upper()) for k in ("melee", "ranged", "channel", "athletics")},
+                          # Seeing (docs/open-floors.md): Notice is Wits or Intuition, the better
+                          "notice": max(ch["stats"][arena.STAT["WITS"]], arena.rating(ch, "INTUITION")),
+                          "stealth": arena.rating(ch, "STEALTH")}
+    senses = arena.registry.load_senses()
     foes = {name: {"line": arena.foe_line(name, 0, 0).split(" ", 3)[3], "figure": name,
-                   "name": arena.REG["foes"][name]["display"]} for name in gen.POOL}
+                   "name": arena.REG["foes"][name]["display"],
+                   "sense": senses[name]["sense"], "stealth": senses[name]["stealth"]} for name in gen.POOL}
     return {"travelers": travelers, "foes": foes, "cache": {n: item_id(n) for n in gen.CACHE}}
 
 
