@@ -178,6 +178,53 @@ def check_open(rng):
           f"the doc's promises (" + ", ".join(f"{v} {k}" for k, v in sorted(sizes.items()))
           + f"; {n_bands} bands, {n_foes} foes)")
 
+def fight_cases(rng):
+    """Fights on open floors: each band of some random floors, with the leader somewhere
+    near it (or anywhere), as (floor, band, leader)."""
+    cases = []
+    for _ in range(60):
+        y, fl = rng.randrange(65536), rng.randrange(1, 13)
+        f = rooms.build_open(y, fl)
+        for k, b in enumerate(f["bands"]):
+            if rng.randrange(4):
+                lx = max(0, min(f["w"] - 1, b["x"] + rng.randrange(-9, 10)))
+                ly = max(0, min(f["h"] - 1, b["y"] + rng.randrange(-9, 10)))
+            else:
+                lx, ly = rng.randrange(f["w"]), rng.randrange(f["h"])
+            cases.append((y, fl, k, lx, ly))
+    return cases
+
+
+def check_fights(rng):
+    """A fight's window and the party's places (docs/open-floors.md, Where the fight is):
+    rooms.js's fightWindow and fightPlaces as the reference's."""
+    cases = fight_cases(rng)
+    script = ("const R = require(process.argv[1]); const cases = JSON.parse(process.argv[2]);"
+              "console.log(JSON.stringify(cases.map(([y, f, k, lx, ly]) => {"
+              " const o = R.buildOpen(y, f), b = o.bands[k], w = R.fightWindow(b.foes, [lx, ly], o.w, o.h);"
+              " const rows = []; for (let j = 0; j < R.H; ++j) rows.push(o.rows[w[1] + j].slice(w[0], w[0] + R.W));"
+              " const room = { rows: rows, foes: b.foes.map(e => ({ x: e.x - w[0], y: e.y - w[1] })) };"
+              " return [w, R.fightPlaces(room, [lx - w[0], ly - w[1]], 4)]; })));")
+    js = json.loads(subprocess.run(["node", "-e", script, os.path.join(ROOT, "tools", "arena", "web", "rooms.js"),
+                                    json.dumps(cases)], capture_output=True, text=True, check=True).stdout)
+    same, outside = 0, 0
+    for (y, fl, k, lx, ly), got in zip(cases, js):
+        o = rooms.build_open(y, fl)
+        b = o["bands"][k]
+        w = rooms.fight_window(b["foes"], (lx, ly), o["w"], o["h"])
+        rows = [o["rows"][w[1] + j][w[0]:w[0] + rooms.W] for j in range(rooms.H)]
+        room = {"rows": rows, "foes": [{"x": e["x"] - w[0], "y": e["y"] - w[1]} for e in b["foes"]]}
+        want = [w, rooms.fight_places(room, (lx - w[0], ly - w[1]), 4)]
+        if got != want:
+            fail(f"yard {y} floor {fl} band {k + 1}, the leader at {lx},{ly}: rooms.js puts the fight at "
+                 f"{got}, the reference at {want}")
+            continue
+        same += 1
+        outside += not (w[0] <= lx < w[0] + rooms.W and w[1] <= ly < w[1] + rooms.H)
+    print(f"ok   {same} of {len(cases)} fights' windows and the party's places the same from rooms.js "
+          f"as from the reference ({outside} with the leader too far to fit)")
+
+
 def main():
     count = int(sys.argv[1]) if len(sys.argv) > 1 else 1000
     rng = random.Random(1300)
@@ -228,6 +275,7 @@ def main():
     print(f"ok   {fan_ok} of {len(fan_cases)} parties fanned out the same by the page as by the reference, "
           f"each on squares of their own")
     check_open(rng)
+    check_fights(rng)
     print(f"rooms: {failures} failed")
     return 1 if failures else 0
 

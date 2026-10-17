@@ -252,6 +252,43 @@ def fan_out(room, lead, n):
     return [list(p) for p in out]
 
 
+# ------------------------------------------------------------------ a fight on an open floor
+
+def fight_window(foes, leader, fw, fh):
+    """The window a fight on an open floor is on (docs/open-floors.md, Where the fight is):
+    W x H inside the floor (fw x fh), holding the band's foes and the leader, its middle
+    nearest the middle between them (the band's middle: halfway across its foes); if they
+    can't both fit, round the band. The first best, rows down then across. (In quarters,
+    so it's whole numbers: the same order as rooms.js's halves and quarters.)"""
+    xs, ys = [f["x"] for f in foes], [f["y"] for f in foes]
+    mx2, my2 = min(xs) + max(xs), min(ys) + max(ys)              # twice the band's middle
+    cx4, cy4 = mx2 + 2 * leader[0], my2 + 2 * leader[1]          # 4 x the middle between
+    best, bk = None, None
+    for y0 in range(fh - H + 1):
+        for x0 in range(fw - W + 1):
+            if not all(x0 <= f["x"] < x0 + W and y0 <= f["y"] < y0 + H for f in foes):
+                continue
+            inside = x0 <= leader[0] < x0 + W and y0 <= leader[1] < y0 + H
+            k = (0 if inside else 4000) + abs(4 * x0 + 2 * W - (cx4 if inside else 2 * mx2)) \
+                + abs(4 * y0 + 2 * H - (cy4 if inside else 2 * my2))
+            if best is None or k < bk:
+                best, bk = [x0, y0], k
+    return best or [0, 0]
+
+
+def fight_places(room, lead, n):
+    """Where a party of n stands on the window (room: its rows and foes, relative to it):
+    fanned out round the leader (lead, relative to the window: kept inside it), the
+    leader's own square left out if it can't be stood on or a foe's on it; the last place
+    repeated if there aren't n."""
+    lx, ly = max(0, min(W - 1, lead[0])), max(0, min(H - 1, lead[1]))
+    fan = fan_out(room, (lx, ly), n + 1)
+    if len(fan) > 1 and (int(room["rows"][ly][lx]) not in STANDS
+                         or any((f["x"], f["y"]) == (lx, ly) for f in room["foes"])):
+        fan = fan[1:]
+    return [fan[min(k, len(fan) - 1)] for k in range(n)]
+
+
 # ------------------------------------------------------------------ open floors
 
 ROUGH, COVER, HIGH = 3, 4, 6

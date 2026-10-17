@@ -152,9 +152,10 @@ def main():
 
     floor = walk.Floor(args.yard, args.floor, open_floor=args.open, unseen=args.unseen)
     script = run_walk.sticks(floor)
-    frames = args.frames or len(script)
+    frames = args.frames or run_walk.walk_frames(floor, script)
+    script += [0xFF] * (frames + 10 - len(script))
     syms = run_walk.labels(args.labels)
-    c64 = run_walk.C64(open(args.prg, "rb").read(), syms, script + [0xFF] * 10)
+    c64 = run_walk.C64(open(args.prg, "rb").read(), syms, script)
     c64.snap = {p for p in range(frames + 2) if (p + 1) % args.every == 0}
     c64.run(frames + 2)
     records = {rec[0]: rec for rec in c64.frames}

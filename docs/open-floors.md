@@ -253,7 +253,10 @@ range: for playing.
   what they found is shown 8 frames after the step.
 - **A fight** is the battle screen on the window's squares: the window is copied out of
   the floor as a battle map, the walking engine's screen becomes the battle screen's,
-  and the view follows the turn with the same scroller.
+  and the view follows the turn with the same scroller. Its setup is built
+  ([walk.md](walk.md), *The fight*, W6): the window, its terrain, the party's places and
+  the band's foes worked out as `rooms.js` does, the camera easing to the window and the
+  travelers walking to their places. The battle waits for rules v1 in 6502.
 
 ## Building it, in order
 
@@ -274,7 +277,8 @@ range: for playing.
    the limit (built: W4 in [walk.md](walk.md); `build/walk-open.prg` walks yard 48213's
    sixth, 80 x 40, to its stairs, held to `tools/walk/walk.py` frame by frame); seeing in
    6502 (built: W5; `build/walk-seen.prg` walks yard 48213's third, its bands hidden till
-   spotted, until one sees the party); then the fight on the window (W6).
+   spotted, until one sees the party); the fight set up on its window (built: W6); then the
+   battle on it, with rules v1 in 6502.
 
 ## Walking an open floor, built
 
