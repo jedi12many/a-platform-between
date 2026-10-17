@@ -124,8 +124,8 @@ def check_tabs():
     if got["art"]["save"] != "Download" or got["art"]["studio_nav"]:
         problems.append(f"the art desk on the site: Save says {got['art']['save']!r}, studio nav shown "
                         f"{got['art']['studio_nav']}")
-    if got["arena"]["listed"] != ["E13"] + scenarios.PLAYING:      # exploring (docs/rooms.md), then those
-        problems.append(f"the arena lists {got['arena']['listed']}, not E13 and {scenarios.PLAYING}")
+    if got["arena"]["listed"] != ["E14"] + scenarios.PLAYING:      # exploring (docs/open-floors.md), then those
+        problems.append(f"the arena lists {got['arena']['listed']}, not E14 and {scenarios.PLAYING}")
     if got["home"] != {"away": False, "hash": ""}:
         problems.append(f"Platform didn't come back home: {got['home']}")
     if got["link"]["code"] != "R-15":
