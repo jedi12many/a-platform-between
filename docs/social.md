@@ -3,13 +3,19 @@
 *A proposal for rules v1, not built. Seeing ([open-floors.md](open-floors.md), *Being
 seen*) made Stealth and Notice an **opposed** check: the other side has a number of its
 own, and it sets your TN. This page does the same for talking people round, telling when
-they lie, and haggling over gear, with the skills we already have.*
+they lie, and haggling over gear, with the skills we already have; and how gear changes
+hands at the Waystation: tokens, the station's traders, and the Exchange, where travelers
+sell their collectibles to each other.*
 
 Today a story's `check PERSUADE hard` rolls against a TN the writer picks (110, 120...).
 A stubborn guard and a gullible clerk differ only in the word the writer chose, people
 never lie, and trades are fixed choices (Vell's "padded coat for a chain coat"). With
 this, a person has numbers of their own, written once, and every check against them
 follows; they can lie to you; and any trader can haggle over anything in the pack.
+
+**Gear never buys Debt down.** Debt is your fare home, and it's paid in tickets: the
+jobs you do. Nothing here turns gear, or anything else, into Debt paid, so going home is
+never something you can farm or buy ([world-bible.md](world-bible.md), *The endgame*).
 
 ## No new skills
 
@@ -119,8 +125,10 @@ say convincingly.)
 
 The Passport carries no purse: a traveler has gear (6 equipped, 6 in the pack), Debt, and
 nothing else, and a new Passport format is the only way to add coin. So on a trip, trade is
-**barter: gear for gear**. That suits the world: the station's money is Debt, and down a
-yard or in a realm off the line, what you're carrying is what you're worth.
+**barter only: gear for gear**. That suits the world: down a yard or in a realm off the
+line, what you're carrying is what you're worth, and the station's money means nothing
+there. A trip's receipt and Travel Stamp stay as they are: items given and taken, never
+money.
 
 ### What gear is worth
 
@@ -169,17 +177,100 @@ worth 2) costs worth 3: the iron sword and the padded coat (2 + 1). With the cou
   ([rooms.md](rooms.md), *Talk*); now that's simply her mood (hostile: +20 on the haggle),
   and talking her round first can still change it.
 
-### At the Waystation: Debt as money
+## At the Waystation: tokens
 
-At the Waystation (the website's shop, [waystation-web.md](waystation-web.md)), the
-traders deal in **Debt**, as the station does: selling gear **pays Debt down**, buying it
-**adds Debt**, at a fixed rate a point of worth (say 10 Debt), with the same haggle. That
-keeps the Passport as it is (Debt is already on it), and makes gear and the trip home the
-same currency, which is the world's point: everything you carry could be your fare.
+At home, between trains, the station has a money of its own: **tokens**, brass, stamped
+with the Waystation's clock. Tokens buy and sell gear and collectibles at the Waystation,
+and nothing else.
 
-The catch is the trip home: gear sold for Debt is a way to buy it down. So the station
-buys at **half** (and only what it hasn't seen you sell before), and Debt from trips stays
-the main way down. **This needs your decision** (*Still open*).
+- **They're the Waystation's, not the Passport's.** A traveler's tokens are kept in the
+  station's ledger, with their lost-and-found (on the player's account,
+  [waystation-web.md](waystation-web.md)), never on a Passport, a Boarding Pass or a
+  Travel Stamp. No format changes, and no client ever sees a token: a C64 player spends
+  them on the website like everyone else, between trips.
+- **They never touch Debt.** Tokens can't pay a fare, and Debt can't be turned into
+  tokens. They can't be bought with real money either: they're earned by selling gear
+  and collectibles, and those are earned on trips.
+- **A traveler's own.** Each traveler has their own purse, as they have their own
+  lost-and-found. A player's travelers can pass gear to each other through the
+  lost-and-found, but tokens stay with the traveler who earned them (or the roster would
+  be one purse, and a new traveler a rich one).
+
+### The station's traders
+
+The Waystation's traders (the website's shop) buy and sell at fixed token prices from an
+item's worth (*What gear is worth*):
+
+| | Tokens |
+|---|---|
+| They sell an item at | worth × 10 |
+| They buy one from you at | worth × 5 |
+
+They're people like any others, with Resolve, Guile and Insight: your traveler haggles once
+a visit, and the rate applies to their prices (a fail: double what they sell at, and they
+buy at half of half). Their stock is the season's ([seasons.md](seasons.md)): the gear a
+station's realms are known for, refreshed as Departures come out, and what travelers have
+sold them.
+
+Selling to the station is how a traveler turns gear into tokens; half is the price of
+having a buyer whenever you want one. The station doesn't deal in collectibles: one is
+worth what another traveler will pay for it, at the Exchange.
+
+### Collectibles
+
+Some things found on trips are worth having for themselves, not for what they do: a
+**collectible**. The bell from the clock tower that was stolen on schedule, a ticket punched
+in a realm that's since faded, a rust-guard's shift badge, a pressed flower from 1,000,000
+BC. They're rare, and travelers trade them.
+
+- **No rules.** A collectible has no tier, no damage, nothing on a sheet: it can't make a
+  traveler stronger, so it can be traded freely without unbalancing anything.
+- **Kept at the Waystation**, in the traveler's **collection** (a cabinet in their room),
+  not on the Passport: they don't take a pack slot, and the Passport's format doesn't
+  change. A trip that finds one gives it like any item (`~ give`; the Travel Stamp's 8 new
+  items count it), and it goes straight to the collection when the stamp lands.
+- **Rare, and numbered.** Each kind (in the registry, with the items, as an archetype of its
+  own: `curio`) has a **rarity**, and copies are numbered as they land: *No. 14 of 50*. A
+  Departure gives one on a hard road (a crit, a hidden way, a choice few make), and the
+  reward manifest still bounds it. Some come only in a season, and are never made again.
+- **Some are part of the story:** an Echo's keepsake, a Legend's relic
+  ([echoes.md](echoes.md)). These are shown in the collection but never sold.
+
+### The Exchange
+
+A board in the concourse where travelers sell to each other, by asking price, with the
+owner away. It's for **collectibles**; whether gear goes on it too is open (*Still open*):
+
+- **Listing:** a traveler puts something from their collection (or, if gear's allowed,
+  their lost-and-found or pack) up for a price in tokens. It **leaves their traveler** at once, held by the station: it's on no Passport
+  issued after that, can't be carried, and can't be listed twice. Taken down, it goes back
+  to their lost-and-found.
+- **Buying:** another traveler pays the price and the item is theirs, in their
+  collection (or lost-and-found), at once; the seller's purse gets the tokens **while they're away**, less
+  a fee to the station (1 token in 10: tokens leave the game, so they keep their worth),
+  and a note waiting for them: *Sold: the clock-tower bell, No. 14 of 50, to Wren, 45
+  tokens.*
+- **No haggling:** a listing's price is its price. (Haggling is for people the rules play;
+  a player's price is the player's.)
+- **Expiry:** a listing nobody buys comes down after a while (a season's week, say), back to
+  where it came from, so the board stays alive.
+- **Not while travelling:** a traveler with a ticket out (a Boarding Pass issued, its
+  stamp not landed) can't list, buy or take down: the trip might use the item up or trade
+  it away, and the stamp lands on the traveler as they are when it comes back
+  ([boarding.md](boarding.md), *Landing a stamp*). So nothing on the Exchange is ever also
+  on a train.
+
+Why it holds: since W2 every Boarding Pass is issued by the Waystation from the traveler as
+its ledger has them, and stamps land against its tickets, so an old Passport with a sold
+item on it boards nobody (an old code is a keepsake, not a traveler). Before that (W1,
+stamps on trust) there's no Exchange.
+
+### Trading between travelers
+
+Two travelers trading directly (friends at the bar) is the Exchange with a price of
+nothing, offered to one traveler; or a swap, both offers on the table and both accepting.
+Collectibles, always; gear, as the Exchange decides. Inside a party on a trip, gear passes
+freely, as it does between your own slots.
 
 ## Quest Script
 
@@ -269,14 +360,25 @@ As seeing was:
 4. **The explore prototype:** Vell's camp as a `trade`, the parleys as `check ... vs @foe`,
    in `content/sidings/yards-talk/`.
 5. **The C64:** with rules v1 in 6502, after the battle.
+6. **The Waystation** (W3, [waystation-web.md](waystation-web.md)): tokens in the
+   station's ledger, collections, the station's traders, the Exchange, trading between
+   travelers; collectibles in the registry (`curio`), with a rarity each. It
+   needs W2's accounts and ticket ledger first.
 
 ## Still open
 
-- **Debt as the station's money**: trading gear for Debt at the Waystation, at what rate,
-  and whether selling can buy a ticket home (*At the Waystation*). The alternative is
-  barter everywhere, the station's traders included.
-- **Worth beyond tier**: a unique item (MERIDIAN's core) or a quest item: worth set by
-  hand, or not for trade at all.
+- **The token prices**: worth × 10 to buy, × 5 to sell, and the Exchange's fee of 1 in 10
+  want trying once there's loot to sell; so does what a trip's loot is worth in tokens.
+- **Gear on the Exchange**, or collectibles only. Collectibles only keeps the market from
+  outfitting a new traveler with an old one's loot; gear too makes the market busier, and
+  wants a limit: gear only up to a tier the buyer's level allows ([turn.md](turn.md),
+  *Levels and gear*), the same limit at the station's traders.
+- **Things that can't be sold**: a unique or quest item (MERIDIAN's core, the ticket stub),
+  a story keepsake: kept, never listed.
+- **How rare is rare**: how many of a collectible a season makes, and whether a numbered run
+  can sell out for good.
+- **Worth beyond tier**: an item worth more than its tier (a rare one, a set): worth set by
+  hand in the registry.
 - **NPCs working on you**: when a person persuades a traveler (a con, a temptation),
   whether the player is ever bound by the roll, or only told how it feels. (Proposal: told,
   never bound; your choices are yours.)

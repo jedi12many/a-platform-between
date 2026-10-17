@@ -63,4 +63,5 @@ modern-only. To be decided per platform.
 
 - Does a roster share Debt, or does each character carry their own? (Proposal: each their
   own. Going home is personal.)
-- Can roster characters trade items at the Waystation? (Proposal: yes, through the lost-and-found.)
+- Can roster characters trade items at the Waystation? (Proposal: yes, gear through the
+  lost-and-found; tokens stay with each traveler: [social.md](social.md#at-the-waystation-tokens).)
