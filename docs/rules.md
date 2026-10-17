@@ -18,6 +18,7 @@ an idea.
 | 6 | [echoes.md](echoes.md) | Choices that follow you, in the story only: kinds, positive and negative states (negative ones in solo Departures only), party menus, reach, the Legend kept at the Waystation and the pass carrying only what a Departure needs | Passport Echoes in the engine; the rest drafted |
 | 7 | [bestiary.md](bestiary.md) | Making foes: a standard foe by level, roles, how many make a fight, the bestiary measured | draft |
 | 8 | [parties.md](parties.md), [party-play.md](party-play.md) | Solo and party Departures; a party's choices and fights | draft |
+| 8b | [social.md](social.md) | Talking, reading people, and trading: Persuade against a person's Resolve, Intuition against their Guile, lies, a party talking as a group; barter by worth (from tier) at a rate set by one haggle; Debt as the station's money | proposal |
 | 9 | [tabletop.md](tabletop.md) | Platform 0: playing at a table, and keeping the rules table-friendly | draft |
 | 10 | [arena.md](arena.md) | Testing the rules: a matchup fought a thousand times, and what it found | tool built |
 
@@ -35,6 +36,8 @@ The rules' open questions, in one place. Each page keeps its own too.
   fixes in [bestiary.md](bestiary.md#the-bestiary-today-measured).
 - **A traveler's own Ward**: none today, so foes' powers hit easily ([bestiary.md](bestiary.md#still-open)).
 - **The late game**: past level 40 gear has topped out ([bestiary.md](bestiary.md#still-open)).
+- **Trading for Debt** at the Waystation, and whether selling gear can buy a ticket home
+  ([social.md](social.md#still-open)).
 - **Stacking** buffs and debuffs, if playtests show runaway combinations.
 - **Companions**: per Departure only, or carried on the Passport? (Ally Echoes are story
   only: [echoes.md](echoes.md#story-not-rules).)
