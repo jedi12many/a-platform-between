@@ -43,24 +43,57 @@ function canvas(w, h) {
 }
 
 /* A row of multicolour dots, each two pixels wide, onto a canvas. */
-function paint(ctx, rows, colourOf, wide) {
+function paint(ctx, rows, colourOf, wide, tall) {
   var y, x, c;
+  tall = tall || 1;
   for (y = 0; y < rows.length; ++y) {
     for (x = 0; x < rows[y].length; ++x) {
       c = colourOf(rows[y][x]);
       if (c === null) continue;
       ctx.fillStyle = ART.palette[c];
-      ctx.fillRect(x * wide, y, wide, 1);
+      ctx.fillRect(x * wide, y * tall, wide, tall);
     }
   }
+}
+
+/* The C64's scale (C): the board drawn as the cartridge draws it, 16-pixel squares
+ * (tiles16) under the same figures, so a figure stands taller than its square, its
+ * shared colour a black. The board keeps its squares of SQ; at the C64's scale they're
+ * the tiles16 art at twice the size, and the figures twice theirs: the C64's proportions.
+ * A preference, kept in the browser. */
+var c64 = false;
+try { c64 = localStorage.getItem("apb-c64") === "1"; } catch (e) { /* (private windows) */ }
+function toggleC64() {
+  c64 = !c64;
+  try { localStorage.setItem("apb-c64", c64 ? "1" : "0"); } catch (e) { /* as above */ }
+  if (fight && fight.explore) exploreSide();
+  actions();
+}
+function scaleButton() {
+  return ["C", c64 ? "Scale: the C64's" : "Scale: large", toggleC64, false, "", false, "toggle"];
+}
+
+/* Where a figure is drawn on its square, and how big: its sprite's corner, its scale,
+ * and its shadow (centre x, y, radii). */
+function figurePlace() {
+  return c64 ? { x: -10, y: -12, k: 2, sx: 16, sy: 30, rx: 15, ry: 3.5 }
+             : { x: 3, y: 8, k: 1, sx: 16, sy: 29, rx: 9, ry: 2.5 };
+}
+
+/* A figure's sprite at (px, py), in squares. */
+function drawFigure(img, px, py) {
+  var p = figurePlace();
+  ctx.drawImage(img, px * SQ + p.x, py * SQ + p.y, img.width * p.k, img.height * p.k);
 }
 
 /* A tile; seamless: without the faint seam on its right and bottom edges, so a room seen
  * while exploring shows no grid (docs/rooms.md): its last column and row are the ones
  * beside them again. On the C64 that's a second copy of the tiles' characters. */
 function tileSprite(name, seamless, look) {
-  var key = "tile:" + (look || "") + ":" + name + (seamless ? ":seamless" : ""), c, rows;
-  var t = (look && ART.looks && ART.looks[look]) || ART.tiles, e = t.entries[name] || t.entries.open;
+  var key = "tile:" + (c64 ? "16:" : "") + (look || "") + ":" + name + (seamless ? ":seamless" : ""), c, rows;
+  var t = c64 ? (look && ART.looks16 && ART.looks16[look]) || ART.tiles16
+              : (look && ART.looks && ART.looks[look]) || ART.tiles;
+  var e = t.entries[name] || t.entries.open;
   if (sprites[key]) return sprites[key];
   c = canvas(SQ, SQ);
   rows = !seamless ? e.rows : e.rows.slice(0, -1).map(function (r) { return r.slice(0, -1) + r[r.length - 2]; });
@@ -68,21 +101,21 @@ function tileSprite(name, seamless, look) {
   paint(c.getContext("2d"), rows, function (d) {
     return d === "k" ? t.background : d === "d" ? t.shared[0] : d === "g" ? t.shared[1]
       : ART.colours.indexOf(e.option);
-  }, 2);
+  }, c64 ? 4 : 2, c64 ? 2 : 1);                  /* tiles16: 8 x 16 dots, each 4 x 2 here */
   return (sprites[key] = c);
 }
 
 /* A figure, outlined in black so it stands off any floor: 26 x 23. */
 function figureSprite(name, grey) {
-  var key = "fig:" + name + (grey ? ":grey" : ""), f = ART.figures, e, body, c, ctx, dx, dy;
+  var key = "fig:" + name + (grey ? ":grey" : "") + (c64 ? ":c64" : ""), f = ART.figures, e, body, c, ctx, dx, dy;
   if (sprites[key]) return sprites[key];
   e = f.entries[name] || f.entries.STRANGER;
   body = canvas(24, 21);
   paint(body.getContext("2d"), e.rows, function (d) {
     if (d === ".") return null;
     if (grey) return d === "c" ? 12 : 11;
-    return d === "a" ? f.shared[0] : d === "b" ? f.shared[1] : ART.colours.indexOf(e.option);
-  }, 2);
+    return d === "a" ? (c64 ? 0 : f.shared[0]) : d === "b" ? f.shared[1] : ART.colours.indexOf(e.option);
+  }, 2);                                          /* (a: black on the cartridge) */
   c = canvas(26, 23);
   ctx = c.getContext("2d");
   var shadow = canvas(24, 21), sctx = shadow.getContext("2d");
@@ -1150,7 +1183,7 @@ function frame(now) {
     if (s.alpha <= 0) return;
     if (i === fight.me && (mode === "turn" || mode === "aim" || mode === "dash" || mode === "cast") && s.state === 0) {
       ctx.globalAlpha = 0.3;
-      ctx.drawImage(figureSprite(S.native.figures[i]), px * SQ + 3, py * SQ + 8);
+      drawFigure(figureSprite(S.native.figures[i]), px, py);
       ctx.globalAlpha = 1;
       px = mode === "dash" ? fight.dash.x : fight.plan.x;
       py = mode === "dash" ? fight.dash.y : fight.plan.y;
@@ -1166,6 +1199,7 @@ function frame(now) {
       ctx.save();
       ctx.translate(px * SQ + 16, py * SQ + 22);
       ctx.rotate(Math.PI / 2);
+      ctx.scale(figurePlace().k, figurePlace().k);
       ctx.globalAlpha = 0.6;
       ctx.drawImage(figureSprite(S.native.figures[i], true), -13, -12);
       ctx.restore();
@@ -1175,13 +1209,14 @@ function frame(now) {
     /* A shadow, and a ring for whoever's turn it is. */
     ctx.fillStyle = "rgba(0,0,0,.35)";
     ctx.beginPath();
-    ctx.ellipse(px * SQ + 16, py * SQ + 29, 9, 2.5, 0, 0, 2 * Math.PI);
+    var fp = figurePlace();
+    ctx.ellipse(px * SQ + fp.sx, py * SQ + fp.sy, fp.rx, fp.ry, 0, 0, 2 * Math.PI);
     ctx.fill();
     if (fight.whose === i) {
       ctx.strokeStyle = f.side === 0 ? "rgba(111,179,255,.9)" : "rgba(239,107,91,.9)";
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.ellipse(px * SQ + 16, py * SQ + 29, 11, 3.5, 0, 0, 2 * Math.PI);
+      ctx.ellipse(px * SQ + fp.sx, py * SQ + fp.sy, fp.rx + 2, fp.ry + 1, 0, 0, 2 * Math.PI);
       ctx.stroke();
     }
     img = figureSprite(S.native.figures[i]);
@@ -1189,19 +1224,19 @@ function frame(now) {
       /* Into the pit: smaller and smaller. */
       ctx.save();
       ctx.translate(px * SQ + 16, py * SQ + 20);
-      ctx.scale(1 - s.fall, 1 - s.fall);
+      ctx.scale((1 - s.fall) * fp.k, (1 - s.fall) * fp.k);
       ctx.drawImage(img, -13, -12);
       ctx.restore();
       ctx.globalAlpha = 1;
       return;
     }
-    ctx.drawImage(img, px * SQ + 3, py * SQ + 8);
+    drawFigure(img, px, py);
     fl = (now - s.flash) / 180;
     if (s.flash && fl < 1) {
       ctx.globalAlpha = 1 - fl;
       ctx.globalCompositeOperation = "lighter";
-      ctx.drawImage(img, px * SQ + 3, py * SQ + 8);
-      ctx.drawImage(img, px * SQ + 3, py * SQ + 8);
+      drawFigure(img, px, py);
+      drawFigure(img, px, py);
       ctx.globalCompositeOperation = "source-over";
     }
     ctx.globalAlpha = s.alpha;
@@ -1294,6 +1329,8 @@ function buttons() {
               ["gap"],
               ["T", auto ? "Auto: on" : "Auto: off", toggleAuto, false, "", false, "toggle"],
               ["Z", fast ? "Fast: on" : "Fast: off", toggleFast, false, "", false, "toggle"],
+            scaleButton(),
+              scaleButton(),
               ["X", "Leave", leave]]);
     }
     return [["Arrows", "Move (or click a lit square)", null, false, "", false, "hint"],
@@ -1310,6 +1347,7 @@ function buttons() {
             ["gap"],
             ["T", auto ? "Auto: on" : "Auto: off", toggleAuto, false, "", false, "toggle"],
             ["Z", fast ? "Fast: on" : "Fast: off", toggleFast, false, "", false, "toggle"],
+            scaleButton(),
             ["X", "Leave", leave]]);
   case "aim":
     return [["← →", "Next target", function () { cycle(1); }],

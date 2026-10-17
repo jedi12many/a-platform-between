@@ -25,6 +25,7 @@
 //   node native.cjs URL talk -            talk (docs/rooms.md, Talk): yard 14, Vell beside
 //                                         the start; yard 2, a parley through the first door
 //   node native.cjs URL scale -          the board's scale at a few window sizes
+//   node native.cjs URL c64 -            the C64's scale (C): tiles16 and the cartridge's figures
 //   node native.cjs URL open YARD:CLASSES[:look=LOOK] walk|sneak|ambush   an open floor
 //                                         (docs/open-floors.md): to the stairs until a band
 //                                         sees you (or you fall on one), every step's checks,
@@ -179,6 +180,37 @@ async function main() {
     await page.waitForTimeout(500);
     out.walked = await M();
     if (arg) await page.screenshot({ path: arg });
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
+  if (what === "c64") {
+    /* The C64's scale (C): explore in forest2, C pressed; the tiles as drawn (a dot of each
+     * row of every tile), a figure's a dots, the button, and C kept after a reload. */
+    const out = { errors };
+    await page.goto(url + "#explore=48213:WARDEN:scroll:look=forest2");
+    await until("explore");
+    const sample = () => page.evaluate(() => {
+      const hex = (c, x, y) => { const d = c.getContext("2d").getImageData(x, y, 1, 1).data;
+        return "#" + [d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, "0")).join(""); };
+      const tiles = {};
+      for (const name of ["open", "wall", "pit", "cover"]) {
+        const c = tileSprite(name, true, "forest2"), rows = [];
+        for (let y = 0; y < 16; ++y) { const r = []; for (let x = 0; x < 8; ++x) r.push(hex(c, x * 4 + 1, y * 2)); rows.push(r); }
+        tiles[name] = rows;
+      }
+      const f = figureSprite("HUMAN2"), fig = [];
+      for (let y = 0; y < 21; ++y) { const r = []; for (let x = 0; x < 12; ++x) r.push(hex(f, 1 + x * 2, 1 + y)); fig.push(r); }
+      return { c64: c64, tiles: tiles, figure: fig, buttons: window.arena.buttons() };
+    });
+    out.before = await page.evaluate(() => c64);
+    await page.keyboard.press("c");
+    out.on = await sample();
+    await page.reload();
+    await until("explore");
+    out.reloaded = await page.evaluate(() => c64);
+    await page.keyboard.press("c");
+    out.off = await page.evaluate(() => c64);
     console.log(JSON.stringify(out));
     await browser.close();
     return;

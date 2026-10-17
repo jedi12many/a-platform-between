@@ -1,6 +1,7 @@
 """The game's art (content/art/, read through tools/art.py) as one JSON file for the
 native arena (tools/arena/web/), which draws it on a canvas at a modern size: the figures,
-the effects, the 32-pixel tiles (the yard's, and each look's), and the C64's sixteen colours.
+the effects, the 32-pixel tiles (the yard's, and each look's), the 16-pixel ones the cartridge
+draws (for the arena's C64 scale), and the C64's sixteen colours.
 
     python3 tools/arena/web/art_json.py OUT.json
 """
@@ -35,6 +36,8 @@ def build(folder=None):
         "effects": {"shared": list(effects.shared), "entries": entries(effects)},
         "tiles": look(tiles),
         "looks": {name: look(art.load(art.tiles_file(32, name), folder)) for name in art.LOOKS},
+        "tiles16": look(art.load("tiles16", folder)),
+        "looks16": {name: look(art.load(art.tiles_file(16, name), folder)) for name in art.LOOKS},
     }
 
 

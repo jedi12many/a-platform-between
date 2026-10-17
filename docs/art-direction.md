@@ -32,7 +32,8 @@ python3 tools/artpreview.py figures out.png HUMAN HUMAN2 --zoom 6
 `scene` lays a look's tiles out as a small map with every terrain on it and figures
 standing there; `--against` puts another look beside it. The arena's explore prototype
 (`make studio`, http://localhost:8064/arena/, Explore the yards) lists every look,
-alternatives too, to walk around in.
+alternatives too, to walk around in; press **C** there for the C64's scale, the tiles16
+art under the figures as the cartridge draws them.
 
 ## Tiles: a look
 
