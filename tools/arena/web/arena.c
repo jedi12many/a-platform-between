@@ -34,6 +34,25 @@
  *   ar_equip(who, slot, item) gear from the pack: slot 0 the hand (0: bare-handed), slot 1
  *                             the body (0: no armor)
  *
+ * A fight's spec can also say who has the first round: `surprise travelers` (they
+ * ambushed the foes) or `surprise foes`.
+ *
+ * Seeing and being seen on an open floor (docs/open-floors.md, Being seen: the rules
+ * lab's core/next/seeing.c), for the explore prototype:
+ *
+ *   ar_see_begin(seed, spec)  set up a floor (seed 0: the dice go on from where they were);
+ *                             spec is lines:
+ *                               floor W H, then H rows of digits (the squares, APB_TILE_*)
+ *                               light day|dusk|night
+ *                               traveler STEALTH NOTICE        (marching order)
+ *                               band X Y SENSE STEALTH HIDING [SPOTTED SEEN ALERT PARTY_LAST
+ *                                   BAND_LAST]  (how it stands: carried over a rebuild)
+ *   ar_see_step(x, y, sneaking, lamp)   the leader steps to x, y: the checks, as events,
+ *                             and every band as it stands now; "fight" is 1 + the band that
+ *                             saw the party (0: none), "ambush" whether it hadn't been spotted
+ *
+ * The party's rolls and the bands' come from their own dice, apart from a fight's.
+ *
  * Plain C99, built only with Emscripten (`make arena-web`).
  */
 #include <stdarg.h>
@@ -45,6 +64,7 @@
 
 #include "apb.h"
 #include "apb_battle.h"
+#include "apb_seeing.h"
 
 static apb_rng rng;
 static apb_character chars[APB_FIGHTERS_MAX];
@@ -293,7 +313,8 @@ const char *ar_begin(unsigned seed, const char *spec)
         }
     }
     if (row < 0 || apb_battle_count() == 0) return refuse("no fight");
-    apb_battle_start(APB_SURPRISE_NONE);
+    apb_battle_start(strstr(spec, "\nsurprise travelers") ? APB_SURPRISE_TRAVELERS
+                     : strstr(spec, "\nsurprise foes") ? APB_SURPRISE_FOES : APB_SURPRISE_NONE);
     return end_reply(APB_NOBODY);
 }
 
@@ -492,4 +513,144 @@ const char *ar_equip(unsigned who, unsigned slot, unsigned item)
     apb_battle_rearm((uint8_t)who, &f);
     begin_reply();
     return end_reply((uint8_t)who);
+}
+
+/* ---------------------------------------------------------------- seeing */
+
+#define SEE_W_MAX 96
+#define SEE_H_MAX 48
+
+static apb_rng see_rng;
+static apb_seeing see;
+static uint8_t see_tiles[SEE_W_MAX * SEE_H_MAX];
+static apb_see_event see_ev[2 * APB_SEE_BANDS_MAX];
+
+EMSCRIPTEN_KEEPALIVE
+const char *ar_see_begin(unsigned seed, const char *spec)
+{
+    static char line[128];
+    static char word[16];
+    const char *p = spec;
+    size_t n;
+    int w = 0;
+    int h = 0;
+    int row = -1;
+    int v[10];
+    int k;
+    apb_see_band *b;
+
+    if (seed) apb_rng_seed(&see_rng, (uint16_t)seed);
+    memset(&see, 0, sizeof(see));
+    see.tiles = see_tiles;
+    while (*p) {
+        n = strcspn(p, "\n");
+        if (n >= sizeof(line)) n = sizeof(line) - 1;
+        memcpy(line, p, n);
+        line[n] = '\0';
+        p += strcspn(p, "\n");
+        if (*p) ++p;
+        if (row >= 0 && row < h) {
+            if (strlen(line) < (size_t)w) return refuse("a short row");
+            for (k = 0; k < w; ++k) {
+                if (line[k] < '0' || line[k] > '7') return refuse("a bad square");
+                see_tiles[row * w + k] = (uint8_t)(line[k] - '0');
+            }
+            ++row;
+            continue;
+        }
+        if (sscanf(line, "%15s", word) != 1) continue;
+        if (strcmp(word, "floor") == 0) {
+            if (sscanf(line, "%*s %d %d", &w, &h) != 2 || w < 1 || h < 1 || w > SEE_W_MAX
+                || h > SEE_H_MAX) {
+                return refuse("bad floor");
+            }
+            see.w = (uint8_t)w;
+            see.h = (uint8_t)h;
+            row = 0;
+        } else if (strcmp(word, "light") == 0) {
+            see.light = strstr(line, "night") ? APB_LIGHT_NIGHT : strstr(line, "dusk") ? APB_LIGHT_DUSK
+                        : APB_LIGHT_DAY;
+        } else if (strcmp(word, "traveler") == 0) {
+            if (see.n >= APB_SEE_PARTY_MAX || sscanf(line, "%*s %d %d", &v[0], &v[1]) != 2) {
+                return refuse("bad traveler");
+            }
+            see.stealth[see.n] = (uint8_t)v[0];
+            see.notice[see.n] = (uint8_t)v[1];
+            ++see.n;
+        } else if (strcmp(word, "band") == 0) {
+            v[5] = v[6] = v[7] = 0;
+            v[8] = v[9] = APB_SEE_NONE;
+            k = sscanf(line, "%*s %d %d %d %d %d %d %d %d %d %d", &v[0], &v[1], &v[2], &v[3], &v[4],
+                       &v[5], &v[6], &v[7], &v[8], &v[9]);
+            if (see.bands >= APB_SEE_BANDS_MAX || (k != 5 && k != 10) || row < h
+                || v[0] < 0 || v[1] < 0 || v[0] >= w || v[1] >= h) {
+                return refuse("bad band");
+            }
+            b = &see.band[see.bands++];
+            b->x = (uint8_t)v[0]; b->y = (uint8_t)v[1];
+            b->sense = (uint8_t)v[2]; b->stealth = (uint8_t)v[3]; b->hiding = (uint8_t)!!v[4];
+            b->spotted = (uint8_t)!!v[5]; b->seen = (uint8_t)!!v[6]; b->alert = (uint8_t)!!v[7];
+            b->party_last = (uint8_t)v[8]; b->band_last = (uint8_t)v[9];
+        }
+    }
+    if (row < 0 || row < h || see.n == 0) return refuse("no floor");
+    used = 0;
+    put("{\"bands\":%u}", see.bands);
+    return json;
+}
+
+static void put_help(const apb_see_help *h, uint8_t n)
+{
+    uint8_t i;
+
+    for (i = 0; i < n; ++i) {
+        put(i ? ",{" : "{");
+        put("\"roll\":%u,\"rating\":%u,\"tn\":%d,\"result\":%u,\"shift\":%d}", h[i].roll,
+            h[i].rating, h[i].tn, h[i].result, h[i].shift);
+    }
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char *ar_see_step(unsigned x, unsigned y, unsigned sneaking, unsigned lamp)
+{
+    uint8_t n;
+    uint8_t i;
+    const apb_see_event *e;
+    const apb_see_band *b;
+
+    if (!see.w || x >= see.w || y >= see.h) return refuse("no floor, or off it");
+    see.sneaking = (uint8_t)!!sneaking;
+    see.carried_light = (uint8_t)!!lamp;
+    see.fight = 0;
+    see.ambush = 0;
+    n = apb_seeing_step(&see, &see_rng, (uint8_t)x, (uint8_t)y, see_ev);
+    used = 0;
+    put("{\"events\":[");
+    for (i = 0; i < n; ++i) {
+        e = &see_ev[i];
+        put(i ? ",{" : "{");
+        put("\"kind\":\"%s\",\"band\":%u,\"d\":%u,\"automatic\":%u,\"outcome\":%u",
+            e->kind == APB_SEE_PARTY_LOOKS ? "party" : "band", e->band, e->d, e->automatic,
+            e->outcome);
+        if (!e->automatic) {
+            put(",\"base\":%d,\"base_rating\":%u,\"shift\":%d,\"mods\":%u,\"dist_mod\":%d,"
+                "\"tn\":%d,\"rating\":%u,\"roll\":%u,\"total\":%d,\"look_tn\":%d,\"result\":%u",
+                e->base, e->base_rating, e->shift, e->mods, e->dist_mod, e->tn, e->rating,
+                e->look.roll, e->look.total, e->look.tn, e->look.result);
+            put(",\"sneak\":[");
+            put_help(e->sneak, e->n_sneak);
+            put("],\"help\":[");
+            put_help(e->help, e->n_help);
+            put("]");
+        }
+        put("}");
+    }
+    put("],\"fight\":%u,\"ambush\":%u,\"bands\":[", see.fight, see.ambush);
+    for (i = 0; i < see.bands; ++i) {
+        b = &see.band[i];
+        put(i ? ",[%u,%u,%u,%u,%u]" : "[%u,%u,%u,%u,%u]", b->spotted, b->seen, b->alert,
+            b->party_last, b->band_last);
+    }
+    put("]}");
+    return json;
 }

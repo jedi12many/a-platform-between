@@ -567,6 +567,126 @@ def check_looks():
            "scenery on open ground, the same every time")
 
 
+def reference_checks(start, trace):
+    """The approach the page walked (the first step to the fight), played by the seeing
+    reference (tools/rules/seeing.py): its checks as (step, who looks, band, distance,
+    [(roll, total, tn, result) of every die, helpers first]), and how it ended."""
+    sys.path.insert(0, os.path.join(ROOT, "tools", "rules"))
+    import re
+    import seeing
+    o = start["o"]
+    case = {"seed": ((o["yard"] * 31 + o["floor"] * 977) & 0xFFFF) or 1,
+            "light": seeing.LIGHTS.index(start["light"]),
+            "tiles": [[int(c) for c in row] for row in o["rows"]],
+            "party": {"sneaking": start["sneak"], "light": False,
+                      "travelers": [{"stealth": t["stealth"], "notice": t["notice"]} for t in start["party"]]},
+            "bands": [{"x": b["x"], "y": b["y"], "sense": b["sense"], "stealth": b["stealth"],
+                       "hiding": b["hiding"]} for b in start["bands"]],
+            "start": (trace[0]["x"], trace[0]["y"]),
+            "path": [(t["x"], t["y"]) for t in trace[1:]]}
+    checks, step, end = [], 0, None
+    for ln in seeing.approach(case):
+        m = re.match(r"step (\d+):", ln)
+        if m:
+            step = int(m.group(1))
+        m = re.match(r"  band (\d+) at \d+,\d+, (\d+) away: (the party|band \d+) looks", ln)
+        if m:
+            checks.append([step, "party" if m.group(3) == "the party" else "band", int(m.group(1)) - 1,
+                           int(m.group(2)), []])
+        m = re.search(r"rolls (\d+) = (-?\d+) against (-?\d+): (\w+)", ln)
+        if m:
+            checks[-1][4].append((int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                                  seeing.RESULT.index(m.group(4))))
+        m = re.match(r"the fight: band (\d+)(, an ambush)?", ln)
+        if m:
+            end = (int(m.group(1)), bool(m.group(2)))
+    return checks, end
+
+
+def page_checks(trace):
+    """The same, from the page's trace of the seeing engine (rooms.js, seeStep)."""
+    checks, end = [], None
+    for step, t in enumerate(trace):
+        for e in t["events"]:
+            dice = []
+            if not e["automatic"]:
+                for h in e["sneak"] + e["help"]:
+                    dice.append((h["roll"], h["roll"] + h["rating"], h["tn"], h["result"]))
+                dice.append((e["roll"], e["total"], e["look_tn"], e["result"]))
+            checks.append([step, e["kind"], e["band"], e["d"], dice])
+        if t["fight"]:
+            end = (t["fight"], bool(t["ambush"]))
+    return checks, end
+
+
+def check_open():
+    """Walking an open floor (docs/open-floors.md, step 3 of Building it): the page's checks,
+    step by step, are the seeing reference's on the same floor, party and way, roll for
+    roll, walking, sneaking and at night; a band spotted is drawn, one not spotted isn't; the
+    band that sees you starts the fight (an ambush, theirs, if you hadn't spotted it), or
+    you fall on one you've spotted (yours); the fight is on a 16 x 8 window of the floor
+    holding the band, its foes where they stood; then walking again, the band gone."""
+    runs = [("48213:WARDEN,ROGUE", "walk"), ("48213:WARDEN,ROGUE,CHANNELER,MEDIC", "sneak"),
+            ("7602:ROGUE,MEDIC:look=dungeon", "walk"), ("48213:WARDEN,ROGUE,CHANNELER,MEDIC", "ambush")]
+    for code, how in runs:
+        out = page("open", code, how)
+        if not out:
+            continue
+        bad, start, met = [], out["start"], out["met"]
+        trace = met["trace"]
+        if start["sneak"] != (how != "walk"):
+            bad.append(f"S didn't set sneaking ({start['sneak']})")
+        if "dungeon" in code and start["light"] != "night":
+            bad.append(f"a dungeon floor is lit {start['light']}, not night")
+        want, want_end = reference_checks(start, trace)
+        got, got_end = page_checks(trace)
+        if got != want:
+            first = next((i for i, (a, b) in enumerate(zip(got, want)) if a != b), min(len(got), len(want)))
+            bad.append(f"check {first} isn't the reference's: {got[first:first + 1]} against {want[first:first + 1]} "
+                       f"({len(got)} checks against {len(want)})")
+        elif got_end != want_end:
+            bad.append(f"the walk ended in {got_end}, the reference's in {want_end}")
+        spotted = [b for b, v in enumerate(met["spotted"]) if v]
+        fought = None
+        if out["ambushed"]:
+            fought = met["fightBand"]
+            d = out["drawn"]
+            if d["foes"] != d["spotted"] or not d["foes"]:
+                bad.append(f"walking, the foes drawn are {d['foes']}, not the spotted bands' {d['spotted']}")
+            if "surprise travelers" not in (met["spec"] or ""):
+                bad.append("A fell on a band, but the first round isn't the travelers'")
+        elif got_end:
+            fought = got_end[0] - 1
+            if ("surprise foes" in (met["spec"] or "")) != got_end[1]:
+                bad.append("an ambush by the band" + (" isn't" if got_end[1] else " is wrongly") + " the foes' first round")
+        if fought is not None and met["mode"] != "talk":
+            b = start["bands"][fought]
+            wx, wy = met["win"]
+            o = start["o"]
+            window = [row[wx:wx + 16] for row in o["rows"][wy:wy + 8]]
+            foes = sorted([f["x"] - wx, f["y"] - wy] for f in b["foes"])
+            got_foes = sorted(f[1:] for f in met["fighters"] if f[0] == 1)
+            if met["map"] != window or not (0 <= wx <= o["w"] - 16 and 0 <= wy <= o["h"] - 8):
+                bad.append(f"the fight's map isn't the floor's 16 x 8 window at {wx},{wy}")
+            elif got_foes != foes:
+                bad.append(f"the band's foes stand at {got_foes} in the fight, not where they stood, {foes}")
+            after = out.get("after") or {}
+            if after.get("mode") not in ("explore", "lost"):
+                bad.append("the fight didn't end back in walking")
+            elif after["mode"] == "explore" and not after["cleared"][fought]:
+                bad.append("won, the band is still on the floor")
+        if out["errors"]:
+            bad.append(f"the page threw {out['errors'][:2]}")
+        if bad:
+            fail(f"open floor {code} {how}: " + "; ".join(bad))
+        else:
+            ok(f"open floor {code}, {how}: {len(got)} checks over {len(trace)} steps, the seeing reference's "
+               f"roll for roll; {len(spotted)} band(s) spotted"
+               + (f"; fell on band {fought + 1}, the first round the party's" if out["ambushed"]
+                  else f"; band {fought + 1} saw the party" + (", an ambush" if got_end[1] else "") if fought is not None
+                  else "") + ("; its fight on a 16 x 8 window of the floor, then walking again" if fought is not None else ""))
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -634,6 +754,7 @@ def main():
         check_party()
         check_looks()
         check_talk()
+        check_open()
     finally:
         server.terminate()
         server.wait()
