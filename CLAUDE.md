@@ -142,7 +142,8 @@ against. For `cart/`:
   `tests/walk/run_walk.py` walks yard 48213's first floor to its stairs (and yard 7602's
   eighth, a crowd, `build/walk-crowd.prg`; an open floor, 80 x 40, `build/walk-open.prg`;
   and one with seeing, its bands hidden till spotted and the walk stopped when one sees the
-  party, `build/walk-seen.prg`, every die `tools/rules/seeing.py`'s)
+  party, `build/walk-seen.prg`, every die `tools/rules/seeing.py`'s, then the fight set up
+  on its window, as `tools/rooms/rooms.py`'s `fight_window` and `fight_places`)
   and holds every frame to `tools/walk/walk.py`,
   leader, camera and scroller, every row as the VIC reads it at its bad line, and every
   sprite (the party, foes and people, multiplexed) as the VIC starts it, and the HUD in

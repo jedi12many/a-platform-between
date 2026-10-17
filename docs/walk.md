@@ -4,13 +4,15 @@
 in eight directions at 50 frames a second on a stock PAL C64, the party, foes and people
 on it as sprites, and the party's portraits and health in the opened bottom border; and
 open floors of any size up to 80 x 48 squares ([open-floors.md](open-floors.md)), their
-bands hidden until spotted and looking for the party. Built (W1, W2, W3, W4, W5).*
+bands hidden until spotted and looking for the party, and a fight set up on its window
+when one sees it. Built (W1, W2, W3, W4, W5, W6).*
 
     make walk           build/walk.prg (a Kung Fu Flash 2 runs it), build/walk.d64 (LOAD"WALK",8 and RUN),
                         build/walk-crowd.prg (yard 7602's eighth floor: a crowd to test the sprites),
                         build/walk-open.prg (yard 48213's sixth floor as an open floor: 80 x 40,
                         every foe shown, none looking), and build/walk-seen.prg (its third, 64 x 32,
-                        seeing: the bands hidden till spotted, the walk stopped when one sees you)
+                        seeing: the bands hidden till spotted, the walk stopped when one sees you,
+                        and the fight set up on its window)
     make test-cart      ...and tests/walk/run_walk.py and tests/walk/vice_walk.py on all four
 
 It walks yard 48213's first floor, the explore prototype's ([rooms.md](rooms.md)): its nine
@@ -40,6 +42,7 @@ engine first, proven, then the game moves onto it.
 | `cart/walk/figures.s` | the figures: the party's trail, who's in sight, the sprites shared out into a program |
 | `cart/walk/mux.s` | the multiplexer: a program carried out, its first eight after the HUD and each event at its line |
 | `cart/walk/watch.s` | seeing on the floor: the bands and the party from the asset, the checks at each step run in the time to spare, shown, the walk stopped |
+| `cart/walk/setup.s` | a fight's setup: its window on the floor, its terrain, where the party stands, the band's foes |
 | `cart/walk/seeing.s`, `roll.s` | seeing and being seen in 6502 (the rules lab's, [open-floors.md](open-floors.md)), and its dice |
 | `cart/walk/edge.s` | the floor on its pages (its colours and squares), and drawing rows and columns of characters from the squares |
 | `cart/walk/floor.s` | the floor's asset and its squares, built in |
@@ -267,8 +270,41 @@ dungeon night), each tile's terrain for the lines of sight, and the dice's seed.
   finished in time would be shown when they are, and counted (`see_late`): the tests fail
   it. On the floors tried they finish within two frames.
 
-Seeing's code runs from $E000 (loaded past $27FF and copied there at the start, like the
-interrupts'); its log of each step's checks, every die, is at $AC00 for the tests.
+## The fight
+
+When a band is shown to have seen the party, the fight is set up on the same screen, as
+[open-floors.md](open-floors.md)'s *Where the fight is* says and the explore prototype
+does it (`ROOMS.fightWindow`, `fightPlaces` in `rooms.js`; the reference, `fight_window`
+and `fight_places` in `tools/rooms/rooms.py`, held to them by `tests/rooms/check_rooms.py`):
+
+- **The window:** 16 x 8 squares inside the floor, holding the band and the leader (on the
+  square the band saw it from), its middle nearest the middle between them; if they can't
+  both fit, round the band. Of every window that holds the band, the first (rows down,
+  then across) with the least cost; the cost splits into an across part and a down part,
+  so `setup.s` works out each column's and each row's once and adds them (some 5,000
+  cycles for the 128 windows a band can have).
+- **The places:** the party fanned out round the leader (kept inside the window), nearest
+  first, on squares a traveler can stand on with no foe; the leader's own left out if it
+  can't be stood on.
+- **The record** (`fight_rec`), what a battle engine will take: the window's square, its
+  128 squares' terrain (the battle's: 1 a wall, 4 cover...), the four travelers' squares
+  on it, and the band's foes (each one's square on it and kind).
+
+It's worked out with the step's checks, in the time to spare, and shown with them. From
+then the walk is over: the camera eases to the window's middle instead of the leader (kept
+on the floor, by the same scroller), and each traveler walks from where they were drawn
+(or the trail's oldest entry, if they weren't out yet) straight to their place, 2 pixels a
+frame each way, facing the band; the band's foes face where the leader stood. Once
+everyone's there, the camera's where it wants to be and the scroller's at rest,
+`wk_ready`: the battle can begin. The battle itself waits for rules v1, frozen and in
+6502 (`docs/turn.md`); the record is what it will start from.
+
+## Code at $E000
+
+Seeing's code, the fight's setup and the travelers' walk to their places, and the
+figures' start (`figures_init`, only run once) run from $E000 (the `SEEING` segment:
+loaded past $27FF and copied there at the start, like the interrupts'), as the program
+below $2800 is full; seeing's log of each step's checks, every die, is at $AC00 for the tests.
 
 ## Measured
 
@@ -320,7 +356,11 @@ joystick and the raster played in Python:
   caught; and compared with the area as the reference's camera sees it, every visible
   character and colour, and the fine scroll's registers;
 - no frame is late, and the busiest loop and interrupt are reported;
-- the walk reaches the stairs (or, with seeing, stops where a band sees the party).
+- the walk reaches the stairs (or, with seeing, stops where a band sees the party);
+- and then the fight's record is the reference's, and it's all still on the reference's
+  frame (the camera's ease to the window and the travelers' walk to their places are in
+  the frames above); and `setup.s` on its own, called for every band of the floor with the
+  leader on squares near it and far, gives `walk.Fight`'s record each time.
 
 `--shot FRAME FILE.png` draws a frame as shown.
 

@@ -466,6 +466,16 @@ def check(c64, floor, ref):
            f"(a frame is {FRAME}, less 25 bad lines' {25 * BADLINE_STEAL})")
 
 
+def walk_frames(floor, script):
+    """How many frames a test walks: the script's, or with a fight on till it's ready (the
+    camera and the party still), and a little."""
+    if floor.bands:
+        walk.play(floor, script + [0xFF] * 2000)
+        if walk.play.ready is not None:
+            return max(len(script), walk.play.ready + 25)
+    return len(script)
+
+
 def check_fight(c64, fight, ready):
     """The fight's setup (setup.s) as the reference's (walk.Fight): its record (the window,
     its terrain, the party's places, the band's foes) and the frame it was all still. (The
@@ -594,11 +604,7 @@ def main():
     args = ap.parse_args()
     floor = walk.Floor(args.yard, args.floor, open_floor=args.open, unseen=args.unseen)
     script = sticks(floor)
-    if not args.frames and floor.bands:             # a fight: on till it's ready, and a little
-        walk.play(floor, script + [0xFF] * 2000)
-        if walk.play.ready is not None:
-            args.frames = max(len(script), walk.play.ready + 25)
-    args.frames = args.frames or len(script)
+    args.frames = args.frames or walk_frames(floor, script)
     script += [0xFF] * (args.frames + 2 - len(script))
     ref = walk.play(floor, script)
     syms = labels(args.labels)
