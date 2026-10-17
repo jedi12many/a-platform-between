@@ -5,7 +5,7 @@ picture, the whole raster with its borders, is compared pixel for pixel with the
 the harness says the VIC showed it: each row of characters as read at its bad line, with
 the fine scroll, and each sprite from the line after its Y, as the VIC-II starts one.
 
-    python3 tests/walk/vice_walk.py PRG LABELS [--yard Y --floor F] [--frames N]
+    python3 tests/walk/vice_walk.py PRG LABELS [--yard Y --floor F] [--open] [--frames N]
             [--every K] [--shots DIR]
 
 Needs x64sc (apt-get install vice) and xvfb-run; without them it says so and passes."""
@@ -27,6 +27,8 @@ COLS, LINES = 504, 312
 X0 = 112                    # the screenshot's column of sprite X 0
 VIEW = (31, 334, 55, 246)   # the 38 x 24 window: sprite X, raster lines
 EDGE_LINES = (55, 247)      # the band's edges: the view's first line, the band's
+EDGE_MOST = 104             # ...and how far into the line a late edge may come: the border
+                            # and 8 characters (docs/walk.md, "The border": the limit)
 CHARSET, SHAPES = 0xC800, 0xD000
 READER = 0x0200                   # spare RAM: the joystick script's reader, and its table
 
@@ -137,6 +139,7 @@ def main():
     ap.add_argument("labels")
     ap.add_argument("--yard", type=int, default=48213)
     ap.add_argument("--floor", type=int, default=1)
+    ap.add_argument("--open", action="store_true", help="an open floor (docs/open-floors.md)")
     ap.add_argument("--frames", type=int, default=0, help="how many (default: the walk)")
     ap.add_argument("--every", type=int, default=7, help="compare every Kth frame")
     ap.add_argument("--shots", help="save each compared frame's two pictures here")
@@ -146,7 +149,7 @@ def main():
         return 0
     sys.path.insert(0, os.path.join(HERE, "..", "..", "tools"))
 
-    floor = walk.Floor(args.yard, args.floor)
+    floor = walk.Floor(args.yard, args.floor, open_floor=args.open)
     script = run_walk.sticks(floor)
     frames = args.frames or len(script)
     syms = run_walk.labels(args.labels)
@@ -207,11 +210,12 @@ def main():
                 want = render(c64, records[p][3], c64.snaps[p])
                 diff = [(x - X0, y) for y in range(LINES) for x in range(COLS)
                         if got[y][x] != want[y][x]]
-                # The band's edge may come a few pixels into its line, in the first
-                # character: when a figure crosses the view's edge, the VIC stops the CPU
-                # for its fetch, and the write after the stop is late (docs/walk.md, "The
-                # border"). Counted, not failed.
-                edge = [(x, y) for x, y in diff if y in EDGE_LINES and x < 40]
+                # The band's edge may come a few cycles into its line, in its first
+                # characters: when figures cross the view's edge, the VIC stops the CPU
+                # for their fetches, and the write after the stops is late (docs/walk.md,
+                # "The border": up to 4 characters with an open floor's crowd crossing at
+                # once). Counted, not failed.
+                edge = [(x, y) for x, y in diff if y in EDGE_LINES and x < EDGE_MOST]
                 diff = [d for d in diff if d not in edge]
                 if edge:
                     edged += 1
@@ -235,7 +239,7 @@ def main():
     if not bad:
         ok(f"{compared} pictures on x64sc, every {args.every}th of {frames}: each as meant, pixel "
            f"for pixel, the borders and all (in {edged} the band's edge late by up to "
-           f"{edge_most} pixels, in its line's first character)")
+           f"{edge_most} pixels, in its line's first characters)")
     else:
         fail(f"{bad} of {compared} frames differ on x64sc")
     print(f"walk on VICE: {failures} failed")

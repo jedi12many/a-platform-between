@@ -8,7 +8,7 @@
         .include "walk.inc"
 
         .export figures_init, figures_step, prog_next, prog_left
-        .import floor, wk_pos, wk_cam
+        .import floor, wk_pos, wk_cam, wk_h
 
         .segment "CODE"
 
@@ -77,7 +77,11 @@ figures_init:
         inx
         jmp @fig
 @built: ; Where each row's figures start (they come in order down the area): row_first[r]
-        ; the first whose square's y is r or more, for r = 0 to SQUARES_Y + 1.
+        ; the first whose square's y is r or more, for r = 0 to the floor's height + 1.
+        lda wk_h
+        clc
+        adc #2
+        sta rows_end
         ldx #0                      ; the figure
         ldy #0                      ; the row
 @row:   cpx floor + FL_FIGURES
@@ -91,7 +95,7 @@ figures_init:
 :       txa
         sta row_first, y
         iny
-        cpy #SQUARES_Y + 2
+        cpy rows_end
         bne @row
         jmp build
 
@@ -679,7 +683,8 @@ facing:     .res PARTY_SIZE     ; 0 right, 1 left
 party_k:    .res 1
 off_x:      .res 2              ; this frame's SPRITE_DX - the camera's x
 off_y:      .res 2              ; and SPRITE_DY - its y
-row_first:  .res SQUARES_Y + 2  ; each row's first figure (they're in order down)
+row_first:  .res SQUARES_Y_MAX + 2  ; each row's first figure (they're in order down)
+rows_end:   .res 1              ; the floor's height + 2: row_first's length
 fig_end:    .res 1              ; the figure past the rows in sight
 win_x0:     .res 2              ; the view's window on the area (window): x0, y0...
 win_y0:     .res 2

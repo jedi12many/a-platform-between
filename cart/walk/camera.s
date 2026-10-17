@@ -20,7 +20,7 @@
 
         .export camera_init, camera_step, wk_cam, wk_stage, wk_front, wk_dir
         .import wk_pos, wk_d016, wk_d011, wk_d018, wk_swap
-        .import edge_base, wk_ncx, wk_ncy, edges, colour_aim
+        .import edge_base, wk_ncx, wk_ncy, edges, colour_aim, wk_w, wk_h
 
         .segment "CODE"
 
@@ -28,6 +28,12 @@
 ; camera_init: the camera where the leader wants it, nothing under way, screen A shown.
 ;   Changes: A, X, Y, zp_wk_a.
 camera_init:
+        ldx #0                      ; its most: 16 w - 313 across, 16 h - 193 down (the
+        lda wk_w                    ; screen's 40 x 25 characters on the area)
+        jsr most_of
+        ldx #2
+        lda wk_h
+        jsr most_of
         jsr target
         ldx #3
 :       lda want, x
@@ -40,6 +46,25 @@ camera_init:
         sta wk_front
         jsr cells_of_cam
         jmp registers
+
+; most[X] = 16 A - (X = 0: 313, 2: 193): (2 A - 40 or 25) x 8 + 7.
+most_of:
+        sta most, x
+        lda #0
+        sta most + 1, x
+        ldy #4
+:       asl most, x
+        rol most + 1, x
+        dey
+        bne :-
+        lda most, x
+        sec
+        sbc less, x
+        sta most, x
+        lda most + 1, x
+        sbc less + 1, x
+        sta most + 1, x
+        rts
 
 ; ----------------------------------------------------------------------------------------
 ; camera_step: a frame's camera, and the scroller's work.
@@ -98,21 +123,13 @@ camera_step:
 :       lda #HALF
         sta wk_stage
         jmp @hold
-@half:  ldx shift_x                 ; the rest, and the edges
+@half:  ldx shift_x                 ; the rest
         lda wk_front
         bne :+
         jsr SHIFT_AB + SECOND_HALF
-        lda #<SCREEN_B
-        ldx #>SCREEN_B
-        jmp @edges
+        jmp :++
 :       jsr SHIFT_BA + SECOND_HALF
-        lda #<SCREEN_A
-        ldx #>SCREEN_A
-@edges: sta edge_base
-        stx edge_base + 1
-        jsr new_cells
-        jsr edges
-        lda #SHIFTED
+:       lda #SHIFTED
         sta wk_stage
 @hold:  ldx #0                      ; held in the cell it's in
         lda cell
@@ -122,9 +139,20 @@ camera_step:
         jsr clamp
         jmp @commit
 @shifted:
-        jsr colour_aim              ; the colours' copies aimed at the new rows
-        lda #SHADED
-        sta wk_stage
+        lda wk_front                ; the new edges, into the screen being made
+        bne :+
+        lda #<SCREEN_B
+        ldx #>SCREEN_B
+        jmp @edges
+:       lda #<SCREEN_A
+        ldx #>SCREEN_A
+@edges: sta edge_base
+        stx edge_base + 1
+        jsr new_cells
+        jsr edges
+        jsr colour_aim              ; the colours' copies aimed at the new rows (those whose
+        lda #SHADED                 ; row of squares changed: none, a step across; every
+        sta wk_stage                ; other one, a step down or up)
         jmp @hold
 @shaded:
         lda #COLOURED
@@ -362,11 +390,12 @@ clamp:
 
 half_less_8:
         .word HALF_VIEW_X - 8, HALF_VIEW_Y - 8
-most:   .word CAM_X_MAX, CAM_Y_MAX
+less:   .word 313, 193              ; (40 x 8 - 7, 25 x 8 - 7)
 
         .segment "BSS"
 
 wk_cam:     .res 4              ; the camera: x, y, the area's pixel at the view's top left
+most:       .res 4              ; its most, across and down: the floor's (camera_init)
 wk_stage:   .res 1              ; IDLE, HALF, SHIFTED, SHADED or COLOURED
 wk_front:   .res 1              ; the screen shown: 0 A, 1 B
 want:       .res 4              ; where the leader wants it

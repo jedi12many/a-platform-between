@@ -6,13 +6,15 @@
     data = floor.asset()                            # what the C64 is given (docs/walk.md)
     frames = walk.play(floor, sticks)               # each frame: the leader and the camera
 
-    python3 tools/walk/walk.py asset YARD FLOOR OUT  write the floor's asset
-    python3 tools/walk/walk.py show YARD FLOOR       draw the area, the start marked
+    python3 tools/walk/walk.py asset YARD FLOOR DIR [open]   write the floor's asset:
+                                                    DIR/floor.bin and DIR/squares.bin
+    python3 tools/walk/walk.py show YARD FLOOR [open]  draw the area, the start marked
 
 The floor is the explore prototype's (tools/rooms/rooms.py): its nine rooms side by side
-as one area of 48 x 24 squares, in the look the prototype gives its floor, each square
-dressed as rooms.js dresses it (a variant, or scenery). Walking and the camera follow the
-prototype's rules, in whole numbers a C64 can do: see docs/walk.md, "The rules".
+as one area of 48 x 24 squares, or (open) an open floor (docs/open-floors.md: build_open,
+48 x 24 to 80 x 40), in the look the prototype gives its floor, each square dressed as
+rooms.js dresses it (a variant, or scenery). Walking and the camera follow the prototype's
+rules, in whole numbers a C64 can do: see docs/walk.md, "The rules".
 """
 
 import os
@@ -26,16 +28,16 @@ import battlegfx  # noqa: E402
 import rooms  # noqa: E402
 
 LOOKS = ["forest", "mountain", "town", "dungeon"]
-SQUARES_X, SQUARES_Y = rooms.COLS * rooms.W, rooms.ROWS * rooms.H      # 48 x 24
-CHARS_X, CHARS_Y = 2 * SQUARES_X, 2 * SQUARES_Y                        # 96 x 48
+ROOMS_X, ROOMS_Y = rooms.COLS * rooms.W, rooms.ROWS * rooms.H          # 48 x 24: nine rooms
+# A floor's size: any, up to 80 x 48 squares (the engine keeps a row of squares in a page:
+# its colours, two bytes a square, then the squares, a byte each: 3 x 80 <= 256).
+SQUARES_X_MAX, SQUARES_Y_MAX = 80, 48
 BLOCKED = 0x80                  # a square's byte: its tile (0-31), and this if you can't stand there
 WALL, PIT, HAZARD = 1, 2, 5
 
 # The screen: 38 columns and 24 rows show (the VIC's narrower window, so the fine scroll's
 # edges don't), of 40 x 25 in the screen's memory.
 VIEW_W, VIEW_H = 38 * 8, 24 * 8                                         # 304 x 192 pixels
-CAM_X_MAX = (CHARS_X - 40) * 8 + 7                                      # 455
-CAM_Y_MAX = (CHARS_Y - 25) * 8 + 7                                      # 191
 
 # Walking: a position is in sixteenths of a pixel (16-bit); 23 of them a frame, 1.44 pixels,
 # 72 a second: the prototype's 4.5 squares a second. On a diagonal, 16 each way.
@@ -54,7 +56,7 @@ IDLE, HALF, SHIFTED, SHADED, COLOURED = 0, 1, 2, 3, 4
 # prototype's four, by their races), and the floor's foes and people, as sprites.
 PARTY = ["SALVAGED", "CHRONOMITE", "RAD_DRYAD", "GLASSFOLK"]   # Warden, Rogue, Channeler, Medic
 PEOPLE = {"trader": "GLASSFOLK", "courier": "HUMAN"}
-KINDS_MAX, FIGURES_MAX = 12, 32
+KINDS_MAX, FIGURES_MAX = 12, 80
 GAP = 9                         # trail entries between travelers in marching order (~13 pixels)
 TRAIL = 32                      # the leader's trail kept
 SHAPE_POINTER = 0x40            # shape s is at $D000 + 64 s: the VIC's pointer $40 + s
@@ -109,16 +111,22 @@ def dress_hash(yard, floor, room, x, y):
 
 
 class Floor:
-    def __init__(self, yard, number, look=None):
-        self.yard, self.number = yard, number
-        self.f = rooms.build(yard, number)
+    def __init__(self, yard, number, look=None, open_floor=False):
+        self.yard, self.number, self.open = yard, number, open_floor
         self.look = look or LOOKS[(number - 1) % len(LOOKS)]
         self.art = art.load(art.tiles_file(16, self.look))
         names = [e.name for e in self.art.entries]
         self.names = names
         scenery = [n for n in names[8:] if art.variant_of(n) is None]
         variants = {t: [n for n in names[8:] if art.variant_of(n) == t] for t in art.TERRAIN}
-        self.squares = [[0] * SQUARES_X for _ in range(SQUARES_Y)]
+        self.kinds = list(PARTY)
+        self.figures = []
+        if open_floor:
+            self._open(scenery, variants)
+            return
+        self.f = rooms.build(yard, number)
+        self.w, self.h = ROOMS_X, ROOMS_Y
+        self.squares = [[0] * self.w for _ in range(self.h)]
         for r in self.f["rooms"]:
             ox, oy = (r["i"] % rooms.COLS) * rooms.W, (r["i"] // rooms.COLS) * rooms.H
             taken = {(e["x"], e["y"]) for e in r["foes"]}
@@ -143,8 +151,6 @@ class Floor:
                     blocked = t in (WALL, PIT, HAZARD) or (x, y) in standing
                     self.squares[oy + y][ox + x] = names.index(name) | (BLOCKED if blocked else 0)
         # The figures: the party's kinds first, then each foe and person's.
-        self.kinds = list(PARTY)
-        self.figures = []
         for r in self.f["rooms"]:
             ox, oy = (r["i"] % rooms.COLS) * rooms.W, (r["i"] // rooms.COLS) * rooms.H
             who = [(e["x"], e["y"], e["name"]) for e in r["foes"]]
@@ -158,17 +164,58 @@ class Floor:
         # looks at only the rows in sight.
         self.figures.sort(key=lambda f: f[1])
         assert len(self.kinds) <= KINDS_MAX and len(self.figures) <= FIGURES_MAX
-        # Where you start: the start room's (7, 3), as the prototype puts you, or its door.
+        # Where you start: the start room's (7, 3), as the prototype puts you, or its door;
+        # and where the stairs' room is (its (7, 3) too: a test walks there).
         s = self.f["start"]
         sx, sy = (s % rooms.COLS) * rooms.W + 7, (s // rooms.COLS) * rooms.H + 3
         self.start = (sx, sy)
+        s = self.f["stairs"]
+        self.goal = ((s % rooms.COLS) * rooms.W + 7, (s // rooms.COLS) * rooms.H + 3)
+
+    def _open(self, scenery, variants):
+        """An open floor (docs/open-floors.md): build_open's, each square dressed as rooms.js
+        dresses an open floor's (one area, no room: the stairs not dressed), its bands' foes
+        and its people standing where they stand."""
+        o = self.f = rooms.build_open(self.yard, self.number)
+        self.w, self.h = o["w"], o["h"]
+        assert self.w <= SQUARES_X_MAX and self.h <= SQUARES_Y_MAX
+        standing = [(f["x"], f["y"], f["name"]) for b in o["bands"] for f in b["foes"]]
+        standing += [(p["x"], p["y"], PEOPLE[p["who"]]) for p in o["people"]]
+        taken = {(x, y) for x, y, _ in standing}
+        stairs = tuple(o["stairs"])
+        self.squares = [[0] * self.w for _ in range(self.h)]
+        for y in range(self.h):
+            for x in range(self.w):
+                t = int(o["rows"][y][x])
+                base = art.TERRAIN[t]
+                h = dress_hash(self.yard, self.number, 0, x, y)
+                if t == 0 and scenery and h < 16 and (x, y) != stairs:
+                    name = scenery[h % len(scenery)]
+                elif variants[base] and h & 7 == 0:
+                    name = variants[base][(h >> 3) % len(variants[base])]
+                else:
+                    name = base
+                blocked = t in (WALL, PIT, HAZARD) or (x, y) in taken
+                self.squares[y][x] = self.names.index(name) | (BLOCKED if blocked else 0)
+        for x, y, name in standing:
+            if name not in self.kinds:
+                self.kinds.append(name)
+            self.figures.append((x, y, self.kinds.index(name)))
+        self.figures.sort(key=lambda f: f[1])     # (stable: the bands' order, then the people)
+        assert len(self.kinds) <= KINDS_MAX and len(self.figures) <= FIGURES_MAX
+        self.start, self.goal = tuple(o["start"]), stairs
+
+    @property
+    def cam_most(self):
+        """The camera's most, across and down: the screen's 40 x 25 characters on the area."""
+        return (2 * self.w - 40) * 8 + 7, (2 * self.h - 25) * 8 + 7
 
     def free(self, sx, sy):
-        return 0 <= sx < SQUARES_X and 0 <= sy < SQUARES_Y and not self.squares[sy][sx] & BLOCKED
+        return 0 <= sx < self.w and 0 <= sy < self.h and not self.squares[sy][sx] & BLOCKED
 
     def char(self, cx, cy):
         """The character on the area's character (cx, cy), and its colour RAM's value."""
-        if not (0 <= cx < CHARS_X and 0 <= cy < CHARS_Y):
+        if not (0 <= cx < 2 * self.w and 0 <= cy < 2 * self.h):
             return 0, 0
         t = self.squares[cy >> 1][cx >> 1] & 0x1F
         return 1 + t * 4 + (cy & 1) * 2 + (cx & 1), self.art.entries[t].colour | 8
@@ -205,26 +252,30 @@ class Floor:
             colours.append(data[4224 + n])
         return bytes(out), colours
 
+    def squares_asset(self):
+        """The squares, a row at a time (w x h bytes): the floor's second file, squares.bin."""
+        return b"".join(bytes(row) for row in self.squares)
+
     def asset(self):
-        """What the C64 is given (docs/walk.md, "The floor's asset"):
+        """What the C64 is given (docs/walk.md, "The floor's asset"), besides the squares
+        (squares_asset):
 
             0      the background and the two shared colours (3)
             3      the number of tiles (1)
             4      each tile's colour RAM value (32)
             36     where you start: square x, square y (2)
-            38     the squares, 48 x 24, a row at a time (1152)
-            1190   the party's kinds, in marching order (4)
-            1194   how many kinds (1), then each one's colour (12)
-            1207   how many figures (1), then each one's square x, y and kind (32 x 3), in order
+            38     the floor's width and height, in squares (2)
+            40     the party's kinds, in marching order (4)
+            44     how many kinds (1), then each one's colour (12)
+            57     how many figures (1), then each one's square x, y and kind (80 x 3), in order
                    down
-            1304   the characters, 8 bytes each, 0 blank then 4 a tile (8 + 32 a tile)
+            304    the characters, 8 bytes each, 0 blank then 4 a tile (8 + 32 a tile)
+            2000   the HUD's sprites
             2048   the sprite shapes, 64 bytes each: kind k's 2 k (facing right), 2 k + 1 (left)"""
         out = bytearray([self.art.background, *self.art.shared, len(self.art.entries)])
         cols = [e.colour | 8 for e in self.art.entries]
         out += bytes(cols + [0] * (32 - len(cols)))
-        out += bytes(self.start)
-        for row in self.squares:
-            out += bytes(row)
+        out += bytes(self.start) + bytes([self.w, self.h])
         shapes, colours = self.shapes()
         out += bytes(range(len(PARTY)))
         out += bytes([len(self.kinds)] + colours + [0] * (KINDS_MAX - len(colours)))
@@ -232,7 +283,8 @@ class Floor:
         for x, y, k in self.figures:
             figs += bytes([x, y, k])
         out += figs + bytes(1 + 3 * FIGURES_MAX - len(figs))
-        assert len(out) == 1304
+        assert len(out) == 298
+        out += bytes(304 - len(out))
         out += self.charset()
         assert len(out) <= 2000
         out += bytes(2000 - len(out))
@@ -344,10 +396,11 @@ def walk(floor, pos, stick):
 
 # ------------------------------------------------------------------ the camera
 
-def target(pos):
+def target(floor, pos):
     tx = (pos[0] >> 4) + 8 - VIEW_W // 2
     ty = (pos[1] >> 4) + 8 - VIEW_H // 2
-    return max(0, min(CAM_X_MAX, tx)), max(0, min(CAM_Y_MAX, ty))
+    mx, my = floor.cam_most
+    return max(0, min(mx, tx)), max(0, min(my, ty))
 
 
 def ease(cam, want):
@@ -447,14 +500,14 @@ def play(floor, sticks):
     the joystick as frame n's main loop reads it; what it decides is shown from frame n + 1
     (docs/walk.md, "A frame")."""
     pos = [floor.start[0] * 16 * SUB, floor.start[1] * 16 * SUB]
-    cam = list(target(pos))
+    cam = list(target(floor, pos))
     party = Party(pos)
     stage, dirs, out = IDLE, (0, 0), []
     for stick in sticks:
         out.append((pos[0], pos[1], cam[0], cam[1], stage, figures(floor, party, cam)))
         walk(floor, pos, stick)
         party.step(pos)
-        want = target(pos)
+        want = target(floor, pos)
         nxt = [ease(cam[0], want[0]), ease(cam[1], want[1])]
         if stage == IDLE:
             d = tuple((nxt[i] >> 3) - (cam[i] >> 3) for i in range(2))
@@ -481,12 +534,15 @@ def play(floor, sticks):
 # ------------------------------------------------------------------ the command line
 
 def main(argv):
-    if len(argv) == 5 and argv[1] == "asset":
-        with open(argv[4], "wb") as f:
-            f.write(Floor(int(argv[2]), int(argv[3])).asset())
+    if len(argv) in (5, 6) and argv[1] == "asset" and argv[5:] in ([], ["open"]):
+        fl = Floor(int(argv[2]), int(argv[3]), open_floor=argv[5:] == ["open"])
+        with open(os.path.join(argv[4], "floor.bin"), "wb") as f:
+            f.write(fl.asset())
+        with open(os.path.join(argv[4], "squares.bin"), "wb") as f:
+            f.write(fl.squares_asset())
         return 0
-    if len(argv) == 4 and argv[1] == "show":
-        fl = Floor(int(argv[2]), int(argv[3]))
+    if len(argv) in (4, 5) and argv[1] == "show" and argv[4:] in ([], ["open"]):
+        fl = Floor(int(argv[2]), int(argv[3]), open_floor=argv[4:] == ["open"])
         print(f"yard {fl.yard}, floor {fl.number}, the {fl.look}: you start at {fl.start}")
         for y, row in enumerate(fl.squares):
             print("".join("@" if (x, y) == fl.start else "#" if v & BLOCKED else "."

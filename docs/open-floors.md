@@ -16,7 +16,7 @@ happens, and the view goes to whoever's turn it is, even if that's a foe you can
 ## A floor
 
 - **One area**, W x H squares, a solid border round it: 48 x 24 on floors 1 and 2, 64 x
-  32 on 3 to 5, 80 x 40 from 6 down. On the C64 a floor stays within about 96 x 48 (*On
+  32 on 3 to 5, 80 x 40 from 6 down. On the C64 a floor stays within 80 x 48 (*On
   the C64*).
 - **Clusters, not rooms.** The generator scatters **clusters** of the look's wall (a
   stand of trees in the forest, a crag, a block of houses in the town, a pillar mass in
@@ -242,10 +242,10 @@ range: for playing.
 
 ## On the C64
 
-- **The floor in memory** ([walk.md](walk.md)): the colour map (a 256-byte page a row of
-  squares, 2 bytes a square) and the squares (a byte each); the walking engine's character
-  map is dropped (a character is worked out from its square as an edge is drawn). About 72
-  pages are free for maps: a floor of up to about 96 x 48 squares fits.
+- **The floor in memory** (built: [walk.md](walk.md), W4): a page a row of squares, its
+  colours (2 bytes a square) then the squares (a byte each), so up to 80 squares across
+  (3 x 80 <= 256) and 48 down; the walking engine's character map is dropped (a character
+  is worked out from its square as an edge is drawn).
 - **Seeing:** a band checks only when the party crosses into its range or 4 squares
   closer, so a frame does a line or two of Bresenham at most: well inside the frame loop's
   budget.
@@ -269,7 +269,9 @@ range: for playing.
    sneaking (S), bands rolling as you approach (the rolls in the log), spotted bands shown,
    fights on their window.
 4. **The C64:** the floor in memory without the character map, floors of any size up to
-   the limit, then the fight on the window.
+   the limit (built: W4 in [walk.md](walk.md); `build/walk-open.prg` walks yard 48213's
+   sixth, 80 x 40, to its stairs, held to `tools/walk/walk.py` frame by frame); then seeing
+   in 6502 (W5), and the fight on the window (W6).
 
 ## Walking an open floor, built
 

@@ -140,10 +140,11 @@ against. For `cart/`:
   Needs `pip install qrcode opencv-python-headless`. And the walking engine (`cart/walk/`,
   `docs/walk.md`, `make walk`: Plan B's scrolling floor, its own program for now):
   `tests/walk/run_walk.py` walks yard 48213's first floor to its stairs (and yard 7602's
-  eighth, a crowd, `build/walk-crowd.prg`) and holds every frame to `tools/walk/walk.py`,
+  eighth, a crowd, `build/walk-crowd.prg`; and an open floor, 80 x 40, `build/walk-open.prg`)
+  and holds every frame to `tools/walk/walk.py`,
   leader, camera and scroller, every row as the VIC reads it at its bad line, and every
   sprite (the party, foes and people, multiplexed) as the VIC starts it, and the HUD in
-  the opened bottom border; no frame late. `tests/walk/vice_walk.py` runs both on x64sc,
+  the opened bottom border; no frame late. `tests/walk/vice_walk.py` runs all three on x64sc,
   VICE's cycle-exact C64, and holds its pictures to the harness's pixel for pixel (without
   x64sc and xvfb-run it says so and passes).
 

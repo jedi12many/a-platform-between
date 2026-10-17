@@ -13,12 +13,13 @@
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .import edge_base, wk_ncx, wk_ncy, draw_all, maps_build
         .import figures_init, figures_step, prog_next, prog_shown, view_d011, screen_b
-        .import precopy, colour_row, colour_aim
+        .import precopy, colour_row, aim_all
         .import world_irq
         .import __BSS_RUN__, __BSS_SIZE__, __HIGH_LOAD__, __HIGH_RUN__, __HIGH_SIZE__
-        .import __DATA_RUN__, __DATA_SIZE__
+        .import __DATA_RUN__, __DATA_SIZE__, __SQUARES_LOAD__, __SQUARES_SIZE__
 
         .assert __DATA_RUN__ + __DATA_SIZE__ <= SHIFT_AB, lderror, "the program runs past $27FF"
+        .assert __SQUARES_LOAD__ + __SQUARES_SIZE__ <= SHIFT_BA, lderror, "the squares load past $3FFF"
 
         .segment "LOADADDR"
         .word $0801
@@ -101,10 +102,10 @@ walk_start:
         inc zp_wk_dst + 1
         dex
         bne :-
-        jsr look_in                 ; (before gen_all writes over the program's top)
-        jsr shapes_in
+        jsr maps_build              ; (the squares, the floor's size: before gen_all writes
+        jsr look_in                 ; over the program's top, where the squares and HIGH
+        jsr shapes_in               ; were loaded)
         jsr gen_all
-        jsr maps_build
         ; The leader on the start's square.
         lda #0
         sta wk_pos
@@ -122,7 +123,7 @@ walk_start:
         lda #>SCREEN_A
         sta edge_base + 1
         jsr draw_all
-        jsr colour_aim              ; and the colours
+        jsr aim_all                 ; and the colours
         ldx #0
 :       jsr colour_row
         inx
