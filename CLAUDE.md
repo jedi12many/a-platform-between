@@ -224,7 +224,9 @@ The core must build with cc65 for the 6502 and give identical results everywhere
 
 The battle screen's figures, effects and map tiles are text grids in `content/art/`
 (`docs/art.md`), read through `tools/art.py`, built by `tools/battlegfx.py`; edit them with
-the art desk or by hand, never in `battlegfx.py`. A new race or foe needs a figure there.
+the art desk or by hand, never in `battlegfx.py`. The style (dark floors, lit objects,
+slim posed figures) and the work list are `docs/art-direction.md`; `tools/artpreview.py`
+draws art as the C64 shows it. A new race or foe needs a figure there.
 The tiles come in **looks** (forest, mountain, town, dungeon: `tiles32-LOOK.txt`,
 `tiles16-LOOK.txt`, the same eight terrain tiles redrawn, then variants like `open2` and
 scenery; `docs/art.md`, Looks): the explore prototype draws them, a tiles16 look holds at

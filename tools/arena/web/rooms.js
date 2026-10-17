@@ -588,7 +588,7 @@ function exploreBrief() {
     views.append(btn);
   });
   var looks = el("div", "classes");
-  [["By floor", ""]].concat(LOOKS.map(function (l) { return [l[0].toUpperCase() + l.slice(1), l]; })).forEach(function (v) {
+  [["By floor", ""]].concat(allLooks().map(function (l) { return [l[0].toUpperCase() + l.slice(1), l]; })).forEach(function (v) {
     var btn = el("button", null, v[0]);
     btn.type = "button";
     btn.setAttribute("aria-pressed", String((exploreBrief.look || "") === v[1]));
@@ -610,7 +610,7 @@ function exploreBrief() {
 function exploreStart(party, yard, scroll, look) {
   party = partyOf(party);
   X = { party: party, cls: party[0], yard: yard, floor: 1, pack: [], lost: false, scroll: !!scroll, open: scroll === "open",
-        look: LOOKS.indexOf(look) >= 0 ? look : "", pell: "" };
+        look: allLooks().indexOf(look) >= 0 ? look : "", pell: "" };
   storyBoard();
   exploreFloor(1);
 }
@@ -647,6 +647,10 @@ function roomOf() { return X.f.rooms[X.room]; }
 /* The looks (docs/art.md, Looks): the same terrain drawn as a place. Floor by floor, unless
  * one was picked. */
 var LOOKS = ["forest", "mountain", "town", "dungeon"];
+
+/* Every look there is to pick: the four, and their numbered alternatives (forest2...:
+ * docs/art.md, Looks), as art.json has them. Floor by floor goes round the four only. */
+function allLooks() { return ART && ART.looks ? Object.keys(ART.looks) : LOOKS; }
 
 function lookOf(floor) { return X.look || LOOKS[(floor - 1) % LOOKS.length]; }
 
