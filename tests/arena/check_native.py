@@ -567,6 +567,26 @@ def check_looks():
            "scenery on open ground, the same every time")
 
 
+def check_scale():
+    """The board is drawn at whole screen pixels to an art pixel (arena.js, resize), so every
+    dot is the same size, unless that would shrink it by more than a quarter; and it's
+    placed on whole pixels."""
+    out = page("scale", "-")
+    if not out:
+        return
+    bad = []
+    for s in out["scales"]:
+        fit, scale = s["fit"], s["scale"]
+        want = int(fit) if int(fit) >= 0.75 * fit else fit
+        if abs(scale - want) > 1e-9 or s["ox"] != int(s["ox"]) or s["oy"] != int(s["oy"]):
+            bad.append(f"fitting {fit:.3f}, the board is at {scale} from {s['ox']},{s['oy']} (want {want})")
+    if bad:
+        fail("the board's scale: " + "; ".join(bad))
+    else:
+        ok("the board's scale: whole pixels to an art pixel ("
+           + ", ".join(f"{s['fit']:.2f} fits, {s['scale']:g} drawn" for s in out["scales"]) + "), on whole pixels")
+
+
 def check_powers():
     """R-07: the Channeler's Fireball (2), on the square the page offers first; R-08: the
     Medic stims the Warden (2: one ally next to her)."""
@@ -634,6 +654,7 @@ def main():
         check_party()
         check_looks()
         check_talk()
+        check_scale()
     finally:
         server.terminate()
         server.wait()

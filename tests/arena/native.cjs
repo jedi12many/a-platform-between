@@ -24,6 +24,7 @@
 //   node native.cjs URL shot CODE PATH    a screenshot of the first turn
 //   node native.cjs URL talk -            talk (docs/rooms.md, Talk): yard 14, Vell beside
 //                                         the start; yard 2, a parley through the first door
+//   node native.cjs URL scale -          the board's scale at a few window sizes
 //   node native.cjs URL looks YARD [DIR]  explore in each look (and by floor): the start
 //                                         room's tiles as the board draws them (twice);
 //                                         DIR: a screenshot of each, LOOK.png
@@ -173,6 +174,25 @@ async function main() {
     await page.waitForTimeout(500);
     out.walked = await M();
     if (arg) await page.screenshot({ path: arg });
+    console.log(JSON.stringify(out));
+    await browser.close();
+    return;
+  }
+  if (what === "scale") {
+    /* The board's scale (resize in arena.js) at a few window sizes. */
+    const out = { errors, scales: [] };
+    for (const [w, h] of [[1400, 860], [1640, 1000], [1237, 911], [2000, 1300]]) {
+      const p = await browser.newPage({ viewport: { width: w, height: h } });
+      p.on("pageerror", (e) => errors.push(e.message));
+      await p.goto(url + "#explore=48213:WARDEN:scroll");
+      await p.waitForFunction(() => window.arena && window.arena.state().mode === "explore", null, { timeout: 20000 });
+      out.scales.push(await p.evaluate(() => {
+        const r = document.getElementById("board").getBoundingClientRect(), f = window.arena.state().fight;
+        const w = f.view[0] * 32, h = f.view[1] * 32;
+        return { fit: Math.min((r.width - 32) / w, (r.height - 32) / h), scale: view.scale, ox: view.ox, oy: view.oy };
+      }));
+      await p.close();
+    }
     console.log(JSON.stringify(out));
     await browser.close();
     return;
