@@ -107,7 +107,8 @@ async function main() {
   }
   if (what === "looks") {
     const out = { errors, looks: {} };
-    for (const look of ["", "forest", "mountain", "town", "dungeon"]) {
+    const all = Object.keys((await (await fetch(url + "art.json")).json()).looks);   /* the four, and alternatives */
+    for (const look of [""].concat(all)) {
       const p = await browser.newPage({ viewport: { width: 1400, height: 860 } });
       p.on("pageerror", (e) => errors.push(e.message));
       await p.goto(url + "#explore=" + code + ":WARDEN" + (look ? ":look=" + look : ""));

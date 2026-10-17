@@ -1,5 +1,8 @@
 # The art: figures, effects and tiles
 
+*How it should look, and the work to do: [art-direction.md](art-direction.md). Pictures of
+it as the C64 shows it: `python3 tools/artpreview.py`.*
+
 The battle screen's graphics, on every front end, are built from four text files in
 `content/art/` (and the tiles come in looks besides: *Looks*), which anyone can read in a diff and the **art desk** edits in a browser.
 `tools/battlegfx.py` builds them into the C version's graphics file (`BGFX`: the C64's

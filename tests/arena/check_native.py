@@ -557,12 +557,14 @@ def check_looks():
             bad.append(f"{look}: no square has a variant or scenery")
         if got["again"] != got["tiles"]:
             bad.append(f"{look}: drawn twice, the tiles differ")
+    if sorted(out["looks"]) != sorted(art.LOOKS + ["by floor"]):
+        bad.append(f"the page has the looks {sorted(out['looks'])}, not art.py's {art.LOOKS}")
     if out["errors"]:
         bad.append(f"the page threw {out['errors'][:2]}")
     if bad:
         fail("looks: " + "; ".join(bad[:6]))
     else:
-        ok("looks: exploring in the forest, mountain, town and dungeon (and by floor, the forest "
+        ok(f"looks: exploring in each look ({', '.join(art.LOOKS)}; and by floor, the forest "
            "first) draws each square with its look's tile for the terrain, a variant of it, or "
            "scenery on open ground, the same every time")
 
