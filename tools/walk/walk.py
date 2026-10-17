@@ -6,8 +6,8 @@
     data = floor.asset()                            # what the C64 is given (docs/walk.md)
     frames = walk.play(floor, sticks)               # each frame: the leader and the camera
 
-    python3 tools/walk/walk.py asset YARD FLOOR DIR [open]   write the floor's asset:
-                                                    DIR/floor.bin and DIR/squares.bin
+    python3 tools/walk/walk.py asset YARD FLOOR DIR [open|open-unseen]   write the floor's
+                                                    asset: DIR/floor.bin and DIR/squares.bin
     python3 tools/walk/walk.py show YARD FLOOR [open]  draw the area, the start marked
 
 The floor is the explore prototype's (tools/rooms/rooms.py): its nine rooms side by side
@@ -23,9 +23,13 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, ".."))
 sys.path.insert(0, os.path.join(HERE, "..", "rooms"))
+sys.path.insert(0, os.path.join(HERE, "..", "rules"))
+sys.path.insert(0, os.path.join(HERE, "..", "registry"))
 import art  # noqa: E402
 import battlegfx  # noqa: E402
+import registry  # noqa: E402
 import rooms  # noqa: E402
+import seeing  # noqa: E402
 
 LOOKS = ["forest", "mountain", "town", "dungeon"]
 ROOMS_X, ROOMS_Y = rooms.COLS * rooms.W, rooms.ROWS * rooms.H          # 48 x 24: nine rooms
@@ -57,6 +61,13 @@ IDLE, HALF, SHIFTED, SHADED, COLOURED = 0, 1, 2, 3, 4
 PARTY = ["SALVAGED", "CHRONOMITE", "RAD_DRYAD", "GLASSFOLK"]   # Warden, Rogue, Channeler, Medic
 PEOPLE = {"trader": "GLASSFOLK", "courier": "HUMAN"}
 KINDS_MAX, FIGURES_MAX = 12, 80
+BANDS_MAX = 24                  # seeing's bands (docs/open-floors.md)
+SEE_LOG = 0xAC00                # each step's checks, for the tests (walk.inc)
+SEE_SHOWN = 8                   # a step's checks shown this many frames on (watch.s)
+NO_BAND = 0xFF                  # a figure that's no band's: a person
+# A floor's light by its look (the arena's explore prototype has the same): seeing's ranges
+# and modifiers.
+LIGHT_OF = {"forest": seeing.DAY, "mountain": seeing.DAY, "town": seeing.DUSK, "dungeon": seeing.NIGHT}
 GAP = 9                         # trail entries between travelers in marching order (~13 pixels)
 TRAIL = 32                      # the leader's trail kept
 SHAPE_POINTER = 0x40            # shape s is at $D000 + 64 s: the VIC's pointer $40 + s
@@ -111,7 +122,7 @@ def dress_hash(yard, floor, room, x, y):
 
 
 class Floor:
-    def __init__(self, yard, number, look=None, open_floor=False):
+    def __init__(self, yard, number, look=None, open_floor=False, unseen=False):
         self.yard, self.number, self.open = yard, number, open_floor
         self.look = look or LOOKS[(number - 1) % len(LOOKS)]
         self.art = art.load(art.tiles_file(16, self.look))
@@ -121,8 +132,12 @@ class Floor:
         variants = {t: [n for n in names[8:] if art.variant_of(n) == t] for t in art.TERRAIN}
         self.kinds = list(PARTY)
         self.figures = []
+        self.bands = []                             # seeing's (open floors only)
+        self.light = LIGHT_OF[self.look]
+        self.seed = ((yard * 31 + number * 977) & 0xFFFF) or 1
+        self.notice, self.stealth = self.senses()
         if open_floor:
-            self._open(scenery, variants)
+            self._open(scenery, variants, unseen)
             return
         self.f = rooms.build(yard, number)
         self.w, self.h = ROOMS_X, ROOMS_Y
@@ -159,7 +174,7 @@ class Floor:
             for x, y, name in who:
                 if name not in self.kinds:
                     self.kinds.append(name)
-                self.figures.append((ox + x, oy + y, self.kinds.index(name)))
+                self.figures.append((ox + x, oy + y, self.kinds.index(name), NO_BAND))
         # Kept in order down the area (those level in the rooms' order), so the engine
         # looks at only the rows in sight.
         self.figures.sort(key=lambda f: f[1])
@@ -172,16 +187,25 @@ class Floor:
         s = self.f["stairs"]
         self.goal = ((s % rooms.COLS) * rooms.W + 7, (s // rooms.COLS) * rooms.H + 3)
 
-    def _open(self, scenery, variants):
+    def _open(self, scenery, variants, unseen):
         """An open floor (docs/open-floors.md): build_open's, each square dressed as rooms.js
         dresses an open floor's (one area, no room: the stairs not dressed), its bands' foes
-        and its people standing where they stand."""
+        and its people standing where they stand; its bands hidden till spotted, and
+        looking for the party (seeing), unless unseen: every foe shown, none looking (the
+        engine's test of a crowd)."""
         o = self.f = rooms.build_open(self.yard, self.number)
         self.w, self.h = o["w"], o["h"]
         assert self.w <= SQUARES_X_MAX and self.h <= SQUARES_Y_MAX
-        standing = [(f["x"], f["y"], f["name"]) for b in o["bands"] for f in b["foes"]]
-        standing += [(p["x"], p["y"], PEOPLE[p["who"]]) for p in o["people"]]
-        taken = {(x, y) for x, y, _ in standing}
+        standing = [(f["x"], f["y"], f["name"], NO_BAND if unseen else k)
+                    for k, b in enumerate(o["bands"]) for f in b["foes"]]
+        standing += [(p["x"], p["y"], PEOPLE[p["who"]], NO_BAND) for p in o["people"]]
+        taken = {(x, y) for x, y, _, _ in standing}
+        senses = registry.load_senses()
+        assert len(o["bands"]) <= BANDS_MAX
+        self.bands = [{"x": b["x"], "y": b["y"], "hiding": b["hiding"],
+                       "sense": max(senses[f["name"]]["sense"] for f in b["foes"]),
+                       "stealth": max(senses[f["name"]]["stealth"] for f in b["foes"])}
+                      for b in o["bands"]] if not unseen else []
         stairs = tuple(o["stairs"])
         self.squares = [[0] * self.w for _ in range(self.h)]
         for y in range(self.h):
@@ -197,13 +221,37 @@ class Floor:
                     name = base
                 blocked = t in (WALL, PIT, HAZARD) or (x, y) in taken
                 self.squares[y][x] = self.names.index(name) | (BLOCKED if blocked else 0)
-        for x, y, name in standing:
+        for x, y, name, band in standing:
             if name not in self.kinds:
                 self.kinds.append(name)
-            self.figures.append((x, y, self.kinds.index(name)))
+            self.figures.append((x, y, self.kinds.index(name), band))
         self.figures.sort(key=lambda f: f[1])     # (stable: the bands' order, then the people)
         assert len(self.kinds) <= KINDS_MAX and len(self.figures) <= FIGURES_MAX
         self.start, self.goal = tuple(o["start"]), stairs
+
+    def senses(self):
+        """The party's Notice (Wits or Intuition, the better) and Stealth, in marching
+        order, as the explore prototype's travelers have them (tools/arena/scenarios.py)."""
+        sys.path.insert(0, os.path.join(HERE, "..", "arena"))
+        import arena
+        notice, stealth = [], []
+        for cls in PARTY_CLASSES:
+            ch = arena.build(cls, 1)
+            notice.append(max(ch["stats"][arena.STAT["WITS"]], arena.rating(ch, "INTUITION")))
+            stealth.append(arena.rating(ch, "STEALTH"))
+        return notice, stealth
+
+    def watch(self):
+        """Seeing on this floor (tools/rules/seeing.py's Watch), or None: a rooms floor's
+        foes don't hide."""
+        if not self.bands:
+            return None
+        tiles = [[int(c) for c in row] for row in self.f["rows"]]
+        return seeing.Watch({"tiles": tiles, "light": self.light, "seed": self.seed,
+                             "bands": self.bands,
+                             "party": {"sneaking": False, "light": False,
+                                       "travelers": [{"notice": n, "stealth": s}
+                                                     for n, s in zip(self.notice, self.stealth)]}})
 
     @property
     def cam_most(self):
@@ -280,11 +328,20 @@ class Floor:
         out += bytes(range(len(PARTY)))
         out += bytes([len(self.kinds)] + colours + [0] * (KINDS_MAX - len(colours)))
         figs = bytearray([len(self.figures)])
-        for x, y, k in self.figures:
+        for x, y, k, _ in self.figures:
             figs += bytes([x, y, k])
         out += figs + bytes(1 + 3 * FIGURES_MAX - len(figs))
         assert len(out) == 298
-        out += bytes(304 - len(out))
+        terrain = [art.TERRAIN.index(art.variant_of(e.name) or e.name) if (art.variant_of(e.name) or e.name)
+                   in art.TERRAIN else 0 for e in self.art.entries]
+        out += bytes(terrain + [0] * (32 - len(terrain)))
+        out += bytes([b for _, _, _, b in self.figures] + [NO_BAND] * (FIGURES_MAX - len(self.figures)))
+        out += bytes([len(self.bands)])
+        for b in self.bands + [None] * (BANDS_MAX - len(self.bands)):
+            out += bytes([b["x"], b["y"], b["sense"], b["stealth"], int(b["hiding"])] if b else [0] * 5)
+        out += bytes(self.notice) + bytes(self.stealth) + bytes([self.light, self.seed & 255, self.seed >> 8])
+        assert len(out) == 542
+        out += bytes(576 - len(out))
         out += self.charset()
         assert len(out) <= 2000
         out += bytes(2000 - len(out))
@@ -437,7 +494,7 @@ class Party:
             self.steps = (self.steps + 1) & 255
 
 
-def figures(floor, party, cam):
+def figures(floor, party, cam, shown=None):
     """The frame's figures as sprites: the party (each traveler GAP trail entries behind
     the one before, not drawn until the trail is that long), then the floor's foes and
     people; those in sight, with their shapes and colours, sorted down the screen and
@@ -458,7 +515,9 @@ def figures(floor, party, cam):
         if party.moved and (party.steps + 4 * k) & 8:
             y -= 1                                  # a step's bob
         figs.append((x, y, 2 * k + party.left[k], colours[k]))
-    for sx, sy, kind in floor.figures:
+    for sx, sy, kind, band in floor.figures:
+        if band != NO_BAND and not shown[band]:
+            continue                                # a band not shown spotted isn't drawn
         x, y = sx * 16, sy * 16
         figs.append((x, y, 2 * kind + (lead_x + 8 < x), colours[kind]))
     shown = []
@@ -503,10 +562,36 @@ def play(floor, sticks):
     cam = list(target(floor, pos))
     party = Party(pos)
     stage, dirs, out = IDLE, (0, 0), []
-    for stick in sticks:
-        out.append((pos[0], pos[1], cam[0], cam[1], stage, figures(floor, party, cam)))
+    # Seeing (docs/open-floors.md; docs/walk.md, "Seeing"): a check of every band at the
+    # start, and each time the leader's square (its middle's) changes, shown SEE_SHOWN
+    # frames on (the C64 makes them in the time to spare meanwhile); the leader's steps
+    # while they're under way wait. A band shown to have seen the party stops the walk.
+    watch = play.watch = floor.watch()
+    play.steps = []                                 # the frame each step's checks came in
+    square, wait, shown, shown_fight = tuple(floor.start), 0, None, None
+
+    def show():
+        return [st["spotted"] or st["seen"] for st in watch.state], watch.fight
+    if watch:
+        watch.step(*square)
+        play.steps.append(-1)
+        shown, shown_fight = show()
+    for n, stick in enumerate(sticks):
+        out.append((pos[0], pos[1], cam[0], cam[1], stage, figures(floor, party, cam, shown)))
+        if shown_fight is not None:
+            stick = 0xFF                            # stopped: the band's seen the party
         walk(floor, pos, stick)
         party.step(pos)
+        if watch:
+            if wait:
+                wait -= 1
+                if not wait:
+                    shown, shown_fight = show()
+            now = ((pos[0] + 128) >> 8, (pos[1] + 128) >> 8)
+            if not wait and shown_fight is None and now != square:
+                square, wait = now, SEE_SHOWN
+                watch.step(*square)
+                play.steps.append(n)
         want = target(floor, pos)
         nxt = [ease(cam[0], want[0]), ease(cam[1], want[1])]
         if stage == IDLE:
@@ -534,8 +619,9 @@ def play(floor, sticks):
 # ------------------------------------------------------------------ the command line
 
 def main(argv):
-    if len(argv) in (5, 6) and argv[1] == "asset" and argv[5:] in ([], ["open"]):
-        fl = Floor(int(argv[2]), int(argv[3]), open_floor=argv[5:] == ["open"])
+    if len(argv) in (5, 6) and argv[1] == "asset" and argv[5:] in ([], ["open"], ["open-unseen"]):
+        fl = Floor(int(argv[2]), int(argv[3]), open_floor=argv[5:] != [],
+                   unseen=argv[5:] == ["open-unseen"])
         with open(os.path.join(argv[4], "floor.bin"), "wb") as f:
             f.write(fl.asset())
         with open(os.path.join(argv[4], "squares.bin"), "wb") as f:

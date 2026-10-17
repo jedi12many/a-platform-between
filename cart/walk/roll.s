@@ -13,7 +13,7 @@ ROLL_SUCCESS    = 2
 ROLL_CRIT       = 3
 COST_MARGIN     = 20
 
-        .segment "CODE"
+        .segment "SEEING"         ; (run from $E000 in the walk: walk.cfg)
 
 ; ----------------------------------------------------------------------------------------
 ; roll_seed: the dice from a seed (0 would lock them: it's $ACE1 instead).

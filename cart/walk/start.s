@@ -7,19 +7,22 @@
         .include "zp.inc"
         .include "walk.inc"
 
-        .export walk_start, wk_awake, wk_joy, wk_done
+        .export walk_start, wk_awake, wk_joy, wk_done, frame_seen
         .import irq, nmi, gen_all, floor, walk_step, wk_pos, wk_stick
         .import camera_init, camera_step, wk_cam, wk_front
         .import wk_frame, wk_busy, wk_pending, wk_late, wk_d016, wk_d011, wk_d018, wk_swap
         .import edge_base, wk_ncx, wk_ncy, draw_all, maps_build
+        .import watch_init, watch_step, watch_stick, watch_idle
         .import figures_init, figures_step, prog_next, prog_shown, view_d011, screen_b
         .import precopy, colour_row, aim_all
         .import world_irq
         .import __BSS_RUN__, __BSS_SIZE__, __HIGH_LOAD__, __HIGH_RUN__, __HIGH_SIZE__
         .import __DATA_RUN__, __DATA_SIZE__, __SQUARES_LOAD__, __SQUARES_SIZE__
+        .import __SEEING_LOAD__, __SEEING_RUN__, __SEEING_SIZE__
 
         .assert __DATA_RUN__ + __DATA_SIZE__ <= SHIFT_AB, lderror, "the program runs past $27FF"
         .assert __SQUARES_LOAD__ + __SQUARES_SIZE__ <= SHIFT_BA, lderror, "the squares load past $3FFF"
+        .assert __SEEING_LOAD__ + __SEEING_SIZE__ <= COLOUR_MAP, lderror, "seeing loads past $7BFF"
 
         .segment "LOADADDR"
         .word $0801
@@ -83,7 +86,8 @@ walk_start:
         inc zp_wk_out + 1
         dex
         bne :-
-        ; The interrupts' code up to $F200 (before gen_all writes over the program's top).
+        ; The interrupts' code up to $F200, seeing's to $E000 (before gen_all writes over
+        ; the program's top).
         lda #<__HIGH_LOAD__
         sta zp_wk_src
         lda #>__HIGH_LOAD__
@@ -93,15 +97,17 @@ walk_start:
         lda #>__HIGH_RUN__
         sta zp_wk_dst + 1
         ldx #>(__HIGH_SIZE__ + 255)
-        ldy #0
-:       lda (zp_wk_src), y
-        sta (zp_wk_dst), y
-        iny
-        bne :-
-        inc zp_wk_src + 1
-        inc zp_wk_dst + 1
-        dex
-        bne :-
+        jsr copy_pages
+        lda #<__SEEING_LOAD__
+        sta zp_wk_src
+        lda #>__SEEING_LOAD__
+        sta zp_wk_src + 1
+        lda #<__SEEING_RUN__
+        sta zp_wk_dst
+        lda #>__SEEING_RUN__
+        sta zp_wk_dst + 1
+        ldx #>(__SEEING_SIZE__ + 255)
+        jsr copy_pages
         jsr maps_build              ; (the squares, the floor's size: before gen_all writes
         jsr look_in                 ; over the program's top, where the squares and HIGH
         jsr shapes_in               ; were loaded)
@@ -115,6 +121,7 @@ walk_start:
         lda floor + FL_START + 1
         sta wk_pos + 3
         jsr camera_init
+        jsr watch_init              ; (seeing's first check: before the first figures)
         jsr figures_init
         ; The screen where the camera is: A's characters, the colours, shown.
         jsr cam_cells
@@ -165,18 +172,23 @@ walk_start:
 
 ; ----------------------------------------------------------------------------------------
 ; The frame loop: each frame, once the interrupt has begun it, the joystick, the walk and
-; the camera; then what it decided waits for the next frame's interrupt.
+; the camera; then what it decided waits for the next frame's interrupt (and seeing's
+; checks, if some are under way, go on meanwhile: watch.s).
 loop:   lda frame_seen              ; (the frame last handled, not the count now: precopy
-:       cmp wk_frame                ; returns once the next has begun)
-        beq :-
-        lda wk_frame
+        cmp wk_frame                ; returns once the next has begun)
+        bne :+
+        jsr watch_idle
+        jmp loop
+:       lda wk_frame
         sta frame_seen
 wk_awake:
         lda #1
         sta wk_busy
         lda CIA1_PRA
 wk_joy: sta wk_stick                ; (the VICE check sets A here: tests/walk/vice_walk.py)
+        jsr watch_stick
         jsr walk_step
+        jsr watch_step
         jsr camera_step
         jsr figures_step
 wk_done:
@@ -272,6 +284,20 @@ cell_of:
         ror a
         lsr zp_wk_t
         ror a
+        rts
+
+; copy_pages: X pages from (zp_wk_src) to (zp_wk_dst).
+;   Changes: A, X, Y; zp_wk_src, zp_wk_dst.
+copy_pages:
+        ldy #0
+:       lda (zp_wk_src), y
+        sta (zp_wk_dst), y
+        iny
+        bne :-
+        inc zp_wk_src + 1
+        inc zp_wk_dst + 1
+        dex
+        bne :-
         rts
 
         .segment "BSS"

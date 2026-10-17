@@ -3,7 +3,7 @@
 
         .include "walk.inc"
 
-        .export sq_row_lo, sq_row_hi, terrain, see_entry
+        .export sq_row_lo, sq_row_hi, terrain, see_entry, see_yield
 
         .segment "CODE"
 
@@ -12,6 +12,10 @@
 see_entry:
         jmp see_prepare
         jmp see_step
+
+; (The walk gives its frames back here when one begins: cart/walk/watch.s.)
+see_yield:
+        rts
 
         .segment "BSS"
 

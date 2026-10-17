@@ -229,8 +229,10 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 # to tools/walk/walk.py, frame by frame and row by row as the VIC reads them. And
 # build/walk-crowd.prg, the same on yard 7602's eighth floor, the dungeon, crowded: up to
 # 14 figures at once, the sprites shared down the screen; and build/walk-open.prg, an open
-# floor (docs/open-floors.md): yard 48213's sixth, 80 x 40 squares.
-WALK_MODS := start gen irq border colours move camera edge figures mux floor
+# floor (docs/open-floors.md): yard 48213's sixth, 80 x 40 squares, every foe shown (a crowd);
+# and build/walk-seen.prg, its third (64 x 32), its bands hidden till spotted and looking
+# for the party (seeing: cart/walk/seeing.s), the walk stopped when one sees it.
+WALK_MODS := start gen irq border colours move camera edge figures mux watch seeing roll floor
 
 # A floor's program: the engine with another floor's asset (build/walk-NAME/walk/).
 define walk_floor
@@ -242,7 +244,8 @@ define walk_floor
 endef
 
 build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/walk.inc cart/walk/walk.cfg \
-                cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py
+                cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py \
+                tools/rules/seeing.py registry/senses.txt
 	@mkdir -p build/walk/walk
 	python3 tools/walk/walk.py asset 48213 1 build/walk/walk
 	@for m in $(WALK_MODS); do \
@@ -251,7 +254,8 @@ build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/w
 	    $(addprefix build/walk/,$(addsuffix .o,$(WALK_MODS)))
 	python3 tools/d64.py write build/walk.d64 "walk the yard" wy $@=walk
 	$(call walk_floor,crowd,7602 8)
-	$(call walk_floor,open,48213 6,open)
+	$(call walk_floor,open,48213 6,open-unseen)
+	$(call walk_floor,seen,48213 3,open)
 
 walk: build/walk.prg
 	@echo "Walk the yard: build/walk.prg (a Kung Fu Flash 2 runs it), build/walk.d64 (LOAD\"WALK\",8 and RUN)"
@@ -262,10 +266,12 @@ cart: build/apb.crt
 test-cart: build/apb.crt build/the-fare.d64 build/battle build/walk.prg
 	python3 tests/walk/run_walk.py build/walk.prg build/walk/walk.lbl
 	python3 tests/walk/run_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
-	python3 tests/walk/run_walk.py build/walk-open.prg build/walk-open/walk.lbl --yard 48213 --floor 6 --open
+	python3 tests/walk/run_walk.py build/walk-open.prg build/walk-open/walk.lbl --yard 48213 --floor 6 --open --unseen
+	python3 tests/walk/run_walk.py build/walk-seen.prg build/walk-seen/walk.lbl --yard 48213 --floor 3 --open
 	python3 tests/walk/vice_walk.py build/walk.prg build/walk/walk.lbl
 	python3 tests/walk/vice_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
-	python3 tests/walk/vice_walk.py build/walk-open.prg build/walk-open/walk.lbl --yard 48213 --floor 6 --open
+	python3 tests/walk/vice_walk.py build/walk-open.prg build/walk-open/walk.lbl --yard 48213 --floor 6 --open --unseen
+	python3 tests/walk/vice_walk.py build/walk-seen.prg build/walk-seen/walk.lbl --yard 48213 --floor 3 --open
 	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
 	    > build/cart/desk.c64

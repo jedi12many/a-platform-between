@@ -152,6 +152,8 @@ class C64:
         self.frames = []                    # each frame shown: (wk_frame, d016, d011, rows)
         self.seen = None
         self.states = []                    # each loop's: (frame, pos x, pos y, cam x, cam y, stage)
+        self.see_begun = []                 # the frame each step's checks began
+        self.see_steps = []                 # each step's checks (the log) and the frame done
         self.loop_cycles = []               # each loop's cycles, awake to done
         self.irq_cycles = []
         self.awake_at = None
@@ -290,6 +292,24 @@ class C64:
         a = self.syms["wk_frame"]
         return self.ram[a] | self.ram[a + 1] << 8
 
+    def see_log(self):
+        """The step's checks as seeing.s logged them (SEE_LOG): (who looks, band, distance,
+        [(roll, total, tn, outcome) of every die]); None if the log overflowed."""
+        ram, L = self.ram, self.syms
+        if ram[L["see_log_full"]]:
+            return None
+        checks, a = [], walk.SEE_LOG
+        for _ in range(ram[L["see_log_n"]]):
+            kind, band, d, _out, n = ram[a:a + 5]
+            dice = []
+            for j in range(n):
+                r, tl, th, nl, nh, res = ram[a + 5 + 6 * j:a + 11 + 6 * j]
+                tn = nl | nh << 8
+                dice.append((r, tl | th << 8, tn - 65536 if tn & 0x8000 else tn, res))
+            checks.append(("band" if kind & 1 else "party", band, d, dice))
+            a += 5 + 6 * n
+        return checks
+
     def state(self):
         r, s = self.ram, self.syms
         p, c = s["wk_pos"], s["wk_cam"]
@@ -320,9 +340,14 @@ class C64:
         m = self.mpu
         awake, irq, nmi = self.syms["wk_awake"], self.syms["irq"], self.syms["nmi"]
         done = self.syms["wk_done"]
+        begin, seen = self.syms.get("wk_begin"), self.syms.get("wk_seen")
         while len(self.states) < frames:
             pc = m.pc
-            if pc == awake:
+            if pc == begin:
+                self.see_begun.append(len(self.states) - 1)
+            elif pc == seen:
+                self.see_steps.append((self.see_log(), len(self.states) - 1))
+            elif pc == awake:
                 self.states.append(self.state())
                 self.awake_at = m.processorCycles
             elif pc == done and self.awake_at is not None:
@@ -437,6 +462,45 @@ def check(c64, floor, ref):
            f"(a frame is {FRAME}, less 25 bad lines' {25 * BADLINE_STEAL})")
 
 
+def check_seeing(c64, floor, watch, frames):
+    """Seeing (watch.s, seeing.s) as the reference's (walk.play): each step's checks begun
+    on the frame its are, every check and die as tools/rules/seeing.py's, all finished in
+    time to be shown, and the fight the reference's."""
+    want = {}
+    for step, who, band, d, dice in watch.checks:
+        want.setdefault(step, []).append((who, band, d, dice))
+    begun = [-1] + c64.see_begun
+    steps = [s for s in walk.play.steps if s < frames - 1]
+    if begun[:len(steps)] != steps:
+        first = next((i for i, (a, b) in enumerate(zip(begun, steps)) if a != b), min(len(begun), len(steps)))
+        fail(f"step {first}'s checks begun on frame {begun[first:first + 1]}, the reference's on "
+             f"{steps[first:first + 1]} ({len(begun)} steps against {len(steps)})")
+        return
+    bad, dice, slowest = 0, 0, 0
+    for i, (log, done) in enumerate(c64.see_steps):
+        if i >= len(steps):
+            break
+        slowest = max(slowest, done - begun[i] if i else 0)
+        got = log if log is not None else "the log overflowed"
+        if got != want.get(i, []):
+            if bad < 3:
+                fail(f"step {i} (frame {begun[i]}): checks {got}, the reference's {want.get(i, [])}")
+            bad += 1
+        dice += sum(len(c[3]) for c in want.get(i, []))
+    late = c64.ram[c64.syms["see_late"]]
+    if late:
+        fail(f"{late} steps' checks not finished by the frame they were to be shown")
+    fight = c64.ram[c64.syms["shown_fight"]]
+    wfight = watch.fight[0] + 1 if watch.fight else 0
+    if fight != wfight:
+        fail(f"the fight shown: band {fight} (0: none), the reference's {wfight}")
+    if not bad and not late and fight == wfight:
+        ok(f"seeing: {len(steps)} steps' checks ({sum(map(len, want.values()))} checks, {dice} dice) "
+           f"as tools/rules/seeing.py's, die for die, each begun on the reference's frame and "
+           f"finished within {slowest} frames (shown after {walk.SEE_SHOWN}); "
+           f"{sum(1 for st in watch.state if st['spotted'])} of {len(watch.state)} bands spotted")
+
+
 def shot(c64, floor, index, path):
     """Frame `index` as shown, in the VIC's colours (tools/vic.py), its fine scroll applied."""
     from vic import Screen
@@ -462,8 +526,9 @@ def main():
     ap.add_argument("--yard", type=int, default=YARD)
     ap.add_argument("--floor", type=int, default=FLOOR)
     ap.add_argument("--open", action="store_true", help="an open floor (docs/open-floors.md)")
+    ap.add_argument("--unseen", action="store_true", help="its foes all shown, none looking")
     args = ap.parse_args()
-    floor = walk.Floor(args.yard, args.floor, open_floor=args.open)
+    floor = walk.Floor(args.yard, args.floor, open_floor=args.open, unseen=args.unseen)
     script = sticks(floor)
     args.frames = args.frames or len(script)
     script += [0xFF] * (args.frames + 2 - len(script))
@@ -472,9 +537,16 @@ def main():
     c64 = C64(open(args.prg, "rb").read(), syms, script)
     c64.run(args.frames)
     check(c64, floor, ref)
+    watch = walk.play.watch
+    if watch:
+        check_seeing(c64, floor, watch, args.frames)
     goal = floor.goal
     end = ((ref[-1][0] + 128) >> 8, (ref[-1][1] + 128) >> 8)
-    if end != goal:
+    if watch and watch.fight is not None:
+        band, ambush = watch.fight
+        ok(f"band {band + 1} sees the party (" + ("an ambush" if ambush else "spotted first")
+           + f"): the walk stops on square {end}, its joystick let go")
+    elif end != goal:
         fail(f"the walk ends on square {end}, not the stairs' {goal}")
     else:
         ok(f"the walk reaches the stairs, square {goal}, "

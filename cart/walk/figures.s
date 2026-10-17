@@ -8,7 +8,7 @@
         .include "walk.inc"
 
         .export figures_init, figures_step, prog_next, prog_left
-        .import floor, wk_pos, wk_cam, wk_h
+        .import floor, wk_pos, wk_cam, wk_h, b_shown
 
         .segment "CODE"
 
@@ -66,6 +66,8 @@ figures_init:
         asl a                       ; its shapes: 2 kind, + 1 facing left
         adc #SHAPE_POINTER
         sta fig_ptr, x
+        lda floor + FL_FIG_BAND, x
+        sta fig_band, x
         sty zp_wk_i
         ldy fig_kind, x
         lda floor + FL_KIND_COLOUR, y
@@ -255,7 +257,11 @@ build:
 @floor: cpy fig_end
         bne :+
         jmp sort
-:       lda fig_sx, y               ; in squares: on the window's edge columns, its pixels
+:       ldx fig_band, y             ; a band's not yet shown spotted (or seen): not drawn
+        bmi @drawn                  ; ($FF: a person)
+        lda b_shown, x
+        beq @skip
+@drawn: lda fig_sx, y               ; in squares: on the window's edge columns, its pixels
         cmp sq_x0                   ; decide; between them, it's in (the rows looked at
         bcc @skip                   ; are those from sq_y0 to sq_y1, the same)
         beq @x_edge
@@ -705,6 +711,7 @@ fig_ptr:    .res FIGURES_MAX    ; their first shape's pointer, and colour
 fig_col:    .res FIGURES_MAX
 fig_sx:     .res FIGURES_MAX    ; and their squares
 fig_sy:     .res FIGURES_MAX
+fig_band:   .res FIGURES_MAX    ; and their bands ($FF: none)
 count:      .res 1              ; the list: figures in sight
 list_xl:    .res SHOWN_MAX
 list_xh:    .res SHOWN_MAX

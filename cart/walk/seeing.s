@@ -11,6 +11,10 @@
 ; it's 4 squares nearer than at its last check; next to each other, seen without a roll.
 ; A line is only traced for a check that's due, so a step costs little. Every die is
 ; written to the log (SEE_LOG: for the tests).
+;
+; In the walk the checks run in the frame loop's time to spare: see_yield (watch.s) gives
+; the processor back to the loop if a frame has begun (on each square a line passes, and
+; before each die). It changes A and the flags, nothing else.
 
         .include "zp.inc"
         .include "walk.inc"
@@ -19,7 +23,7 @@
         .export see_light, see_n, see_notice, see_stealth, see_sneak, see_lamp
         .export see_bands, b_x, b_y, b_sense, b_stealth, b_hiding, b_spotted, b_seen, b_alert
         .export b_plast, b_blast, see_x, see_y, see_fight, see_ambush, see_log_n, see_log_full
-        .import roll_d100, roll_resolve, sq_row_lo, sq_row_hi, terrain
+        .import roll_d100, roll_resolve, sq_row_lo, sq_row_hi, terrain, see_yield
         .importzp ROLL_FAIL, ROLL_COST, ROLL_SUCCESS, ROLL_CRIT
 
 PARTY_MAX       = 4
@@ -43,7 +47,7 @@ OUT_SPOTTED     = 2
 OUT_SEEN        = 3
 EV_SIZE         = 5 + 6 * PARTY_MAX
 
-        .segment "CODE"
+        .segment "SEEING"         ; (run from $E000 in the walk: walk.cfg)
 
 ; ----------------------------------------------------------------------------------------
 ; see_prepare: what doesn't change from step to step: the party's best looker and sneak
@@ -282,7 +286,8 @@ sight:
         lda #0
         sbc #0
         sta zp_see_err + 1
-@step:  lda lx
+@step:  jsr see_yield
+        lda lx
         cmp tx
         bne :+
         lda ly
@@ -341,8 +346,9 @@ sight:
         sbc dx
         lda zp_see_a + 1
         sbc #0
-        bpl @step
-        lda zp_see_err              ; err += dx; y += sy
+        bmi :+
+        jmp @step
+:       lda zp_see_err              ; err += dx; y += sy
         clc
         adc dx
         sta zp_see_err
@@ -567,6 +573,7 @@ light_mod:
 ; die_roll, die_out).
 roll_die:
         sta zp_see_rate
+        jsr see_yield
         jsr roll_d100
         sta die_roll
         clc

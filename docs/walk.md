@@ -3,13 +3,15 @@
 *Plan B's first demo ([plan-b.md](plan-b.md), B1): a whole-screen floor scrolling smoothly
 in eight directions at 50 frames a second on a stock PAL C64, the party, foes and people
 on it as sprites, and the party's portraits and health in the opened bottom border; and
-open floors of any size up to 80 x 48 squares ([open-floors.md](open-floors.md)). Built
-(W1, W2, W3, W4).*
+open floors of any size up to 80 x 48 squares ([open-floors.md](open-floors.md)), their
+bands hidden until spotted and looking for the party. Built (W1, W2, W3, W4, W5).*
 
     make walk           build/walk.prg (a Kung Fu Flash 2 runs it), build/walk.d64 (LOAD"WALK",8 and RUN),
                         build/walk-crowd.prg (yard 7602's eighth floor: a crowd to test the sprites),
-                        and build/walk-open.prg (yard 48213's sixth floor as an open floor: 80 x 40)
-    make test-cart      ...and tests/walk/run_walk.py and tests/walk/vice_walk.py on all three
+                        build/walk-open.prg (yard 48213's sixth floor as an open floor: 80 x 40,
+                        every foe shown, none looking), and build/walk-seen.prg (its third, 64 x 32,
+                        seeing: the bands hidden till spotted, the walk stopped when one sees you)
+    make test-cart      ...and tests/walk/run_walk.py and tests/walk/vice_walk.py on all four
 
 It walks yard 48213's first floor, the explore prototype's ([rooms.md](rooms.md)): its nine
 rooms side by side as one area of 48 x 24 squares, in the forest look
@@ -17,7 +19,8 @@ rooms side by side as one area of 48 x 24 squares, in the forest look
 people standing where the prototype puts them. Or an open floor
 ([open-floors.md](open-floors.md)), as `buildOpen` builds it and the prototype dresses it,
 its bands' foes and its people standing where they stand (`walk.py asset YARD FLOOR DIR
-open`). A joystick in port 2 walks the party; the screen follows.
+open`), each band unseen until the party spots it, and looking for the party (see
+*Seeing*). A joystick in port 2 walks the party; the screen follows.
 
 It's a program of its own (`cart/walk/`), not yet part of the cartridge's game: the
 engine first, proven, then the game moves onto it.
@@ -36,6 +39,8 @@ engine first, proven, then the game moves onto it.
 | `cart/walk/camera.s` | the camera, and the scroller's five stages |
 | `cart/walk/figures.s` | the figures: the party's trail, who's in sight, the sprites shared out into a program |
 | `cart/walk/mux.s` | the multiplexer: a program carried out, its first eight after the HUD and each event at its line |
+| `cart/walk/watch.s` | seeing on the floor: the bands and the party from the asset, the checks at each step run in the time to spare, shown, the walk stopped |
+| `cart/walk/seeing.s`, `roll.s` | seeing and being seen in 6502 (the rules lab's, [open-floors.md](open-floors.md)), and its dice |
 | `cart/walk/edge.s` | the floor on its pages (its colours and squares), and drawing rows and columns of characters from the squares |
 | `cart/walk/floor.s` | the floor's asset and its squares, built in |
 | `tests/walk/run_walk.py` | the harness: the program on an emulated C64, held to the reference |
@@ -232,6 +237,39 @@ most) are sorted, then merged with them. And a figure is in sight without its pi
 being looked at when its square is inside the window's edge squares.
 
 
+## Seeing
+
+On an open floor ([open-floors.md](open-floors.md), *Being seen*) each band is hidden until
+the party spots it, and looks for the party: the rules lab's seeing
+(`core/next/seeing.c`), in 6502 in `seeing.s` and held to `tools/rules/seeing.py` roll for
+roll (`tests/seeing/run_seeing.py`). The floor's asset carries the bands (each one's
+square, Sense, Stealth, and whether it's hiding), which band each foe belongs to, the
+party's Notice and Stealth, the light (the look's: forest and mountain day, town dusk,
+dungeon night), each tile's terrain for the lines of sight, and the dice's seed.
+
+- **A step:** every band is checked at the start, and each time the leader's square (the
+  one under its middle) changes: the party looks if it hasn't spotted the band, and the
+  band looks back, each only if a check is due (in range and sight; never checked, or 4
+  squares nearer than at the last; next to each other, no roll).
+- **In the time to spare:** a step's checks can cost more than a frame has left (a line
+  traced and dice rolled for each band due: 11,000 cycles on yard 48213's third floor), so
+  they run as a task of their own (`watch.s`), on their own stack ($0100-$017F), while the
+  frame loop waits for the next frame: on each square of a line and before each die,
+  `see_yield` hands the processor back if a frame has begun, and the loop hands it on
+  again when it next waits. The loop is late by one yield's worth at most (some 300
+  cycles).
+- **Shown 8 frames on:** what a step's checks found is shown the eighth frame after it,
+  whenever the task finished, so the frames are the same however the time fell (and the
+  reference, `walk.play`, knows them): from then the bands spotted (or seen) are drawn,
+  and if a band has seen the party, the joystick's let go from the next frame: the party
+  stands where it is (the fight is next: W6). While a step's checks are under way, the
+  leader's further steps wait; then the square it's on is the next step. Checks not
+  finished in time would be shown when they are, and counted (`see_late`): the tests fail
+  it. On the floors tried they finish within two frames.
+
+Seeing's code runs from $E000 (loaded past $27FF and copied there at the start, like the
+interrupts'); its log of each step's checks, every die, is at $AC00 for the tests.
+
 ## Measured
 
 On the harness's model of the C64 (its bad lines taking 40 cycles each, each sprite
@@ -272,13 +310,17 @@ joystick and the raster played in Python:
   so an event set a line late, or a register written while its sprite shows, would be
   caught; and none left out where the reference draws it;
 - every frame's HUD is the asset's: its eight sprites from line 267;
+- on a floor with seeing, each step's checks begun on the reference's frame, every check
+  and die `tools/rules/seeing.py`'s, each finished before it's to be shown, and the band
+  that sees the party the reference's (a band's figures drawn only once it's shown
+  spotted is in the sprites' check above);
 - every frame **as the VIC showed it** is right: each row of characters and colours is
   read at its own bad line, from the screen `$D018` points at then and the colour RAM as
   it is then, so a copy racing the raster, or a screen written while it's shown, would be
   caught; and compared with the area as the reference's camera sees it, every visible
   character and colour, and the fine scroll's registers;
 - no frame is late, and the busiest loop and interrupt are reported;
-- the walk reaches the stairs.
+- the walk reaches the stairs (or, with seeing, stops where a band sees the party).
 
 `--shot FRAME FILE.png` draws a frame as shown.
 
@@ -293,12 +335,12 @@ read, the figures in their shapes only in the view, the bands black, the HUD. It
 the harness can't: the VIC showing a sprite from the line after its Y, `$D018`'s unused
 bit reading as 1, the top compare needing 25 rows at line 51, and a sprite started again
 at the HUD's Y (11) in the next frame's top border when the world interrupt set its Y
-after line 11. `make test-cart` runs it on both floors, every seventh frame. Without x64sc (`apt-get
+after line 11. `make test-cart` runs it on all four, every seventh frame. Without x64sc (`apt-get
 install vice`, and `xvfb-run`) it says so and passes. It wants checking on a real C64 too.
 
 ## The floor's asset
 
-What `tools/walk/walk.py asset YARD FLOOR DIR [open]` writes (`Floor.asset`, `floor.bin`;
+What `tools/walk/walk.py asset YARD FLOOR DIR [open|open-unseen]` writes (`Floor.asset`, `floor.bin`;
 and the squares, `squares.bin`), and the program has built in (`floor.s`):
 
 | Offset | Size | What |
@@ -311,7 +353,13 @@ and the squares, `squares.bin`), and the program has built in (`floor.s`):
 | 40 | 4 | the party's kinds, in marching order |
 | 44 | 1 + 12 | how many kinds of figure, then each one's sprite colour |
 | 57 | 1 + 240 | how many foes and people (80 at most), then each one's square x, y and kind, in order down the area |
-| 304 | 8 + 32 a tile | the characters: 0 blank, then each tile's four |
+| 298 | 32 | each tile's terrain, the battle's (1 a wall, 4 cover...): seeing's lines |
+| 330 | 80 | each foe's or person's band ($FF: a person's, always drawn) |
+| 410 | 1 + 24 x 5 | how many bands (24 at most; none on a rooms' floor, or `open-unseen`), then each: square x, y, Sense, Stealth, hiding |
+| 531 | 4 + 4 | the party's Notice, then Stealth, in marching order |
+| 539 | 1 | the floor's light (0 day, 1 dusk, 2 night: the look's) |
+| 540 | 2 | seeing's dice: the seed |
+| 576 | 8 + 32 a tile | the characters: 0 blank, then each tile's four |
 | 2,000 | 18 | the HUD's sprites: their X's low bytes (8), colours (8), X's ninth bits, which are multicolour |
 | 2,048 | 64 a shape | the sprite shapes: kind k's 2 k (facing right) and 2 k + 1 (left); 24-27 the HUD's health (31, empty, is made at the start) |
 
