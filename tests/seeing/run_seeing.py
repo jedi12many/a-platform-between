@@ -9,6 +9,10 @@ the reference written from the doc, tools/rules/seeing.py.
 3. Random approaches (maps of walls and cover, parties of 1 to 4, bands, light, paths):
    the engine's log must be the reference's, roll for roll; some on sim65; and under
    AddressSanitizer and UBSan, no complaint.
+4. The walking engine's seeing, in 6502 (cart/walk/seeing.s, on py65: build/seeing6502/,
+   with tests/seeing/see_stub.s): the reviewed approaches and the random ones, step by
+   step, every check and every die (roll, total, TN, outcome) the reference's, and the
+   same end.
 
     python3 tests/seeing/run_seeing.py [--update]   (--update rewrites the reviewed logs
                                                       from the reference: read the diff)
@@ -189,11 +193,156 @@ def randomly():
            "log is the reference's, natively, under the sanitizers, and every tenth on sim65")
 
 
+# ------------------------------------------------------------------ the 6502's
+
+STOP = 0x0300                       # a routine "returns" here: the run stops
+MAP = 0x2000                        # the map's rows, a page each (the stub's sq_row_*)
+SEE_LOG = 0xAC00
+
+
+def reference_checks(case):
+    """The reference's approach as checks: (step, who looks, band, distance, [(roll, total,
+    tn, outcome) of every die]), and how it ended: (band + 1, an ambush) or None."""
+    import re
+    checks, step, end = [], 0, None
+    for ln in seeing.approach(case):
+        m = re.match(r"step (\d+):", ln)
+        if m:
+            step = int(m.group(1))
+        m = re.match(r"  band (\d+) at \d+,\d+, (\d+) away: (the party|band \d+) looks", ln)
+        if m:
+            checks.append((step, "party" if m.group(3) == "the party" else "band",
+                           int(m.group(1)) - 1, int(m.group(2)), []))
+        m = re.search(r"rolls (\d+) = (-?\d+) against (-?\d+): (\w+)", ln)
+        if m:
+            checks[-1][4].append((int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                                  seeing.RESULT.index(m.group(4))))
+        m = re.match(r"the fight: band (\d+)(, an ambush)?", ln)
+        if m:
+            end = (int(m.group(1)), bool(m.group(2)))
+    return checks, end
+
+
+class Six502:
+    """cart/walk/seeing.s on py65."""
+
+    def __init__(self):
+        from py65.devices.mpu6502 import MPU
+        self.labels = {}
+        for line in open(os.path.join(ROOT, "build", "seeing6502", "see.lbl")):
+            p = line.split()
+            if len(p) == 3 and p[0] == "al":
+                self.labels[p[2].lstrip(".")] = int(p[1], 16)
+        self.image = open(os.path.join(ROOT, "build", "seeing6502", "see.bin"), "rb").read()
+        self.MPU = MPU
+
+    def call(self, m, addr):
+        m.pc = addr
+        m.sp = 0xFF
+        ret = STOP - 1
+        m.memory[0x01FF] = ret >> 8
+        m.memory[0x01FE] = ret & 0xFF
+        m.sp = 0xFD
+        n = 0
+        while m.pc != STOP:
+            m.step()
+            n += 1
+            if n > 2_000_000:
+                raise RuntimeError("it ran away")
+
+    def approach(self, case):
+        m = self.MPU()
+        mem = m.memory
+        mem[0x1000:0x1000 + len(self.image)] = self.image
+        L = self.labels
+        t = case["tiles"]
+        for y, row in enumerate(t):
+            mem[L["sq_row_lo"] + y] = 0
+            mem[L["sq_row_hi"] + y] = (MAP >> 8) + y
+            for x, v in enumerate(row):
+                mem[MAP + 256 * y + x] = v
+        for k in range(32):
+            mem[L["terrain"] + k] = k if k < 8 else 0
+        p = case["party"]
+        mem[L["see_light"]] = case["light"]
+        mem[L["see_n"]] = len(p["travelers"])
+        for i, tr in enumerate(p["travelers"]):
+            mem[L["see_notice"] + i] = tr["notice"]
+            mem[L["see_stealth"] + i] = tr["stealth"]
+        mem[L["see_sneak"]] = int(p["sneaking"])
+        mem[L["see_lamp"]] = int(p["light"])
+        mem[L["see_bands"]] = len(case["bands"])
+        for k, b in enumerate(case["bands"]):
+            for name, v in (("b_x", b["x"]), ("b_y", b["y"]), ("b_sense", b["sense"]),
+                            ("b_stealth", b["stealth"]), ("b_hiding", int(b["hiding"])),
+                            ("b_spotted", 0), ("b_seen", 0), ("b_alert", 0),
+                            ("b_plast", 0xFF), ("b_blast", 0xFF)):
+                mem[L[name] + k] = v
+        seed = case["seed"] or 0xACE1
+        mem[L["roll_rng"]], mem[L["roll_rng"] + 1] = seed & 0xFF, seed >> 8
+        self.call(m, L["see_prepare"])
+        checks, end = [], None
+        for step, (x, y) in enumerate([case["start"]] + case["path"]):
+            mem[L["see_x"]], mem[L["see_y"]] = x, y
+            self.call(m, L["see_step"])
+            if mem[L["see_log_full"]]:
+                raise RuntimeError("the log overflowed")
+            a = SEE_LOG
+            for _ in range(mem[L["see_log_n"]]):
+                kind, band, d, _out, n = mem[a:a + 5]
+                dice = []
+                for j in range(n):
+                    r, tl, th, nl, nh, res = mem[a + 5 + 6 * j:a + 11 + 6 * j]
+                    tn = nl | nh << 8
+                    dice.append((r, tl | th << 8, tn - 65536 if tn & 0x8000 else tn, res))
+                checks.append((step, "band" if kind & 1 else "party", band, d, dice))
+                a += 5 + 6 * n
+            if mem[L["see_fight"]]:
+                end = (mem[L["see_fight"]], bool(mem[L["see_ambush"]]))
+                break
+        return checks, end
+
+
+def six502():
+    """The walking engine's seeing (cart/walk/seeing.s) against the reference, check for
+    check and die for die."""
+    if not os.path.exists(os.path.join(ROOT, "build", "seeing6502", "see.bin")):
+        fail("the 6502's seeing: build/seeing6502/see.bin isn't built (make test-rules-next)")
+        return
+    cpu = Six502()
+    cases = [(os.path.basename(p)[:-4], seeing.parse(p)) for p in sorted(glob.glob(os.path.join(HERE, "*.txt")))]
+    rnd = random.Random(20261017)
+    cases += [(f"random {k}", random_case(rnd)) for k in range(300)]
+    bad, checks, fights = [], 0, 0
+    for name, case in cases:
+        want = reference_checks(case)
+        try:
+            got = cpu.approach(case)
+        except RuntimeError as e:
+            bad.append(f"{name}: {e}")
+            continue
+        checks += len(want[0])
+        fights += want[1] is not None
+        if got != want:
+            g, w = got[0], want[0]
+            first = next((i for i, (a, b) in enumerate(zip(g, w)) if a != b), min(len(g), len(w)))
+            bad.append(f"{name}: check {first}: {g[first:first + 1]} against the reference's "
+                       f"{w[first:first + 1]} ({len(g)} checks against {len(w)}; ends {got[1]}, {want[1]})")
+        if len(bad) > 3:
+            break
+    if bad:
+        fail("the 6502's seeing: " + "\n  ".join(bad))
+    else:
+        ok(f"the walking engine's seeing in 6502 (cart/walk/seeing.s): {len(cases)} approaches "
+           f"({checks} checks, {fights} ending in a fight), every check and die the reference's")
+
+
 def main():
     update = "--update" in sys.argv
     hand_worked()
     reviewed(update)
     randomly()
+    six502()
     print(f"seeing: {failures} failed")
     return 1 if failures else 0
 

@@ -78,3 +78,11 @@ zp_wk_y1        = $6C
 zp_wk_t         = $6D           ; scratch
 zp_wk_irq       = $6E           ; 2: the interrupt's own pointers (mux.s): a screen's
 zp_wk_slot      = $70           ; 2: sprites' pointers, and the top's slot being filled
+; Seeing (cart/walk/seeing.s, roll.s), in the frame loop only.
+zp_see_row      = $72           ; 2: a row of the squares, on a line of sight
+zp_see_tn       = $74           ; 2: a check's TN (signed)
+zp_see_err      = $76           ; 2: a line's error term (signed)
+zp_see_log      = $78           ; 2: where the next of the log goes
+zp_see_a        = $7A           ; 2: 16-bit scratch
+zp_see_rate     = $7C           ; a check's rating
+zp_see_t        = $7D           ; scratch

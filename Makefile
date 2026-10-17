@@ -720,13 +720,22 @@ build/turn-check: tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_
 	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC)
 
 test-rules-next: build/battle-next build/battle-next.asan build/battle-next.sim build/turn-check \
-                 build/seeing-check build/seeing-check.asan build/seeing-check.sim
+                 build/seeing-check build/seeing-check.asan build/seeing-check.sim build/seeing6502/see.bin
 	python3 tests/battle-next/run_battles.py
 	python3 tools/rules/check_power_docs.py
 	python3 tests/seeing/run_seeing.py
 
 # Seeing and being seen (docs/open-floors.md): the rules lab's core/next/seeing.c, held to
 # tools/rules/seeing.py by tests/seeing/run_seeing.py.
+# And the walking engine's, in 6502 (cart/walk/seeing.s, roll.s), on its own for the test.
+SEE6502_MODS := tests/seeing/see_stub.s cart/walk/seeing.s cart/walk/roll.s
+
+build/seeing6502/see.bin: $(SEE6502_MODS) tests/seeing/see6502.cfg cart/walk/walk.inc cart/zp.inc
+	@mkdir -p build/seeing6502
+	@for m in $(SEE6502_MODS); do \
+	    ca65 -I cart -I cart/walk -g -o build/seeing6502/$$(basename $$m .s).o $$m || exit 1; done
+	ld65 -C tests/seeing/see6502.cfg -o $@ -Ln build/seeing6502/see.lbl \
+	    $(addprefix build/seeing6502/,$(addsuffix .o,$(basename $(notdir $(SEE6502_MODS)))))
 SEEING_SRC := core/next/seeing.c core/src/rng.c core/src/rules.c core/src/registry.c core/src/names.c
 SEEING_HDR := core/next/apb_seeing.h $(CORE_HDR)
 

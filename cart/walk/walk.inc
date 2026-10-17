@@ -99,6 +99,11 @@ BORDER_COLOUR   = 0             ; black
 ; themselves. (The characters aren't kept: an edge's are worked out from its squares.)
 COLOUR_MAP      = $7C00         ; to $ABFF at most (48 rows)
 
+; ------------------------------------------------------------------ seeing
+SEE_BANDS_MAX   = 24            ; a floor's bands (seeing.s)
+SEE_LOG         = $AC00         ; each step's checks, every die (for the tests): to $B1FF
+SEE_LOG_SIZE    = $0600
+
 ; ------------------------------------------------------------------ the figures
 SPRITE_SHAPES   = $D000         ; under the I/O (the VIC sees the RAM): 32 shapes
 SHAPE_POINTER   = $40           ; shape s: the VIC's pointer $40 + s
