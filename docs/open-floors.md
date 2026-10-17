@@ -246,9 +246,11 @@ range: for playing.
   colours (2 bytes a square) then the squares (a byte each), so up to 80 squares across
   (3 x 80 <= 256) and 48 down; the walking engine's character map is dropped (a character
   is worked out from its square as an edge is drawn).
-- **Seeing:** a band checks only when the party crosses into its range or 4 squares
-  closer, so a frame does a line or two of Bresenham at most: well inside the frame loop's
-  budget.
+- **Seeing** (built: [walk.md](walk.md), *Seeing*, W5): a band checks only when the party
+  crosses into its range or 4 squares closer; still, a step can have several due, a line
+  traced and dice rolled each (11,000 cycles), more than a busy frame has to spare. So a
+  step's checks run in the frame loop's spare time, as a task with its own stack, and
+  what they found is shown 8 frames after the step.
 - **A fight** is the battle screen on the window's squares: the window is copied out of
   the floor as a battle map, the walking engine's screen becomes the battle screen's,
   and the view follows the turn with the same scroller.
@@ -270,8 +272,9 @@ range: for playing.
    fights on their window.
 4. **The C64:** the floor in memory without the character map, floors of any size up to
    the limit (built: W4 in [walk.md](walk.md); `build/walk-open.prg` walks yard 48213's
-   sixth, 80 x 40, to its stairs, held to `tools/walk/walk.py` frame by frame); then seeing
-   in 6502 (W5), and the fight on the window (W6).
+   sixth, 80 x 40, to its stairs, held to `tools/walk/walk.py` frame by frame); seeing in
+   6502 (built: W5; `build/walk-seen.prg` walks yard 48213's third, its bands hidden till
+   spotted, until one sees the party); then the fight on the window (W6).
 
 ## Walking an open floor, built
 

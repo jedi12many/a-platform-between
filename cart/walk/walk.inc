@@ -18,7 +18,14 @@ FL_PARTY        = 40            ; the party's kinds, in marching order (4)
 FL_KINDS        = 44            ; how many kinds of figure
 FL_KIND_COLOUR  = 45            ; each kind's colour (12)
 FL_FIGURES      = 57            ; how many figures (foes, people), then each: x, y, kind
-FL_CHARS        = 304           ; the characters: 0 blank, then 4 a tile
+FL_TERRAIN      = 298           ; each tile's terrain (the battle's: 1 wall, 4 cover...) (32)
+FL_FIG_BAND     = 330           ; each figure's band, or $FF (a person) (80)
+FL_BANDS        = 410           ; how many bands, then each: x, y, sense, stealth, hiding (24)
+FL_NOTICE       = 531           ; the party's Notice, in marching order (4)
+FL_STEALTH      = 535           ; and Stealth (4)
+FL_LIGHT        = 539           ; the floor's light: 0 day, 1 dusk, 2 night
+FL_SEED         = 540           ; seeing's dice (2)
+FL_CHARS        = 576           ; the characters: 0 blank, then 4 a tile
 FL_HUD          = 2000          ; the HUD's sprites (border.s): their x's low bytes (8)...
 HUD_X           = 0
 HUD_COLOUR      = 8             ; ...their colours (8)...
@@ -98,6 +105,13 @@ BORDER_COLOUR   = 0             ; black
 ; colour), so a row of the colour RAM is a straight copy; then, from 2 w, the squares
 ; themselves. (The characters aren't kept: an edge's are worked out from its squares.)
 COLOUR_MAP      = $7C00         ; to $ABFF at most (48 rows)
+
+; ------------------------------------------------------------------ seeing
+SEE_BANDS_MAX   = 24            ; a floor's bands (seeing.s)
+SEE_LOG         = $AC00         ; each step's checks, every die (for the tests): to $B1FF
+SEE_LOG_SIZE    = $0600
+SEE_SHOWN       = 8             ; a step's checks shown this many frames after it (watch.s)
+TASK_STACK      = $017F         ; the checks' stack, $0100-$017F (the frame loop's above)
 
 ; ------------------------------------------------------------------ the figures
 SPRITE_SHAPES   = $D000         ; under the I/O (the VIC sees the RAM): 32 shapes

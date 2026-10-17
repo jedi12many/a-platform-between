@@ -140,6 +140,7 @@ def main():
     ap.add_argument("--yard", type=int, default=48213)
     ap.add_argument("--floor", type=int, default=1)
     ap.add_argument("--open", action="store_true", help="an open floor (docs/open-floors.md)")
+    ap.add_argument("--unseen", action="store_true", help="its foes all shown, none looking")
     ap.add_argument("--frames", type=int, default=0, help="how many (default: the walk)")
     ap.add_argument("--every", type=int, default=7, help="compare every Kth frame")
     ap.add_argument("--shots", help="save each compared frame's two pictures here")
@@ -149,7 +150,7 @@ def main():
         return 0
     sys.path.insert(0, os.path.join(HERE, "..", "..", "tools"))
 
-    floor = walk.Floor(args.yard, args.floor, open_floor=args.open)
+    floor = walk.Floor(args.yard, args.floor, open_floor=args.open, unseen=args.unseen)
     script = run_walk.sticks(floor)
     frames = args.frames or len(script)
     syms = run_walk.labels(args.labels)

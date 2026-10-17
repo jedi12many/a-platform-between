@@ -118,7 +118,7 @@ class Dice:
         return next(self.gen)
 
 
-def group_tn(dice, stealths, log):
+def group_tn(dice, stealths, log, rolled=None):
     """A sneaking group's TN before modifiers: 50 + its best Stealth, each of the others
     rolling Stealth against 100 (in party order). The total the others move it."""
     b = best(stealths)
@@ -128,6 +128,8 @@ def group_tn(dice, stealths, log):
             continue
         r = dice.roll()
         res = combat.resolve(r, r + s, 100)
+        if rolled is not None:
+            rolled.append((r, r + s, 100, res))
         v = helper_shift(r, res, True)
         shift += v
         log.append(f"    sneaking: Stealth {s} rolls {r} = {r + s} against 100: "
@@ -135,7 +137,7 @@ def group_tn(dice, stealths, log):
     return BASE + stealths[b], shift
 
 
-def group_look(dice, notices, tn, log):
+def group_look(dice, notices, tn, log, rolled=None):
     """A looking group's roll: each of the others first rolls against the TN (party
     order), moving it; then the best rolls against what they leave. (roll, total, tn,
     result) of the best's roll."""
@@ -145,6 +147,8 @@ def group_look(dice, notices, tn, log):
             continue
         r = dice.roll()
         res = combat.resolve(r, r + n, tn)
+        if rolled is not None:
+            rolled.append((r, r + n, tn, res))
         v = helper_shift(r, res, False)
         log.append(f"    helping: Notice {n} rolls {r} = {r + n} against {tn}: "
                    f"{RESULT[res]}, {v:+d}")
@@ -160,22 +164,31 @@ def tn_line(base_terms, mods):
     return terms, total
 
 
-def approach(case):
-    """Play an approach (a parsed case: parse()): the party's leader steps along its path;
-    at each step every band is checked as the doc's *Precisely* says. Returns the log
-    (a list of lines)."""
-    tiles, light = case["tiles"], case["light"]
-    party, bands = case["party"], case["bands"]
-    dice = Dice(case["seed"])
-    log = [f"light {LIGHTS[light]}; the party {'sneaks' if party['sneaking'] else 'walks'}"
-           + (", carrying a light" if party["light"] else "")]
-    notices = [t["notice"] for t in party["travelers"]]
-    stealths = [t["stealth"] for t in party["travelers"]]
-    state = [{"spotted": False, "seen": False, "alert": False, "party_last": None,
-              "band_last": None} for _ in bands]
-    x, y = case["start"]
-    for step, (nx, ny) in enumerate([case["start"]] + case["path"]):
-        x, y = nx, ny
+class Watch:
+    """An approach a step at a time (approach, below; the walking engine's reference,
+    tools/walk/walk.py, steps it as the party walks): step(x, y) checks every band as
+    the doc's *Precisely* says, appending to .log, and returns the band (0-based) that saw
+    the party, or None. .checks has each check as (step, who looks, band, distance, dice:
+    [(roll, total, tn, outcome)]); .state each band's spotted, seen and alert."""
+
+    def __init__(self, case):
+        self.tiles, self.light = case["tiles"], case["light"]
+        self.party, self.bands = case["party"], case["bands"]
+        self.dice = Dice(case["seed"])
+        self.log = [f"light {LIGHTS[self.light]}; the party "
+                    f"{'sneaks' if self.party['sneaking'] else 'walks'}"
+                    + (", carrying a light" if self.party["light"] else "")]
+        self.notices = [t["notice"] for t in self.party["travelers"]]
+        self.stealths = [t["stealth"] for t in self.party["travelers"]]
+        self.state = [{"spotted": False, "seen": False, "alert": False, "party_last": None,
+                       "band_last": None} for _ in self.bands]
+        self.checks, self.steps, self.fight = [], 0, None
+
+    def step(self, x, y):
+        tiles, light, party, bands, dice = self.tiles, self.light, self.party, self.bands, self.dice
+        notices, stealths, state, log = self.notices, self.stealths, self.state, self.log
+        step = self.steps
+        self.steps += 1
         header = [f"step {step}: the party at {x},{y}"]
 
         def say(line):
@@ -194,6 +207,7 @@ def approach(case):
                 if d <= 1:
                     st["spotted"] = True
                     say(f"{where}: the party looks: spotted, no roll")
+                    self.checks.append((step, "party", bi, d, []))
                 elif st["party_last"] is None or d <= st["party_last"] - 4:
                     st["party_last"] = d
                     say(f"{where}: the party looks")
@@ -205,9 +219,11 @@ def approach(case):
                     terms, m = tn_line(base_terms, mods)
                     tn = base + m
                     log.append(f"    TN {terms} = {tn}")
-                    sub = []
-                    r, total, tn2, res = group_look(dice, notices, tn, sub)
+                    sub, rolled = [], []
+                    r, total, tn2, res = group_look(dice, notices, tn, sub, rolled)
                     log.extend(sub)
+                    rolled.append((r, total, tn2, res))
+                    self.checks.append((step, "party", bi, d, rolled))
                     what = {FAIL: "not yet", COST: "heard", SUCCESS: "spotted", CRIT: "spotted"}[res]
                     log.append(f"    looks: Notice {max(notices)} rolls {r} = {total} against {tn2}: "
                                f"{RESULT[res]}: {what}")
@@ -218,12 +234,13 @@ def approach(case):
                 if d <= 1:
                     st["seen"] = True
                     say(f"{where}: band {bi + 1} looks: seen, no roll")
+                    self.checks.append((step, "band", bi, d, []))
                 elif st["band_last"] is None or d <= st["band_last"] - 4:
                     st["band_last"] = d
                     say(f"{where}: band {bi + 1} looks")
-                    sub = []
+                    sub, rolled = [], []
                     if party["sneaking"]:
-                        base, shift = group_tn(dice, stealths, sub)
+                        base, shift = group_tn(dice, stealths, sub, rolled)
                         base_terms = [f"{BASE} + {max(stealths)} sneaking"] + \
                             ([f"{shift:+d} the others"] if len(stealths) > 1 else [])
                         base += shift
@@ -236,6 +253,8 @@ def approach(case):
                     log.append(f"    TN {terms} = {tn}")
                     r = dice.roll()
                     res = combat.resolve(r, r + band["sense"], tn)
+                    rolled.append((r, r + band["sense"], tn, res))
+                    self.checks.append((step, "band", bi, d, rolled))
                     what = {FAIL: "not yet", COST: "heard: alert", SUCCESS: "seen", CRIT: "seen"}[res]
                     log.append(f"    looks: Sense {band['sense']} rolls {r} = {r + band['sense']} "
                                f"against {tn}: {RESULT[res]}: {what}")
@@ -245,9 +264,21 @@ def approach(case):
                         st["seen"] = True
             if st["seen"]:
                 log.append(f"the fight: band {bi + 1}" + ("" if st["spotted"] else ", an ambush"))
-                return log
-    log.append("the end of the way: not seen")
-    return log
+                self.fight = (bi, not st["spotted"])
+                return bi
+        return None
+
+
+def approach(case):
+    """Play an approach (a parsed case: parse()): the party's leader steps along its path;
+    at each step every band is checked as the doc's *Precisely* says. Returns the log
+    (a list of lines)."""
+    w = Watch(case)
+    for x, y in [case["start"]] + case["path"]:
+        if w.step(x, y) is not None:
+            return w.log
+    w.log.append("the end of the way: not seen")
+    return w.log
 
 
 # ------------------------------------------------------------------ cases

@@ -229,8 +229,10 @@ build/apb.crt build/apb-disk.d64 build/apb-kestrel.d64 build/apb-typo.d64: $(CAR
 # to tools/walk/walk.py, frame by frame and row by row as the VIC reads them. And
 # build/walk-crowd.prg, the same on yard 7602's eighth floor, the dungeon, crowded: up to
 # 14 figures at once, the sprites shared down the screen; and build/walk-open.prg, an open
-# floor (docs/open-floors.md): yard 48213's sixth, 80 x 40 squares.
-WALK_MODS := start gen irq border colours move camera edge figures mux floor
+# floor (docs/open-floors.md): yard 48213's sixth, 80 x 40 squares, every foe shown (a crowd);
+# and build/walk-seen.prg, its third (64 x 32), its bands hidden till spotted and looking
+# for the party (seeing: cart/walk/seeing.s), the walk stopped when one sees it.
+WALK_MODS := start gen irq border colours move camera edge figures mux watch seeing roll floor
 
 # A floor's program: the engine with another floor's asset (build/walk-NAME/walk/).
 define walk_floor
@@ -242,7 +244,8 @@ define walk_floor
 endef
 
 build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/walk.inc cart/walk/walk.cfg \
-                cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py
+                cart/hw.inc cart/zp.inc tools/walk/walk.py tools/rooms/rooms.py tools/art.py $(ART) tools/d64.py \
+                tools/rules/seeing.py registry/senses.txt
 	@mkdir -p build/walk/walk
 	python3 tools/walk/walk.py asset 48213 1 build/walk/walk
 	@for m in $(WALK_MODS); do \
@@ -251,7 +254,8 @@ build/walk.prg: $(addprefix cart/walk/,$(addsuffix .s,$(WALK_MODS))) cart/walk/w
 	    $(addprefix build/walk/,$(addsuffix .o,$(WALK_MODS)))
 	python3 tools/d64.py write build/walk.d64 "walk the yard" wy $@=walk
 	$(call walk_floor,crowd,7602 8)
-	$(call walk_floor,open,48213 6,open)
+	$(call walk_floor,open,48213 6,open-unseen)
+	$(call walk_floor,seen,48213 3,open)
 
 walk: build/walk.prg
 	@echo "Walk the yard: build/walk.prg (a Kung Fu Flash 2 runs it), build/walk.d64 (LOAD\"WALK\",8 and RUN)"
@@ -262,10 +266,12 @@ cart: build/apb.crt
 test-cart: build/apb.crt build/the-fare.d64 build/battle build/walk.prg
 	python3 tests/walk/run_walk.py build/walk.prg build/walk/walk.lbl
 	python3 tests/walk/run_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
-	python3 tests/walk/run_walk.py build/walk-open.prg build/walk-open/walk.lbl --yard 48213 --floor 6 --open
+	python3 tests/walk/run_walk.py build/walk-open.prg build/walk-open/walk.lbl --yard 48213 --floor 6 --open --unseen
+	python3 tests/walk/run_walk.py build/walk-seen.prg build/walk-seen/walk.lbl --yard 48213 --floor 3 --open
 	python3 tests/walk/vice_walk.py build/walk.prg build/walk/walk.lbl
 	python3 tests/walk/vice_walk.py build/walk-crowd.prg build/walk-crowd/walk.lbl --yard 7602 --floor 8
-	python3 tests/walk/vice_walk.py build/walk-open.prg build/walk-open/walk.lbl --yard 48213 --floor 6 --open
+	python3 tests/walk/vice_walk.py build/walk-open.prg build/walk-open/walk.lbl --yard 48213 --floor 6 --open --unseen
+	python3 tests/walk/vice_walk.py build/walk-seen.prg build/walk-seen/walk.lbl --yard 48213 --floor 3 --open
 	(echo 1; cat tests/cart/desk.choices) > build/cart/desk-c64.choices
 	python3 tests/c64/run_c64.py build/the-fare.d64 build/c64/apb.dbg build/cart/desk-c64.choices \
 	    > build/cart/desk.c64
@@ -720,13 +726,22 @@ build/turn-check: tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC) $(NEXT_
 	$(CC) $(CFLAGS) $(WARN) $(NEXT_INC) -o $@ tests/battle-next/turn_check.c $(NEXT_SRC) $(CORE_SRC)
 
 test-rules-next: build/battle-next build/battle-next.asan build/battle-next.sim build/turn-check \
-                 build/seeing-check build/seeing-check.asan build/seeing-check.sim
+                 build/seeing-check build/seeing-check.asan build/seeing-check.sim build/seeing6502/see.bin
 	python3 tests/battle-next/run_battles.py
 	python3 tools/rules/check_power_docs.py
 	python3 tests/seeing/run_seeing.py
 
 # Seeing and being seen (docs/open-floors.md): the rules lab's core/next/seeing.c, held to
 # tools/rules/seeing.py by tests/seeing/run_seeing.py.
+# And the walking engine's, in 6502 (cart/walk/seeing.s, roll.s), on its own for the test.
+SEE6502_MODS := tests/seeing/see_stub.s cart/walk/seeing.s cart/walk/roll.s
+
+build/seeing6502/see.bin: $(SEE6502_MODS) tests/seeing/see6502.cfg cart/walk/walk.inc cart/zp.inc
+	@mkdir -p build/seeing6502
+	@for m in $(SEE6502_MODS); do \
+	    ca65 -I cart -I cart/walk -g -o build/seeing6502/$$(basename $$m .s).o $$m || exit 1; done
+	ld65 -C tests/seeing/see6502.cfg -o $@ -Ln build/seeing6502/see.lbl \
+	    $(addprefix build/seeing6502/,$(addsuffix .o,$(basename $(notdir $(SEE6502_MODS)))))
 SEEING_SRC := core/next/seeing.c core/src/rng.c core/src/rules.c core/src/registry.c core/src/names.c
 SEEING_HDR := core/next/apb_seeing.h $(CORE_HDR)
 

@@ -4,11 +4,12 @@
 
         .include "walk.inc"
 
-        .export floor, squares, sq_row_lo, sq_row_hi
+        .export floor, squares, sq_row_lo, sq_row_hi, terrain
 
         .segment "DATA"
 
 floor:  .incbin "walk/floor.bin"
+terrain = floor + FL_TERRAIN            ; each tile's terrain (seeing.s)
 
 ; The squares, w x h, a row at a time: loaded past $27FF (the program's top, which gen.s
 ; writes over), so copied onto their pages first thing (maps_build).
